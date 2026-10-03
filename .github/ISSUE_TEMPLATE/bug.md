@@ -14,26 +14,42 @@ assignees: ''
 
 <!-- Describe what should happen according to specs and domain rules -->
 
+## Scope & Affected Surface
+
+<!-- List affected routes, files, components, view pages, or modules -->
+- [ ]
+
+## Non-Goals
+
+<!-- List any out-of-scope refactoring or unrelated fixes -->
+-
+
 ## Reproduction Steps
 
 1.
 2.
 3.
 
-## Affected Surface
+## Acceptance Criteria
 
-<!-- List affected routes, files, components, or modules -->
+<!-- Criteria confirming defect resolution -->
+- [ ] Defect resolved according to expected behavior
+- [ ] Automated regression test added and passing
 
-## Specialist Ownership
+## Security & Data Impact
 
-<!-- Select primary specialist responsible for fixing the defect -->
-- [ ] Architecture Specialist
-- [ ] Data / Catalog Specialist
-- [ ] UI Specialist
-- [ ] Marketplace Specialist
-- [ ] Verification Specialist
+<!-- Detail security, privacy, auth, or data integrity implications of the defect or fix (or state N/A if none) -->
 
-## Regression Test Requirement
+## Specialist & Handoff Information
 
-<!-- Describe the required automated test to prevent recurrence -->
+- **Primary Specialist:** [Architecture | Data / Catalog | UI | Marketplace | Verification]
+- **Handoff Protocol:** <!-- Detail handoffs or dependencies if fix spans multiple layers -->
+
+## Required Verification
+
+<!-- Specify automated regression tests and standard verification checks -->
 - [ ] Automated regression test covering this scenario
+- [ ] `npm run lint`
+- [ ] `npm run typecheck`
+- [ ] `npm test`
+- [ ] `npm run build`

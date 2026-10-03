@@ -15,14 +15,24 @@ assignees: ''
 <!-- List explicit capabilities and components delivered by this phase -->
 - [ ]
 
-## Dependencies
+## Non-Goals
 
-<!-- List prerequisite phases or issues, or state None -->
+<!-- List items explicitly excluded from this phase to prevent scope creep -->
+-
 
 ## Acceptance Criteria
 
 <!-- Define unambiguous criteria that determine when the phase is finished -->
 - [ ]
+
+## Security & Data Impact
+
+<!-- Detail authentication, permissions, privacy, schema, database, or storage impact (or state N/A if none) -->
+
+## Specialist & Handoff Information
+
+- **Primary Specialist:** [Architecture | Data / Catalog | UI | Marketplace | Verification]
+- **Handoff Protocol:** <!-- Describe cross-specialist inputs/outputs or dependencies -->
 
 ## Required Verification
 
@@ -32,13 +42,7 @@ assignees: ''
 - [ ] `npm test`
 - [ ] `npm run build`
 
-## Explicit Non-Goals
-
-<!-- List items explicitly excluded from this phase to prevent scope creep -->
--
-
 ## Dispatch Metadata
 
 - **Phase:** Phase [X]
-- **Primary Specialist:** [Architecture | Data / Catalog | UI | Marketplace | Verification]
 - **Expected Branch Type:** feature/[phase-name]

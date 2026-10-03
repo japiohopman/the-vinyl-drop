@@ -10,23 +10,39 @@ assignees: ''
 
 <!-- Describe current system structure, boundaries, or behavior -->
 
-## Proposed Change
+## Proposed Change & Scope
 
 <!-- Describe proposed changes to domain models, data flows, persistence, or infrastructure -->
+- [ ]
 
-## Migration / Compatibility Impact
+## Non-Goals
 
-<!-- Detail how existing data, APIs, or configurations will be migrated without breaking changes -->
+<!-- List architectural changes explicitly excluded from this issue -->
+-
+
+## Migration / Compatibility & Data Impact
+
+<!-- Detail how existing data, APIs, schemas, or configurations will be migrated without breaking changes (or state N/A) -->
+
+## Security Impact
+
+<!-- Detail authentication, authorization, or trust boundary changes (or state N/A if none) -->
 
 ## Alternatives Rejected
 
 <!-- Explain alternative designs or technologies considered and why they were rejected -->
 
-## Primary Specialist
+## Acceptance Criteria
 
-- [ ] Architecture Specialist
+<!-- Criteria confirming successful architectural update -->
+- [ ] Architectural change completed without regressions or boundary violations
 
-## Verification Strategy
+## Specialist & Handoff Information
+
+- **Primary Specialist:** Architecture Specialist
+- **Handoff Protocol:** <!-- Detail downstream specialist impacts (Data, UI, Marketplace, Verification) -->
+
+## Required Verification
 
 <!-- Define how this architectural change will be verified -->
 - [ ] `npm run lint`
