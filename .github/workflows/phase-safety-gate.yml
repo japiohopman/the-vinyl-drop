@@ -38,6 +38,12 @@ jobs:
               'Definition of Done'
             ];
 
+            const requiredDodItems = [
+              'All Issue acceptance criteria satisfied',
+              'Verification commands pass cleanly',
+              'Scope remains strictly within governing Issue'
+            ];
+
             const errors = [];
             const pr = context.payload.pull_request;
 
@@ -73,7 +79,22 @@ jobs:
               }
             }
 
-            // 3. Check governing issue reference
+            // 3. Check Definition of Done checklist items
+            const dodHeaderIndex = prBody.search(/^##\s+Definition of Done/m);
+            if (dodHeaderIndex !== -1) {
+              const afterDod = prBody.slice(dodHeaderIndex);
+              const nextSectionIndex = afterDod.slice(1).search(/^(##\s+|---)/m);
+              const dodSectionText = nextSectionIndex !== -1 ? afterDod.slice(0, nextSectionIndex + 1) : afterDod;
+
+              for (const item of requiredDodItems) {
+                const itemRegex = new RegExp(`-\\s*\\[[xX]\\]\\s*${item.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}`, 'm');
+                if (!itemRegex.test(dodSectionText)) {
+                  errors.push(`Definition of Done missing required checked item: "${item}"`);
+                }
+              }
+            }
+
+            // 4. Check governing issue reference
             const refsMatch = prBody.match(/Refs\s+#(\d+)/i);
             let issueNumber = null;
 
@@ -83,7 +104,7 @@ jobs:
               issueNumber = parseInt(refsMatch[1], 10);
             }
 
-            // 4. Check status section
+            // 5. Check status section
             let status = null;
             const statusHeaderIndex = prBody.search(/###\s+Status/i);
 
@@ -107,7 +128,7 @@ jobs:
               }
             }
 
-            // 5. Validate governing issue exists and is open via GitHub REST API
+            // 6. Validate governing issue exists and is open via GitHub REST API
             if (issueNumber) {
               try {
                 const issueRes = await github.rest.issues.get({

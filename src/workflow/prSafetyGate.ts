@@ -30,6 +30,12 @@ export const REQUIRED_PR_SECTIONS = [
   'Definition of Done',
 ] as const;
 
+export const REQUIRED_DOD_ITEMS = [
+  'All Issue acceptance criteria satisfied',
+  'Verification commands pass cleanly',
+  'Scope remains strictly within governing Issue',
+] as const;
+
 export const ALLOWED_STATUSES = ['NOT READY', 'READY FOR HUMAN REVIEW'] as const;
 
 /**
@@ -53,7 +59,24 @@ export function validatePrContract(prBody: string | null | undefined): PrContrac
     }
   }
 
-  // 2. Extract and validate governing issue reference
+  // 2. Validate Definition of Done checklist items
+  const dodHeaderIndex = cleanedBody.search(/^##\s+Definition of Done/m);
+  if (dodHeaderIndex !== -1) {
+    const afterDod = cleanedBody.slice(dodHeaderIndex);
+    // Get text up to next level-2 heading or horizontal rule or end
+    const nextSectionIndex = afterDod.slice(1).search(/^(##\s+|---)/m);
+    const dodSectionText = nextSectionIndex !== -1 ? afterDod.slice(0, nextSectionIndex + 1) : afterDod;
+
+    for (const item of REQUIRED_DOD_ITEMS) {
+      // Check for checked box "- [x] ... <item>" or "- [X] ... <item>"
+      const itemPattern = new RegExp(`-\\s*\\[[xX]\\]\\s*${escapeRegExp(item)}`, 'm');
+      if (!itemPattern.test(dodSectionText)) {
+        errors.push(`Definition of Done missing required checked item: "${item}"`);
+      }
+    }
+  }
+
+  // 3. Extract and validate governing issue reference
   // Pattern looking for: Refs #<digits>
   const refsMatch = cleanedBody.match(/Refs\s+#(\d+)/i);
   let issueNumber: number | undefined;
@@ -69,7 +92,7 @@ export function validatePrContract(prBody: string | null | undefined): PrContrac
     }
   }
 
-  // 3. Extract and validate Status section
+  // 4. Extract and validate Status section
   let status: 'NOT READY' | 'READY FOR HUMAN REVIEW' | undefined;
   const statusHeaderIndex = cleanedBody.search(/###\s+Status/i);
 

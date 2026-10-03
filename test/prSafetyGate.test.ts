@@ -43,6 +43,8 @@ Updated workflow docs.
 ## Definition of Done
 
 - [x] All Issue acceptance criteria satisfied
+- [x] Verification commands pass cleanly
+- [x] Scope remains strictly within governing Issue
 
 ---
 
@@ -85,6 +87,18 @@ describe('PR Contract Parsing and Safety Gate Validation', () => {
       const result = validatePrContract(bodyMissingGoal);
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Missing required section: "## Goal"');
+    });
+
+    it('should fail when Definition of Done required items are missing or unchecked', () => {
+      const bodyUncheckedDod = VALID_PR_BODY.replace(
+        '- [x] Scope remains strictly within governing Issue',
+        '- [ ] Scope remains strictly within governing Issue'
+      );
+      const result = validatePrContract(bodyUncheckedDod);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain(
+        'Definition of Done missing required checked item: "Scope remains strictly within governing Issue"'
+      );
     });
 
     it('should fail when governing issue reference is missing or malformed', () => {
