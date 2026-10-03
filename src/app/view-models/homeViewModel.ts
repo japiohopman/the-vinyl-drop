@@ -1,4 +1,5 @@
 export interface HomeViewModel {
+  [key: string]: unknown;
   title: string;
   message: string;
 }

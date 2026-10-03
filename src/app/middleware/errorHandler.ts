@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
+import { renderWithLayout } from '../utils/render';
 
 export function notFoundHandler(req: Request, res: Response): void {
   res.status(404);
   if (req.accepts('html')) {
-    res.render('errors/404', { title: '404 - Page Not Found' });
+    renderWithLayout(res, 'errors/404', { title: '404 - Page Not Found' });
     return;
   }
   if (req.accepts('json')) {
@@ -24,7 +25,7 @@ export function errorHandler(
   res.status(statusCode);
 
   if (req.accepts('html')) {
-    res.render('errors/500', { title: '500 - Server Error' });
+    renderWithLayout(res, 'errors/500', { title: '500 - Server Error' });
     return;
   }
   if (req.accepts('json')) {
