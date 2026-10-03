@@ -30,6 +30,31 @@ async function main(): Promise<void> {
     prBody = process.env.PR_BODY;
   }
 
+  // If PR body was not retrieved from event JSON or PR_BODY, attempt to fetch from GitHub REST API
+  if ((!prBody || prBody.trim() === '') && eventPath && fs.existsSync(eventPath) && token) {
+    try {
+      const eventData = JSON.parse(fs.readFileSync(eventPath, 'utf-8'));
+      const prNumber = eventData.pull_request?.number || eventData.number;
+      if (prNumber) {
+        console.log(`PR body empty in event payload, fetching live PR #${prNumber} from GitHub API...`);
+        const url = `https://api.github.com/repos/${repository}/pulls/${prNumber}`;
+        const response = await fetch(url, {
+          headers: {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+            'User-Agent': 'VinylDrop-SafetyGate',
+          },
+        });
+        if (response.ok) {
+          const prData = (await response.json()) as { body?: string };
+          prBody = prData.body || '';
+        }
+      }
+    } catch (err) {
+      console.warn('Warning: Failed to fetch PR body from GitHub API:', err);
+    }
+  }
+
   console.log(`Repository: ${repository}`);
   console.log(`Validating PR body contract and governing issue status...`);
 

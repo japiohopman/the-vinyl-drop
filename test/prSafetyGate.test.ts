@@ -104,7 +104,7 @@ describe('PR Contract Parsing and Safety Gate Validation', () => {
       const result = validatePrContract(bodyInvalidStatus);
       expect(result.valid).toBe(false);
       expect(result.errors).toContain(
-        'Invalid status: "IN PROGRESS". Must be "NOT READY" or "READY FOR HUMAN REVIEW".'
+        'Missing or invalid status under "### Status". Must be "NOT READY" or "READY FOR HUMAN REVIEW".'
       );
     });
   });

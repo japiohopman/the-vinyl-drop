@@ -42,17 +42,20 @@ export function validatePrContract(prBody: string | null | undefined): PrContrac
     return { valid: false, errors: ['PR body is empty or missing.'] };
   }
 
+  // Strip HTML comments (e.g. <!-- comment -->)
+  const cleanedBody = prBody.replace(/<!--[\s\S]*?-->/g, '');
+
   // 1. Validate required section headings
   for (const section of REQUIRED_PR_SECTIONS) {
     const headingPattern = new RegExp(`^##\\s+${escapeRegExp(section)}`, 'm');
-    if (!headingPattern.test(prBody)) {
+    if (!headingPattern.test(cleanedBody)) {
       errors.push(`Missing required section: "## ${section}"`);
     }
   }
 
   // 2. Extract and validate governing issue reference
   // Pattern looking for: Refs #<digits>
-  const refsMatch = prBody.match(/Refs\s+#(\d+)/i);
+  const refsMatch = cleanedBody.match(/Refs\s+#(\d+)/i);
   let issueNumber: number | undefined;
 
   if (!refsMatch) {
@@ -67,19 +70,27 @@ export function validatePrContract(prBody: string | null | undefined): PrContrac
   }
 
   // 3. Extract and validate Status section
-  // Pattern looking for: ### Status followed by NOT READY or READY FOR HUMAN REVIEW
   let status: 'NOT READY' | 'READY FOR HUMAN REVIEW' | undefined;
-  const statusMatch = prBody.match(/###\s+Status\s*\n+([^\n#]+)/i);
+  const statusHeaderIndex = cleanedBody.search(/###\s+Status/i);
 
-  if (!statusMatch) {
+  if (statusHeaderIndex === -1) {
     errors.push('Missing status section ("### Status").');
   } else {
-    const extractedStatus = statusMatch[1].trim();
-    if (extractedStatus === 'NOT READY' || extractedStatus === 'READY FOR HUMAN REVIEW') {
-      status = extractedStatus;
-    } else {
+    const afterStatus = cleanedBody.slice(statusHeaderIndex);
+    const lines = afterStatus.split('\n').slice(1);
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      if (trimmed.startsWith('#')) break; // Reached next heading
+      if (trimmed === 'READY FOR HUMAN REVIEW' || trimmed === 'NOT READY') {
+        status = trimmed;
+        break;
+      }
+    }
+
+    if (!status) {
       errors.push(
-        `Invalid status: "${extractedStatus}". Must be "NOT READY" or "READY FOR HUMAN REVIEW".`
+        'Missing or invalid status under "### Status". Must be "NOT READY" or "READY FOR HUMAN REVIEW".'
       );
     }
   }
@@ -137,7 +148,6 @@ export async function validateGoverningIssue(
 
     const data = (await response.json()) as { state?: string; pull_request?: unknown };
 
-    // GitHub API returns pull requests in the issues endpoint if queried, but they contain pull_request object.
     if (data.pull_request) {
       errors.push(`Issue #${issueNumber} is a pull request, not an issue.`);
       return { valid: false, errors };
