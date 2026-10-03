@@ -1,7 +1,7 @@
 name: Phase Safety Gate
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - edited
@@ -46,6 +46,15 @@ jobs:
               return;
             }
 
+            // 1. Validate branch conventions
+            if (pr.base && pr.base.ref !== 'main') {
+              errors.push(`Target branch must be "main", got "${pr.base.ref}".`);
+            }
+
+            if (pr.head && pr.head.ref === 'main') {
+              errors.push('PR head branch cannot be "main". Work must be performed on a feature branch.');
+            }
+
             let prBody = pr.body || '';
 
             // Strip HTML comments
@@ -56,16 +65,16 @@ jobs:
               return;
             }
 
-            // 1. Check required section headings
+            // 2. Check required section headings
             for (const section of requiredSections) {
-              const regex = new RegExp(`^##\\\\s+${section.replace(/[-[\]{}()*+?.,\\^$|#\\s]/g, '\\$&')}`, 'm');
+              const regex = new RegExp(`^##\\s+${section.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}`, 'm');
               if (!regex.test(prBody)) {
                 errors.push(`Missing required section: "## ${section}"`);
               }
             }
 
-            // 2. Check governing issue reference
-            const refsMatch = prBody.match(/Refs\\s+#(\\d+)/i);
+            // 3. Check governing issue reference
+            const refsMatch = prBody.match(/Refs\s+#(\d+)/i);
             let issueNumber = null;
 
             if (!refsMatch) {
@@ -74,9 +83,9 @@ jobs:
               issueNumber = parseInt(refsMatch[1], 10);
             }
 
-            // 3. Check status section
+            // 4. Check status section
             let status = null;
-            const statusHeaderIndex = prBody.search(/###\\s+Status/i);
+            const statusHeaderIndex = prBody.search(/###\s+Status/i);
 
             if (statusHeaderIndex === -1) {
               errors.push('Missing status section ("### Status").');
@@ -98,7 +107,7 @@ jobs:
               }
             }
 
-            // 4. Validate governing issue exists and is open via GitHub REST API
+            // 5. Validate governing issue exists and is open via GitHub REST API
             if (issueNumber) {
               try {
                 const issueRes = await github.rest.issues.get({
