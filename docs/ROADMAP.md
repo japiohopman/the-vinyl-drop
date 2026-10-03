@@ -17,7 +17,7 @@ Deliver:
 - security baseline;
 - agentic workflow specification.
 
-Status: in progress.
+Status: complete — merged to main.
 
 ## Phase 1 — Repository and workflow foundation
 
