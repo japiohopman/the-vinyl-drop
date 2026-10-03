@@ -1,6 +1,7 @@
 # The Vinyl Drop
 
 A local community marketplace for buying, selling, and trading physical records.
+A small start. based in Amsterdam oost 
 
 The project is being designed mobile-first and will be developed through an Issue-first agentic workflow using GitHub Actions, Jules, specialist agents, automated verification, and human review.
 
