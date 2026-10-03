@@ -7,6 +7,7 @@ async function main(): Promise<void> {
   const repository = process.env.GITHUB_REPOSITORY;
   const token = process.env.GITHUB_TOKEN;
   const eventPath = process.env.GITHUB_EVENT_PATH;
+  const envPrNumber = process.env.PR_NUMBER;
 
   if (!repository) {
     console.error('Error: GITHUB_REPOSITORY environment variable is not set.');
@@ -14,41 +15,50 @@ async function main(): Promise<void> {
   }
 
   let prBody: string | undefined;
+  let prNumber: number | undefined;
+
+  if (envPrNumber) {
+    prNumber = parseInt(envPrNumber, 10);
+  }
 
   if (eventPath && fs.existsSync(eventPath)) {
     try {
       const eventData = JSON.parse(fs.readFileSync(eventPath, 'utf-8'));
       if (eventData.pull_request) {
-        prBody = eventData.pull_request.body || '';
+        prBody = eventData.pull_request.body || undefined;
+        if (!prNumber && eventData.pull_request.number) {
+          prNumber = eventData.pull_request.number;
+        }
+      } else if (!prNumber && eventData.number) {
+        prNumber = eventData.number;
       }
     } catch (err) {
       console.error(`Error reading event file at ${eventPath}:`, err);
       process.exit(1);
     }
-  } else {
-    // Fallback to PR_BODY environment variable if provided
+  }
+
+  if (!prBody) {
     prBody = process.env.PR_BODY;
   }
 
-  // If PR body was not retrieved from event JSON or PR_BODY, attempt to fetch from GitHub REST API
-  if ((!prBody || prBody.trim() === '') && eventPath && fs.existsSync(eventPath) && token) {
+  // If PR body is missing or empty, fetch live PR body via GitHub REST API
+  if ((!prBody || prBody.trim() === '') && prNumber && token) {
     try {
-      const eventData = JSON.parse(fs.readFileSync(eventPath, 'utf-8'));
-      const prNumber = eventData.pull_request?.number || eventData.number;
-      if (prNumber) {
-        console.log(`PR body empty in event payload, fetching live PR #${prNumber} from GitHub API...`);
-        const url = `https://api.github.com/repos/${repository}/pulls/${prNumber}`;
-        const response = await fetch(url, {
-          headers: {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${token}`,
-            'User-Agent': 'VinylDrop-SafetyGate',
-          },
-        });
-        if (response.ok) {
-          const prData = (await response.json()) as { body?: string };
-          prBody = prData.body || '';
-        }
+      console.log(`Fetching live PR #${prNumber} from GitHub API...`);
+      const url = `https://api.github.com/repos/${repository}/pulls/${prNumber}`;
+      const response = await fetch(url, {
+        headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: `Bearer ${token}`,
+          'User-Agent': 'VinylDrop-SafetyGate',
+        },
+      });
+      if (response.ok) {
+        const prData = (await response.json()) as { body?: string };
+        prBody = prData.body || '';
+      } else {
+        console.warn(`GitHub API returned status ${response.status} when fetching PR #${prNumber}.`);
       }
     } catch (err) {
       console.warn('Warning: Failed to fetch PR body from GitHub API:', err);
@@ -56,6 +66,9 @@ async function main(): Promise<void> {
   }
 
   console.log(`Repository: ${repository}`);
+  if (prNumber) {
+    console.log(`Pull Request: #${prNumber}`);
+  }
   console.log(`Validating PR body contract and governing issue status...`);
 
   const result = await runSafetyGate(prBody, repository, token);
