@@ -35,6 +35,8 @@ Deliver:
 - stale-session cleanup;
 - project context contract.
 
+Execution contract: Issue #4.
+
 Dependency: Phase 0.
 
 ## Phase 2 — Design system and application shell
@@ -50,6 +52,11 @@ Deliver:
 - reusable EJS partials;
 - accessibility baseline.
 
+Planned implementation Issues:
+- #6 — Design tokens and responsive application shell
+- #7 — Navigation and brand header
+- #8 — Reusable forms, listing card and accessibility baseline
+
 Dependency: Phase 1.
 
 ## Phase 3 — Database, authentication and profiles
@@ -61,6 +68,10 @@ Deliver:
 - profile creation/editing;
 - protected routes;
 - ownership authorization.
+
+Planned implementation Issues:
+- #9 — Supabase, PostgreSQL and Drizzle data foundation
+- #10 — Authentication, profiles and ownership authorization
 
 Dependency: Phase 1.
 
@@ -76,6 +87,10 @@ Deliver:
 - publish/edit/archive;
 - seller ownership checks.
 
+Planned implementation Issues:
+- #11 — Release, physical copy and listing domain model
+- #12 — Listing creation, editing and photo pipeline
+
 Dependencies: Phases 2 and 3.
 
 ## Phase 5 — Discovery
@@ -87,6 +102,9 @@ Deliver:
 - filters;
 - listing detail;
 - seller profile views.
+
+Planned implementation Issue:
+- #13 — Browse, search, listing detail and seller profile views
 
 Dependency: Phase 4.
 
