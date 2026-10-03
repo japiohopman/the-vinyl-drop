@@ -1,0 +1,103 @@
+/* Minimal stylesheet following UX tokens */
+:root {
+  --color-paper: #F3EFE7;
+  --color-ink: #151515;
+  --color-white: #FFFDF8;
+  --color-rust: #C94B2C;
+  --color-deep-green: #30463D;
+  --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-family);
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-header {
+  border-bottom: 2px solid var(--color-ink);
+  background-color: var(--color-white);
+  padding: 1rem;
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.brand-logo {
+  text-decoration: none;
+  color: var(--color-ink);
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-title {
+  font-weight: 900;
+  font-size: 1.5rem;
+  letter-spacing: -0.05em;
+}
+
+.logo-tagline {
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: var(--color-rust);
+  font-weight: 700;
+}
+
+.site-nav {
+  display: flex;
+  gap: 1rem;
+}
+
+.nav-item {
+  text-decoration: none;
+  color: var(--color-ink);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+}
+
+.nav-item-primary {
+  background-color: var(--color-rust);
+  color: var(--color-white);
+}
+
+.main-content {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.site-footer {
+  border-top: 1px solid var(--color-ink);
+  padding: 1.5rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  background-color: var(--color-white);
+}
+
+.empty-state {
+  border: 1px dashed var(--color-ink);
+  padding: 2rem;
+  text-align: center;
+  margin-top: 1rem;
+}
