@@ -1,0 +1,27 @@
+name: Phase Safety Gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate-pr-contract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate PR Contract Body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: npx tsx scripts/phase-safety-gate.ts

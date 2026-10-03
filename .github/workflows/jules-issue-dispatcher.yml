@@ -1,0 +1,26 @@
+name: Jules Issue Dispatcher (Dry-Run)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'
+
+jobs:
+  dry-run-dispatch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Dry-Run Selector
+        run: npx tsx scripts/jules-selector.ts

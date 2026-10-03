@@ -1,0 +1,23 @@
+name: Architecture Proposal
+description: Propose an architectural change
+title: "Arch: [Short Description]"
+labels: ["architecture"]
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: Current Architecture
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed Change
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Migration & Compatibility Impact
+    validations:
+      required: true

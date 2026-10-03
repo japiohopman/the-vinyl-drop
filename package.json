@@ -1,0 +1,35 @@
+{
+  "name": "the-vinyl-drop",
+  "version": "0.1.0",
+  "description": "A local community marketplace for buying, selling, and trading physical vinyl records.",
+  "main": "dist/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc && copyfiles -u 1 \"views/**/*\" \"public/**/*\" dist/",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "lint": "eslint \"src/**/*.ts\" \"scripts/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.5",
+    "@types/supertest": "^6.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.24.1",
+    "@typescript-eslint/parser": "^8.24.1",
+    "copyfiles": "^2.4.1",
+    "eslint": "^8.57.1",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.6"
+  }
+}

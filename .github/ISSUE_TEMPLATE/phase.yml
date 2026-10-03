@@ -1,0 +1,44 @@
+name: Phase Issue
+description: Define an architectural or product phase contract
+title: "Phase [Number]: [Phase Title]"
+labels: ["phase"]
+body:
+  - type: markdown
+    attributes:
+      value: "### Phase Execution Contract"
+  - type: textarea
+    id: goal
+    attributes:
+      label: Phase Goal
+      description: What is the primary objective of this phase?
+    validations:
+      required: true
+  - type: textarea
+    id: specialist
+    attributes:
+      label: Primary Specialist
+      description: "Options: Architecture Specialist, Data / Catalog Specialist, UI Specialist, Marketplace Specialist, Verification Specialist"
+      placeholder: "Architecture Specialist"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Detailed list of included deliverables and non-goals.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Concrete conditions that must be met to consider this phase complete.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification Requirements
+      description: Specific tests or checks required.
+    validations:
+      required: true

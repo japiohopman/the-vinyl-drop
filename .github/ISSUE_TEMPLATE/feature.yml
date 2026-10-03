@@ -1,0 +1,38 @@
+name: Feature Issue
+description: Implement a feature inside a phase
+title: "Feature: [Feature Title]"
+labels: ["feature"]
+body:
+  - type: textarea
+    id: phase
+    attributes:
+      label: Governing Phase Issue
+      description: Reference to the parent Phase issue (e.g. #4)
+    validations:
+      required: true
+  - type: textarea
+    id: specialist
+    attributes:
+      label: Primary Specialist
+      description: "Options: Architecture Specialist, Data / Catalog Specialist, UI Specialist, Marketplace Specialist, Verification Specialist"
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: Feature objective
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+    validations:
+      required: true

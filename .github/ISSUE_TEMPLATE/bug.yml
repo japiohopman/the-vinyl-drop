@@ -1,0 +1,30 @@
+name: Bug Report
+description: Create a report to help us fix a defect
+title: "Bug: [Short Description]"
+labels: ["bug"]
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed Behavior
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction Steps
+    validations:
+      required: true
+  - type: textarea
+    id: specialist
+    attributes:
+      label: Primary Specialist
+      description: "Options: Architecture Specialist, Data / Catalog Specialist, UI Specialist, Marketplace Specialist, Verification Specialist"
+    validations:
+      required: true

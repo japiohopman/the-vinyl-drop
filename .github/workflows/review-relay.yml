@@ -1,0 +1,26 @@
+name: Review Relay
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  process-review-relay:
+    runs-on: ubuntu-latest
+    if: github.event.issue.pull_request != null
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Process Review Relay
+        run: npx tsx scripts/review-relay.ts
