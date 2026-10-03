@@ -7,6 +7,7 @@ export const IssueMetadataSchema = z.object({
   labels: z.array(z.string()),
   body: z.string(),
   active_session: z.boolean().default(false),
+  open_pr_exists: z.boolean().default(false),
 });
 
 export type IssueMetadata = z.infer<typeof IssueMetadataSchema>;
@@ -27,6 +28,10 @@ export function validateIssuePreflight(issue: IssueMetadata): PreflightResult {
 
   if (issue.active_session) {
     reasons.push('Issue already has a blocking active session.');
+  }
+
+  if (issue.open_pr_exists) {
+    reasons.push('Issue already has an active open PR on the same boundary.');
   }
 
   const hasSpecialist = issue.body.includes('Specialist') || issue.labels.some(l => l.includes('specialist'));
@@ -65,18 +70,76 @@ export function selectNextDispatchableIssue(issues: IssueMetadata[]): PreflightR
   return null;
 }
 
-if (require.main === module) {
-  console.log('--- Jules Issue Selector & Preflight (Dry-Run Mode) ---');
-  // Example dry run execution
-  const sampleIssue: IssueMetadata = {
-    id: 4,
-    title: 'Phase 1 — Repository and Agentic Workflow Foundation',
-    state: 'open',
-    labels: ['phase'],
-    body: 'Primary Specialist: Architecture Specialist\nAcceptance Criteria: All items done.',
-    active_session: false,
-  };
+export interface DispatchOptions {
+  dryRun: boolean;
+  confirmLive: boolean;
+  apiKey?: string;
+}
 
-  const result = validateIssuePreflight(sampleIssue);
-  console.log('Sample Issue Validation Result:', JSON.stringify(result, null, 2));
+export function executeDispatch(issue: IssueMetadata, options: DispatchOptions): { success: boolean; action: string; error?: string } {
+  const preflight = validateIssuePreflight(issue);
+  if (!preflight.valid) {
+    return { success: false, action: 'blocked', error: `Preflight failed: ${preflight.reasons.join(' ')}` };
+  }
+
+  if (options.dryRun) {
+    return { success: true, action: `[DRY-RUN] Selected Issue #${issue.id} for ${preflight.specialist}` };
+  }
+
+  if (!options.confirmLive) {
+    return { success: false, action: 'blocked', error: 'Live dispatch rejected: missing explicit live confirmation flag.' };
+  }
+
+  if (!options.apiKey) {
+    return { success: false, action: 'blocked', error: 'Live dispatch rejected: missing API secret credentials.' };
+  }
+
+  return { success: true, action: `[LIVE-DISPATCH] Dispatched Issue #${issue.id} to ${preflight.specialist}` };
+}
+
+if (require.main === module) {
+  console.log('--- Jules Issue Selector & Preflight Dispatcher ---');
+  const isDryRun = process.env.DRY_RUN !== 'false';
+  const isConfirmLive = process.env.CONFIRM_LIVE_DISPATCH === 'true';
+  const apiKey = process.env.JULES_API_KEY;
+
+  const rawIssuesPayload = process.env.ISSUES_JSON;
+  let issuesToProcess: IssueMetadata[] = [];
+
+  if (rawIssuesPayload) {
+    try {
+      issuesToProcess = JSON.parse(rawIssuesPayload);
+    } catch {
+      console.error('Failed to parse ISSUES_JSON environment variable');
+      process.exit(1);
+    }
+  } else {
+    issuesToProcess = [{
+      id: 4,
+      title: 'Phase 1 — Repository and Agentic Workflow Foundation',
+      state: 'open',
+      labels: ['phase'],
+      body: 'Primary Specialist: Architecture Specialist\nAcceptance Criteria: All items done.',
+      active_session: false,
+      open_pr_exists: false,
+    }];
+  }
+
+  const selected = selectNextDispatchableIssue(issuesToProcess);
+  if (!selected) {
+    console.log('No dispatchable issue found passing preflight checks.');
+    process.exit(0);
+  }
+
+  const issue = issuesToProcess.find(i => i.id === selected.issueId)!;
+  const dispatchResult = executeDispatch(issue, {
+    dryRun: isDryRun,
+    confirmLive: isConfirmLive,
+    apiKey,
+  });
+
+  console.log('Dispatch Execution Result:', dispatchResult);
+  if (!dispatchResult.success) {
+    process.exit(1);
+  }
 }

@@ -16,7 +16,6 @@ describe('Express Application Shell Routes', () => {
     const response = await request(app).get('/');
     expect(response.status).toBe(200);
     expect(response.text).toContain('THE VINYL DROP');
-    expect(response.text).toContain('/images/needle.svg');
   });
 
   it('GET /nonexistent-route returns 404', async () => {

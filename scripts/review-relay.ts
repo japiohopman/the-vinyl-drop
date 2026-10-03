@@ -11,12 +11,29 @@ export function parseReviewStatus(prBody: string): 'READY FOR HUMAN REVIEW' | 'N
 }
 
 export function formatReviewContinuation(instructions: string[]): string {
-  return `### Latest Reviewer Instruction\n\n### Status\nNOT READY\n\n### Required changes\n` +
-    instructions.map((item, index) => `${index + 1}. ${item}`).join('\n');
+  return (
+    `### Latest Reviewer Instruction\n\n` +
+    `**Status: NOT READY**\n\n` +
+    `### Required changes\n` +
+    instructions.map((item, index) => `${index + 1}. ${item}`).join('\n') +
+    `\n\n### Do not change\n- Unrelated scope or established domain boundaries.`
+  );
+}
+
+export function processReviewCommentPayload(payload: { body: string; isPR: boolean }): { processed: boolean; instructions?: string[] } {
+  if (!payload.isPR) {
+    return { processed: false };
+  }
+
+  const lines = payload.body.split('\n').map(l => l.trim()).filter(Boolean);
+  return {
+    processed: true,
+    instructions: lines,
+  };
 }
 
 if (require.main === module) {
-  console.log('--- Review Relay Script ---');
+  console.log('--- ChatGPT Review Relay ---');
   const sample = '### Status\nREADY FOR HUMAN REVIEW';
   console.log('Extracted Status:', parseReviewStatus(sample));
 }

@@ -1,4 +1,4 @@
-name: Review Relay
+name: ChatGPT Review Relay
 
 on:
   issue_comment:
