@@ -39,18 +39,6 @@ export const REQUIRED_DOD_ITEMS = [
 export const ALLOWED_STATUSES = ['NOT READY', 'READY FOR HUMAN REVIEW'] as const;
 
 /**
- * Normalizes newlines and unescapes literal '\n' or '\r\n' sequence strings if present.
- */
-export function normalizeNewlines(str: string): string {
-  if (!str) return str;
-  let res = str.replace(/\r\n/g, '\n');
-  if (res.includes('\\n')) {
-    res = res.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
-  }
-  return res;
-}
-
-/**
  * Validates the markdown PR body against contract requirements.
  */
 export function validatePrContract(prBody: string | null | undefined): PrContractValidationResult {
@@ -60,11 +48,8 @@ export function validatePrContract(prBody: string | null | undefined): PrContrac
     return { valid: false, errors: ['PR body is empty or missing.'] };
   }
 
-  // Normalize Windows CRLF and literal \n escapes
-  const normalizedBody = normalizeNewlines(prBody);
-
   // Strip HTML comments (e.g. <!-- comment -->)
-  const cleanedBody = normalizedBody.replace(/<!--[\s\S]*?-->/g, '');
+  const cleanedBody = prBody.replace(/<!--[\s\S]*?-->/g, '');
 
   // 1. Validate required section headings
   for (const section of REQUIRED_PR_SECTIONS) {

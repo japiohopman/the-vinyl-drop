@@ -20,6 +20,17 @@ export interface IssueMetadata {
   isDispatchReady: boolean;
 }
 
+export interface JulesSessionPayload {
+  title: string;
+  prompt: string;
+  sourceContext: {
+    githubRepoContext: {
+      startingBranch: string;
+    };
+  };
+  automationMode: string;
+}
+
 export interface PreflightResult {
   success: boolean;
   issueNumber?: number;
@@ -28,16 +39,7 @@ export interface PreflightResult {
   selectedIssue?: IssueMetadata;
   errors: string[];
   warnings?: string[];
-  dispatchPayload?: {
-    parent?: string;
-    session?: {
-      sourceContext?: {
-        source?: string;
-        startingBranch?: string;
-      };
-      prompt?: string;
-    };
-  };
+  dispatchPayload?: JulesSessionPayload;
   liveDispatchTriggered?: boolean;
 }
 
@@ -67,8 +69,10 @@ export interface RawJulesSession {
   state?: string;
   title?: string;
   sourceContext?: {
+    githubRepoContext?: {
+      startingBranch?: string;
+    };
     source?: string;
-    startingBranch?: string;
   };
 }
 
@@ -251,7 +255,7 @@ export async function checkConflictingPullRequests(
 }
 
 /**
- * Checks active sessions via Jules API or labels/state.
+ * Checks active sessions via official Jules API (https://jules.googleapis.com/v1alpha/sessions).
  */
 export async function checkActiveJulesSession(
   repository: string,
@@ -278,14 +282,14 @@ export async function checkActiveJulesSession(
     if (res.ok) {
       const data = (await res.json()) as { sessions?: RawJulesSession[] };
       const sessions = data.sessions || [];
-      const activeStates = ['STATE_ACTIVE', 'ACTIVE', 'RUNNING', 'STATE_RUNNING', 'IN_PROGRESS'];
+      const activeStates = ['STATE_ACTIVE', 'ACTIVE', 'RUNNING', 'STATE_RUNNING', 'IN_PROGRESS', 'STATE_UNSPECIFIED'];
 
       for (const sess of sessions) {
         const sessState = (sess.state || '').toUpperCase();
         const title = sess.title || '';
         const source = sess.sourceContext?.source || '';
 
-        const referencesRepo = source.includes(repository);
+        const referencesRepo = source ? source.includes(repository) : true;
         const referencesIssue = title.includes(`#${issueNumber}`) || title.includes(`issue-${issueNumber}`);
         const isActive = activeStates.includes(sessState) || sessState === '';
 
@@ -298,10 +302,38 @@ export async function checkActiveJulesSession(
       }
     }
   } catch {
-    // Session API check failure fallback
+    // API session check fallback
   }
 
   return { hasActiveSession: false };
+}
+
+/**
+ * Locks the GitHub issue by applying the 'in-progress' label upon successful live dispatch.
+ */
+export async function lockDispatchedIssue(
+  repository: string,
+  issueNumber: number,
+  token?: string,
+  customFetch?: typeof fetch
+): Promise<void> {
+  if (!token) return;
+  const fetchFn = customFetch || globalThis.fetch;
+  const url = `https://api.github.com/repos/${repository}/issues/${issueNumber}/labels`;
+
+  try {
+    await fetchFn(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'User-Agent': 'VinylDrop-JulesDispatcher',
+      },
+      body: JSON.stringify({ labels: ['in-progress'] }),
+    });
+  } catch {
+    // Ignore label application failure
+  }
 }
 
 /**
@@ -583,16 +615,15 @@ export async function runJulesDispatcher(
     };
   }
 
-  const dispatchPayload = {
-    parent: `projects/-/locations/global`,
-    session: {
-      title: `[Issue #${selectedCandidate.issueNumber}] ${selectedCandidate.title}`,
-      sourceContext: {
-        source: `sources/github/${options.repository}`,
+  const dispatchPayload: JulesSessionPayload = {
+    title: `[Issue #${selectedCandidate.issueNumber}] ${selectedCandidate.title}`,
+    prompt: `Start Issue #${selectedCandidate.issueNumber} — ${selectedCandidate.title}\n\nPrimary Specialist: ${selectedCandidate.primarySpecialist || 'Architecture Specialist'}\nSecondary Specialist: ${selectedCandidate.secondarySpecialist || 'Verification Specialist'}\n\nGoal:\n${selectedCandidate.body}`,
+    sourceContext: {
+      githubRepoContext: {
         startingBranch: 'main',
       },
-      prompt: `Start Issue #${selectedCandidate.issueNumber} — ${selectedCandidate.title}\n\nPrimary Specialist: ${selectedCandidate.primarySpecialist || 'Architecture Specialist'}\nSecondary Specialist: ${selectedCandidate.secondarySpecialist || 'Verification Specialist'}\n\nGoal:\n${selectedCandidate.body}`,
     },
+    automationMode: 'AUTO_CREATE_PR',
   };
 
   // If dry run, do NOT execute live Jules API call
@@ -644,6 +675,9 @@ export async function runJulesDispatcher(
         errors: [`Live Jules API dispatch returned HTTP status ${liveRes.status}.`],
       };
     }
+
+    // Apply lock label to GitHub issue after successful live dispatch
+    await lockDispatchedIssue(options.repository, selectedCandidate.issueNumber, options.token, fetchFn);
 
     return {
       success: true,

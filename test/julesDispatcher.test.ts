@@ -88,7 +88,7 @@ None.
       expect(result.success).toBe(true);
       expect(result.issueNumber).toBe(21);
       expect(result.dryRun).toBe(true);
-      expect(result.dispatchPayload?.session?.prompt).toContain('Primary Specialist: Architecture Specialist');
+      expect(result.dispatchPayload?.prompt).toContain('Primary Specialist: Architecture Specialist');
     });
   });
 

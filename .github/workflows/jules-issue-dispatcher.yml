@@ -15,7 +15,7 @@ on:
 
 permissions:
   contents: read
-  issues: read
+  issues: write
   pull-requests: read
 
 jobs:
@@ -24,18 +24,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Validate and Select Issue via GitHub API Script
+      - name: Validate and Select Issue via Trusted GitHub API Script
         uses: actions/github-script@v7
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const repo = context.repo.owner + '/' + context.repo.repo;
+            const repoOwner = context.repo.owner;
+            const repoName = context.repo.repo;
+            const repository = `${repoOwner}/${repoName}`;
             const targetIssueNum = '${{ inputs.issue_number }}'.trim();
             const dryRun = '${{ inputs.dry_run }}' !== 'false';
             const julesApiKey = process.env.JULES_API_KEY || '';
 
-            core.info(`Running preflight selector for repository: ${repo}`);
-            core.info(`Dry Run: ${dryRun}`);
+            core.info(`Running preflight selector for repository: ${repository}`);
+            core.info(`Mode: ${dryRun ? 'DRY RUN' : 'LIVE DISPATCH'}`);
             if (targetIssueNum) {
               core.info(`Target Issue: #${targetIssueNum}`);
             } else {
@@ -45,8 +49,8 @@ jobs:
             // 1. Check main branch availability
             try {
               await github.rest.repos.getBranch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner: repoOwner,
+                repo: repoName,
                 branch: 'main',
               });
               core.info('✅ Main branch is available.');
@@ -60,8 +64,8 @@ jobs:
             if (targetIssueNum) {
               try {
                 const res = await github.rest.issues.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
+                  owner: repoOwner,
+                  repo: repoName,
                   issue_number: parseInt(targetIssueNum, 10),
                 });
                 if (res.data.pull_request) {
@@ -76,8 +80,8 @@ jobs:
             } else {
               try {
                 const res = await github.rest.issues.listForRepo({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
+                  owner: repoOwner,
+                  repo: repoName,
                   state: 'open',
                   per_page: 100,
                 });
@@ -93,7 +97,7 @@ jobs:
               return;
             }
 
-            // Parse metadata helper
+            // Helper to parse metadata
             function parseMetadata(issue) {
               const body = issue.body || '';
               const labels = (issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
@@ -145,15 +149,15 @@ jobs:
             }
 
             const parsedCandidates = rawIssues.map(parseMetadata);
-            // Sort deterministically by priority ascending, then issue number ascending
+            // Sort deterministically: Priority ascending, then Issue Number ascending
             parsedCandidates.sort((a, b) => (a.priority !== b.priority ? a.priority - b.priority : a.issueNumber - b.issueNumber));
 
-            // Query open PRs to check for collision
+            // Query open PRs for collision checks
             let openPRs = [];
             try {
               const prsRes = await github.rest.pulls.list({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner: repoOwner,
+                repo: repoName,
                 state: 'open',
                 per_page: 100,
               });
@@ -161,6 +165,25 @@ jobs:
             } catch (err) {
               core.setFailed('Failed to check open PRs: ' + err.message);
               return;
+            }
+
+            // Query active Jules sessions via API if API key exists
+            let activeJulesSessions = [];
+            if (julesApiKey) {
+              try {
+                const sessRes = await fetch('https://jules.googleapis.com/v1alpha/sessions', {
+                  headers: {
+                    'X-Goog-Api-Key': julesApiKey,
+                    'User-Agent': 'VinylDrop-JulesDispatcher',
+                  },
+                });
+                if (sessRes.ok) {
+                  const data = await sessRes.json();
+                  activeJulesSessions = data.sessions || [];
+                }
+              } catch {
+                // Ignore session endpoint error if inaccessible
+              }
             }
 
             let selectedIssue = null;
@@ -177,9 +200,26 @@ jobs:
               }
               const lockLabels = ['in-progress', 'jules-active', 'in-execution', 'active-session'];
               if (candidate.labels.some((l) => lockLabels.includes(l.toLowerCase()))) {
-                errors.push(`Issue #${candidate.issueNumber} already has an active dispatch or session in progress.`);
+                errors.push(`Issue #${candidate.issueNumber} already has an active label lock in progress.`);
                 continue;
               }
+
+              // Active Jules Session check
+              const activeStates = ['STATE_ACTIVE', 'ACTIVE', 'RUNNING', 'STATE_RUNNING', 'IN_PROGRESS', 'STATE_UNSPECIFIED'];
+              const hasSession = activeJulesSessions.some((s) => {
+                const state = (s.state || '').toUpperCase();
+                const title = s.title || '';
+                const source = s.sourceContext?.source || '';
+                const refsRepo = source ? source.includes(repository) : true;
+                const refsIssue = title.includes(`#${candidate.issueNumber}`) || title.includes(`issue-${candidate.issueNumber}`);
+                return refsRepo && refsIssue && (activeStates.includes(state) || state === '');
+              });
+
+              if (hasSession) {
+                errors.push(`Issue #${candidate.issueNumber} has an active Jules session running.`);
+                continue;
+              }
+
               if (!candidate.primarySpecialist) {
                 errors.push(`Issue #${candidate.issueNumber} missing required "Primary Specialist" metadata.`);
                 continue;
@@ -199,8 +239,8 @@ jobs:
               for (const depId of candidate.dependencies) {
                 try {
                   const depRes = await github.rest.issues.get({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
+                    owner: repoOwner,
+                    repo: repoName,
                     issue_number: depId,
                   });
                   if (depRes.data.state !== 'closed') {
@@ -225,31 +265,30 @@ jobs:
               return;
             }
 
-            core.info(`✅ Selected Issue #${selectedIssue.issueNumber}: "${selectedIssue.title}"`);
+            core.info(`\n✅ Selected Issue #${selectedIssue.issueNumber}: "${selectedIssue.title}"`);
             core.info(`Primary Specialist: ${selectedIssue.primarySpecialist}`);
             core.info(`Secondary Specialist: ${selectedIssue.secondarySpecialist || 'N/A'}`);
 
             const payload = {
-              parent: 'projects/-/locations/global',
-              session: {
-                title: `[Issue #${selectedIssue.issueNumber}] ${selectedIssue.title}`,
-                sourceContext: {
-                  source: `sources/github/${repo}`,
+              title: `[Issue #${selectedIssue.issueNumber}] ${selectedIssue.title}`,
+              prompt: `Start Issue #${selectedIssue.issueNumber} — ${selectedIssue.title}\n\nPrimary Specialist: ${selectedIssue.primarySpecialist}\nSecondary Specialist: ${selectedIssue.secondarySpecialist || 'N/A'}\n\nGoal:\n${selectedIssue.body}`,
+              sourceContext: {
+                githubRepoContext: {
                   startingBranch: 'main',
                 },
-                prompt: `Start Issue #${selectedIssue.issueNumber} — ${selectedIssue.title}\n\nPrimary Specialist: ${selectedIssue.primarySpecialist}\nSecondary Specialist: ${selectedIssue.secondarySpecialist || 'N/A'}\n\nGoal:\n${selectedIssue.body}`,
               },
+              automationMode: 'AUTO_CREATE_PR',
             };
 
             if (dryRun) {
               core.info('\n[DRY RUN SUMMARY] Preflight completed successfully without calling Jules API.');
-              core.info('Session Payload:\n' + JSON.stringify(payload, null, 2));
+              core.info('Official Jules Session Payload:\n' + JSON.stringify(payload, null, 2));
             } else {
               if (!julesApiKey) {
                 core.setFailed('Live dispatch failed: missing JULES_API_KEY secret.');
                 return;
               }
-              core.info('\n[LIVE DISPATCH] Creating session at https://jules.googleapis.com/v1alpha/sessions...');
+              core.info('\n[LIVE DISPATCH] Triggering session creation at https://jules.googleapis.com/v1alpha/sessions...');
               const res = await fetch('https://jules.googleapis.com/v1alpha/sessions', {
                 method: 'POST',
                 headers: {
@@ -264,4 +303,17 @@ jobs:
                 return;
               }
               core.info('✅ Session created successfully!');
+
+              // Lock issue state by applying label 'in-progress'
+              try {
+                await github.rest.issues.addLabels({
+                  owner: repoOwner,
+                  repo: repoName,
+                  issue_number: selectedIssue.issueNumber,
+                  labels: ['in-progress'],
+                });
+                core.info(`✅ Applied 'in-progress' label lock to issue #${selectedIssue.issueNumber}`);
+              } catch (err) {
+                core.warning(`Failed to apply 'in-progress' label lock: ${err.message}`);
+              }
             }
