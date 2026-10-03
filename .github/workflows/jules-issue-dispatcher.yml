@@ -1,0 +1,48 @@
+name: Jules Issue Dispatcher & Preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (set to false for live Jules API dispatch)'
+        type: boolean
+        required: true
+        default: true
+      issue_number:
+        description: 'Optional target issue number (leave empty for auto selection)'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  dispatch-preflight:
+    name: Issue Selector and Preflight Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build workflow tools
+        run: npm run build
+
+      - name: Execute Jules Issue Dispatcher & Preflight
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: npx tsx src/workflow/runDispatcher.ts
