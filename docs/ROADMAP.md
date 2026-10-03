@@ -35,7 +35,9 @@ Deliver:
 - stale-session cleanup;
 - project context contract.
 
-Execution contract: Issue #4.
+Implementation sequence:
+- #15 — Repository foundation and minimal application shell
+- #4 — Full Phase 1 workflow/agentic foundation, after the smaller repository foundation is stable
 
 Dependency: Phase 0.
 
