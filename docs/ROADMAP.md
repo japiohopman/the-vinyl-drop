@@ -91,6 +91,9 @@ Planned implementation Issues:
 - #11 — Release, physical copy and listing domain model
 - #12 — Listing creation, editing and photo pipeline
 
+Future enrichment contract:
+- #14 — Metadata identification and enrichment
+
 Dependencies: Phases 2 and 3.
 
 ## Phase 5 — Discovery
