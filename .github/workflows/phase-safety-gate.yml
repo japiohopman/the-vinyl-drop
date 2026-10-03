@@ -1,0 +1,164 @@
+name: Phase Safety Gate
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+    branches:
+      - main
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  validate-safety-gate:
+    name: PR Contract & Safety Gate Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate PR Contract and Governing Issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const requiredSections = [
+              'Phase / Governing Issue',
+              'Goal',
+              'Scope completed',
+              'Architecture',
+              'Data integrity',
+              'Verification',
+              'Security',
+              'Documentation',
+              'Definition of Done'
+            ];
+
+            const requiredDodItems = [
+              'All Issue acceptance criteria satisfied',
+              'Verification commands pass cleanly',
+              'Scope remains strictly within governing Issue'
+            ];
+
+            const errors = [];
+            const pr = context.payload.pull_request;
+
+            if (!pr) {
+              core.setFailed('No pull request found in event context.');
+              return;
+            }
+
+            // 1. Validate branch conventions
+            if (pr.base && pr.base.ref !== 'main') {
+              errors.push(`Target branch must be "main", got "${pr.base.ref}".`);
+            }
+
+            if (pr.head && pr.head.ref === 'main') {
+              errors.push('PR head branch cannot be "main". Work must be performed on a feature branch.');
+            }
+
+            let prBody = pr.body || '';
+
+            // Strip HTML comments
+            prBody = prBody.replace(/<!--[\s\S]*?-->/g, '');
+
+            if (!prBody.trim()) {
+              core.setFailed('PR body is empty or missing.');
+              return;
+            }
+
+            // 2. Check required section headings
+            for (const section of requiredSections) {
+              const regex = new RegExp(`^##\\s+${section.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}`, 'm');
+              if (!regex.test(prBody)) {
+                errors.push(`Missing required section: "## ${section}"`);
+              }
+            }
+
+            // 3. Check Definition of Done checklist items
+            const dodHeaderIndex = prBody.search(/^##\s+Definition of Done/m);
+            if (dodHeaderIndex !== -1) {
+              const afterDod = prBody.slice(dodHeaderIndex);
+              const nextSectionIndex = afterDod.slice(1).search(/^(##\s+|---)/m);
+              const dodSectionText = nextSectionIndex !== -1 ? afterDod.slice(0, nextSectionIndex + 1) : afterDod;
+
+              for (const item of requiredDodItems) {
+                const itemRegex = new RegExp(`-\\s*\\[[xX]\\]\\s*${item.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}`, 'm');
+                if (!itemRegex.test(dodSectionText)) {
+                  errors.push(`Definition of Done missing required checked item: "${item}"`);
+                }
+              }
+            }
+
+            // 4. Check governing issue reference
+            const refsMatch = prBody.match(/Refs\s+#(\d+)/i);
+            let issueNumber = null;
+
+            if (!refsMatch) {
+              errors.push('Missing or malformed governing issue reference (expected format: "Refs #<number>").');
+            } else {
+              issueNumber = parseInt(refsMatch[1], 10);
+            }
+
+            // 5. Check status section
+            let status = null;
+            const statusHeaderIndex = prBody.search(/###\s+Status/i);
+
+            if (statusHeaderIndex === -1) {
+              errors.push('Missing status section ("### Status").');
+            } else {
+              const afterStatus = prBody.slice(statusHeaderIndex);
+              const lines = afterStatus.split('\n').slice(1);
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                if (trimmed.startsWith('#')) break;
+                if (trimmed === 'READY FOR HUMAN REVIEW' || trimmed === 'NOT READY') {
+                  status = trimmed;
+                  break;
+                }
+              }
+
+              if (!status) {
+                errors.push('Missing or invalid status under "### Status". Must be "NOT READY" or "READY FOR HUMAN REVIEW".');
+              }
+            }
+
+            // 6. Validate governing issue exists and is open via GitHub REST API
+            if (issueNumber) {
+              try {
+                const issueRes = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber
+                });
+
+                if (issueRes.data.pull_request) {
+                  errors.push(`Issue #${issueNumber} is a pull request, not an issue.`);
+                } else if (issueRes.data.state !== 'open') {
+                  errors.push(`Governing issue #${issueNumber} is not open (state: "${issueRes.data.state}").`);
+                }
+              } catch (err) {
+                if (err.status === 404) {
+                  errors.push(`Governing issue #${issueNumber} was not found on GitHub.`);
+                } else {
+                  errors.push(`Failed to verify governing issue #${issueNumber}: ${err.message}`);
+                }
+              }
+            }
+
+            if (errors.length > 0) {
+              console.error('❌ Phase Safety Gate Validation Failed:');
+              for (const err of errors) {
+                console.error(`  - ${err}`);
+              }
+              core.setFailed(`Phase Safety Gate failed with ${errors.length} error(s).`);
+            } else {
+              console.log('✅ Phase Safety Gate Passed!');
+              console.log(`Governing Issue: #${issueNumber}`);
+              console.log(`PR Status: ${status}`);
+            }
