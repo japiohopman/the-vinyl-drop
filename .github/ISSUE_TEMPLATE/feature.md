@@ -19,19 +19,24 @@ assignees: ''
 <!-- List specific files, endpoints, components, or modules to be added/modified -->
 - [ ]
 
-## Primary Specialist
+## Non-Goals
 
-<!-- Select primary specialist owner -->
-- [ ] Architecture Specialist
-- [ ] Data / Catalog Specialist
-- [ ] UI Specialist
-- [ ] Marketplace Specialist
-- [ ] Verification Specialist
+<!-- List explicit items excluded from this feature -->
+-
 
 ## Acceptance Criteria
 
 <!-- Unambiguous criteria that define feature completeness -->
 - [ ]
+
+## Security & Data Impact
+
+<!-- Detail authentication, authorization, user permissions, schema, or persistence impact (or state N/A if none) -->
+
+## Specialist & Handoff Information
+
+- **Primary Specialist:** [Architecture | Data / Catalog | UI | Marketplace | Verification]
+- **Handoff Protocol:** <!-- Detail required handoffs to/from other specialists -->
 
 ## Required Verification
 
@@ -40,7 +45,3 @@ assignees: ''
 - [ ] `npm run typecheck`
 - [ ] `npm test`
 - [ ] `npm run build`
-
-## Technical Constraints
-
-<!-- Mention architectural, security, performance, or data boundary constraints -->
