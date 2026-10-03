@@ -21,20 +21,114 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Validate PR Contract and Governing Issue
+        uses: actions/github-script@v7
         with:
-          node-version: 20
-          cache: 'npm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const requiredSections = [
+              'Phase / Governing Issue',
+              'Goal',
+              'Scope completed',
+              'Architecture',
+              'Data integrity',
+              'Verification',
+              'Security',
+              'Documentation',
+              'Definition of Done'
+            ];
 
-      - name: Install dependencies
-        run: npm ci
+            const errors = [];
+            const pr = context.payload.pull_request;
 
-      - name: Run Phase Safety Gate Check
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: npx tsx src/workflow/runSafetyGate.ts
+            if (!pr) {
+              core.setFailed('No pull request found in event context.');
+              return;
+            }
+
+            let prBody = pr.body || '';
+
+            // Strip HTML comments
+            prBody = prBody.replace(/<!--[\s\S]*?-->/g, '');
+
+            if (!prBody.trim()) {
+              core.setFailed('PR body is empty or missing.');
+              return;
+            }
+
+            // 1. Check required section headings
+            for (const section of requiredSections) {
+              const regex = new RegExp(`^##\\\\s+${section.replace(/[-[\]{}()*+?.,\\^$|#\\s]/g, '\\$&')}`, 'm');
+              if (!regex.test(prBody)) {
+                errors.push(`Missing required section: "## ${section}"`);
+              }
+            }
+
+            // 2. Check governing issue reference
+            const refsMatch = prBody.match(/Refs\\s+#(\\d+)/i);
+            let issueNumber = null;
+
+            if (!refsMatch) {
+              errors.push('Missing or malformed governing issue reference (expected format: "Refs #<number>").');
+            } else {
+              issueNumber = parseInt(refsMatch[1], 10);
+            }
+
+            // 3. Check status section
+            let status = null;
+            const statusHeaderIndex = prBody.search(/###\\s+Status/i);
+
+            if (statusHeaderIndex === -1) {
+              errors.push('Missing status section ("### Status").');
+            } else {
+              const afterStatus = prBody.slice(statusHeaderIndex);
+              const lines = afterStatus.split('\n').slice(1);
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                if (trimmed.startsWith('#')) break;
+                if (trimmed === 'READY FOR HUMAN REVIEW' || trimmed === 'NOT READY') {
+                  status = trimmed;
+                  break;
+                }
+              }
+
+              if (!status) {
+                errors.push('Missing or invalid status under "### Status". Must be "NOT READY" or "READY FOR HUMAN REVIEW".');
+              }
+            }
+
+            // 4. Validate governing issue exists and is open via GitHub REST API
+            if (issueNumber) {
+              try {
+                const issueRes = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber
+                });
+
+                if (issueRes.data.pull_request) {
+                  errors.push(`Issue #${issueNumber} is a pull request, not an issue.`);
+                } else if (issueRes.data.state !== 'open') {
+                  errors.push(`Governing issue #${issueNumber} is not open (state: "${issueRes.data.state}").`);
+                }
+              } catch (err) {
+                if (err.status === 404) {
+                  errors.push(`Governing issue #${issueNumber} was not found on GitHub.`);
+                } else {
+                  errors.push(`Failed to verify governing issue #${issueNumber}: ${err.message}`);
+                }
+              }
+            }
+
+            if (errors.length > 0) {
+              console.error('❌ Phase Safety Gate Validation Failed:');
+              for (const err of errors) {
+                console.error(`  - ${err}`);
+              }
+              core.setFailed(`Phase Safety Gate failed with ${errors.length} error(s).`);
+            } else {
+              console.log('✅ Phase Safety Gate Passed!');
+              console.log(`Governing Issue: #${issueNumber}`);
+              console.log(`PR Status: ${status}`);
+            }
