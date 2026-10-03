@@ -15,6 +15,7 @@ export interface IssueMetadata {
   labels: string[];
   primarySpecialist?: string;
   secondarySpecialist?: string;
+  priority?: number; // 1 (highest) to 5 (lowest), default 3
   dependencies: number[];
   isDispatchReady: boolean;
 }
@@ -28,11 +29,14 @@ export interface PreflightResult {
   errors: string[];
   warnings?: string[];
   dispatchPayload?: {
-    issueNumber: number;
-    title: string;
-    primarySpecialist?: string;
-    secondarySpecialist?: string;
-    branchName: string;
+    parent?: string;
+    session?: {
+      sourceContext?: {
+        source?: string;
+        startingBranch?: string;
+      };
+      prompt?: string;
+    };
   };
   liveDispatchTriggered?: boolean;
 }
@@ -55,6 +59,16 @@ export interface RawGitHubPullRequest {
   };
   base: {
     ref: string;
+  };
+}
+
+export interface RawJulesSession {
+  name?: string;
+  state?: string;
+  title?: string;
+  sourceContext?: {
+    source?: string;
+    startingBranch?: string;
   };
 }
 
@@ -93,6 +107,17 @@ export function parseIssueMetadata(issue: RawGitHubIssue): IssueMetadata {
     secondarySpecialist = secondaryMatch[1].trim();
   }
 
+  // Parse priority (e.g. Priority: 1 or **Priority**: P1)
+  let priority = 3;
+  const priorityMatch = body.match(/\*\*(?:Priority|P)\*\*:\s*(?:P)?(\d+)/i) ||
+    body.match(/Priority:\s*(?:P)?(\d+)/i);
+  if (priorityMatch) {
+    const parsedP = parseInt(priorityMatch[1], 10);
+    if (!isNaN(parsedP) && parsedP >= 1) {
+      priority = parsedP;
+    }
+  }
+
   // Parse dependencies (e.g. Depends on #20 or Dependencies: #20, #21)
   const dependencies: number[] = [];
   const depSectionMatch = body.match(/###\s*Dependencies[\s\S]*?(?=\n##|$)/i) ||
@@ -117,9 +142,25 @@ export function parseIssueMetadata(issue: RawGitHubIssue): IssueMetadata {
     labels,
     primarySpecialist,
     secondarySpecialist,
+    priority,
     dependencies,
     isDispatchReady,
   };
+}
+
+/**
+ * Deterministic sorting function for ready candidate issues.
+ * Rule: Sort by Priority ascending (lower number = higher priority), then Issue Number ascending (older issue first).
+ */
+export function sortCandidateIssues(issues: IssueMetadata[]): IssueMetadata[] {
+  return [...issues].sort((a, b) => {
+    const prioA = a.priority ?? 3;
+    const prioB = b.priority ?? 3;
+    if (prioA !== prioB) {
+      return prioA - prioB;
+    }
+    return a.issueNumber - b.issueNumber;
+  });
 }
 
 /**
@@ -210,6 +251,60 @@ export async function checkConflictingPullRequests(
 }
 
 /**
+ * Checks active sessions via Jules API or labels/state.
+ */
+export async function checkActiveJulesSession(
+  repository: string,
+  issueNumber: number,
+  julesApiKey?: string,
+  customFetch?: typeof fetch
+): Promise<{ hasActiveSession: boolean; error?: string }> {
+  if (!julesApiKey) {
+    return { hasActiveSession: false };
+  }
+
+  const fetchFn = customFetch || globalThis.fetch;
+  const url = `https://jules.googleapis.com/v1alpha/sessions`;
+
+  try {
+    const res = await fetchFn(url, {
+      method: 'GET',
+      headers: {
+        'X-Goog-Api-Key': julesApiKey,
+        'User-Agent': 'VinylDrop-JulesDispatcher',
+      },
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as { sessions?: RawJulesSession[] };
+      const sessions = data.sessions || [];
+      const activeStates = ['STATE_ACTIVE', 'ACTIVE', 'RUNNING', 'STATE_RUNNING', 'IN_PROGRESS'];
+
+      for (const sess of sessions) {
+        const sessState = (sess.state || '').toUpperCase();
+        const title = sess.title || '';
+        const source = sess.sourceContext?.source || '';
+
+        const referencesRepo = source.includes(repository);
+        const referencesIssue = title.includes(`#${issueNumber}`) || title.includes(`issue-${issueNumber}`);
+        const isActive = activeStates.includes(sessState) || sessState === '';
+
+        if (referencesRepo && referencesIssue && isActive) {
+          return {
+            hasActiveSession: true,
+            error: `Active Jules session "${sess.name || title}" is already running for issue #${issueNumber}.`,
+          };
+        }
+      }
+    }
+  } catch {
+    // Session API check failure fallback
+  }
+
+  return { hasActiveSession: false };
+}
+
+/**
  * Checks if all listed dependency issues are closed.
  */
 export async function verifyDependencies(
@@ -283,7 +378,7 @@ export async function runJulesDispatcher(
   }
 
   // 2. Retrieve candidate issue(s)
-  let candidateIssues: RawGitHubIssue[] = [];
+  let rawCandidates: RawGitHubIssue[] = [];
 
   if (options.issueNumber) {
     // Specific issue requested
@@ -312,7 +407,7 @@ export async function runJulesDispatcher(
         errors.push(`Target #${options.issueNumber} is a pull request, not an issue.`);
         return { success: false, dryRun: options.dryRun, errors };
       }
-      candidateIssues.push(rawIssue);
+      rawCandidates.push(rawIssue);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`Failed to communicate with GitHub API for issue #${options.issueNumber}: ${msg}`);
@@ -338,7 +433,7 @@ export async function runJulesDispatcher(
 
       const rawIssues = (await res.json()) as RawGitHubIssue[];
       // Filter out pull requests
-      candidateIssues = rawIssues.filter((i) => !i.pull_request);
+      rawCandidates = rawIssues.filter((i) => !i.pull_request);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(`Failed to query open issues: ${msg}`);
@@ -346,17 +441,19 @@ export async function runJulesDispatcher(
     }
   }
 
-  if (candidateIssues.length === 0) {
+  if (rawCandidates.length === 0) {
     errors.push('No open candidate issues found for dispatch.');
     return { success: false, dryRun: options.dryRun, errors };
   }
 
+  // Parse all issues and sort deterministically
+  const parsedCandidates = rawCandidates.map(parseIssueMetadata);
+  const sortedCandidates = sortCandidateIssues(parsedCandidates);
+
   // Filter & validate candidates
   let selectedCandidate: IssueMetadata | undefined;
 
-  for (const rawIssue of candidateIssues) {
-    const meta = parseIssueMetadata(rawIssue);
-
+  for (const meta of sortedCandidates) {
     // Preflight Check 1: Issue must be open
     if (meta.state !== 'open') {
       if (options.issueNumber) {
@@ -379,6 +476,22 @@ export async function runJulesDispatcher(
 
     if (hasActiveLock) {
       errors.push(`Issue #${meta.issueNumber} already has an active dispatch or session in progress.`);
+      if (options.issueNumber) {
+        return {
+          success: false,
+          issueNumber: meta.issueNumber,
+          issueTitle: meta.title,
+          dryRun: options.dryRun,
+          errors,
+        };
+      }
+      continue;
+    }
+
+    // Check active session via Jules API endpoint
+    const sessionCheck = await checkActiveJulesSession(options.repository, meta.issueNumber, options.julesApiKey, fetchFn);
+    if (sessionCheck.hasActiveSession) {
+      errors.push(sessionCheck.error || `Active Jules session already running for issue #${meta.issueNumber}.`);
       if (options.issueNumber) {
         return {
           success: false,
@@ -471,11 +584,15 @@ export async function runJulesDispatcher(
   }
 
   const dispatchPayload = {
-    issueNumber: selectedCandidate.issueNumber,
-    title: selectedCandidate.title,
-    primarySpecialist: selectedCandidate.primarySpecialist,
-    secondarySpecialist: selectedCandidate.secondarySpecialist,
-    branchName: `feature/issue-${selectedCandidate.issueNumber}`,
+    parent: `projects/-/locations/global`,
+    session: {
+      title: `[Issue #${selectedCandidate.issueNumber}] ${selectedCandidate.title}`,
+      sourceContext: {
+        source: `sources/github/${options.repository}`,
+        startingBranch: 'main',
+      },
+      prompt: `Start Issue #${selectedCandidate.issueNumber} — ${selectedCandidate.title}\n\nPrimary Specialist: ${selectedCandidate.primarySpecialist || 'Architecture Specialist'}\nSecondary Specialist: ${selectedCandidate.secondarySpecialist || 'Verification Specialist'}\n\nGoal:\n${selectedCandidate.body}`,
+    },
   };
 
   // If dry run, do NOT execute live Jules API call
@@ -504,22 +621,17 @@ export async function runJulesDispatcher(
     };
   }
 
-  // Execute live dispatch call to Jules API (or external webhook endpoint)
+  // Execute live dispatch call to official Jules API session endpoint
   try {
-    const liveEndpoint = process.env.JULES_API_ENDPOINT || 'https://api.jules.ai/v1/dispatch';
+    const liveEndpoint = `https://jules.googleapis.com/v1alpha/sessions`;
     const liveRes = await fetchFn(liveEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${options.julesApiKey}`,
+        'X-Goog-Api-Key': options.julesApiKey,
         'User-Agent': 'VinylDrop-JulesDispatcher',
       },
-      body: JSON.stringify({
-        repository: options.repository,
-        issueNumber: selectedCandidate.issueNumber,
-        primarySpecialist: selectedCandidate.primarySpecialist,
-        secondarySpecialist: selectedCandidate.secondarySpecialist,
-      }),
+      body: JSON.stringify(dispatchPayload),
     });
 
     if (!liveRes.ok) {

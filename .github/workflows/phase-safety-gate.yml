@@ -61,7 +61,7 @@ jobs:
               errors.push('PR head branch cannot be "main". Work must be performed on a feature branch.');
             }
 
-            let prBody = (pr.body || '').replace(/\r\n/g, '\n');
+            let prBody = pr.body || '';
 
             // Strip HTML comments
             prBody = prBody.replace(/<!--[\s\S]*?-->/g, '');
@@ -153,8 +153,6 @@ jobs:
 
             if (errors.length > 0) {
               console.error('❌ Phase Safety Gate Validation Failed:');
-              console.error('PR Body evaluated was:');
-              console.error(JSON.stringify(prBody));
               for (const err of errors) {
                 console.error(`  - ${err}`);
               }
