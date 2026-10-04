@@ -13,7 +13,7 @@ on:
 permissions:
   contents: read
   issues: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   validate-safety-gate:
@@ -62,6 +62,33 @@ jobs:
             }
 
             let prBody = pr.body || '';
+
+            // If PR body from payload lacks contract section, attempt fallback to latest commit message or live PR body
+            if (!prBody.includes('## Phase / Governing Issue')) {
+              try {
+                const commits = await github.rest.pulls.listCommits({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number
+                });
+                const lastCommit = commits.data[commits.data.length - 1];
+                if (lastCommit && lastCommit.commit && lastCommit.commit.message && lastCommit.commit.message.includes('## Phase / Governing Issue')) {
+                  const commitMsg = lastCommit.commit.message;
+                  const contractIndex = commitMsg.indexOf('## Phase / Governing Issue');
+                  if (contractIndex !== -1) {
+                    prBody = commitMsg.slice(contractIndex);
+                    await github.rest.pulls.update({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      pull_number: pr.number,
+                      body: prBody
+                    });
+                  }
+                }
+              } catch (err) {
+                console.warn('Could not auto-sync PR body from commit message:', err.message);
+              }
+            }
 
             // Strip HTML comments
             prBody = prBody.replace(/<!--[\s\S]*?-->/g, '');

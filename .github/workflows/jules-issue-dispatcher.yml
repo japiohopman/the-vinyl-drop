@@ -1,0 +1,343 @@
+name: Jules Issue Dispatcher & Preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (set to false for live Jules API dispatch)'
+        type: boolean
+        required: true
+        default: true
+      issue_number:
+        description: 'Optional target issue number (leave empty for auto selection)'
+        type: string
+        required: false
+
+concurrency:
+  group: jules-dispatcher-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  dispatch-preflight:
+    name: Issue Selector and Preflight Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run Authoritative Trusted Dispatcher
+        uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const repoOwner = context.repo.owner;
+            const repoName = context.repo.repo;
+            const repository = `${repoOwner}/${repoName}`;
+            const targetIssueNum = (process.env.ISSUE_NUMBER || '').trim();
+            const dryRun = process.env.DRY_RUN !== 'false';
+            const julesApiKey = process.env.JULES_API_KEY || '';
+
+            core.info(`Running preflight selector for repository: ${repository}`);
+            core.info(`Mode: ${dryRun ? 'DRY RUN' : 'LIVE DISPATCH'}`);
+            if (targetIssueNum) {
+              core.info(`Target Issue: #${targetIssueNum}`);
+            } else {
+              core.info(`Target Issue: (automatic deterministic selection)`);
+            }
+
+            // 1. Check main branch availability
+            try {
+              await github.rest.repos.getBranch({
+                owner: repoOwner,
+                repo: repoName,
+                branch: 'main',
+              });
+              core.info('✅ Main branch is available.');
+            } catch (err) {
+              core.setFailed('Branch "main" is unavailable or inaccessible: ' + err.message);
+              return;
+            }
+
+            // 2. Query open candidate issues
+            let rawIssues = [];
+            if (targetIssueNum) {
+              try {
+                const res = await github.rest.issues.get({
+                  owner: repoOwner,
+                  repo: repoName,
+                  issue_number: parseInt(targetIssueNum, 10),
+                });
+                if (res.data.pull_request) {
+                  core.setFailed(`Target #${targetIssueNum} is a pull request, not an issue.`);
+                  return;
+                }
+                rawIssues.push(res.data);
+              } catch (err) {
+                core.setFailed(`Target issue #${targetIssueNum} could not be retrieved: ` + err.message);
+                return;
+              }
+            } else {
+              try {
+                const res = await github.rest.issues.listForRepo({
+                  owner: repoOwner,
+                  repo: repoName,
+                  state: 'open',
+                  per_page: 100,
+                });
+                rawIssues = res.data.filter((i) => !i.pull_request);
+              } catch (err) {
+                core.setFailed('Failed to list open issues: ' + err.message);
+                return;
+              }
+            }
+
+            if (rawIssues.length === 0) {
+              core.setFailed('No open candidate issues found for dispatch.');
+              return;
+            }
+
+            // Helper to parse metadata
+            function parseMetadata(issue) {
+              const body = issue.body || '';
+              const labels = (issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
+              const hasReadyLabel = labels.some((l) => ['dispatch-ready', 'ready-for-dispatch', 'ready'].includes(l.toLowerCase()));
+
+              const readinessMatch = body.match(/(?:###\s*(?:Dispatch\s*)?Readiness|\*\*Readiness\*\*|Readiness:)\s*[:\r\n]*\s*([^\r\n]+)/i);
+              let isDispatchReady = hasReadyLabel;
+              if (readinessMatch) {
+                const value = readinessMatch[1].trim().toLowerCase();
+                if (['ready', 'dispatch-ready', 'ready-for-dispatch'].includes(value)) {
+                  isDispatchReady = true;
+                } else if (value.includes('not ready') || value.includes('unready') || value.includes('false')) {
+                  isDispatchReady = false;
+                }
+              }
+
+              let primarySpecialist;
+              const primaryMatch = body.match(/\*\*Primary\s*(?:Specialist)?\*\*:\s*([^\r\n]+)/i) || body.match(/Primary\s*(?:Specialist)?:\s*([^\r\n]+)/i);
+              if (primaryMatch) primarySpecialist = primaryMatch[1].trim();
+
+              let secondarySpecialist;
+              const secondaryMatch = body.match(/\*\*Secondary\s*(?:Specialist)?\*\*:\s*([^\r\n]+)/i) || body.match(/Secondary\s*(?:Specialist)?:\s*([^\r\n]+)/i);
+              if (secondaryMatch) secondarySpecialist = secondaryMatch[1].trim();
+
+              let priority = 3;
+              const prioMatch = body.match(/\*\*(?:Priority|P)\*\*:\s*(?:P)?(\d+)/i) || body.match(/Priority:\s*(?:P)?(\d+)/i);
+              if (prioMatch) {
+                const p = parseInt(prioMatch[1], 10);
+                if (!isNaN(p) && p >= 1) priority = p;
+              }
+
+              const dependencies = [];
+              const depMatch = body.match(/###\s*Dependencies[\s\S]*?(?=\n##|$)/i) || body.match(/(?:Depends\s+on|Dependencies):\s*([^\r\n]+)/i);
+              if (depMatch) {
+                const depText = depMatch[0];
+                const matches = depText.matchAll(/#(\d+)/g);
+                for (const m of matches) {
+                  const num = parseInt(m[1], 10);
+                  if (!isNaN(num) && num !== issue.number && !dependencies.includes(num)) {
+                    dependencies.push(num);
+                  }
+                }
+              }
+
+              return {
+                issueNumber: issue.number,
+                title: issue.title,
+                body,
+                state: issue.state,
+                labels,
+                primarySpecialist,
+                secondarySpecialist,
+                priority,
+                dependencies,
+                isDispatchReady,
+              };
+            }
+
+            const parsedCandidates = rawIssues.map(parseMetadata);
+            // Sort deterministically: Priority ascending, then Issue Number ascending
+            parsedCandidates.sort((a, b) => (a.priority !== b.priority ? a.priority - b.priority : a.issueNumber - b.issueNumber));
+
+            // Query open PRs for collision checks
+            let openPRs = [];
+            try {
+              const prsRes = await github.rest.pulls.list({
+                owner: repoOwner,
+                repo: repoName,
+                state: 'open',
+                per_page: 100,
+              });
+              openPRs = prsRes.data;
+            } catch (err) {
+              core.setFailed('Failed to check open PRs: ' + err.message);
+              return;
+            }
+
+            // In LIVE mode ONLY, query active Jules sessions via API (fails closed if API fails)
+            let activeJulesSessions = [];
+            if (!dryRun) {
+              if (!julesApiKey) {
+                core.setFailed('Live dispatch failed: missing JULES_API_KEY secret (fail closed).');
+                return;
+              }
+              try {
+                const sessRes = await fetch('https://jules.googleapis.com/v1alpha/sessions', {
+                  headers: {
+                    'X-Goog-Api-Key': julesApiKey,
+                    'User-Agent': 'VinylDrop-JulesDispatcher',
+                  },
+                });
+                if (!sessRes.ok) {
+                  core.setFailed(`Failed to retrieve active Jules sessions: API status ${sessRes.status} (fail closed).`);
+                  return;
+                }
+                const data = await sessRes.json();
+                activeJulesSessions = data.sessions || [];
+              } catch (err) {
+                core.setFailed(`Network failure checking active Jules sessions: ${err.message} (fail closed).`);
+                return;
+              }
+            }
+
+            let selectedIssue = null;
+            const errors = [];
+
+            for (const candidate of parsedCandidates) {
+              if (candidate.state !== 'open') {
+                errors.push(`Issue #${candidate.issueNumber} is not open.`);
+                continue;
+              }
+              if (!candidate.isDispatchReady) {
+                errors.push(`Issue #${candidate.issueNumber} is not marked as dispatch-ready.`);
+                continue;
+              }
+              const lockLabels = ['in-progress', 'jules-active', 'in-execution', 'active-session'];
+              if (candidate.labels.some((l) => lockLabels.includes(l.toLowerCase()))) {
+                errors.push(`Issue #${candidate.issueNumber} already has an active label lock in progress.`);
+                continue;
+              }
+
+              // Active Jules Session check in LIVE mode
+              if (!dryRun) {
+                const activeStates = ['QUEUED', 'PLANNING', 'AWAITING_PLAN_APPROVAL', 'AWAITING_USER_FEEDBACK', 'IN_PROGRESS', 'PAUSED', 'STATE_ACTIVE', 'RUNNING', 'STATE_RUNNING'];
+                const expectedSource = `sources/github/${repository}`;
+                const hasSession = activeJulesSessions.some((s) => {
+                  const state = (s.state || '').toUpperCase();
+                  const title = s.title || '';
+                  const source = s.sourceContext?.source || '';
+                  const refsRepo = source === expectedSource;
+                  const refsIssue = title.includes(`#${candidate.issueNumber}`) || title.includes(`issue-${candidate.issueNumber}`);
+                  return refsRepo && refsIssue && activeStates.includes(state);
+                });
+
+                if (hasSession) {
+                  errors.push(`Issue #${candidate.issueNumber} has an active Jules session running.`);
+                  continue;
+                }
+              }
+
+              if (!candidate.primarySpecialist) {
+                errors.push(`Issue #${candidate.issueNumber} missing required "Primary Specialist" metadata.`);
+                continue;
+              }
+
+              // Check PR collisions
+              const refRegex = new RegExp(`(?:Refs|Closes|Fixes|Resolves)\\s+#${candidate.issueNumber}\\b`, 'i');
+              const branchRegex = new RegExp(`(?:issue|feature|branch)[/_-]*(?:issue|feature)?[/_-]*${candidate.issueNumber}\\b`, 'i');
+              const conflictingPr = openPRs.find((pr) => refRegex.test(pr.body || '') || branchRegex.test(pr.head?.ref || ''));
+              if (conflictingPr) {
+                errors.push(`Conflicting open PR #${conflictingPr.number} already references issue #${candidate.issueNumber}.`);
+                continue;
+              }
+
+              // Check dependencies
+              let depsOk = true;
+              for (const depId of candidate.dependencies) {
+                try {
+                  const depRes = await github.rest.issues.get({
+                    owner: repoOwner,
+                    repo: repoName,
+                    issue_number: depId,
+                  });
+                  if (depRes.data.state !== 'closed') {
+                    errors.push(`Blocked by dependency #${depId}, which is still open.`);
+                    depsOk = false;
+                    break;
+                  }
+                } catch (err) {
+                  errors.push(`Failed to verify dependency #${depId}: ` + err.message);
+                  depsOk = false;
+                  break;
+                }
+              }
+              if (!depsOk) continue;
+
+              selectedIssue = candidate;
+              break;
+            }
+
+            if (!selectedIssue) {
+              core.setFailed('Preflight failed: No candidate issue met preflight requirements.\n' + errors.join('\n'));
+              return;
+            }
+
+            core.info(`\n✅ Selected Issue #${selectedIssue.issueNumber}: "${selectedIssue.title}"`);
+            core.info(`Primary Specialist: ${selectedIssue.primarySpecialist}`);
+            core.info(`Secondary Specialist: ${selectedIssue.secondarySpecialist || 'N/A'}`);
+
+            const payload = {
+              title: `[Issue #${selectedIssue.issueNumber}] ${selectedIssue.title}`,
+              prompt: `Start Issue #${selectedIssue.issueNumber} — ${selectedIssue.title}\n\nPrimary Specialist: ${selectedIssue.primarySpecialist}\nSecondary Specialist: ${selectedIssue.secondarySpecialist || 'N/A'}\n\nGoal:\n${selectedIssue.body}`,
+              sourceContext: {
+                source: `sources/github/${repository}`,
+                githubRepoContext: {
+                  startingBranch: 'main',
+                },
+              },
+              automationMode: 'AUTO_CREATE_PR',
+            };
+
+            if (dryRun) {
+              core.info('\n[DRY RUN SUMMARY] Preflight completed successfully without calling Jules API.');
+              core.info('Official Jules Session Payload:\n' + JSON.stringify(payload, null, 2));
+            } else {
+              // 1. Lock label FIRST (fail closed if lock acquisition fails)
+              try {
+                await github.rest.issues.addLabels({
+                  owner: repoOwner,
+                  repo: repoName,
+                  issue_number: selectedIssue.issueNumber,
+                  labels: ['in-progress'],
+                });
+                core.info(`✅ Acquired 'in-progress' label lock on issue #${selectedIssue.issueNumber}`);
+              } catch (err) {
+                core.setFailed(`Failed to acquire 'in-progress' lock label on issue #${selectedIssue.issueNumber}: ${err.message} (fail closed).`);
+                return;
+              }
+
+              // 2. Trigger Jules session API
+              core.info('\n[LIVE DISPATCH] Triggering session creation at https://jules.googleapis.com/v1alpha/sessions...');
+              const res = await fetch('https://jules.googleapis.com/v1alpha/sessions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-Goog-Api-Key': julesApiKey,
+                  'User-Agent': 'VinylDrop-JulesDispatcher',
+                },
+                body: JSON.stringify(payload),
+              });
+              if (!res.ok) {
+                core.setFailed(`Live Jules API call failed with status ${res.status}`);
+                return;
+              }
+              core.info('✅ Session created successfully!');
+            }
