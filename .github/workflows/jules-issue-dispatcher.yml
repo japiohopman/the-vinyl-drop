@@ -33,14 +33,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           JULES_API_KEY: ${{ secrets.JULES_API_KEY }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          DRY_RUN: ${{ inputs.dry_run }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const repoOwner = context.repo.owner;
             const repoName = context.repo.repo;
             const repository = `${repoOwner}/${repoName}`;
-            const targetIssueNum = '${{ inputs.issue_number }}'.trim();
-            const dryRun = '${{ inputs.dry_run }}' !== 'false';
+            const targetIssueNum = (process.env.ISSUE_NUMBER || '').trim();
+            const dryRun = process.env.DRY_RUN !== 'false';
             const julesApiKey = process.env.JULES_API_KEY || '';
 
             core.info(`Running preflight selector for repository: ${repository}`);
@@ -231,7 +233,7 @@ jobs:
                   const state = (s.state || '').toUpperCase();
                   const title = s.title || '';
                   const source = s.sourceContext?.source || '';
-                  const refsRepo = source ? source.includes(repository) : true;
+                  const refsRepo = Boolean(source && source.includes(repository));
                   const refsIssue = title.includes(`#${candidate.issueNumber}`) || title.includes(`issue-${candidate.issueNumber}`);
                   return refsRepo && refsIssue && activeStates.includes(state);
                 });

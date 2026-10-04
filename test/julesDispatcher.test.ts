@@ -39,6 +39,7 @@ None.
     const ymlContent = fs.readFileSync(ymlPath, 'utf-8');
     expect(ymlContent).toContain('concurrency:');
     expect(ymlContent).toContain('group: jules-dispatcher-${{ github.repository }}');
+    expect(ymlContent).toContain('ISSUE_NUMBER: ${{ inputs.issue_number }}');
   });
 
   describe('Verification Requirement 1: Valid ready Issue is selected & exact payload format', () => {
@@ -308,6 +309,47 @@ Depends on #19
 
       expect(result.success).toBe(false);
       expect(result.errors.some((e) => e.includes('has an active Jules session running'))).toBe(true);
+    });
+
+    it('should NOT treat an active Jules session without matching repository source as a match', async () => {
+      const unmatchingSourceSessionRes = {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          sessions: [
+            {
+              name: 'projects/-/locations/global/sessions/99999',
+              title: '[Issue #21] Other Repo Phase 1B',
+              state: 'IN_PROGRESS',
+              sourceContext: { source: 'sources/github/other-owner/other-repo' },
+            },
+          ],
+        }),
+      };
+
+      const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method || 'GET';
+        if (url.includes('/branches/main')) return Promise.resolve(validMainBranchRes as Response);
+        if (url.includes('/issues/21') && method === 'GET') return Promise.resolve({ ok: true, status: 200, json: async () => validIssue21Raw } as Response);
+        if (url.includes('/pulls')) return Promise.resolve(noOpenPrsRes as Response);
+        if (url.includes('jules.googleapis.com') && method === 'GET') return Promise.resolve(unmatchingSourceSessionRes as Response);
+        if (url.includes('jules.googleapis.com') && method === 'POST') return Promise.resolve({ ok: true, status: 200, json: async () => ({ name: 'sess' }) } as Response);
+        if (url.includes('/labels') && method === 'POST') return Promise.resolve({ ok: true, status: 200, json: async () => [] } as Response);
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      const result = await runJulesDispatcher({
+        repository: repo,
+        issueNumber: 21,
+        dryRun: false,
+        token: 'gh_token',
+        julesApiKey: 'test_key',
+        customFetch: mockFetch,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.issueNumber).toBe(21);
     });
 
     it('should FAIL CLOSED when session API endpoint errors in live mode', async () => {

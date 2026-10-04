@@ -143,13 +143,10 @@ export async function runJulesDispatcher(options: DispatcherOptions): Promise<Pr
     env: {
       JULES_API_KEY: options.julesApiKey || '',
       GITHUB_TOKEN: options.token || '',
+      ISSUE_NUMBER: options.issueNumber ? String(options.issueNumber) : '',
+      DRY_RUN: String(options.dryRun),
     },
   };
-
-  // Replace ${{ inputs.issue_number }} and ${{ inputs.dry_run }} expressions in script template for test evaluation
-  const adaptedScript = scriptCode
-    .replace(/'\${{\s*inputs\.issue_number\s*}}'/g, JSON.stringify(options.issueNumber ? String(options.issueNumber) : ''))
-    .replace(/'\${{\s*inputs\.dry_run\s*}}'/g, JSON.stringify(String(options.dryRun)));
 
   // Evaluate production workflow script
   const scriptRunner = new Function(
@@ -160,7 +157,7 @@ export async function runJulesDispatcher(options: DispatcherOptions): Promise<Pr
     'fetch',
     `
     return (async () => {
-      ${adaptedScript}
+      ${scriptCode}
     })();
     `
   );
