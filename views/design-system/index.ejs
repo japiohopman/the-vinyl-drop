@@ -1,0 +1,187 @@
+<div class="design-system-page">
+  <header style="margin-bottom: var(--space-8);">
+    <h1>Design System & Reusable UI Primitives</h1>
+    <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin-top: var(--space-2);">
+      Phase 2C components: Accessible forms, buttons, vinyl condition badges, and listing cards.
+    </p>
+  </header>
+
+  <!-- 1. FORM PATTERNS & LIVE ZOD VALIDATION -->
+  <section class="demo-section" aria-labelledby="forms-heading">
+    <h2 id="forms-heading" class="demo-section-title">1. Form Controls & Validation Patterns</h2>
+    <p class="demo-section-desc">
+      Shared accessible form field EJS partials with explicit label associations, ARIA error linkage, and top-level error summary banner.
+    </p>
+
+    <% if (formState.isSuccess && formState.successMessage) { %>
+      <div class="form-success-banner" style="background-color: #EBF5F0; border: var(--border-thick); border-color: var(--color-deep-green); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-6); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-deep-green);">
+        <strong>Success:</strong> <%= formState.successMessage %>
+      </div>
+    <% } %>
+
+    <%- include('../partials/form-errors', {
+      errors: formState.generalErrors.length > 0
+        ? formState.generalErrors
+        : Object.values(formState.fieldErrors)
+    }) %>
+
+    <form action="/design-system/demo" method="POST" class="demo-form" style="max-width: 640px;" novalidate>
+      <%- include('../partials/form-input', {
+        name: 'title',
+        label: 'Album Title',
+        value: formState.values.title,
+        placeholder: 'e.g. Blue Train',
+        required: true,
+        error: formState.fieldErrors.title,
+        helpText: 'Canonical release title as printed on the record sleeve.'
+      }) %>
+
+      <%- include('../partials/form-input', {
+        name: 'artist',
+        label: 'Artist Name',
+        value: formState.values.artist,
+        placeholder: 'e.g. John Coltrane',
+        required: true,
+        error: formState.fieldErrors.artist,
+        helpText: 'Primary recording artist or ensemble name.'
+      }) %>
+
+      <%- include('../partials/form-input', {
+        type: 'number',
+        name: 'price',
+        label: 'Asking Price (€)',
+        value: formState.values.price,
+        placeholder: 'e.g. 25.00',
+        error: formState.fieldErrors.price,
+        helpText: 'Leave empty if this is a trade-only listing.'
+      }) %>
+
+      <%- include('../partials/form-select', {
+        name: 'mediaCondition',
+        label: 'Media Condition',
+        value: formState.values.mediaCondition,
+        required: true,
+        error: formState.fieldErrors.mediaCondition,
+        helpText: 'Standard Goldmine grading scale.',
+        options: [
+          { value: 'M', label: 'Mint (M) - Unplayed / Sealed' },
+          { value: 'NM', label: 'Near Mint (NM)' },
+          { value: 'VG+', label: 'Very Good Plus (VG+)' },
+          { value: 'VG', label: 'Very Good (VG)' },
+          { value: 'VG-', label: 'Very Good Minus (VG-)' },
+          { value: 'G+', label: 'Good Plus (G+)' },
+          { value: 'G', label: 'Good (G)' },
+          { value: 'F', label: 'Fair (F)' },
+          { value: 'P', label: 'Poor (P)' }
+        ]
+      }) %>
+
+      <%- include('../partials/form-textarea', {
+        name: 'description',
+        label: 'Listing Description',
+        value: formState.values.description,
+        rows: 3,
+        placeholder: 'Describe pressing details, sleeve wear, or specific trade requests...',
+        error: formState.fieldErrors.description,
+        helpText: 'Optional seller notes for buyers or traders.'
+      }) %>
+
+      <%- include('../partials/form-input', {
+        type: 'text',
+        name: 'acceptTerms',
+        label: 'Confirmation (Type "on" or check)',
+        value: formState.values.acceptTerms,
+        placeholder: 'Type "on" to confirm',
+        required: true,
+        error: formState.fieldErrors.acceptTerms,
+        helpText: 'Type "on" to simulate agreeing to accuracy requirements.'
+      }) %>
+
+      <div style="margin-top: var(--space-6); display: flex; gap: var(--space-3);">
+        <%- include('../partials/button', {
+          text: 'Submit Demo Form',
+          type: 'submit',
+          variant: 'primary',
+          size: 'md'
+        }) %>
+        <a href="/design-system" class="btn btn-outline btn-md">Reset Form</a>
+      </div>
+    </form>
+  </section>
+
+  <!-- 2. BUTTONS & LINKS -->
+  <section class="demo-section" aria-labelledby="buttons-heading">
+    <h2 id="buttons-heading" class="demo-section-title">2. Buttons & Interactive Link States</h2>
+    <p class="demo-section-desc">
+      Tactile 90s record shop aesthetic with high-contrast borders and visible focus treatment.
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+      <div>
+        <h3 style="font-size: var(--font-size-sm); margin-bottom: var(--space-2);">Button Variants:</h3>
+        <div class="demo-buttons-flex">
+          <%- include('../partials/button', { text: 'Primary Rust', variant: 'primary' }) %>
+          <%- include('../partials/button', { text: 'Secondary Green', variant: 'secondary' }) %>
+          <%- include('../partials/button', { text: 'Outline Ink', variant: 'outline' }) %>
+          <%- include('../partials/button', { text: '+ DROP Action', variant: 'action' }) %>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="font-size: var(--font-size-sm); margin-bottom: var(--space-2);">Button Sizes:</h3>
+        <div class="demo-buttons-flex">
+          <%- include('../partials/button', { text: 'Small Button', size: 'sm', variant: 'primary' }) %>
+          <%- include('../partials/button', { text: 'Medium Button', size: 'md', variant: 'primary' }) %>
+          <%- include('../partials/button', { text: 'Large Button', size: 'lg', variant: 'primary' }) %>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="font-size: var(--font-size-sm); margin-bottom: var(--space-2);">Disabled States:</h3>
+        <div class="demo-buttons-flex">
+          <%- include('../partials/button', { text: 'Disabled Primary', variant: 'primary', disabled: true }) %>
+          <%- include('../partials/button', { text: 'Disabled Outline', variant: 'outline', disabled: true }) %>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="font-size: var(--font-size-sm); margin-bottom: var(--space-2);">Link Buttons:</h3>
+        <div class="demo-buttons-flex">
+          <%- include('../partials/button', { text: 'Link as Button', href: '#', variant: 'outline' }) %>
+          <%- include('../partials/button', { text: 'Action Link', href: '#', variant: 'action' }) %>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. VINYL CONDITION BADGES -->
+  <section class="demo-section" aria-labelledby="condition-heading">
+    <h2 id="condition-heading" class="demo-section-title">3. Vinyl Condition Grading Badges</h2>
+    <p class="demo-section-desc">
+      Goldmine grading scale badges for media and sleeve physical copies.
+    </p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: var(--space-4);">
+      <%- include('../partials/condition-badge', { mediaCondition: 'M', sleeveCondition: 'M' }) %>
+      <%- include('../partials/condition-badge', { mediaCondition: 'NM', sleeveCondition: 'VG+' }) %>
+      <%- include('../partials/condition-badge', { mediaCondition: 'VG+', sleeveCondition: 'VG' }) %>
+      <%- include('../partials/condition-badge', { mediaCondition: 'VG', sleeveCondition: 'VG-' }) %>
+      <%- include('../partials/condition-badge', { mediaCondition: 'G+', sleeveCondition: 'G' }) %>
+      <%- include('../partials/condition-badge', { mediaCondition: 'P', sleeveCondition: 'F' }) %>
+    </div>
+  </section>
+
+  <!-- 4. REUSABLE LISTING CARD SHELL -->
+  <section class="demo-section" aria-labelledby="listing-cards-heading">
+    <h2 id="listing-cards-heading" class="demo-section-title">4. Reusable Listing Card Shell</h2>
+    <p class="demo-section-desc">
+      Square aspect-ratio album cover frame, tactile drop shadow, condition badges, and seller details.
+    </p>
+
+    <div class="grid grid-2col">
+      <% sampleListingCards.forEach(function(card) { %>
+        <%- include('../partials/listing-card', { listing: card }) %>
+      <% }); %>
+    </div>
+  </section>
+</div>

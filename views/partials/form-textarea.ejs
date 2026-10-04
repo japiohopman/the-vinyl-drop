@@ -1,0 +1,55 @@
+<%
+  /*
+    form-textarea.ejs - Reusable accessible form textarea
+  */
+  const fieldName = typeof name !== 'undefined' ? name : '';
+  const fieldId = typeof id !== 'undefined' && id ? id : `field-${fieldName}`;
+  const fieldValue = typeof value !== 'undefined' && value !== null ? value : '';
+  const numRows = typeof rows === 'number' && rows > 0 ? rows : 4;
+  const isRequired = typeof required !== 'undefined' ? Boolean(required) : false;
+  const isDisabled = typeof disabled !== 'undefined' ? Boolean(disabled) : false;
+  const fieldError = typeof error !== 'undefined' && error ? String(error) : '';
+  const help = typeof helpText !== 'undefined' && helpText ? String(helpText) : '';
+  const fieldPlaceholder = typeof placeholder !== 'undefined' ? placeholder : '';
+
+  const helpId = help ? `${fieldId}-help` : '';
+  const errorId = fieldError ? `${fieldId}-error` : '';
+  const describedByParts = [helpId, errorId].filter(Boolean);
+  const describedBy = describedByParts.length > 0 ? describedByParts.join(' ') : undefined;
+%>
+
+<div class="form-group <%= fieldError ? 'has-error' : '' %>">
+  <label for="<%= fieldId %>" class="form-label">
+    <%= label %>
+    <% if (isRequired) { %>
+      <span class="required-indicator" title="Required">*</span>
+    <% } %>
+  </label>
+
+  <% if (help) { %>
+    <p id="<%= helpId %>" class="form-help-text"><%= help %></p>
+  <% } %>
+
+  <textarea
+    id="<%= fieldId %>"
+    name="<%= fieldName %>"
+    class="form-control form-textarea"
+    rows="<%= numRows %>"
+    <% if (fieldPlaceholder) { %>placeholder="<%= fieldPlaceholder %>"<% } %>
+    <% if (isRequired) { %>required aria-required="true"<% } %>
+    <% if (isDisabled) { %>disabled<% } %>
+    <% if (fieldError) { %>aria-invalid="true"<% } %>
+    <% if (describedBy) { %>aria-describedby="<%= describedBy %>"<% } %>
+  ><%= fieldValue %></textarea>
+
+  <% if (fieldError) { %>
+    <p id="<%= errorId %>" class="form-error-message" role="alert">
+      <svg class="error-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <%= fieldError %>
+    </p>
+  <% } %>
+</div>

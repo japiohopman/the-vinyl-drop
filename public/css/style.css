@@ -11,17 +11,22 @@
   --color-paper: #F3EFE7;
   --color-ink: #151515;
   --color-white: #FFFDF8;
-  --color-rust: #C94B2C;
+  --color-rust: #C94B2C; /* Established Phase 2A brand token */
+  --color-rust-accessible: #B83A1B; /* WCAG 2.1 AA 4.5:1 compliant text contrast token */
   --color-deep-green: #30463D;
 
   /* Functional & Contrast Colors */
   --color-ink-muted: #4A4A4A;
   --color-border: #151515;
   --color-border-subtle: #D8D2C5;
-  --color-focus: #C94B2C;
+  --color-focus: #B83A1B;
   --color-surface-hover: #EBE5D9;
   --color-rust-hover: #A83A20;
   --color-green-hover: #23342D;
+  --color-error-bg: #FDF2F0;
+  --color-error-border: #B83A1B;
+  --color-success-bg: #E8F0EC;
+  --color-success-border: #30463D;
 
   /* Typography Families */
   --font-wordmark: 'Capriola', cursive, sans-serif;
@@ -114,10 +119,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Focus outline for accessibility */
+/* Accessible focus outline treatment */
 :focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -429,7 +434,411 @@ code, kbd, samp, pre {
 }
 
 /* --------------------------------------------------------------------------
-   4. GRID & LAYOUT UTILITIES
+   5. REUSABLE BUTTONS & LINK BUTTONS (PHASE 2C)
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-wide);
+  text-decoration: none;
+  cursor: pointer;
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-tactile);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px var(--color-ink);
+}
+
+/* Button Variants */
+.btn-primary {
+  background-color: var(--color-rust);
+  color: var(--color-white);
+  border-color: var(--color-ink);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-rust-hover);
+  color: var(--color-white);
+  text-decoration: none;
+}
+
+.btn-secondary {
+  background-color: var(--color-deep-green);
+  color: var(--color-white);
+  border-color: var(--color-ink);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-green-hover);
+  color: var(--color-white);
+  text-decoration: none;
+}
+
+.btn-outline {
+  background-color: var(--color-white);
+  color: var(--color-ink);
+  border-color: var(--color-ink);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: var(--color-surface-hover);
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.btn-action {
+  background-color: var(--color-paper);
+  color: var(--color-rust-accessible);
+  border-color: var(--color-rust-accessible);
+}
+
+.btn-action:hover:not(:disabled) {
+  background-color: var(--color-rust-accessible);
+  color: var(--color-white);
+  text-decoration: none;
+}
+
+/* Button Sizes */
+.btn-sm {
+  font-size: var(--font-size-xs);
+  padding: var(--space-1) var(--space-2);
+}
+
+.btn-md {
+  font-size: var(--font-size-sm);
+  padding: var(--space-2) var(--space-4);
+}
+
+.btn-lg {
+  font-size: var(--font-size-base);
+  padding: var(--space-3) var(--space-6);
+}
+
+/* Disabled State */
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* --------------------------------------------------------------------------
+   6. FORM CONTROLS & VALIDATION PATTERNS (PHASE 2C)
+   -------------------------------------------------------------------------- */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.form-label {
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.required-indicator {
+  color: var(--color-rust);
+  margin-left: var(--space-1);
+}
+
+.form-help-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.form-control {
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  color: var(--color-ink);
+  background-color: var(--color-white);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 100px;
+}
+
+select.form-control {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23151515' d='M6 8.825L1.175 4 2.238 2.938 6 6.7 9.763 2.937 10.825 4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  padding-right: var(--space-8);
+}
+
+.form-control:focus {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.form-control:disabled {
+  background-color: var(--color-surface-hover);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Validation & Error States */
+.has-error .form-label {
+  color: var(--color-rust-accessible);
+}
+
+.has-error .form-control {
+  border-color: var(--color-error-border);
+  background-color: var(--color-error-bg);
+}
+
+.form-error-message {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-rust-accessible);
+  margin-top: var(--space-1);
+}
+
+/* Error Summary Banner */
+.form-error-summary {
+  background-color: var(--color-error-bg);
+  border: var(--border-thick);
+  border-color: var(--color-error-border);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-6);
+  box-shadow: var(--shadow-tactile);
+}
+
+.form-error-summary-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.form-error-summary-icon {
+  color: var(--color-rust-accessible);
+  flex-shrink: 0;
+}
+
+.form-error-summary-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-rust-accessible);
+  margin: 0;
+}
+
+.form-error-summary-list {
+  list-style: disc;
+  padding-left: var(--space-5);
+  font-size: var(--font-size-sm);
+  color: var(--color-ink);
+}
+
+.form-success-summary {
+  background-color: var(--color-success-bg);
+  border: var(--border-thick);
+  border-color: var(--color-success-border);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-6);
+  box-shadow: var(--shadow-tactile);
+}
+
+/* --------------------------------------------------------------------------
+   7. CONDITION GRADING BADGES (PHASE 2C)
+   -------------------------------------------------------------------------- */
+.condition-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  background-color: var(--color-white);
+  color: var(--color-ink);
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  padding: 2px var(--space-2);
+  line-height: var(--line-height-tight);
+}
+
+.condition-badge-mint {
+  background-color: #E2F0D9;
+  border-color: #385723;
+  color: #385723;
+}
+
+.condition-badge-nm {
+  background-color: #E2EFDA;
+  border-color: #375623;
+  color: #375623;
+}
+
+.condition-badge-vg {
+  background-color: #FFF2CC;
+  border-color: #833C0C;
+  color: #833C0C;
+}
+
+.condition-badge-fair {
+  background-color: #FCE4D6;
+  border-color: #C65911;
+  color: #C65911;
+}
+
+/* --------------------------------------------------------------------------
+   8. REUSABLE LISTING CARD SHELL (PHASE 2C)
+   -------------------------------------------------------------------------- */
+.listing-card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-white);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-tactile);
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  height: 100%;
+}
+
+.listing-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 5px 5px 0px var(--color-ink);
+}
+
+.listing-card-media {
+  position: relative;
+  aspect-ratio: 1 / 1; /* Standard square vinyl sleeve ratio */
+  width: 100%;
+  background-color: var(--color-ink);
+  overflow: hidden;
+}
+
+.listing-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.listing-card:hover .listing-card-image {
+  transform: scale(1.03);
+}
+
+/* Artwork Fallback Placeholder */
+.listing-card-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-deep-green);
+  color: var(--color-paper);
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.fallback-vinyl-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-2);
+  opacity: 0.85;
+}
+
+.listing-card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: var(--space-4);
+  gap: var(--space-2);
+}
+
+.listing-card-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.listing-card-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  line-height: var(--line-height-snug);
+  margin-bottom: 2px;
+}
+
+.listing-card-title-link {
+  color: var(--color-ink);
+  text-decoration: none;
+}
+
+.listing-card-title-link:hover {
+  color: var(--color-rust);
+  text-decoration: underline;
+}
+
+.listing-card-artist {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+}
+
+.listing-card-meta {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.listing-card-footer {
+  margin-top: auto;
+  padding-top: var(--space-2);
+  border-top: var(--border-thin);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.listing-card-price {
+  font-family: var(--font-display);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.listing-card-price-trade {
+  color: var(--color-rust-accessible);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.listing-card-seller {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xs);
+  color: var(--color-ink-muted);
+}
+
+/* --------------------------------------------------------------------------
+   9. GRID & LAYOUT UTILITIES
    -------------------------------------------------------------------------- */
 .grid {
   display: grid;
