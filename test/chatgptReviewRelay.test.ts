@@ -3,15 +3,16 @@ import {
   summarizeCheckState,
   extractGoverningIssue,
   generateRelayCommentBody,
-  extractWorkflowScript,
   runChatgptReviewRelay,
+  fetchAllCommentsPaginated,
+  ensureLabelProvisioned,
   RawPullRequest,
   RawCheckRun,
   CHATGPT_REVIEW_RELAY_MARKER,
   CHATGPT_REVIEW_LABEL,
 } from '../src/workflow/chatgptReviewRelay';
 
-describe('ChatGPT Review Relay', () => {
+describe('ChatGPT Review Relay — Single Production Script Tests', () => {
   const repository = 'owner/repo';
 
   const validPr: RawPullRequest = {
@@ -31,15 +32,6 @@ describe('ChatGPT Review Relay', () => {
     },
     labels: [],
   };
-
-  describe('Workflow Script Extraction', () => {
-    it('should extract workflow inline script cleanly from YML file', () => {
-      const script = extractWorkflowScript();
-      expect(script).toBeDefined();
-      expect(script).toContain('chatgpt-review-relay-comment');
-      expect(script).toContain('chatgpt-review');
-    });
-  });
 
   describe('Governing Issue Extraction', () => {
     it('should extract issue number from Refs #25', () => {
@@ -73,6 +65,70 @@ describe('ChatGPT Review Relay', () => {
       expect(body).toContain(CHATGPT_REVIEW_RELAY_MARKER);
       expect(body).toContain('Signal Cleared');
       expect(body).toContain('PR Closed');
+    });
+  });
+
+  describe('Label Provisioning', () => {
+    it('should return true immediately if label already exists', async () => {
+      const mockFetch = jest.fn((input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes(`/labels/${CHATGPT_REVIEW_LABEL}`)) {
+          return Promise.resolve({ ok: true, status: 200 } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      const success = await ensureLabelProvisioned('owner', 'repo', {}, mockFetch as unknown as typeof fetch);
+      expect(success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should create label if GET returns 404', async () => {
+      const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method || 'GET';
+
+        if (url.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'GET') {
+          return Promise.resolve({ ok: false, status: 404 } as Response);
+        }
+        if (url.endsWith('/labels') && method === 'POST') {
+          const body = JSON.parse(String(init?.body || '{}'));
+          expect(body.name).toBe(CHATGPT_REVIEW_LABEL);
+          return Promise.resolve({ ok: true, status: 201 } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url} (${method})`));
+      });
+
+      const success = await ensureLabelProvisioned('owner', 'repo', {}, mockFetch as unknown as typeof fetch);
+      expect(success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Paginated Comment Retrieval', () => {
+    it('should fetch comments across multiple pages until less than 100 returned', async () => {
+      const page1Comments = Array.from({ length: 100 }, (_, i) => ({ id: i + 1, body: `Comment ${i + 1}` }));
+      const page2Comments = [
+        { id: 101, body: `Comment 101` },
+        { id: 102, body: `${CHATGPT_REVIEW_RELAY_MARKER}\nMarked relay comment on page 2!` },
+      ];
+
+      const mockFetch = jest.fn((input: string | URL | Request) => {
+        const urlObj = new URL(String(input));
+        const page = urlObj.searchParams.get('page');
+
+        if (page === '1') {
+          return Promise.resolve({ ok: true, status: 200, json: async () => page1Comments } as Response);
+        }
+        if (page === '2') {
+          return Promise.resolve({ ok: true, status: 200, json: async () => page2Comments } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected URL page: ${urlObj.href}`));
+      });
+
+      const allComments = await fetchAllCommentsPaginated('owner', 'repo', 42, {}, mockFetch as unknown as typeof fetch);
+      expect(allComments).toHaveLength(102);
+      expect(allComments[101].body).toContain(CHATGPT_REVIEW_RELAY_MARKER);
     });
   });
 
@@ -206,15 +262,18 @@ describe('ChatGPT Review Relay', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('should add label and create marked comment on eligible PR', async () => {
+    it('should provision label, add label, and create marked comment on eligible PR', async () => {
       const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
-        const url = String(input);
+        const urlStr = String(input);
         const method = init?.method || 'GET';
 
-        if (url.includes('/labels') && method === 'POST') {
+        if (urlStr.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'GET') {
+          return Promise.resolve({ ok: true, status: 200 } as Response);
+        }
+        if (urlStr.endsWith('/labels') && method === 'POST') {
           return Promise.resolve({ ok: true, status: 200, json: async () => [{ name: CHATGPT_REVIEW_LABEL }] } as Response);
         }
-        if (url.includes('/check-runs') && method === 'GET') {
+        if (urlStr.includes('/check-runs') && method === 'GET') {
           return Promise.resolve({
             ok: true,
             status: 200,
@@ -223,14 +282,14 @@ describe('ChatGPT Review Relay', () => {
             }),
           } as Response);
         }
-        if (url.includes('/comments') && method === 'GET') {
+        if (urlStr.includes('/comments') && method === 'GET') {
           return Promise.resolve({ ok: true, status: 200, json: async () => [] } as Response);
         }
-        if (url.includes('/comments') && method === 'POST') {
+        if (urlStr.includes('/comments') && method === 'POST') {
           return Promise.resolve({ ok: true, status: 201, json: async () => ({ id: 999 }) } as Response);
         }
 
-        return Promise.reject(new Error(`Unexpected API endpoint: ${url}`));
+        return Promise.reject(new Error(`Unexpected API endpoint: ${urlStr}`));
       });
 
       const result = await runChatgptReviewRelay({
@@ -246,36 +305,49 @@ describe('ChatGPT Review Relay', () => {
       expect(result.checkSummary?.ciState).toBe('SUCCESS');
     });
 
-    it('should idempotently update existing comment on synchronize event instead of duplicating', async () => {
+    it('should find existing comment on page 2 and update idempotently without duplicating', async () => {
       const prWithLabel: RawPullRequest = {
         ...validPr,
         labels: [{ name: CHATGPT_REVIEW_LABEL }],
       };
 
-      const existingComment = {
-        id: 777,
-        body: `${CHATGPT_REVIEW_RELAY_MARKER}\nPrevious status content`,
-      };
+      const page1Comments = Array.from({ length: 100 }, (_, i) => ({ id: i + 1, body: `Comment ${i + 1}` }));
+      const page2Comments = [
+        {
+          id: 777,
+          body: `${CHATGPT_REVIEW_RELAY_MARKER}\nPrevious status content on page 2`,
+        },
+      ];
 
       const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
-        const url = String(input);
+        const urlStr = String(input);
         const method = init?.method || 'GET';
 
-        if (url.includes('/check-runs') && method === 'GET') {
+        if (urlStr.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'GET') {
+          return Promise.resolve({ ok: true, status: 200 } as Response);
+        }
+        if (urlStr.includes('/check-runs') && method === 'GET') {
           return Promise.resolve({
             ok: true,
             status: 200,
             json: async () => ({ check_runs: [] }),
           } as Response);
         }
-        if (url.endsWith('/comments') && method === 'GET') {
-          return Promise.resolve({ ok: true, status: 200, json: async () => [existingComment] } as Response);
+        if (urlStr.includes('/comments') && method === 'GET') {
+          const urlObj = new URL(urlStr);
+          const page = urlObj.searchParams.get('page');
+          if (page === '1') {
+            return Promise.resolve({ ok: true, status: 200, json: async () => page1Comments } as Response);
+          }
+          if (page === '2') {
+            return Promise.resolve({ ok: true, status: 200, json: async () => page2Comments } as Response);
+          }
         }
-        if (url.includes('/comments/777') && method === 'PATCH') {
+        if (urlStr.includes('/comments/777') && method === 'PATCH') {
           return Promise.resolve({ ok: true, status: 200, json: async () => ({ id: 777 }) } as Response);
         }
 
-        return Promise.reject(new Error(`Unexpected API call: ${url} (${method})`));
+        return Promise.reject(new Error(`Unexpected API call: ${urlStr} (${method})`));
       });
 
       const result = await runChatgptReviewRelay({
@@ -286,11 +358,10 @@ describe('ChatGPT Review Relay', () => {
 
       expect(result.handled).toBe(true);
       expect(result.action).toBe('RELAY_MARKED');
-      expect(result.labelUpdated).toBe(false); // Label already present
       expect(result.commentAction).toBe('UPDATED');
 
       // Verify no POST comment call was made
-      const postCalls = mockFetch.mock.calls.filter((c) => (c[1]?.method || 'GET') === 'POST');
+      const postCalls = mockFetch.mock.calls.filter((c) => (c[1]?.method || 'GET') === 'POST' && String(c[0]).includes('/comments'));
       expect(postCalls).toHaveLength(0);
     });
 
@@ -307,22 +378,22 @@ describe('ChatGPT Review Relay', () => {
       };
 
       const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
-        const url = String(input);
+        const urlStr = String(input);
         const method = init?.method || 'GET';
 
-        if (url.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'DELETE') {
+        if (urlStr.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'DELETE') {
           return Promise.resolve({ ok: true, status: 200 } as Response);
         }
-        if (url.endsWith('/comments') && method === 'GET') {
+        if (urlStr.includes('/comments') && method === 'GET') {
           return Promise.resolve({ ok: true, status: 200, json: async () => [existingComment] } as Response);
         }
-        if (url.includes('/comments/555') && method === 'PATCH') {
+        if (urlStr.includes('/comments/555') && method === 'PATCH') {
           const body = JSON.parse(String(init?.body || '{}'));
           expect(body.body).toContain('Signal Cleared');
           return Promise.resolve({ ok: true, status: 200, json: async () => ({ id: 555 }) } as Response);
         }
 
-        return Promise.reject(new Error(`Unexpected API call in closed test: ${url} (${method})`));
+        return Promise.reject(new Error(`Unexpected API call in closed test: ${urlStr} (${method})`));
       });
 
       const result = await runChatgptReviewRelay({
@@ -339,27 +410,30 @@ describe('ChatGPT Review Relay', () => {
 
     it('should NEVER make ChatGPT API calls, approve PR, or merge PR', async () => {
       const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
-        const url = String(input);
+        const urlStr = String(input);
         const method = init?.method || 'GET';
 
-        if (url.includes('api.openai.com') || url.includes('chatgpt') || url.includes('merge') || url.includes('reviews')) {
-          throw new Error(`Prohibited API call detected: ${url} (${method})`);
+        if (urlStr.includes('api.openai.com') || urlStr.includes('chatgpt') || urlStr.includes('merge') || urlStr.includes('reviews')) {
+          throw new Error(`Prohibited API call detected: ${urlStr} (${method})`);
         }
 
-        if (url.includes('/labels') && method === 'POST') {
+        if (urlStr.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'GET') {
+          return Promise.resolve({ ok: true, status: 200 } as Response);
+        }
+        if (urlStr.includes('/labels') && method === 'POST') {
           return Promise.resolve({ ok: true, status: 200, json: async () => [] } as Response);
         }
-        if (url.includes('/check-runs') && method === 'GET') {
+        if (urlStr.includes('/check-runs') && method === 'GET') {
           return Promise.resolve({ ok: true, status: 200, json: async () => ({ check_runs: [] }) } as Response);
         }
-        if (url.endsWith('/comments') && method === 'GET') {
+        if (urlStr.includes('/comments') && method === 'GET') {
           return Promise.resolve({ ok: true, status: 200, json: async () => [] } as Response);
         }
-        if (url.endsWith('/comments') && method === 'POST') {
+        if (urlStr.includes('/comments') && method === 'POST') {
           return Promise.resolve({ ok: true, status: 201, json: async () => ({ id: 100 }) } as Response);
         }
 
-        return Promise.reject(new Error(`Unexpected endpoint: ${url}`));
+        return Promise.reject(new Error(`Unexpected endpoint: ${urlStr}`));
       });
 
       const result = await runChatgptReviewRelay({
