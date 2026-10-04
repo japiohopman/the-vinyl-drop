@@ -273,6 +273,7 @@ export async function fetchAllCommentsPaginated(
 
 /**
  * Ensures repository has the `chatgpt-review` label created.
+ * Re-verifies GET if POST returns 422 to strictly confirm label existence.
  */
 export async function ensureLabelProvisioned(
   owner: string,
@@ -297,7 +298,16 @@ export async function ensureLabelProvisioned(
           description: 'ChatGPT Architecture & Review Signal',
         }),
       });
-      return createRes.ok || createRes.status === 422; // 422 if already created concurrently
+
+      if (createRes.ok) {
+        return true;
+      }
+
+      if (createRes.status === 422) {
+        // Re-verify existence via GET to ensure label actually exists
+        const reCheckRes = await fetchFn(labelUrl, { headers });
+        return reCheckRes.ok;
+      }
     }
   } catch {
     // Return false on unexpected network failure
@@ -401,6 +411,7 @@ export async function runChatgptReviewRelay(options: RelayOptions): Promise<Rela
     };
   }
 
+  // 2. Add label to PR if not present (fail closed if adding label fails)
   if (!hasChatGptReviewLabel(pullRequest)) {
     try {
       const labelUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${pullRequest.number}/labels`;
@@ -412,14 +423,30 @@ export async function runChatgptReviewRelay(options: RelayOptions): Promise<Rela
       if (res.ok) {
         labelUpdated = true;
       } else {
-        errors.push(`Failed to add label: API status ${res.status}`);
+        errors.push(`Failed to add '${CHATGPT_REVIEW_LABEL}' label to PR #${pullRequest.number}: API status ${res.status}`);
+        return {
+          handled: true,
+          action: 'RELAY_MARKED',
+          eligibility,
+          labelUpdated: false,
+          commentAction: 'NONE',
+          errors,
+        };
       }
     } catch (err) {
-      errors.push(`Network error adding label: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`Network error adding label to PR #${pullRequest.number}: ${err instanceof Error ? err.message : String(err)}`);
+      return {
+        handled: true,
+        action: 'RELAY_MARKED',
+        eligibility,
+        labelUpdated: false,
+        commentAction: 'NONE',
+        errors,
+      };
     }
   }
 
-  // 2. Fetch check runs for HEAD commit
+  // 3. Fetch check runs for HEAD commit
   try {
     const checksUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${pullRequest.head.sha}/check-runs`;
     const checksRes = await fetchFn(checksUrl, { headers });
@@ -434,7 +461,7 @@ export async function runChatgptReviewRelay(options: RelayOptions): Promise<Rela
     errors.push(`Error fetching check runs: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  // 3. Create or Update Relay Comment (using pagination, fail-closed on error)
+  // 4. Create or Update Relay Comment (using pagination, fail-closed on error)
   try {
     const comments = await fetchAllCommentsPaginated(owner, repo, pullRequest.number, headers, fetchFn);
     const existingComment = comments.find((c) => c.body && c.body.includes(CHATGPT_REVIEW_RELAY_MARKER));

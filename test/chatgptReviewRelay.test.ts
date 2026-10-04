@@ -83,7 +83,7 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
-    it('should create label if GET returns 404', async () => {
+    it('should create label if GET returns 404 and POST returns 201', async () => {
       const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
         const url = String(input);
         const method = init?.method || 'GET';
@@ -102,6 +102,50 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       const success = await ensureLabelProvisioned('owner', 'repo', {}, mockFetch as unknown as typeof fetch);
       expect(success).toBe(true);
       expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should re-verify label existence via second GET if POST returns 422 and return true if second GET is 200', async () => {
+      let callCount = 0;
+      const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method || 'GET';
+        callCount++;
+
+        if (url.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'GET') {
+          if (callCount === 1) return Promise.resolve({ ok: false, status: 404 } as Response);
+          if (callCount === 3) return Promise.resolve({ ok: true, status: 200 } as Response);
+        }
+        if (url.endsWith('/labels') && method === 'POST') {
+          return Promise.resolve({ ok: false, status: 422 } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url} (${method})`));
+      });
+
+      const success = await ensureLabelProvisioned('owner', 'repo', {}, mockFetch as unknown as typeof fetch);
+      expect(success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('should return false if POST returns 422 and second GET returns 404 or 500', async () => {
+      let callCount = 0;
+      const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method || 'GET';
+        callCount++;
+
+        if (url.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'GET') {
+          if (callCount === 1) return Promise.resolve({ ok: false, status: 404 } as Response);
+          if (callCount === 3) return Promise.resolve({ ok: false, status: 500 } as Response);
+        }
+        if (url.endsWith('/labels') && method === 'POST') {
+          return Promise.resolve({ ok: false, status: 422 } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url} (${method})`));
+      });
+
+      const success = await ensureLabelProvisioned('owner', 'repo', {}, mockFetch as unknown as typeof fetch);
+      expect(success).toBe(false);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
     });
 
     it('should return false if GET returns 500 error', async () => {
@@ -317,6 +361,38 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       expect(result.errors).toBeDefined();
       expect(result.errors?.some((e) => e.includes('Failed to provision'))).toBe(true);
       expect(mockFetch).toHaveBeenCalledTimes(1); // Checked label, hit 500, immediately returned
+    });
+
+    it('should fail closed if adding label to PR fails and NOT proceed to comment creation/update', async () => {
+      const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
+        const urlStr = String(input);
+        const method = init?.method || 'GET';
+
+        if (urlStr.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'GET') {
+          return Promise.resolve({ ok: true, status: 200 } as Response);
+        }
+        if (urlStr.endsWith('/labels') && method === 'POST') {
+          return Promise.resolve({ ok: false, status: 500 } as Response);
+        }
+
+        return Promise.reject(new Error(`Unexpected API endpoint called when PR label addition failed: ${urlStr}`));
+      });
+
+      const result = await runChatgptReviewRelay({
+        repository,
+        pullRequest: validPr,
+        customFetch: mockFetch as unknown as typeof fetch,
+      });
+
+      expect(result.handled).toBe(true);
+      expect(result.commentAction).toBe('NONE');
+      expect(result.labelUpdated).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(result.errors?.some((e) => e.includes("Failed to add 'chatgpt-review' label"))).toBe(true);
+
+      // Verify no comments endpoint call was made
+      const commentCalls = mockFetch.mock.calls.filter((c) => String(c[0]).includes('/comments'));
+      expect(commentCalls).toHaveLength(0);
     });
 
     it('should provision label, add label, and create marked comment on eligible PR', async () => {
