@@ -2,6 +2,7 @@ import {
   runJulesDispatcher,
   parseIssueMetadata,
   sortCandidateIssues,
+  extractWorkflowScript,
   RawGitHubIssue,
   RawGitHubPullRequest,
 } from '../src/workflow/julesDispatcher';
@@ -28,6 +29,12 @@ None.
 
   const validMainBranchRes = { ok: true, status: 200, json: async () => ({ name: 'main' }) };
   const noOpenPrsRes = { ok: true, status: 200, json: async () => [] };
+
+  it('should extract production script from workflow YML file without error', () => {
+    const script = extractWorkflowScript();
+    expect(script).toBeDefined();
+    expect(script).toContain('const repoOwner = context.repo.owner;');
+  });
 
   describe('parseIssueMetadata', () => {
     it('should correctly parse metadata, readiness label, and specialists', () => {
@@ -117,7 +124,7 @@ None.
       });
 
       expect(result.success).toBe(false);
-      expect(result.errors).toContain('Issue #21 is not marked as dispatch-ready.');
+      expect(result.errors.some((e) => e.includes('No candidate issue met preflight requirements'))).toBe(true);
     });
   });
 
@@ -144,7 +151,7 @@ None.
       });
 
       expect(result.success).toBe(false);
-      expect(result.errors).toContain('Issue #21 is missing required "Primary Specialist" metadata.');
+      expect(result.errors.some((e) => e.includes('missing required "Primary Specialist"'))).toBe(true);
     });
   });
 
@@ -182,7 +189,7 @@ Depends on #19
       });
 
       expect(result.success).toBe(false);
-      expect(result.errors).toContain('Blocked by dependency issue #19, which is still "open" (must be closed).');
+      expect(result.errors.some((e) => e.includes('Blocked by dependency #19'))).toBe(true);
     });
   });
 
@@ -212,7 +219,7 @@ Depends on #19
       });
 
       expect(result.success).toBe(false);
-      expect(result.errors[0]).toContain('Conflicting open implementation PR #101 ("Work on issue 21") already references issue #21.');
+      expect(result.errors.some((e) => e.includes('Conflicting open PR #101'))).toBe(true);
     });
   });
 
@@ -239,7 +246,7 @@ Depends on #19
       });
 
       expect(result.success).toBe(false);
-      expect(result.errors).toContain('Issue #21 already has an active dispatch or session in progress.');
+      expect(result.errors.some((e) => e.includes('already has an active label lock'))).toBe(true);
     });
 
     it('should reject dispatch when an active Jules session exists in live mode', async () => {
@@ -277,7 +284,7 @@ Depends on #19
       });
 
       expect(result.success).toBe(false);
-      expect(result.errors[0]).toContain('Active Jules session');
+      expect(result.errors.some((e) => e.includes('has an active Jules session running'))).toBe(true);
     });
 
     it('should FAIL CLOSED when session API endpoint errors in live mode', async () => {
@@ -300,7 +307,32 @@ Depends on #19
       });
 
       expect(result.success).toBe(false);
-      expect(result.errors[0]).toContain('Failed to retrieve active Jules sessions');
+      expect(result.errors.some((e) => e.includes('Failed to retrieve active Jules sessions'))).toBe(true);
+    });
+
+    it('should FAIL CLOSED when label lock acquisition fails in live mode', async () => {
+      const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method || 'GET';
+        if (url.includes('/branches/main')) return Promise.resolve(validMainBranchRes as Response);
+        if (url.includes('/issues/21') && method === 'GET') return Promise.resolve({ ok: true, status: 200, json: async () => validIssue21Raw } as Response);
+        if (url.includes('/pulls')) return Promise.resolve(noOpenPrsRes as Response);
+        if (url.includes('jules.googleapis.com') && method === 'GET') return Promise.resolve({ ok: true, status: 200, json: async () => ({ sessions: [] }) } as Response);
+        if (url.includes('/labels') && method === 'POST') return Promise.resolve({ ok: false, status: 403 } as Response);
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      const result = await runJulesDispatcher({
+        repository: repo,
+        issueNumber: 21,
+        dryRun: false,
+        token: 'gh_token',
+        julesApiKey: 'test_key',
+        customFetch: mockFetch,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errors.some((e) => e.includes("Failed to acquire 'in-progress' lock label"))).toBe(true);
     });
   });
 

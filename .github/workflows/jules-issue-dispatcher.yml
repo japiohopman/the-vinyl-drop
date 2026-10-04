@@ -13,6 +13,10 @@ on:
         type: string
         required: false
 
+concurrency:
+  group: jules-dispatcher-${{ github.repository }}-${{ inputs.issue_number || 'auto' }}
+  cancel-in-progress: false
+
 permissions:
   contents: read
   issues: write
