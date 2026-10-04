@@ -1,0 +1,242 @@
+name: ChatGPT Review Relay
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - ready_for_review
+      - reopened
+      - synchronize
+      - closed
+    branches:
+      - main
+
+concurrency:
+  group: chatgpt-review-relay-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  checks: read
+  statuses: read
+
+jobs:
+  chatgpt-review-relay:
+    name: ChatGPT Review Relay Engine
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run ChatGPT Review Relay
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const MARKER = '<!-- chatgpt-review-relay-comment -->';
+            const RELAY_LABEL = 'chatgpt-review';
+
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.setFailed('No pull_request payload found in context.');
+              return;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = pr.number;
+
+            // Helper to parse governing issue (Refs #<number>)
+            function extractGoverningIssue(body) {
+              if (!body) return null;
+              const match = body.match(/Refs\s+#(\d+)/i);
+              if (!match) return null;
+              const parsed = parseInt(match[1], 10);
+              return !isNaN(parsed) && parsed > 0 ? parsed : null;
+            }
+
+            // Helper to check label presence
+            function hasRelayLabel(pullReq) {
+              if (!pullReq.labels) return false;
+              return pullReq.labels.some(l => (typeof l === 'string' ? l : l.name) === RELAY_LABEL);
+            }
+
+            // Helper to evaluate eligibility
+            function evaluateEligibility(pullReq) {
+              const reasons = [];
+              if (pullReq.state !== 'open') reasons.push(`PR state is "${pullReq.state}", expected "open".`);
+              if (pullReq.base?.ref !== 'main') reasons.push(`Target branch is "${pullReq.base?.ref}", expected "main".`);
+              if (pullReq.head?.ref === 'main') reasons.push('PR head branch is "main". Implementation must be on a feature branch.');
+
+              const baseRepo = pullReq.base?.repo?.full_name;
+              const headRepo = pullReq.head?.repo?.full_name;
+              if (!headRepo || !baseRepo || headRepo !== baseRepo) {
+                reasons.push(`PR is from a fork ("${headRepo || 'unknown'}" vs "${baseRepo || 'unknown'}"). Relay processes same-repository PRs only.`);
+              }
+
+              if (pullReq.draft === true) reasons.push('PR is a draft.');
+
+              const issueNumber = extractGoverningIssue(pullReq.body);
+              if (!issueNumber) reasons.push('Missing valid governing Issue reference (expected "Refs #<number>" in body).');
+
+              return {
+                eligible: reasons.length === 0,
+                issueNumber: issueNumber || undefined,
+                reasons,
+              };
+            }
+
+            // Helper to summarize check runs
+            function summarizeCheckState(checkRuns) {
+              if (!checkRuns || checkRuns.length === 0) {
+                return { overallState: 'NO_CHECKS', ciState: 'NOT_FOUND', safetyGateState: 'NOT_FOUND' };
+              }
+
+              let ciRun;
+              let safetyGateRun;
+
+              for (const run of checkRuns) {
+                const nameLower = (run.name || '').toLowerCase();
+                if (nameLower.includes('ci') || nameLower.includes('build-and-test') || nameLower.includes('build')) {
+                  ciRun = run;
+                }
+                if (nameLower.includes('safety gate') || nameLower.includes('validate-safety-gate') || nameLower.includes('pr contract')) {
+                  safetyGateRun = run;
+                }
+              }
+
+              const parseState = (run) => {
+                if (!run) return 'NOT_FOUND';
+                if (run.status !== 'completed') return 'PENDING';
+                if (run.conclusion === 'success' || run.conclusion === 'neutral') return 'SUCCESS';
+                return 'FAILURE';
+              };
+
+              const ciState = parseState(ciRun);
+              const gateRaw = parseState(safetyGateRun);
+              const safetyGateState = gateRaw === 'SUCCESS' ? 'PASSED' : gateRaw === 'FAILURE' ? 'FAILED' : gateRaw;
+
+              let overallState = 'SUCCESS';
+              const hasFailure = checkRuns.some(r => r.status === 'completed' && ['failure', 'timed_out', 'action_required', 'cancelled'].includes(r.conclusion));
+              const hasPending = checkRuns.some(r => r.status !== 'completed');
+
+              if (hasFailure) overallState = 'FAILURE';
+              else if (hasPending) overallState = 'PENDING';
+
+              return { overallState, ciState, safetyGateState };
+            }
+
+            // Helper to generate comment markdown
+            function generateCommentBody(pullReq, issueNum, checkSummary, isClosed) {
+              if (isClosed) {
+                return `${MARKER}\n### 🤖 ChatGPT Review Relay Status: Signal Cleared\n\n**Status**: Active review signal cleared (PR Closed).\n- **PR**: #${pullReq.number} — ${pullReq.title}\n- **Branch**: \`${pullReq.head?.ref}\` \n- **HEAD Commit**: \`${pullReq.head?.sha}\` \n- **Governing Issue**: ${issueNum ? `#${issueNum}` : 'N/A'}\n`;
+              }
+
+              const summary = checkSummary || { overallState: 'NO_CHECKS', ciState: 'NOT_FOUND', safetyGateState: 'NOT_FOUND' };
+
+              return `${MARKER}\n### 🤖 ChatGPT Review Relay Status\n\n| Property | Value |\n| --- | --- |\n| **PR** | #${pullReq.number} — ${pullReq.title} |\n| **Branch** | \`${pullReq.head?.ref}\` |\n| **HEAD Commit** | \`${pullReq.head?.sha}\` |\n| **Governing Issue** | ${issueNum ? `#${issueNum}` : 'N/A'} |\n| **CI / Check State** | ${summary.ciState} (Overall: ${summary.overallState}) |\n| **Phase Safety Gate** | ${summary.safetyGateState} |\n| **Next Review Step** | Ready for ChatGPT architecture and code review inspection |\n\n---\n*Note: This relay is an automated metadata/signal mechanism only. It does not perform auto-approval, auto-merge, or API calls to ChatGPT.*\n`;
+            }
+
+            // Execute relay logic
+            if (pr.state === 'closed') {
+              core.info(`PR #${prNumber} is closed. Clearing review signal...`);
+
+              // Remove label if present
+              if (hasRelayLabel(pr)) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number: prNumber,
+                    name: RELAY_LABEL,
+                  });
+                  core.info(`Removed '${RELAY_LABEL}' label from PR #${prNumber}.`);
+                } catch (err) {
+                  core.warning(`Could not remove label: ${err.message}`);
+                }
+              }
+
+              // Update comment if present
+              const issueNum = extractGoverningIssue(pr.body);
+              const commentsRes = await github.rest.issues.listComments({
+                owner,
+                repo,
+                issue_number: prNumber,
+              });
+              const markedComment = commentsRes.data.find(c => c.body && c.body.includes(MARKER));
+
+              if (markedComment) {
+                const clearedBody = generateCommentBody(pr, issueNum, null, true);
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: markedComment.id,
+                  body: clearedBody,
+                });
+                core.info(`Updated marked comment on PR #${prNumber} to cleared state.`);
+              }
+              return;
+            }
+
+            // Open PR evaluation
+            const eligibility = evaluateEligibility(pr);
+            if (!eligibility.eligible) {
+              core.info(`PR #${prNumber} is ineligible for ChatGPT Review Relay:`);
+              for (const r of eligibility.reasons) {
+                core.info(` - ${r}`);
+              }
+              return;
+            }
+
+            core.info(`✅ PR #${prNumber} is eligible for ChatGPT Review Relay.`);
+
+            // Add label if not present
+            if (!hasRelayLabel(pr)) {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: prNumber,
+                labels: [RELAY_LABEL],
+              });
+              core.info(`Added '${RELAY_LABEL}' label to PR #${prNumber}.`);
+            }
+
+            // Get check runs
+            let checkSummary = { overallState: 'NO_CHECKS', ciState: 'NOT_FOUND', safetyGateState: 'NOT_FOUND' };
+            try {
+              const checksRes = await github.rest.checks.listForRef({
+                owner,
+                repo,
+                ref: pr.head.sha,
+              });
+              checkSummary = summarizeCheckState(checksRes.data.check_runs || []);
+            } catch (err) {
+              core.warning(`Could not fetch check runs for SHA ${pr.head.sha}: ${err.message}`);
+            }
+
+            // Maintain single comment
+            const commentsRes = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber,
+            });
+            const existingComment = commentsRes.data.find(c => c.body && c.body.includes(MARKER));
+            const newCommentBody = generateCommentBody(pr, eligibility.issueNumber, checkSummary, false);
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body: newCommentBody,
+              });
+              core.info(`Updated existing relay comment #${existingComment.id} on PR #${prNumber}.`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body: newCommentBody,
+              });
+              core.info(`Created new relay comment on PR #${prNumber}.`);
+            }
