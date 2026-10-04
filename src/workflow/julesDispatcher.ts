@@ -24,6 +24,7 @@ export interface JulesSessionPayload {
   title: string;
   prompt: string;
   sourceContext: {
+    source: string;
     githubRepoContext: {
       startingBranch: string;
     };
@@ -69,10 +70,10 @@ export interface RawJulesSession {
   state?: string;
   title?: string;
   sourceContext?: {
+    source?: string;
     githubRepoContext?: {
       startingBranch?: string;
     };
-    source?: string;
   };
 }
 
@@ -256,15 +257,16 @@ export async function checkConflictingPullRequests(
 
 /**
  * Checks active sessions via official Jules API (https://jules.googleapis.com/v1alpha/sessions).
+ * FAILS CLOSED on any HTTP error or network exception.
  */
 export async function checkActiveJulesSession(
   repository: string,
   issueNumber: number,
   julesApiKey?: string,
   customFetch?: typeof fetch
-): Promise<{ hasActiveSession: boolean; error?: string }> {
+): Promise<{ ok: boolean; hasActiveSession: boolean; error?: string }> {
   if (!julesApiKey) {
-    return { hasActiveSession: false };
+    return { ok: false, hasActiveSession: false, error: 'Missing JULES_API_KEY required for session verification.' };
   }
 
   const fetchFn = customFetch || globalThis.fetch;
@@ -279,50 +281,77 @@ export async function checkActiveJulesSession(
       },
     });
 
-    if (res.ok) {
-      const data = (await res.json()) as { sessions?: RawJulesSession[] };
-      const sessions = data.sessions || [];
-      const activeStates = ['STATE_ACTIVE', 'ACTIVE', 'RUNNING', 'STATE_RUNNING', 'IN_PROGRESS', 'STATE_UNSPECIFIED'];
+    if (!res.ok) {
+      return {
+        ok: false,
+        hasActiveSession: false,
+        error: `Failed to retrieve active Jules sessions: API returned HTTP status ${res.status} (fail closed).`,
+      };
+    }
 
-      for (const sess of sessions) {
-        const sessState = (sess.state || '').toUpperCase();
-        const title = sess.title || '';
-        const source = sess.sourceContext?.source || '';
+    const data = (await res.json()) as { sessions?: RawJulesSession[] };
+    const sessions = data.sessions || [];
+    // Official Jules active non-terminal session states
+    const activeStates = [
+      'QUEUED',
+      'PLANNING',
+      'AWAITING_PLAN_APPROVAL',
+      'AWAITING_USER_FEEDBACK',
+      'IN_PROGRESS',
+      'PAUSED',
+      'STATE_ACTIVE',
+      'RUNNING',
+      'STATE_RUNNING',
+    ];
 
-        const referencesRepo = source ? source.includes(repository) : true;
-        const referencesIssue = title.includes(`#${issueNumber}`) || title.includes(`issue-${issueNumber}`);
-        const isActive = activeStates.includes(sessState) || sessState === '';
+    for (const sess of sessions) {
+      const sessState = (sess.state || '').toUpperCase();
+      const title = sess.title || '';
+      const source = sess.sourceContext?.source || '';
 
-        if (referencesRepo && referencesIssue && isActive) {
-          return {
-            hasActiveSession: true,
-            error: `Active Jules session "${sess.name || title}" is already running for issue #${issueNumber}.`,
-          };
-        }
+      const referencesRepo = source ? source.includes(repository) : true;
+      const referencesIssue = title.includes(`#${issueNumber}`) || title.includes(`issue-${issueNumber}`);
+      const isActive = activeStates.includes(sessState);
+
+      if (referencesRepo && referencesIssue && isActive) {
+        return {
+          ok: true,
+          hasActiveSession: true,
+          error: `Active Jules session "${sess.name || title}" (state: ${sessState}) is already running for issue #${issueNumber}.`,
+        };
       }
     }
-  } catch {
-    // API session check fallback
-  }
 
-  return { hasActiveSession: false };
+    return { ok: true, hasActiveSession: false };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      hasActiveSession: false,
+      error: `Network failure checking active Jules sessions: ${msg} (fail closed).`,
+    };
+  }
 }
 
 /**
- * Locks the GitHub issue by applying the 'in-progress' label upon successful live dispatch.
+ * Acquires a label lock ('in-progress') on the GitHub Issue before triggering session creation.
+ * Fails closed if label application fails.
  */
-export async function lockDispatchedIssue(
+export async function acquireIssueLock(
   repository: string,
   issueNumber: number,
   token?: string,
   customFetch?: typeof fetch
-): Promise<void> {
-  if (!token) return;
+): Promise<{ success: boolean; error?: string }> {
+  if (!token) {
+    return { success: false, error: 'Missing GITHUB_TOKEN required for lock acquisition.' };
+  }
+
   const fetchFn = customFetch || globalThis.fetch;
   const url = `https://api.github.com/repos/${repository}/issues/${issueNumber}/labels`;
 
   try {
-    await fetchFn(url, {
+    const res = await fetchFn(url, {
       method: 'POST',
       headers: {
         Accept: 'application/vnd.github+json',
@@ -331,8 +360,21 @@ export async function lockDispatchedIssue(
       },
       body: JSON.stringify({ labels: ['in-progress'] }),
     });
-  } catch {
-    // Ignore label application failure
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: `Failed to acquire lock label for issue #${issueNumber}: HTTP status ${res.status} (fail closed).`,
+      };
+    }
+
+    return { success: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      error: `Failed to acquire lock label for issue #${issueNumber}: ${msg} (fail closed).`,
+    };
   }
 }
 
@@ -520,20 +562,36 @@ export async function runJulesDispatcher(
       continue;
     }
 
-    // Check active session via Jules API endpoint
-    const sessionCheck = await checkActiveJulesSession(options.repository, meta.issueNumber, options.julesApiKey, fetchFn);
-    if (sessionCheck.hasActiveSession) {
-      errors.push(sessionCheck.error || `Active Jules session already running for issue #${meta.issueNumber}.`);
-      if (options.issueNumber) {
-        return {
-          success: false,
-          issueNumber: meta.issueNumber,
-          issueTitle: meta.title,
-          dryRun: options.dryRun,
-          errors,
-        };
+    // Check active session via Jules API endpoint ONLY in live dispatch mode
+    if (!options.dryRun) {
+      const sessionCheck = await checkActiveJulesSession(options.repository, meta.issueNumber, options.julesApiKey, fetchFn);
+      if (!sessionCheck.ok) {
+        errors.push(sessionCheck.error || `Failed to verify Jules active session state (fail closed).`);
+        if (options.issueNumber) {
+          return {
+            success: false,
+            issueNumber: meta.issueNumber,
+            issueTitle: meta.title,
+            dryRun: options.dryRun,
+            errors,
+          };
+        }
+        continue;
       }
-      continue;
+
+      if (sessionCheck.hasActiveSession) {
+        errors.push(sessionCheck.error || `Active Jules session already running for issue #${meta.issueNumber}.`);
+        if (options.issueNumber) {
+          return {
+            success: false,
+            issueNumber: meta.issueNumber,
+            issueTitle: meta.title,
+            dryRun: options.dryRun,
+            errors,
+          };
+        }
+        continue;
+      }
     }
 
     // Preflight Check 4: Mandatory metadata
@@ -619,6 +677,7 @@ export async function runJulesDispatcher(
     title: `[Issue #${selectedCandidate.issueNumber}] ${selectedCandidate.title}`,
     prompt: `Start Issue #${selectedCandidate.issueNumber} — ${selectedCandidate.title}\n\nPrimary Specialist: ${selectedCandidate.primarySpecialist || 'Architecture Specialist'}\nSecondary Specialist: ${selectedCandidate.secondarySpecialist || 'Verification Specialist'}\n\nGoal:\n${selectedCandidate.body}`,
     sourceContext: {
+      source: `sources/github/${options.repository}`,
       githubRepoContext: {
         startingBranch: 'main',
       },
@@ -626,7 +685,7 @@ export async function runJulesDispatcher(
     automationMode: 'AUTO_CREATE_PR',
   };
 
-  // If dry run, do NOT execute live Jules API call
+  // If dry run, do NOT execute ANY live Jules API call
   if (options.dryRun) {
     return {
       success: true,
@@ -649,6 +708,19 @@ export async function runJulesDispatcher(
       selectedIssue: selectedCandidate,
       dryRun: false,
       errors: ['Live dispatch failed: missing or empty JULES_API_KEY secret.'],
+    };
+  }
+
+  // Acquire lock label FIRST before calling Jules API (Fail closed if lock acquisition fails)
+  const lockResult = await acquireIssueLock(options.repository, selectedCandidate.issueNumber, options.token, fetchFn);
+  if (!lockResult.success) {
+    return {
+      success: false,
+      issueNumber: selectedCandidate.issueNumber,
+      issueTitle: selectedCandidate.title,
+      selectedIssue: selectedCandidate,
+      dryRun: false,
+      errors: [lockResult.error || `Lock acquisition failed for issue #${selectedCandidate.issueNumber} (fail closed).`],
     };
   }
 
@@ -675,9 +747,6 @@ export async function runJulesDispatcher(
         errors: [`Live Jules API dispatch returned HTTP status ${liveRes.status}.`],
       };
     }
-
-    // Apply lock label to GitHub issue after successful live dispatch
-    await lockDispatchedIssue(options.repository, selectedCandidate.issueNumber, options.token, fetchFn);
 
     return {
       success: true,
