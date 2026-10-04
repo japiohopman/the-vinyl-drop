@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   runJulesSessionCleanup,
   parseSessionInputs,
@@ -38,9 +40,19 @@ describe('Jules Manual Stale-Session Cleanup Engine', () => {
     },
   };
 
-  describe('Input Parsing and Normalization', () => {
-    it('should parse comma, newline, and space separated session IDs into normalized resource names', () => {
-      const input = '12345, sessions/67890\nprojects/-/locations/global/sessions/99999 12345';
+  describe('Workflow Contract Safeguard', () => {
+    it('should verify .github/workflows/jules-session-cleanup.yml explicitly binds checkout to trusted main branch', () => {
+      const ymlPath = path.resolve(process.cwd(), '.github/workflows/jules-session-cleanup.yml');
+      const ymlContent = fs.readFileSync(ymlPath, 'utf-8');
+
+      expect(ymlContent).toContain('uses: actions/checkout@v4');
+      expect(ymlContent).toContain('ref: main');
+    });
+  });
+
+  describe('Input Parsing and Strict Normalization', () => {
+    it('should parse comma, newline, and space separated valid session IDs into normalized resource names', () => {
+      const input = '12345, sessions/67890\nprojects/proj/locations/global/sessions/99999 12345';
       const parsed = parseSessionInputs(input);
       expect(parsed).toEqual(['sessions/12345', 'sessions/67890', 'sessions/99999']);
     });
@@ -48,6 +60,12 @@ describe('Jules Manual Stale-Session Cleanup Engine', () => {
     it('should handle array inputs cleanly', () => {
       const parsed = parseSessionInputs(['11111', 'sessions/22222']);
       expect(parsed).toEqual(['sessions/11111', 'sessions/22222']);
+    });
+
+    it('should reject malformed session resource paths or arbitrary file paths', () => {
+      const malformedInput = '../../etc/passwd, sessions/123/extra, invalid@id, 12345';
+      const parsed = parseSessionInputs(malformedInput);
+      expect(parsed).toEqual(['sessions/12345']);
     });
   });
 
@@ -266,21 +284,11 @@ describe('Jules Manual Stale-Session Cleanup Engine', () => {
     });
   });
 
-  describe('Verification Requirement 6: Invalid Confirmation Token Protection', () => {
-    it('should NOT delete session when confirmation token is invalid even if dryRun is false', async () => {
-      const mockFetch = jest.fn<Promise<Response>, [string | URL | Request, RequestInit?]>(
-        (input: string | URL | Request) => {
-          const url = String(input);
-          if (url.includes('/sessions/10001')) {
-            return Promise.resolve({
-              ok: true,
-              status: 200,
-              json: async () => validStaleSession,
-            } as Response);
-          }
-          return Promise.reject(new Error(`Unexpected URL: ${url}`));
-        }
-      );
+  describe('Verification Requirement 6: Immediate Fail Closed on Invalid Confirmation Token in Live Mode', () => {
+    it('should FAIL CLOSED immediately with success false and ZERO API calls when confirmation token is invalid in dryRun false mode', async () => {
+      const mockFetch = jest.fn<Promise<Response>, [string | URL | Request, RequestInit?]>(() => {
+        throw new Error('API calls must NOT be made when confirmation token is invalid!');
+      });
 
       const result = await runJulesSessionCleanup({
         repository,
@@ -291,16 +299,14 @@ describe('Jules Manual Stale-Session Cleanup Engine', () => {
         customFetch: mockFetch as unknown as typeof fetch,
       });
 
+      expect(result.success).toBe(false);
       expect(result.deletionAuthorized).toBe(false);
+      expect(result.inspectedCount).toBe(0);
       expect(result.deletedCount).toBe(0);
-      expect(result.sessions[0].isDeletable).toBe(true);
-      expect(result.sessions[0].deleted).toBe(false);
+      expect(result.errors.some((e) => e.includes('Invalid confirmation token'))).toBe(true);
 
-      const deleteCalls = mockFetch.mock.calls.filter((c) => {
-        const i = c[1];
-        return i?.method === 'DELETE';
-      });
-      expect(deleteCalls.length).toBe(0);
+      // Verify zero fetch calls were attempted
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 

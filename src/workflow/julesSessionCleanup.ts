@@ -59,13 +59,16 @@ export const ACTIVE_RUNNING_STATES = [
 export const REQUIRED_CONFIRMATION_TOKEN = 'DELETE_STALE_SESSIONS';
 
 /**
- * Parses raw input strings into distinct normalized session resource identifiers.
- * E.g., "12345, sessions/67890\nprojects/-/locations/global/sessions/999"
- * -> ["sessions/12345", "sessions/67890", "sessions/999"]
+ * Strictly parses and validates raw input strings into distinct normalized session resource identifiers.
+ * Accepts formats: "12345", "sessions/12345", or "projects/proj/locations/global/sessions/12345".
+ * Rejects malformed paths, path traversals, or invalid characters.
  */
 export function parseSessionInputs(inputs: string | string[]): string[] {
   const rawList: string[] = Array.isArray(inputs) ? inputs : [inputs];
   const items: string[] = [];
+
+  // Regex matching strict session ID or resource path format
+  const sessionPattern = /^(?:(?:projects\/[a-zA-Z0-9_-]+\/locations\/[a-zA-Z0-9_-]+\/)?sessions\/)?([a-zA-Z0-9_-]+)$/;
 
   for (const rawItem of rawList) {
     if (!rawItem) continue;
@@ -75,16 +78,13 @@ export function parseSessionInputs(inputs: string | string[]): string[] {
       const trimmed = part.trim();
       if (!trimmed) continue;
 
-      let normalized = trimmed;
-      if (normalized.includes('sessions/')) {
-        const idx = normalized.indexOf('sessions/');
-        normalized = normalized.substring(idx);
-      } else {
-        normalized = `sessions/${normalized}`;
-      }
-
-      if (!items.includes(normalized)) {
-        items.push(normalized);
+      const match = trimmed.match(sessionPattern);
+      if (match) {
+        const sessionId = match[1];
+        const normalized = `sessions/${sessionId}`;
+        if (!items.includes(normalized)) {
+          items.push(normalized);
+        }
       }
     }
   }
@@ -128,6 +128,23 @@ export async function runJulesSessionCleanup(options: SessionCleanupOptions): Pr
     };
   }
 
+  const confirmation = (options.confirmationToken || '').trim();
+
+  // Guard: In live deletion mode (dryRun === false), invalid confirmation token must fail closed immediately
+  if (!options.dryRun && confirmation !== REQUIRED_CONFIRMATION_TOKEN) {
+    return {
+      success: false,
+      dryRun: false,
+      deletionAuthorized: false,
+      inspectedCount: 0,
+      deletedCount: 0,
+      sessions: [],
+      errors: [
+        `Invalid confirmation token "${confirmation || '(omitted)'}" for live session deletion. Required confirmation token is "${REQUIRED_CONFIRMATION_TOKEN}". Operation failed closed without inspecting or deleting sessions.`,
+      ],
+    };
+  }
+
   const normalizedSessionNames = parseSessionInputs(options.sessionInputs);
   if (normalizedSessionNames.length === 0) {
     return {
@@ -141,7 +158,6 @@ export async function runJulesSessionCleanup(options: SessionCleanupOptions): Pr
     };
   }
 
-  const confirmation = (options.confirmationToken || '').trim();
   const deletionAuthorized = !options.dryRun && confirmation === REQUIRED_CONFIRMATION_TOKEN;
 
   let overallSuccess = true;
@@ -300,8 +316,6 @@ export async function runJulesSessionCleanup(options: SessionCleanupOptions): Pr
       let notDeletedReason = 'Session is stale and eligible for deletion, but deletion was not authorized.';
       if (options.dryRun) {
         notDeletedReason += ' (Dry run mode active)';
-      } else if (confirmation !== REQUIRED_CONFIRMATION_TOKEN) {
-        notDeletedReason += ` (Invalid confirmation token "${confirmation}". Required: "${REQUIRED_CONFIRMATION_TOKEN}")`;
       }
 
       sessionResults.push({
