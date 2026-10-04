@@ -107,9 +107,17 @@ jobs:
               const body = issue.body || '';
               const labels = (issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
               const hasReadyLabel = labels.some((l) => ['dispatch-ready', 'ready-for-dispatch', 'ready'].includes(l.toLowerCase()));
-              const bodyReadyMatch = body.match(/###\s*(?:Dispatch\s*)?Readiness[\s\S]*?(ready|dispatch-ready)/i) ||
-                body.match(/\*\*Readiness\*\*:\s*(ready|dispatch-ready)/i);
-              const isDispatchReady = hasReadyLabel || Boolean(bodyReadyMatch);
+
+              const readinessMatch = body.match(/(?:###\s*(?:Dispatch\s*)?Readiness|\*\*Readiness\*\*|Readiness:)\s*[:\r\n]*\s*([^\r\n]+)/i);
+              let isDispatchReady = hasReadyLabel;
+              if (readinessMatch) {
+                const value = readinessMatch[1].trim().toLowerCase();
+                if (['ready', 'dispatch-ready', 'ready-for-dispatch'].includes(value)) {
+                  isDispatchReady = true;
+                } else if (value.includes('not ready') || value.includes('unready') || value.includes('false')) {
+                  isDispatchReady = false;
+                }
+              }
 
               let primarySpecialist;
               const primaryMatch = body.match(/\*\*Primary\s*(?:Specialist)?\*\*:\s*([^\r\n]+)/i) || body.match(/Primary\s*(?:Specialist)?:\s*([^\r\n]+)/i);
@@ -241,8 +249,8 @@ jobs:
 
               // Check PR collisions
               const refRegex = new RegExp(`(?:Refs|Closes|Fixes|Resolves)\\s+#${candidate.issueNumber}\\b`, 'i');
-              const branchRegex = new RegExp(`(?:issue|feature)[/-]?${candidate.issueNumber}\\b`, 'i');
-              const conflictingPr = openPRs.find((pr) => refRegex.test(pr.body || '') || branchRegex.test(pr.head.ref || ''));
+              const branchRegex = new RegExp(`(?:issue|feature|branch)[/_-]*(?:issue|feature)?[/_-]*${candidate.issueNumber}\\b`, 'i');
+              const conflictingPr = openPRs.find((pr) => refRegex.test(pr.body || '') || branchRegex.test(pr.head?.ref || ''));
               if (conflictingPr) {
                 errors.push(`Conflicting open PR #${conflictingPr.number} already references issue #${candidate.issueNumber}.`);
                 continue;

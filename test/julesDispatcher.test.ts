@@ -95,6 +95,32 @@ None.
       expect(result.success).toBe(false);
       expect(result.errors.some((e) => e.includes('No candidate issue met preflight requirements'))).toBe(true);
     });
+
+    it('should explicitly reject issue with body "### Dispatch Readiness\\nnot ready"', async () => {
+      const explicitNotReadyIssue: RawGitHubIssue = {
+        ...validIssue21Raw,
+        labels: [],
+        body: '### Dispatch Readiness\nnot ready\n\n**Primary Specialist**: Architecture Specialist',
+      };
+
+      const mockFetch = jest.fn((input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes('/branches/main')) return Promise.resolve(validMainBranchRes as Response);
+        if (url.includes('/issues/21')) return Promise.resolve({ ok: true, status: 200, json: async () => explicitNotReadyIssue } as Response);
+        if (url.includes('/pulls')) return Promise.resolve(noOpenPrsRes as Response);
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      const result = await runJulesDispatcher({
+        repository: repo,
+        issueNumber: 21,
+        dryRun: true,
+        customFetch: mockFetch,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errors.some((e) => e.includes('No candidate issue met preflight requirements'))).toBe(true);
+    });
   });
 
   describe('Verification Requirement 3: Missing/malformed metadata is rejected', () => {
@@ -163,12 +189,12 @@ Depends on #19
   });
 
   describe('Verification Requirement 5: Existing implementation PR blocks dispatch', () => {
-    it('should reject dispatch when an open PR already references the issue', async () => {
+    it('should reject dispatch when an open PR body references the issue', async () => {
       const conflictingPr: RawGitHubPullRequest = {
         number: 101,
         title: 'Work on issue 21',
         body: 'Refs #21',
-        head: { ref: 'feature/issue-21' },
+        head: { ref: 'random-branch-name' },
         base: { ref: 'main' },
       };
 
@@ -189,6 +215,34 @@ Depends on #19
 
       expect(result.success).toBe(false);
       expect(result.errors.some((e) => e.includes('Conflicting open PR #101'))).toBe(true);
+    });
+
+    it('should reject dispatch when an open PR head branch is feature/issue-21 even without body reference', async () => {
+      const conflictingBranchPr: RawGitHubPullRequest = {
+        number: 102,
+        title: 'Feature Work',
+        body: 'No explicit refs in body',
+        head: { ref: 'feature/issue-21' },
+        base: { ref: 'main' },
+      };
+
+      const mockFetch = jest.fn((input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes('/branches/main')) return Promise.resolve(validMainBranchRes as Response);
+        if (url.includes('/issues/21')) return Promise.resolve({ ok: true, status: 200, json: async () => validIssue21Raw } as Response);
+        if (url.includes('/pulls')) return Promise.resolve({ ok: true, status: 200, json: async () => [conflictingBranchPr] } as Response);
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      const result = await runJulesDispatcher({
+        repository: repo,
+        issueNumber: 21,
+        dryRun: true,
+        customFetch: mockFetch,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errors.some((e) => e.includes('Conflicting open PR #102'))).toBe(true);
     });
   });
 
