@@ -10,25 +10,11 @@ export interface DispatcherOptions {
   customFetch?: typeof fetch;
 }
 
-export interface IssueMetadata {
-  issueNumber: number;
-  title: string;
-  body: string;
-  state: string;
-  labels: string[];
-  primarySpecialist?: string;
-  secondarySpecialist?: string;
-  priority?: number;
-  dependencies: number[];
-  isDispatchReady: boolean;
-}
-
 export interface PreflightResult {
   success: boolean;
   issueNumber?: number;
   issueTitle?: string;
   dryRun: boolean;
-  selectedIssue?: IssueMetadata;
   errors: string[];
   warnings?: string[];
   dispatchPayload?: {
@@ -67,7 +53,7 @@ export interface RawGitHubPullRequest {
 }
 
 /**
- * Extracts the inline script from `.github/workflows/jules-issue-dispatcher.yml`.
+ * Extracts the exact inline script from `.github/workflows/jules-issue-dispatcher.yml`.
  */
 export function extractWorkflowScript(): string {
   const ymlPath = path.resolve(process.cwd(), '.github/workflows/jules-issue-dispatcher.yml');
@@ -80,79 +66,7 @@ export function extractWorkflowScript(): string {
 }
 
 /**
- * Helper to parse metadata from raw GitHub issue format (used in helper tests).
- */
-export function parseIssueMetadata(issue: RawGitHubIssue): IssueMetadata {
-  const body = issue.body || '';
-  const rawLabels = issue.labels || [];
-  const labels = rawLabels.map((l) => (typeof l === 'string' ? l : l.name));
-
-  const hasReadyLabel = labels.some((l) =>
-    ['dispatch-ready', 'ready-for-dispatch', 'ready'].includes(l.toLowerCase())
-  );
-  const bodyReadyMatch = body.match(/###\s*(?:Dispatch\s*)?Readiness[\s\S]*?(ready|dispatch-ready)/i) ||
-    body.match(/\*\*Readiness\*\*:\s*(ready|dispatch-ready)/i);
-  const isDispatchReady = hasReadyLabel || Boolean(bodyReadyMatch);
-
-  let primarySpecialist: string | undefined;
-  let secondarySpecialist: string | undefined;
-
-  const primaryMatch = body.match(/\*\*Primary\s*(?:Specialist)?\*\*:\s*([^\r\n]+)/i) || body.match(/Primary\s*(?:Specialist)?:\s*([^\r\n]+)/i);
-  if (primaryMatch) primarySpecialist = primaryMatch[1].trim();
-
-  const secondaryMatch = body.match(/\*\*Secondary\s*(?:Specialist)?\*\*:\s*([^\r\n]+)/i) || body.match(/Secondary\s*(?:Specialist)?:\s*([^\r\n]+)/i);
-  if (secondaryMatch) secondarySpecialist = secondaryMatch[1].trim();
-
-  let priority = 3;
-  const prioMatch = body.match(/\*\*(?:Priority|P)\*\*:\s*(?:P)?(\d+)/i) || body.match(/Priority:\s*(?:P)?(\d+)/i);
-  if (prioMatch) {
-    const p = parseInt(prioMatch[1], 10);
-    if (!isNaN(p) && p >= 1) priority = p;
-  }
-
-  const dependencies: number[] = [];
-  const depMatch = body.match(/###\s*Dependencies[\s\S]*?(?=\n##|$)/i) || body.match(/(?:Depends\s+on|Dependencies):\s*([^\r\n]+)/i);
-  if (depMatch) {
-    const depText = depMatch[0];
-    const matches = depText.matchAll(/#(\d+)/g);
-    for (const m of matches) {
-      const num = parseInt(m[1], 10);
-      if (!isNaN(num) && num !== issue.number && !dependencies.includes(num)) {
-        dependencies.push(num);
-      }
-    }
-  }
-
-  return {
-    issueNumber: issue.number,
-    title: issue.title,
-    body,
-    state: issue.state,
-    labels,
-    primarySpecialist,
-    secondarySpecialist,
-    priority,
-    dependencies,
-    isDispatchReady,
-  };
-}
-
-/**
- * Deterministic sorting function for candidate issues.
- */
-export function sortCandidateIssues(issues: IssueMetadata[]): IssueMetadata[] {
-  return [...issues].sort((a, b) => {
-    const prioA = a.priority ?? 3;
-    const prioB = b.priority ?? 3;
-    if (prioA !== prioB) {
-      return prioA - prioB;
-    }
-    return a.issueNumber - b.issueNumber;
-  });
-}
-
-/**
- * Executes the exact inline production workflow script against test mocks.
+ * Executes the exact production workflow script from `.github/workflows/jules-issue-dispatcher.yml` against test mocks.
  */
 export async function runJulesDispatcher(options: DispatcherOptions): Promise<PreflightResult> {
   const scriptCode = extractWorkflowScript();

@@ -1,13 +1,13 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   runJulesDispatcher,
-  parseIssueMetadata,
-  sortCandidateIssues,
   extractWorkflowScript,
   RawGitHubIssue,
   RawGitHubPullRequest,
 } from '../src/workflow/julesDispatcher';
 
-describe('Jules Issue Dispatcher and Preflight', () => {
+describe('Jules Issue Dispatcher and Preflight (Authoritative Workflow Test)', () => {
   const repo = 'japiohopman/the-vinyl-drop';
 
   const validIssue21Raw: RawGitHubIssue = {
@@ -34,42 +34,11 @@ None.
     const script = extractWorkflowScript();
     expect(script).toBeDefined();
     expect(script).toContain('const repoOwner = context.repo.owner;');
-  });
 
-  describe('parseIssueMetadata', () => {
-    it('should correctly parse metadata, readiness label, and specialists', () => {
-      const meta = parseIssueMetadata(validIssue21Raw);
-      expect(meta.issueNumber).toBe(21);
-      expect(meta.isDispatchReady).toBe(true);
-      expect(meta.primarySpecialist).toBe('Architecture Specialist');
-      expect(meta.secondarySpecialist).toBe('Verification Specialist');
-      expect(meta.dependencies).toEqual([]);
-    });
-
-    it('should parse readiness from body text if label is absent', () => {
-      const issue: RawGitHubIssue = {
-        number: 22,
-        title: 'Test Issue',
-        state: 'open',
-        labels: [],
-        body: '### Dispatch Readiness\nready\n\n**Primary Specialist**: UI Specialist',
-      };
-      const meta = parseIssueMetadata(issue);
-      expect(meta.isDispatchReady).toBe(true);
-      expect(meta.primarySpecialist).toBe('UI Specialist');
-    });
-
-    it('should parse dependency issue numbers', () => {
-      const issue: RawGitHubIssue = {
-        number: 23,
-        title: 'Dependent Issue',
-        state: 'open',
-        labels: ['dispatch-ready'],
-        body: '### Dependencies\nDepends on #20 and #21\n\n**Primary Specialist**: Architecture Specialist',
-      };
-      const meta = parseIssueMetadata(issue);
-      expect(meta.dependencies).toEqual([20, 21]);
-    });
+    const ymlPath = path.resolve(process.cwd(), '.github/workflows/jules-issue-dispatcher.yml');
+    const ymlContent = fs.readFileSync(ymlPath, 'utf-8');
+    expect(ymlContent).toContain('concurrency:');
+    expect(ymlContent).toContain('group: jules-dispatcher-${{ github.repository }}');
   });
 
   describe('Verification Requirement 1: Valid ready Issue is selected & exact payload format', () => {
@@ -367,58 +336,48 @@ Depends on #19
     });
   });
 
-  describe('Deterministic Issue Selection', () => {
-    it('should deterministically select highest priority ready issue', () => {
-      const issueA = parseIssueMetadata({
+  describe('Deterministic Candidate Selection', () => {
+    it('should deterministically select highest priority ready issue', async () => {
+      const issueA: RawGitHubIssue = {
         number: 30,
         title: 'Low Priority Issue',
         state: 'open',
-        labels: ['dispatch-ready'],
+        labels: [{ name: 'dispatch-ready' }],
         body: '**Primary Specialist**: UI Specialist\nPriority: 3',
-      });
+      };
 
-      const issueB = parseIssueMetadata({
+      const issueB: RawGitHubIssue = {
         number: 25,
         title: 'High Priority Issue',
         state: 'open',
-        labels: ['dispatch-ready'],
+        labels: [{ name: 'dispatch-ready' }],
         body: '**Primary Specialist**: Architecture Specialist\nPriority: 1',
-      });
+      };
 
-      const issueC = parseIssueMetadata({
+      const issueC: RawGitHubIssue = {
         number: 22,
         title: 'Medium Priority Issue',
         state: 'open',
-        labels: ['dispatch-ready'],
+        labels: [{ name: 'dispatch-ready' }],
         body: '**Primary Specialist**: Data Specialist\nPriority: 2',
+      };
+
+      const mockFetch = jest.fn((input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes('/branches/main')) return Promise.resolve(validMainBranchRes as Response);
+        if (url.includes('/issues?state=open')) return Promise.resolve({ ok: true, status: 200, json: async () => [issueA, issueB, issueC] } as Response);
+        if (url.includes('/pulls')) return Promise.resolve(noOpenPrsRes as Response);
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
       });
 
-      const sorted = sortCandidateIssues([issueA, issueB, issueC]);
-      expect(sorted[0].issueNumber).toBe(25); // Priority 1 wins
-      expect(sorted[1].issueNumber).toBe(22); // Priority 2
-      expect(sorted[2].issueNumber).toBe(30); // Priority 3
-    });
-
-    it('should sort by issue number ascending when priority is tied', () => {
-      const issueA = parseIssueMetadata({
-        number: 40,
-        title: 'Later Issue',
-        state: 'open',
-        labels: ['dispatch-ready'],
-        body: '**Primary Specialist**: UI Specialist\nPriority: 2',
+      const result = await runJulesDispatcher({
+        repository: repo,
+        dryRun: true,
+        customFetch: mockFetch,
       });
 
-      const issueB = parseIssueMetadata({
-        number: 15,
-        title: 'Earlier Issue',
-        state: 'open',
-        labels: ['dispatch-ready'],
-        body: '**Primary Specialist**: Architecture Specialist\nPriority: 2',
-      });
-
-      const sorted = sortCandidateIssues([issueA, issueB]);
-      expect(sorted[0].issueNumber).toBe(15);
-      expect(sorted[1].issueNumber).toBe(40);
+      expect(result.success).toBe(true);
+      expect(result.issueNumber).toBe(25); // Priority 1 issue wins
     });
   });
 });

@@ -14,7 +14,7 @@ on:
         required: false
 
 concurrency:
-  group: jules-dispatcher-${{ github.repository }}-${{ inputs.issue_number || 'auto' }}
+  group: jules-dispatcher-${{ github.repository }}
   cancel-in-progress: false
 
 permissions:
