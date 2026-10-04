@@ -229,11 +229,12 @@ jobs:
               // Active Jules Session check in LIVE mode
               if (!dryRun) {
                 const activeStates = ['QUEUED', 'PLANNING', 'AWAITING_PLAN_APPROVAL', 'AWAITING_USER_FEEDBACK', 'IN_PROGRESS', 'PAUSED', 'STATE_ACTIVE', 'RUNNING', 'STATE_RUNNING'];
+                const expectedSource = `sources/github/${repository}`;
                 const hasSession = activeJulesSessions.some((s) => {
                   const state = (s.state || '').toUpperCase();
                   const title = s.title || '';
                   const source = s.sourceContext?.source || '';
-                  const refsRepo = Boolean(source && source.includes(repository));
+                  const refsRepo = source === expectedSource;
                   const refsIssue = title.includes(`#${candidate.issueNumber}`) || title.includes(`issue-${candidate.issueNumber}`);
                   return refsRepo && refsIssue && activeStates.includes(state);
                 });
