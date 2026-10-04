@@ -340,6 +340,35 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
+    it('should skip closed fork PRs without making label deletion or comment API calls', async () => {
+      const closedForkPr: RawPullRequest = {
+        ...validPr,
+        state: 'closed',
+        head: {
+          ref: 'fork-feature-branch',
+          sha: 'abc123',
+          repo: { full_name: 'other-fork-owner/repo' },
+        },
+        labels: [{ name: CHATGPT_REVIEW_LABEL }],
+      };
+
+      const mockFetch = jest.fn();
+
+      const result = await runChatgptReviewRelay({
+        repository,
+        pullRequest: closedForkPr,
+        customFetch: mockFetch as unknown as typeof fetch,
+      });
+
+      expect(result.handled).toBe(true);
+      expect(result.action).toBe('SKIPPED_INELIGIBLE');
+      expect(result.eligibility.eligible).toBe(false);
+      expect(result.eligibility.reasons.some((r) => r.includes('PR is from a fork'))).toBe(true);
+
+      // Absolutely ZERO API calls made for closed fork PRs!
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
     it('should fail closed if label provisioning fails and NOT attempt label or comment mutations', async () => {
       const mockFetch = jest.fn((input: string | URL | Request) => {
         const urlStr = String(input);
@@ -545,7 +574,7 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       expect(postCommentCalls).toHaveLength(0);
     });
 
-    it('should remove label and update marked comment when PR closes', async () => {
+    it('should remove label and update marked comment when same-repository PR closes', async () => {
       const closedPr: RawPullRequest = {
         ...validPr,
         state: 'closed',

@@ -329,12 +329,30 @@ export async function runChatgptReviewRelay(options: RelayOptions): Promise<Rela
     headers.Authorization = `Bearer ${token}`;
   }
 
-  // Handle closed PR cleanup
+  // 1. Same-repository guard check: Enforce same-repo invariant before ANY mutations on open OR closed PRs
+  const baseRepoName = pullRequest.base.repo?.full_name;
+  const headRepoName = pullRequest.head.repo?.full_name;
+  const isSameRepo = headRepoName && baseRepoName && headRepoName === baseRepoName;
+
+  if (!isSameRepo) {
+    const issueNum = extractGoverningIssue(pullRequest.body);
+    return {
+      handled: true,
+      action: 'SKIPPED_INELIGIBLE',
+      eligibility: {
+        eligible: false,
+        issueNumber: issueNum ?? undefined,
+        reasons: [`PR is from a fork ("${headRepoName || 'unknown'}" vs "${baseRepoName || 'unknown'}"). Relay processes same-repository PRs only.`],
+      },
+    };
+  }
+
+  // 2. Handle closed PR cleanup (for same-repository PRs only)
   if (pullRequest.state === 'closed') {
     let labelUpdated = false;
     let commentAction: 'UPDATED' | 'NONE' = 'NONE';
 
-    // 1. Remove label if present
+    // Remove label if present
     if (hasChatGptReviewLabel(pullRequest)) {
       try {
         const url = `https://api.github.com/repos/${owner}/${repo}/issues/${pullRequest.number}/labels/${CHATGPT_REVIEW_LABEL}`;
@@ -349,7 +367,7 @@ export async function runChatgptReviewRelay(options: RelayOptions): Promise<Rela
       }
     }
 
-    // 2. Update marked comment if present (using pagination)
+    // Update marked comment if present (using pagination)
     const issueNum = extractGoverningIssue(pullRequest.body);
     try {
       const comments = await fetchAllCommentsPaginated(owner, repo, pullRequest.number, headers, fetchFn);
