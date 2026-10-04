@@ -1,3 +1,22 @@
-<nav class="site-nav" aria-label="Site Navigation">
-  <a href="/" class="nav-item">HOME</a>
+<%
+  const activePath = typeof currentPath !== 'undefined' ? currentPath : '/';
+%>
+<nav class="site-nav" aria-label="Primary Navigation">
+  <ul class="nav-list">
+    <li class="nav-item">
+      <a href="/" class="nav-link<%= activePath === '/' ? ' active' : '' %>"<%- activePath === '/' ? ' aria-current="page"' : '' %>>HOME</a>
+    </li>
+    <li class="nav-item">
+      <a href="/browse" class="nav-link<%= activePath.startsWith('/browse') ? ' active' : '' %>"<%- activePath.startsWith('/browse') ? ' aria-current="page"' : '' %>>BROWSE</a>
+    </li>
+    <li class="nav-item">
+      <a href="/drop/new" class="nav-link nav-link-action<%= activePath.startsWith('/drop') ? ' active' : '' %>"<%- activePath.startsWith('/drop') ? ' aria-current="page"' : '' %>>+ DROP</a>
+    </li>
+    <li class="nav-item">
+      <a href="/activity" class="nav-link<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>ACTIVITY</a>
+    </li>
+    <li class="nav-item">
+      <a href="/profile" class="nav-link<%= activePath.startsWith('/profile') ? ' active' : '' %>"<%- activePath.startsWith('/profile') ? ' aria-current="page"' : '' %>>YOU</a>
+    </li>
+  </ul>
 </nav>
