@@ -15,6 +15,12 @@ export function createApp(): Express {
   app.use(express.urlencoded({ extended: true }));
   app.use(express.static(path.join(process.cwd(), 'public')));
 
+  // Set current path for EJS views navigation state
+  app.use((req, res, next) => {
+    res.locals.currentPath = req.path;
+    next();
+  });
+
   // Routes
   app.use('/', router);
 
