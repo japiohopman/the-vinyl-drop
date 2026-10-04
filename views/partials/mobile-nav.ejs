@@ -1,0 +1,17 @@
+<nav class="mobile-nav" aria-label="Mobile Navigation">
+  <a href="/" class="mobile-nav-item <%= (typeof activeNav !== 'undefined' && activeNav === 'home') ? 'active' : '' %>">
+    <span>HOME</span>
+  </a>
+  <a href="/browse" class="mobile-nav-item <%= (typeof activeNav !== 'undefined' && activeNav === 'browse') ? 'active' : '' %>">
+    <span>BROWSE</span>
+  </a>
+  <a href="/drop/new" class="mobile-nav-item mobile-nav-item-accent <%= (typeof activeNav !== 'undefined' && activeNav === 'drop') ? 'active' : '' %>">
+    <span>+ DROP</span>
+  </a>
+  <a href="/activity" class="mobile-nav-item <%= (typeof activeNav !== 'undefined' && activeNav === 'activity') ? 'active' : '' %>">
+    <span>ACTIVITY</span>
+  </a>
+  <a href="/profile" class="mobile-nav-item <%= (typeof activeNav !== 'undefined' && activeNav === 'profile') ? 'active' : '' %>">
+    <span>YOU</span>
+  </a>
+</nav>

@@ -1,3 +1,7 @@
-<nav class="site-nav">
-  <a href="/" class="nav-item">HOME</a>
+<nav class="site-nav" aria-label="Primary Desktop Navigation">
+  <a href="/" class="nav-item <%= (typeof activeNav !== 'undefined' && activeNav === 'home') ? 'active' : '' %>">HOME</a>
+  <a href="/browse" class="nav-item <%= (typeof activeNav !== 'undefined' && activeNav === 'browse') ? 'active' : '' %>">BROWSE</a>
+  <a href="/drop/new" class="nav-item nav-item-primary <%= (typeof activeNav !== 'undefined' && activeNav === 'drop') ? 'active' : '' %>">+ DROP</a>
+  <a href="/activity" class="nav-item <%= (typeof activeNav !== 'undefined' && activeNav === 'activity') ? 'active' : '' %>">ACTIVITY</a>
+  <a href="/profile" class="nav-item <%= (typeof activeNav !== 'undefined' && activeNav === 'profile') ? 'active' : '' %>">YOU</a>
 </nav>
