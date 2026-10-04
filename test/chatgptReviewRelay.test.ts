@@ -103,6 +103,19 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       expect(success).toBe(true);
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
+
+    it('should return false if GET returns 500 error', async () => {
+      const mockFetch = jest.fn((input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes(`/labels/${CHATGPT_REVIEW_LABEL}`)) {
+          return Promise.resolve({ ok: false, status: 500 } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      const success = await ensureLabelProvisioned('owner', 'repo', {}, mockFetch as unknown as typeof fetch);
+      expect(success).toBe(false);
+    });
   });
 
   describe('Paginated Comment Retrieval', () => {
@@ -281,6 +294,29 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       expect(result.handled).toBe(true);
       expect(result.action).toBe('SKIPPED_INELIGIBLE');
       expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should fail closed if label provisioning fails and NOT attempt label or comment mutations', async () => {
+      const mockFetch = jest.fn((input: string | URL | Request) => {
+        const urlStr = String(input);
+        if (urlStr.includes(`/labels/${CHATGPT_REVIEW_LABEL}`)) {
+          return Promise.resolve({ ok: false, status: 500 } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected API endpoint called on label failure: ${urlStr}`));
+      });
+
+      const result = await runChatgptReviewRelay({
+        repository,
+        pullRequest: validPr,
+        customFetch: mockFetch as unknown as typeof fetch,
+      });
+
+      expect(result.handled).toBe(true);
+      expect(result.commentAction).toBe('NONE');
+      expect(result.labelUpdated).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(result.errors?.some((e) => e.includes('Failed to provision'))).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(1); // Checked label, hit 500, immediately returned
     });
 
     it('should provision label, add label, and create marked comment on eligible PR', async () => {

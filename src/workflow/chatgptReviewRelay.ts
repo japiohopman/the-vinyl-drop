@@ -387,8 +387,19 @@ export async function runChatgptReviewRelay(options: RelayOptions): Promise<Rela
   let commentAction: 'CREATED' | 'UPDATED' | 'NONE' = 'NONE';
   let checkSummary: CheckStateSummary | undefined;
 
-  // 1. Provision label deterministically, then add to PR if not present
-  await ensureLabelProvisioned(owner, repo, headers, fetchFn);
+  // 1. Provision label deterministically (fail closed if provisioning fails)
+  const labelProvisioned = await ensureLabelProvisioned(owner, repo, headers, fetchFn);
+  if (!labelProvisioned) {
+    errors.push(`Failed to provision '${CHATGPT_REVIEW_LABEL}' label on repository.`);
+    return {
+      handled: true,
+      action: 'RELAY_MARKED',
+      eligibility,
+      labelUpdated: false,
+      commentAction: 'NONE',
+      errors,
+    };
+  }
 
   if (!hasChatGptReviewLabel(pullRequest)) {
     try {
