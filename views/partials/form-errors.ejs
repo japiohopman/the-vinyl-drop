@@ -1,0 +1,27 @@
+<%
+  /*
+    form-errors.ejs - Top-level form error summary banner
+  */
+  const errorList = typeof errors !== 'undefined' && Array.isArray(errors)
+    ? errors
+    : (typeof errors === 'string' && errors.trim().length > 0 ? [errors] : []);
+  const bannerTitle = typeof title === 'string' ? title : 'Please correct the following errors:';
+%>
+
+<% if (errorList.length > 0) { %>
+  <div class="form-error-summary" role="alert" aria-live="polite" tabindex="-1">
+    <div class="form-error-summary-header">
+      <svg class="form-error-summary-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <h3 class="form-error-summary-title"><%= bannerTitle %></h3>
+    </div>
+    <ul class="form-error-summary-list">
+      <% errorList.forEach(function(err) { %>
+        <li><%= err %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>

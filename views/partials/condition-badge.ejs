@@ -1,0 +1,44 @@
+<%
+  /*
+    condition-badge.ejs - Vinyl media & sleeve condition badge component
+  */
+  const media = typeof mediaCondition === 'string' ? mediaCondition.trim() : 'VG';
+  const sleeve = typeof sleeveCondition === 'string' ? sleeveCondition.trim() : '';
+  const badgeSize = typeof size === 'string' ? size : 'md';
+
+  const conditionNames = {
+    'M': 'Mint (Unplayed/Sealed)',
+    'NM': 'Near Mint',
+    'VG+': 'Very Good Plus',
+    'VG': 'Very Good',
+    'VG-': 'Very Good Minus',
+    'G+': 'Good Plus',
+    'G': 'Good',
+    'F': 'Fair',
+    'P': 'Poor',
+  };
+
+  const mediaFullName = conditionNames[media] || media;
+  const sleeveFullName = sleeve ? (conditionNames[sleeve] || sleeve) : '';
+
+  const ariaDescription = sleeve
+    ? `Media: ${mediaFullName}, Sleeve: ${sleeveFullName}`
+    : `Media: ${mediaFullName}`;
+%>
+
+<div
+  class="condition-badge-group badge-<%= badgeSize %>"
+  aria-label="<%= ariaDescription %>"
+  title="<%= ariaDescription %>"
+>
+  <span class="condition-badge condition-media">
+    <span class="badge-type">Media</span>
+    <strong class="badge-grade"><%= media %></strong>
+  </span>
+  <% if (sleeve) { %>
+    <span class="condition-badge condition-sleeve">
+      <span class="badge-type">Sleeve</span>
+      <strong class="badge-grade"><%= sleeve %></strong>
+    </span>
+  <% } %>
+</div>

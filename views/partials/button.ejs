@@ -1,0 +1,40 @@
+<%
+  /*
+    button.ejs - Reusable accessible button or link-button partial
+  */
+  const btnText = typeof text !== 'undefined' ? text : '';
+  const btnHref = typeof href !== 'undefined' ? href : '';
+  const isLink = Boolean(btnHref);
+  const btnType = typeof type === 'string' ? type : 'button';
+  const variantClass = `btn-${typeof variant === 'string' ? variant : 'primary'}`;
+  const sizeClass = `btn-${typeof size === 'string' ? size : 'md'}`;
+  const widthClass = typeof fullWidth !== 'undefined' && fullWidth ? 'btn-full' : '';
+  const extraClass = typeof customClass === 'string' ? customClass : '';
+  const classList = ['btn', variantClass, sizeClass, widthClass, extraClass].filter(Boolean).join(' ');
+
+  const isDisabled = typeof disabled !== 'undefined' ? Boolean(disabled) : false;
+  const btnId = typeof id === 'string' && id ? id : undefined;
+  const label = typeof ariaLabel === 'string' && ariaLabel ? ariaLabel : undefined;
+%>
+
+<% if (isLink) { %>
+  <a
+    href="<%= isDisabled ? '#' : btnHref %>"
+    class="<%= classList %> <%= isDisabled ? 'disabled' : '' %>"
+    <% if (btnId) { %>id="<%= btnId %>"<% } %>
+    <% if (label) { %>aria-label="<%= label %>"<% } %>
+    <% if (isDisabled) { %>aria-disabled="true" tabindex="-1"<% } %>
+  >
+    <%= btnText %>
+  </a>
+<% } else { %>
+  <button
+    type="<%= btnType %>"
+    class="<%= classList %>"
+    <% if (btnId) { %>id="<%= btnId %>"<% } %>
+    <% if (label) { %>aria-label="<%= label %>"<% } %>
+    <% if (isDisabled) { %>disabled aria-disabled="true"<% } %>
+  >
+    <%= btnText %>
+  </button>
+<% } %>

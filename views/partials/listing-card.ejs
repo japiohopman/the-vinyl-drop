@@ -1,0 +1,92 @@
+<%
+  /*
+    listing-card.ejs - Reusable listing card shell component
+  */
+  const item = typeof listing === 'object' && listing !== null ? listing : {};
+  const listingId = item.id || 'demo';
+  const title = item.title || 'Untitled Release';
+  const artist = item.artist || 'Unknown Artist';
+  const releaseYear = item.releaseYear || '';
+  const format = item.format || '12" Vinyl';
+  const priceFormatted = item.priceFormatted || '€0.00';
+  const isTrade = Boolean(item.isTrade);
+  const mediaCondition = item.mediaCondition || 'VG+';
+  const sleeveCondition = item.sleeveCondition || 'VG';
+  const imageUrl = item.imageUrl || '';
+  const imageAlt = item.imageAlt || `Album cover artwork for ${title} by ${artist}`;
+  const sellerUsername = item.sellerUsername || 'community_member';
+  const sellerLocation = item.sellerLocation || 'Local Drop';
+  const targetUrl = item.url || `/listings/${listingId}`;
+%>
+
+<article class="listing-card" data-listing-id="<%= listingId %>">
+  <div class="listing-card-media">
+    <a href="<%= targetUrl %>" class="listing-card-image-link" tabindex="-1" aria-hidden="true">
+      <% if (imageUrl) { %>
+        <img
+          src="<%= imageUrl %>"
+          alt="<%= imageAlt %>"
+          class="listing-card-image"
+          loading="lazy"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+        />
+        <div class="listing-card-image-fallback" style="display: none;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span class="fallback-text">Vinyl Record</span>
+        </div>
+      <% } else { %>
+        <div class="listing-card-image-fallback">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span class="fallback-text">Vinyl Record</span>
+        </div>
+      <% } %>
+    </a>
+
+    <div class="listing-card-badge-container">
+      <%- include('./condition-badge', { mediaCondition, sleeveCondition, size: 'sm' }) %>
+    </div>
+  </div>
+
+  <div class="listing-card-body">
+    <div class="listing-card-header">
+      <h3 class="listing-card-title">
+        <a href="<%= targetUrl %>" class="listing-card-title-link"><%= title %></a>
+      </h3>
+      <p class="listing-card-artist"><%= artist %></p>
+    </div>
+
+    <div class="listing-card-meta">
+      <span class="listing-card-format-year">
+        <%= format %><% if (releaseYear) { %> • <%= releaseYear %><% } %>
+      </span>
+      <div class="listing-card-price-badge <%= isTrade ? 'price-trade' : '' %>">
+        <%= priceFormatted %>
+      </div>
+    </div>
+
+    <div class="listing-card-footer">
+      <span class="listing-card-seller">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <%= sellerUsername %>
+      </span>
+      <% if (sellerLocation) { %>
+        <span class="listing-card-location">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <%= sellerLocation %>
+        </span>
+      <% } %>
+    </div>
+  </div>
+</article>
