@@ -237,6 +237,7 @@ export function hasChatGptReviewLabel(pr: RawPullRequest): boolean {
 
 /**
  * Fetches all PR comments across all pages (paginated, per_page=100).
+ * Throws an Error if any page fetch fails to guarantee fail-closed behavior.
  */
 export async function fetchAllCommentsPaginated(
   owner: string,
@@ -253,7 +254,7 @@ export async function fetchAllCommentsPaginated(
     const commentsUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100&page=${page}`;
     const res = await fetchFn(commentsUrl, { headers });
     if (!res.ok) {
-      break;
+      throw new Error(`Failed to fetch comments for PR #${prNumber} on page ${page}: status ${res.status}`);
     }
     const pageComments = (await res.json()) as CommentItem[];
     if (!Array.isArray(pageComments) || pageComments.length === 0) {
@@ -422,7 +423,7 @@ export async function runChatgptReviewRelay(options: RelayOptions): Promise<Rela
     errors.push(`Error fetching check runs: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  // 3. Create or Update Relay Comment (using pagination)
+  // 3. Create or Update Relay Comment (using pagination, fail-closed on error)
   try {
     const comments = await fetchAllCommentsPaginated(owner, repo, pullRequest.number, headers, fetchFn);
     const existingComment = comments.find((c) => c.body && c.body.includes(CHATGPT_REVIEW_RELAY_MARKER));
@@ -455,7 +456,7 @@ export async function runChatgptReviewRelay(options: RelayOptions): Promise<Rela
       }
     }
   } catch (err) {
-    errors.push(`Error creating/updating relay comment: ${err instanceof Error ? err.message : String(err)}`);
+    errors.push(`Error fetching/updating relay comment: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   return {

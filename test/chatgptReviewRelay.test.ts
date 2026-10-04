@@ -130,6 +130,27 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       expect(allComments).toHaveLength(102);
       expect(allComments[101].body).toContain(CHATGPT_REVIEW_RELAY_MARKER);
     });
+
+    it('should throw an error and fail closed if page 2 fetch fails with 500 status', async () => {
+      const page1Comments = Array.from({ length: 100 }, (_, i) => ({ id: i + 1, body: `Comment ${i + 1}` }));
+
+      const mockFetch = jest.fn((input: string | URL | Request) => {
+        const urlObj = new URL(String(input));
+        const page = urlObj.searchParams.get('page');
+
+        if (page === '1') {
+          return Promise.resolve({ ok: true, status: 200, json: async () => page1Comments } as Response);
+        }
+        if (page === '2') {
+          return Promise.resolve({ ok: false, status: 500 } as Response);
+        }
+        return Promise.reject(new Error(`Unexpected URL page: ${urlObj.href}`));
+      });
+
+      await expect(
+        fetchAllCommentsPaginated('owner', 'repo', 42, {}, mockFetch as unknown as typeof fetch)
+      ).rejects.toThrow('Failed to fetch comments for PR #42 on page 2: status 500');
+    });
   });
 
   describe('Eligibility Evaluation', () => {
@@ -363,6 +384,53 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       // Verify no POST comment call was made
       const postCalls = mockFetch.mock.calls.filter((c) => (c[1]?.method || 'GET') === 'POST' && String(c[0]).includes('/comments'));
       expect(postCalls).toHaveLength(0);
+    });
+
+    it('should fail closed when page 2 comment fetch errors and NOT create a new comment', async () => {
+      const prWithLabel: RawPullRequest = {
+        ...validPr,
+        labels: [{ name: CHATGPT_REVIEW_LABEL }],
+      };
+
+      const page1Comments = Array.from({ length: 100 }, (_, i) => ({ id: i + 1, body: `Comment ${i + 1}` }));
+
+      const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
+        const urlStr = String(input);
+        const method = init?.method || 'GET';
+
+        if (urlStr.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'GET') {
+          return Promise.resolve({ ok: true, status: 200 } as Response);
+        }
+        if (urlStr.includes('/check-runs') && method === 'GET') {
+          return Promise.resolve({ ok: true, status: 200, json: async () => ({ check_runs: [] }) } as Response);
+        }
+        if (urlStr.includes('/comments') && method === 'GET') {
+          const urlObj = new URL(urlStr);
+          const page = urlObj.searchParams.get('page');
+          if (page === '1') {
+            return Promise.resolve({ ok: true, status: 200, json: async () => page1Comments } as Response);
+          }
+          if (page === '2') {
+            return Promise.resolve({ ok: false, status: 500 } as Response);
+          }
+        }
+
+        return Promise.reject(new Error(`Unexpected API call: ${urlStr} (${method})`));
+      });
+
+      const result = await runChatgptReviewRelay({
+        repository,
+        pullRequest: prWithLabel,
+        customFetch: mockFetch as unknown as typeof fetch,
+      });
+
+      expect(result.commentAction).toBe('NONE');
+      expect(result.errors).toBeDefined();
+      expect(result.errors?.some((e) => e.includes('status 500'))).toBe(true);
+
+      // Absolutely zero POST comment calls made!
+      const postCommentCalls = mockFetch.mock.calls.filter((c) => (c[1]?.method || 'GET') === 'POST' && String(c[0]).includes('/comments'));
+      expect(postCommentCalls).toHaveLength(0);
     });
 
     it('should remove label and update marked comment when PR closes', async () => {
