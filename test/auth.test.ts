@@ -142,6 +142,7 @@ describe('Authentication & Session Handling', () => {
       const app = createApp();
       const res = await request(app)
         .post('/auth/signup')
+        .set('Origin', 'http://localhost:3000')
         .send({
           username: 'a', // too short
           email: 'invalid-email',
@@ -185,6 +186,7 @@ describe('Authentication & Session Handling', () => {
       const app = createApp();
       const res = await request(app)
         .post('/auth/signup')
+        .set('Origin', 'http://localhost:3000')
         .send({
           username: 'new_digger',
           email: 'newuser@example.com',
@@ -227,6 +229,7 @@ describe('Authentication & Session Handling', () => {
       const app = createApp();
       const res = await request(app)
         .post('/auth/signup')
+        .set('Origin', 'http://localhost:3000')
         .send({
           username: 'unconfirmed_digger',
           email: 'unconfirmed@example.com',
@@ -336,6 +339,7 @@ describe('Authentication & Session Handling', () => {
       const app = createApp();
       const res = await request(app)
         .post('/auth/login')
+        .set('Origin', 'http://localhost:3000')
         .send({
           email: 'user@example.com',
           password: 'password123',
@@ -346,6 +350,19 @@ describe('Authentication & Session Handling', () => {
       const cookieHeader = res.header['set-cookie'];
       const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
       expect(cookies).toContain('sb-access-token=valid-token');
+    });
+
+    it('POST /auth/login should reject state-changing requests missing both Origin and Referer headers (CSRF Fail-Closed)', async () => {
+      const app = createApp();
+      const res = await request(app)
+        .post('/auth/login')
+        .send({
+          email: 'user@example.com',
+          password: 'password123',
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual({ error: 'CSRF Forbidden: Missing Origin and Referer headers' });
     });
 
     it('POST /auth/login should reject cross-origin CSRF attempts', async () => {
@@ -441,7 +458,9 @@ describe('Authentication & Session Handling', () => {
 
     it('POST /auth/logout should clear cookies and redirect', async () => {
       const app = createApp();
-      const res = await request(app).post('/auth/logout');
+      const res = await request(app)
+        .post('/auth/logout')
+        .set('Origin', 'http://localhost:3000');
 
       expect(res.status).toBe(302);
       expect(res.header.location).toBe('/');

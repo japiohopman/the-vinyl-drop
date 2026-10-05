@@ -13,6 +13,11 @@ export function validateSameOrigin(req: Request, res: Response, next: NextFuncti
   const originHeader = req.headers.origin;
   const refererHeader = req.headers.referer;
 
+  if (!originHeader && !refererHeader) {
+    res.status(403).json({ error: 'CSRF Forbidden: Missing Origin and Referer headers' });
+    return;
+  }
+
   if (originHeader) {
     try {
       if (new URL(originHeader).origin !== expectedOrigin) {

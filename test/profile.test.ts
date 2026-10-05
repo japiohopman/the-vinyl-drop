@@ -148,6 +148,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       const app = createApp();
       const res = await request(app)
         .post('/profile/edit')
+        .set('Origin', 'http://localhost:3000')
         .set('Cookie', ['sb-access-token=alice-token'])
         .send({
           username: 'alice_new_handle',
