@@ -348,6 +348,20 @@ describe('Authentication & Session Handling', () => {
       expect(cookies).toContain('sb-access-token=valid-token');
     });
 
+    it('POST /auth/login should reject cross-origin CSRF attempts', async () => {
+      const app = createApp();
+      const res = await request(app)
+        .post('/auth/login')
+        .set('Origin', 'https://evil.com')
+        .send({
+          email: 'user@example.com',
+          password: 'password123',
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.text).toContain('CSRF');
+    });
+
     it('GET /auth/google should redirect to provider OAuth URL', async () => {
       mockSupabase.auth.signInWithOAuth.mockResolvedValue({
         data: {
@@ -416,6 +430,13 @@ describe('Authentication & Session Handling', () => {
 
       expect(res.status).toBe(400);
       expect(res.text).toContain('Invalid PKCE authorization code');
+    });
+
+    it('GET /auth/logout should return 404 Not Found (logout is strictly POST-only)', async () => {
+      const app = createApp();
+      const res = await request(app).get('/auth/logout');
+
+      expect(res.status).toBe(404);
     });
 
     it('POST /auth/logout should clear cookies and redirect', async () => {
