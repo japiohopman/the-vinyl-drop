@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { getHomePage } from '../controllers/homeController';
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
+import { requireAuth } from '../middleware/auth';
+import { getSelectReleasePage } from '../controllers/listingController';
 import authRoutes from './authRoutes';
 import profileRoutes from './profileRoutes';
 import listingRoutes from './listingRoutes';
@@ -11,7 +13,10 @@ router.get('/', getHomePage);
 
 router.use('/auth', authRoutes);
 router.use('/listings', listingRoutes);
-router.use('/drop', listingRoutes);
+
+// Narrow route compatibility for the + DROP product navigation contract
+router.get('/drop/new', requireAuth, getSelectReleasePage);
+
 router.use('/', profileRoutes);
 
 router.get('/design-system', getDesignSystemPage);

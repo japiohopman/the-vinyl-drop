@@ -2,6 +2,7 @@ import supertest from 'supertest';
 import sharp from 'sharp';
 import express, { Request, Response } from 'express';
 import { createApp } from '../src/app';
+import { setSupabaseClient } from '../src/lib/supabase';
 import { parsePriceEurToCents } from '../src/validators/listing';
 import { processAndValidateImage } from '../src/app/utils/imageProcessor';
 import { multipartUploadHandler } from '../src/app/middleware/upload';
@@ -354,6 +355,37 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       const response = await supertest(app).get('/drop/new');
       expect(response.status).toBe(302);
       expect(response.headers.location).toContain('/auth/login?next=%2Fdrop%2Fnew');
+    });
+
+    it('GET /drop/new should render release selection page for authenticated seller (Blocker 1)', async () => {
+      const mockSupabase = {
+        auth: {
+          getUser: jest.fn().mockResolvedValue({
+            data: { user: { id: '10000000-0000-4000-8000-000000000001', email: 'seller@example.com' } },
+            error: null,
+          }),
+        },
+      };
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      setSupabaseClient(mockSupabase as any);
+
+      (profileRepo.findProfileById as jest.Mock).mockResolvedValue({
+        id: '10000000-0000-4000-8000-000000000001',
+        username: 'seller_user',
+        displayName: 'Seller User',
+      });
+
+      (releaseRepo.listReleases as jest.Mock).mockResolvedValue([
+        { id: 'rel1', title: 'A Kind of Blue', artist: 'Miles Davis', releaseYear: 1959 },
+      ]);
+
+      const response = await supertest(app)
+        .get('/drop/new')
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Select a Release to Sell');
+      expect(response.text).toContain('A Kind of Blue');
     });
 
     it('GET /listings/new should redirect unauthenticated requests to login', async () => {
