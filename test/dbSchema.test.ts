@@ -1,5 +1,4 @@
 import { getTableColumns, getTableName } from 'drizzle-orm';
-import { getDb } from '../src/db';
 import {
   CONDITION_GRADES,
   LISTING_STATUSES,
@@ -94,6 +93,15 @@ describe('Drizzle Database Schema Boundaries', () => {
   });
 
   it('should throw clear error from getDb() when DATABASE_URL is unconfigured', () => {
-    expect(() => getDb()).toThrow('DATABASE_URL environment variable is missing.');
+    jest.isolateModules(() => {
+      jest.doMock('../src/config/env', () => ({
+        config: { DATABASE_URL: '' },
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+      const { getDb: getUnconfiguredDb } = require('../src/db');
+      expect(() => getUnconfiguredDb()).toThrow(
+        'Database connection not initialized. DATABASE_URL environment variable is missing.'
+      );
+    });
   });
 });
