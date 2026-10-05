@@ -16,20 +16,13 @@ export const listingSchema = z.object({
   status: listingStatusSchema.default('draft'),
 });
 
-export const createListingSchema = listingSchema.refine(
-  (data) => {
-    // If status is published, listing must have either a price > 0 or tradeAvailable === true
-    if (data.status === 'published') {
-      const hasPrice = data.price !== null && data.price !== undefined && data.price > 0;
-      return hasPrice || data.tradeAvailable === true;
-    }
-    return true;
-  },
-  {
-    message: 'Published listing must specify a price greater than 0 or enable trade availability.',
-    path: ['price'],
-  }
-);
+export const createListingSchema = listingSchema.extend({
+  status: z
+    .literal('draft', {
+      errorMap: () => ({ message: 'New listings must be created in draft status' }),
+    })
+    .default('draft'),
+});
 
 export const updateListingSchema = z.object({
   price: z

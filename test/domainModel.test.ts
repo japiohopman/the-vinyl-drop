@@ -79,28 +79,29 @@ describe('Phase 4A Domain Model & Lifecycle Rules', () => {
       expect(invalidNegativePrice.success).toBe(false);
     });
 
-    it('should allow null price when tradeAvailable is true', () => {
-      const tradeListing = createListingSchema.safeParse({
+    it('should restrict initial listing creation strictly to draft status', () => {
+      const draftCreation = createListingSchema.safeParse({
         physicalCopyId: copyId,
         sellerId,
-        price: null,
-        currency: 'EUR',
-        tradeAvailable: true,
-        status: 'published',
-      });
-      expect(tradeListing.success).toBe(true);
-    });
-
-    it('should reject published status if neither price > 0 nor tradeAvailable is present', () => {
-      const result = createListingSchema.safeParse({
-        physicalCopyId: copyId,
-        sellerId,
-        price: null,
+        price: 2500,
         currency: 'EUR',
         tradeAvailable: false,
-        status: 'published',
+        status: 'draft',
       });
-      expect(result.success).toBe(false);
+      expect(draftCreation.success).toBe(true);
+
+      const nonDraftStatuses = ['published', 'reserved', 'sold', 'traded', 'archived'] as const;
+      for (const nonDraftStatus of nonDraftStatuses) {
+        const result = createListingSchema.safeParse({
+          physicalCopyId: copyId,
+          sellerId,
+          price: 2500,
+          currency: 'EUR',
+          tradeAvailable: false,
+          status: nonDraftStatus as any,
+        });
+        expect(result.success).toBe(false);
+      }
     });
   });
 
@@ -253,7 +254,6 @@ describe('Phase 4A Domain Model & Lifecycle Rules', () => {
 
       // Mock listing creation
       (copyRepo.findPhysicalCopyById as jest.Mock).mockResolvedValue({ id: copyId, ownerId: sellerId });
-      (listingRepo.findActiveListingByPhysicalCopyId as jest.Mock).mockResolvedValue(null);
       (listingRepo.createListing as jest.Mock).mockResolvedValue({
         id: listingId,
         physicalCopyId: copyId,
@@ -266,12 +266,29 @@ describe('Phase 4A Domain Model & Lifecycle Rules', () => {
         physicalCopyId: copyId,
         sellerId,
         price: 4500,
-        status: 'draft',
       });
 
       expect(listing.id).toBe(listingId);
       expect(listing.physicalCopyId).toBe(copyId);
       expect(listing.sellerId).toBe(sellerId);
+      expect(listing.status).toBe('draft');
+      expect(listingRepo.createListing).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'draft' }),
+        undefined
+      );
+    });
+
+    it('should reject creating listing with non-draft initial status', async () => {
+      (copyRepo.findPhysicalCopyById as jest.Mock).mockResolvedValue({ id: copyId, ownerId: sellerId });
+
+      await expect(
+        createListing(sellerId, {
+          physicalCopyId: copyId,
+          sellerId,
+          price: 2500,
+          status: 'published' as any,
+        })
+      ).rejects.toThrow(ValidationError);
     });
 
     it('should prevent non-owner from updating PhysicalCopy or Listing', async () => {
@@ -323,24 +340,6 @@ describe('Phase 4A Domain Model & Lifecycle Rules', () => {
           price: 1000,
         })
       ).rejects.toThrow(AuthorizationError);
-    });
-
-    it('should prevent duplicate active published/reserved listings for the same physical copy', async () => {
-      (copyRepo.findPhysicalCopyById as jest.Mock).mockResolvedValue({ id: copyId, ownerId: sellerId });
-      (listingRepo.findActiveListingByPhysicalCopyId as jest.Mock).mockResolvedValue({
-        id: 'existing-active-listing',
-        physicalCopyId: copyId,
-        status: 'published',
-      });
-
-      await expect(
-        createListing(sellerId, {
-          physicalCopyId: copyId,
-          sellerId,
-          price: 2500,
-          status: 'published',
-        })
-      ).rejects.toThrow(ValidationError);
     });
   });
 });

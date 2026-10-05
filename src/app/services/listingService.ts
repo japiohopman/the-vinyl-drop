@@ -10,7 +10,6 @@ import {
 } from '../../validators/listing';
 import {
   createListing as createListingInRepo,
-  findActiveListingByPhysicalCopyId,
   findListingById,
   findListingsBySellerId,
   updateListing as updateListingInRepo,
@@ -56,14 +55,6 @@ export async function createListing(
     throw new AuthorizationError('PhysicalCopy does not belong to the seller');
   }
 
-  // Prevent multiple active published/reserved listings for the same physical copy
-  if (data.status === 'published' || data.status === 'reserved') {
-    const activeListing = await findActiveListingByPhysicalCopyId(data.physicalCopyId, dbOverride);
-    if (activeListing) {
-      throw new ValidationError('An active listing already exists for this physical copy');
-    }
-  }
-
   return createListingInRepo(
     {
       physicalCopyId: data.physicalCopyId,
@@ -72,7 +63,7 @@ export async function createListing(
       currency: data.currency || 'EUR',
       tradeAvailable: data.tradeAvailable ?? false,
       description: data.description || null,
-      status: data.status || 'draft',
+      status: 'draft',
     },
     dbOverride
   );
