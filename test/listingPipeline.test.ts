@@ -337,7 +337,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
     });
   });
 
-  describe('HTTP Endpoints & Multipart Middleware Limits (/listings)', () => {
+  describe('HTTP Endpoints & Navigation Route Integration (/drop and /listings)', () => {
     let uploadTestApp: express.Express;
 
     beforeAll(() => {
@@ -345,16 +345,21 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       uploadTestApp.post('/test-upload', multipartUploadHandler, (req: Request, res: Response) => {
         res.status(200).json({ files: req.files?.length || 0, body: req.body });
       });
-      // Error handler
       uploadTestApp.use((err: Error, req: Request, res: Response, _next: express.NextFunction) => {
         res.status(400).json({ error: err.message });
       });
     });
 
-    it('GET /listings should redirect unauthenticated requests to login', async () => {
-      const response = await supertest(app).get('/listings');
+    it('GET /drop/new should redirect unauthenticated requests to login and not return 404', async () => {
+      const response = await supertest(app).get('/drop/new');
       expect(response.status).toBe(302);
-      expect(response.headers.location).toContain('/auth/login');
+      expect(response.headers.location).toContain('/auth/login?next=%2Fdrop%2Fnew');
+    });
+
+    it('GET /listings/new should redirect unauthenticated requests to login', async () => {
+      const response = await supertest(app).get('/listings/new');
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toContain('/auth/login?next=%2Flistings%2Fnew');
     });
 
     it('GET /health should confirm health check status', async () => {

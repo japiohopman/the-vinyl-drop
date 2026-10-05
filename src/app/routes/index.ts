@@ -11,6 +11,7 @@ router.get('/', getHomePage);
 
 router.use('/auth', authRoutes);
 router.use('/listings', listingRoutes);
+router.use('/drop', listingRoutes);
 router.use('/', profileRoutes);
 
 router.get('/design-system', getDesignSystemPage);
