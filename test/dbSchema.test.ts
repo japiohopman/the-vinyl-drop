@@ -7,6 +7,7 @@ import {
   comments,
   listingPhotos,
   listings,
+  physicalCopies,
   profiles,
   releases,
 } from '../src/db/schema';
@@ -15,6 +16,7 @@ describe('Drizzle Database Schema Boundaries', () => {
   it('should define correct table names', () => {
     expect(getTableName(profiles)).toBe('profiles');
     expect(getTableName(releases)).toBe('releases');
+    expect(getTableName(physicalCopies)).toBe('physical_copies');
     expect(getTableName(listings)).toBe('listings');
     expect(getTableName(listingPhotos)).toBe('listing_photos');
     expect(getTableName(comments)).toBe('comments');
@@ -51,16 +53,26 @@ describe('Drizzle Database Schema Boundaries', () => {
     expect(columns).toHaveProperty('updatedAt');
   });
 
+  it('should have required columns for physical_copies table', () => {
+    const columns = getTableColumns(physicalCopies);
+    expect(columns).toHaveProperty('id');
+    expect(columns).toHaveProperty('releaseId');
+    expect(columns).toHaveProperty('ownerId');
+    expect(columns).toHaveProperty('mediaCondition');
+    expect(columns).toHaveProperty('sleeveCondition');
+    expect(columns).toHaveProperty('notes');
+    expect(columns).toHaveProperty('createdAt');
+    expect(columns).toHaveProperty('updatedAt');
+  });
+
   it('should have required columns for listings table including minor unit integer price', () => {
     const columns = getTableColumns(listings);
     expect(columns).toHaveProperty('id');
-    expect(columns).toHaveProperty('releaseId');
+    expect(columns).toHaveProperty('physicalCopyId');
     expect(columns).toHaveProperty('sellerId');
     expect(columns).toHaveProperty('price');
     expect(columns.price.dataType).toBe('number'); // integer minor unit
     expect(columns).toHaveProperty('currency');
-    expect(columns).toHaveProperty('mediaCondition');
-    expect(columns).toHaveProperty('sleeveCondition');
     expect(columns).toHaveProperty('tradeAvailable');
     expect(columns).toHaveProperty('description');
     expect(columns).toHaveProperty('status');
