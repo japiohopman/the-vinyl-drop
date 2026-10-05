@@ -1,0 +1,75 @@
+<div class="auth-page" style="max-width: 500px; margin: var(--space-8) auto;">
+  <div class="card" style="padding: var(--space-6); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card);">
+    <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">Join The Vinyl Drop</h1>
+    <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin-bottom: var(--space-6);">
+      Create your account to buy, sell, and trade vinyl records.
+    </p>
+
+    <%- include('../partials/form-errors', {
+      errors: form.generalErrors.length > 0
+        ? form.generalErrors
+        : Object.values(form.fieldErrors)
+    }) %>
+
+    <form action="/auth/signup?next=<%= encodeURIComponent(nextUrl) %>" method="POST" class="auth-form" novalidate>
+      <input type="hidden" name="next" value="<%= nextUrl %>">
+
+      <%- include('../partials/form-input', {
+        type: 'text',
+        name: 'username',
+        label: 'Username',
+        value: form.values.username,
+        placeholder: 'e.g. crate_digger_99',
+        required: true,
+        error: form.fieldErrors.username,
+        helpText: 'Unique handle for your public profile.'
+      }) %>
+
+      <%- include('../partials/form-input', {
+        type: 'text',
+        name: 'displayName',
+        label: 'Display Name (Optional)',
+        value: form.values.displayName,
+        placeholder: 'e.g. Miles Davis',
+        error: form.fieldErrors.displayName,
+        helpText: 'Name shown on your profile and listings.'
+      }) %>
+
+      <%- include('../partials/form-input', {
+        type: 'email',
+        name: 'email',
+        label: 'Email Address',
+        value: form.values.email,
+        placeholder: 'you@example.com',
+        required: true,
+        error: form.fieldErrors.email
+      }) %>
+
+      <%- include('../partials/form-input', {
+        type: 'password',
+        name: 'password',
+        label: 'Password',
+        required: true,
+        error: form.fieldErrors.password,
+        helpText: 'Must be at least 8 characters.'
+      }) %>
+
+      <div style="margin-top: var(--space-6); display: flex; flex-direction: column; gap: var(--space-3);">
+        <%- include('../partials/button', {
+          text: 'Create Account',
+          type: 'submit',
+          variant: 'primary',
+          size: 'md'
+        }) %>
+
+        <a href="/auth/google?next=<%= encodeURIComponent(nextUrl) %>" class="btn btn-outline btn-md" style="display: flex; align-items: center; justify-content: center; gap: var(--space-2);">
+          <span>Sign up with Google</span>
+        </a>
+      </div>
+    </form>
+
+    <div style="margin-top: var(--space-6); text-align: center; font-size: var(--font-size-sm); color: var(--color-ink-muted);">
+      Already have an account? <a href="/auth/login?next=<%= encodeURIComponent(nextUrl) %>" style="color: var(--color-rust); font-weight: 600;">Sign in</a>
+    </div>
+  </div>
+</div>

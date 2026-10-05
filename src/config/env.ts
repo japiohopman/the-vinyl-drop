@@ -8,6 +8,10 @@ export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   DATABASE_URL: z.string().optional(),
   DATABASE_DIRECT_URL: z.string().optional(),
+  SUPABASE_URL: z.string().optional().default('https://example.supabase.co'),
+  SUPABASE_ANON_KEY: z.string().optional().default('mock-anon-key'),
+  APP_BASE_URL: z.string().optional().default('http://localhost:3000'),
+  ALLOWED_REDIRECT_URLS: z.string().optional().default('http://localhost:3000'),
 });
 
 export type Env = z.infer<typeof envSchema>;

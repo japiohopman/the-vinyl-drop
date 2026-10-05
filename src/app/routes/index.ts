@@ -1,10 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { getHomePage } from '../controllers/homeController';
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
+import authRoutes from './authRoutes';
+import profileRoutes from './profileRoutes';
 
 const router = Router();
 
 router.get('/', getHomePage);
+
+router.use('/auth', authRoutes);
+router.use('/', profileRoutes);
 
 router.get('/design-system', getDesignSystemPage);
 router.post('/design-system/demo', postDesignSystemDemo);

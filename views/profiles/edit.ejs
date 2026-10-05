@@ -1,0 +1,74 @@
+<div class="profile-edit-page" style="max-width: 600px; margin: var(--space-8) auto;">
+  <div class="card" style="padding: var(--space-6); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card);">
+    <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">Edit Your Profile</h1>
+    <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin-bottom: var(--space-6);">
+      Update your public handle and bio.
+    </p>
+
+    <%- include('../partials/form-errors', {
+      errors: form.generalErrors.length > 0
+        ? form.generalErrors
+        : Object.values(form.fieldErrors)
+    }) %>
+
+    <form action="/profile/edit" method="POST" class="profile-edit-form" novalidate>
+      <%- include('../partials/form-input', {
+        type: 'text',
+        name: 'username',
+        label: 'Username',
+        value: form.values.username,
+        required: true,
+        error: form.fieldErrors.username,
+        helpText: 'Unique profile handle (letters, numbers, hyphens, underscores).'
+      }) %>
+
+      <%- include('../partials/form-input', {
+        type: 'text',
+        name: 'displayName',
+        label: 'Display Name',
+        value: form.values.displayName,
+        placeholder: 'e.g. Miles Davis',
+        error: form.fieldErrors.displayName
+      }) %>
+
+      <%- include('../partials/form-input', {
+        type: 'text',
+        name: 'location',
+        label: 'Location',
+        value: form.values.location,
+        placeholder: 'e.g. Amsterdam, NL',
+        error: form.fieldErrors.location,
+        helpText: 'City or neighborhood for local record swaps.'
+      }) %>
+
+      <%- include('../partials/form-input', {
+        type: 'url',
+        name: 'avatarUrl',
+        label: 'Avatar Image URL',
+        value: form.values.avatarUrl,
+        placeholder: 'https://example.com/avatar.jpg',
+        error: form.fieldErrors.avatarUrl
+      }) %>
+
+      <%- include('../partials/form-textarea', {
+        name: 'bio',
+        label: 'Bio',
+        value: form.values.bio,
+        rows: 4,
+        placeholder: 'Tell the community about your musical tastes, favorite genres, or trade wishlist...',
+        error: form.fieldErrors.bio
+      }) %>
+
+      <div style="margin-top: var(--space-6); display: flex; gap: var(--space-3);">
+        <%- include('../partials/button', {
+          text: 'Save Changes',
+          type: 'submit',
+          variant: 'primary',
+          size: 'md'
+        }) %>
+
+        <a href="/profiles/<%= encodeURIComponent(profile.username) %>" class="btn btn-outline btn-md">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
