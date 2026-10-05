@@ -3,14 +3,12 @@ import { getHomePage } from '../controllers/homeController';
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
 import authRoutes from './authRoutes';
 import profileRoutes from './profileRoutes';
-import listingRoutes from './listingRoutes';
 
 const router = Router();
 
 router.get('/', getHomePage);
 
 router.use('/auth', authRoutes);
-router.use('/listings', listingRoutes);
 router.use('/', profileRoutes);
 
 router.get('/design-system', getDesignSystemPage);
