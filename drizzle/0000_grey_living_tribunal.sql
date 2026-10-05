@@ -35,7 +35,7 @@ CREATE TABLE "listings" (
 );
 --> statement-breakpoint
 CREATE TABLE "profiles" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY NOT NULL,
 	"username" text NOT NULL,
 	"display_name" text,
 	"avatar_url" text,

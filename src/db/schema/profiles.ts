@@ -1,7 +1,11 @@
 import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const profiles = pgTable('profiles', {
-  id: uuid('id').primaryKey().defaultRandom(),
+  /**
+   * Profile primary key representing the Supabase Auth user UUID (auth.users.id).
+   * Strictly requires a provided user UUID on profile creation without a random default.
+   */
+  id: uuid('id').primaryKey(),
   username: text('username').notNull().unique(),
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
