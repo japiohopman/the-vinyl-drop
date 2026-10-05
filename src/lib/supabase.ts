@@ -34,7 +34,10 @@ export function createExpressSupabaseClient(req?: Request, res?: Response): Supa
     },
   };
 
-  return createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+  const url = config.SUPABASE_URL || 'https://example.supabase.co';
+  const anonKey = config.SUPABASE_ANON_KEY || 'mock-anon-key';
+
+  return createClient(url, anonKey, {
     auth: {
       flowType: 'pkce',
       persistSession: false,
