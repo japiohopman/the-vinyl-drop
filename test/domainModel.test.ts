@@ -122,13 +122,15 @@ describe('Phase 4A Domain Model & Lifecycle Rules', () => {
       expect(canTransitionListingStatus('sold', 'archived')).toBe(true);
       expect(canTransitionListingStatus('sold', 'published')).toBe(false);
 
-      expect(canTransitionListingStatus('archived', 'draft')).toBe(true);
+      // Archived is terminal: recycling is forbidden
+      expect(canTransitionListingStatus('archived', 'draft')).toBe(false);
       expect(canTransitionListingStatus('archived', 'published')).toBe(false);
     });
 
     it('should return correct allowed next statuses list', () => {
       expect(getAllowedNextStatuses('draft')).toEqual(['published', 'archived']);
       expect(getAllowedNextStatuses('sold')).toEqual(['archived']);
+      expect(getAllowedNextStatuses('archived')).toEqual([]);
     });
 
     it('should throw InvalidLifecycleTransitionError for disallowed structural transitions', () => {
@@ -136,6 +138,13 @@ describe('Phase 4A Domain Model & Lifecycle Rules', () => {
         validateListingTransition({
           currentStatus: 'draft',
           targetStatus: 'sold',
+        })
+      ).toThrow(InvalidLifecycleTransitionError);
+
+      expect(() =>
+        validateListingTransition({
+          currentStatus: 'archived',
+          targetStatus: 'draft',
         })
       ).toThrow(InvalidLifecycleTransitionError);
     });
@@ -160,6 +169,53 @@ describe('Phase 4A Domain Model & Lifecycle Rules', () => {
           tradeAvailable: false,
         })
       ).toThrow(InvalidLifecycleTransitionError);
+    });
+
+    describe('Regression Tests: Target-state invariant preservation on updates', () => {
+      it('should reject updating published listing (price > 0, tradeAvailable false) to price null', async () => {
+        (listingRepo.findListingById as jest.Mock).mockResolvedValue({
+          id: listingId,
+          sellerId,
+          status: 'published',
+          price: 2500,
+          currency: 'EUR',
+          tradeAvailable: false,
+        });
+
+        await expect(
+          updateListing(listingId, sellerId, { price: null })
+        ).rejects.toThrow(InvalidLifecycleTransitionError);
+      });
+
+      it('should reject updating published listing (price > 0, tradeAvailable false) to price 0', async () => {
+        (listingRepo.findListingById as jest.Mock).mockResolvedValue({
+          id: listingId,
+          sellerId,
+          status: 'published',
+          price: 2500,
+          currency: 'EUR',
+          tradeAvailable: false,
+        });
+
+        await expect(
+          updateListing(listingId, sellerId, { price: 0 })
+        ).rejects.toThrow(InvalidLifecycleTransitionError);
+      });
+
+      it('should reject updating published listing (price null, tradeAvailable true) to disable tradeAvailable', async () => {
+        (listingRepo.findListingById as jest.Mock).mockResolvedValue({
+          id: listingId,
+          sellerId,
+          status: 'published',
+          price: null,
+          currency: 'EUR',
+          tradeAvailable: true,
+        });
+
+        await expect(
+          updateListing(listingId, sellerId, { tradeAvailable: false })
+        ).rejects.toThrow(InvalidLifecycleTransitionError);
+      });
     });
   });
 

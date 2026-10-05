@@ -15,6 +15,7 @@ export class InvalidLifecycleTransitionError extends Error {
 
 /**
  * Explicit state transition map for listing lifecycle states.
+ * Note: 'archived' is a terminal state to prevent recycling completed or archived listings.
  */
 export const LISTING_TRANSITION_MAP: Record<ListingStatus, readonly ListingStatus[]> = {
   draft: ['published', 'archived'],
@@ -22,7 +23,7 @@ export const LISTING_TRANSITION_MAP: Record<ListingStatus, readonly ListingStatu
   reserved: ['sold', 'traded', 'published', 'archived'],
   sold: ['archived'],
   traded: ['archived'],
-  archived: ['draft'],
+  archived: [],
 } as const;
 
 /**
@@ -44,8 +45,9 @@ export function canTransitionListingStatus(currentStatus: ListingStatus, targetS
 }
 
 /**
- * Validates a status transition against both structural state machine rules and business invariants.
- * Throws InvalidLifecycleTransitionError if transition is invalid.
+ * Validates a status transition and resulting state invariants.
+ * Validates structural transition rules as well as business state invariants (even when currentStatus === targetStatus).
+ * Throws InvalidLifecycleTransitionError if transition or target state is invalid.
  */
 export function validateListingTransition(params: {
   currentStatus: ListingStatus;
@@ -55,11 +57,7 @@ export function validateListingTransition(params: {
 }): void {
   const { currentStatus, targetStatus, price, tradeAvailable } = params;
 
-  if (currentStatus === targetStatus) {
-    return;
-  }
-
-  if (!canTransitionListingStatus(currentStatus, targetStatus)) {
+  if (currentStatus !== targetStatus && !canTransitionListingStatus(currentStatus, targetStatus)) {
     throw new InvalidLifecycleTransitionError(
       currentStatus,
       targetStatus,
@@ -67,7 +65,7 @@ export function validateListingTransition(params: {
     );
   }
 
-  // Business invariant checks for specific target statuses
+  // Business invariant checks for the target resulting state (enforced on transitions and updates)
   if (targetStatus === 'published') {
     const hasPrice = price !== null && price !== undefined && price > 0;
     const isTrade = tradeAvailable === true;
@@ -75,7 +73,7 @@ export function validateListingTransition(params: {
       throw new InvalidLifecycleTransitionError(
         currentStatus,
         targetStatus,
-        'Listing must have a price greater than 0 or trade availability enabled before publishing.'
+        'Listing must have a price greater than 0 or trade availability enabled when published.'
       );
     }
   }
@@ -84,7 +82,7 @@ export function validateListingTransition(params: {
     throw new InvalidLifecycleTransitionError(
       currentStatus,
       targetStatus,
-      "Listing cannot be transitioned to 'traded' when trade availability is disabled."
+      "Listing cannot be in 'traded' status when trade availability is disabled."
     );
   }
 }
