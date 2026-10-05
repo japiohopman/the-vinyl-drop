@@ -33,7 +33,7 @@ export async function verifyMigrations(): Promise<void> {
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;`
   );
   const tableNames = tablesRes.rows.map((r) => r.table_name);
-  const expectedTables = ['comments', 'listing_photos', 'listings', 'profiles', 'releases'];
+  const expectedTables = ['comments', 'listing_photos', 'listings', 'physical_copies', 'profiles', 'releases'];
   for (const expectedTable of expectedTables) {
     if (!tableNames.includes(expectedTable)) {
       throw new Error(`Missing expected table '${expectedTable}' after migration execution`);
@@ -61,7 +61,9 @@ export async function verifyMigrations(): Promise<void> {
     'comments_listing_id_listings_id_fk',
     'comments_author_id_profiles_id_fk',
     'listing_photos_listing_id_listings_id_fk',
-    'listings_release_id_releases_id_fk',
+    'physical_copies_release_id_releases_id_fk',
+    'physical_copies_owner_id_profiles_id_fk',
+    'listings_physical_copy_id_physical_copies_id_fk',
     'listings_seller_id_profiles_id_fk',
   ];
   for (const expectedFk of expectedFks) {
@@ -70,7 +72,16 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
-  // 4. Verify expected database indexes
+  // 4. Verify check constraints
+  const checkRes = await pg.query<{ conname: string }>(
+    `SELECT conname FROM pg_constraint WHERE contype = 'c' ORDER BY conname;`
+  );
+  const checkNames = checkRes.rows.map((r) => r.conname);
+  if (!checkNames.includes('listings_price_check')) {
+    throw new Error("Missing expected check constraint 'listings_price_check' after migration execution");
+  }
+
+  // 5. Verify expected database indexes
   const indexRes = await pg.query<{ indexname: string }>(
     `SELECT indexname FROM pg_indexes WHERE schemaname = 'public' ORDER BY indexname;`
   );
@@ -81,11 +92,14 @@ export async function verifyMigrations(): Promise<void> {
     'comments_created_at_idx',
     'listing_photos_listing_idx',
     'listing_photos_order_idx',
+    'physical_copies_release_idx',
+    'physical_copies_owner_idx',
     'listings_seller_idx',
-    'listings_release_idx',
+    'listings_physical_copy_idx',
     'listings_status_idx',
     'listings_price_idx',
     'listings_created_at_idx',
+    'listings_active_physical_copy_idx',
     'releases_artist_idx',
     'releases_title_idx',
     'releases_label_idx',
@@ -99,7 +113,7 @@ export async function verifyMigrations(): Promise<void> {
   }
 
   console.log(
-    `✅ Migration verification successful! Verified 5 tables, 2 enums, ${fkNames.length} foreign key constraints, and ${indexNames.length} indexes applied cleanly.`
+    `✅ Migration verification successful! Verified 6 tables, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly.`
   );
 }
 

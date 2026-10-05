@@ -19,21 +19,6 @@ CREATE TABLE "listing_photos" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "listings" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"release_id" uuid NOT NULL,
-	"seller_id" uuid NOT NULL,
-	"price" integer,
-	"currency" text DEFAULT 'EUR' NOT NULL,
-	"media_condition" "condition_grade" NOT NULL,
-	"sleeve_condition" "condition_grade" NOT NULL,
-	"trade_available" boolean DEFAULT false NOT NULL,
-	"description" text,
-	"status" "listing_status" DEFAULT 'draft' NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "profiles" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"username" text NOT NULL,
@@ -64,21 +49,51 @@ CREATE TABLE "releases" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "physical_copies" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"release_id" uuid NOT NULL,
+	"owner_id" uuid NOT NULL,
+	"media_condition" "condition_grade" NOT NULL,
+	"sleeve_condition" "condition_grade" NOT NULL,
+	"notes" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "listings" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"physical_copy_id" uuid NOT NULL,
+	"seller_id" uuid NOT NULL,
+	"price" integer,
+	"currency" text DEFAULT 'EUR' NOT NULL,
+	"trade_available" boolean DEFAULT false NOT NULL,
+	"description" text,
+	"status" "listing_status" DEFAULT 'draft' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "listings_price_check" CHECK ("price" IS NULL OR "price" >= 0)
+);
+--> statement-breakpoint
 ALTER TABLE "comments" ADD CONSTRAINT "comments_listing_id_listings_id_fk" FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "comments" ADD CONSTRAINT "comments_author_id_profiles_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "listing_photos" ADD CONSTRAINT "listing_photos_listing_id_listings_id_fk" FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "listings" ADD CONSTRAINT "listings_release_id_releases_id_fk" FOREIGN KEY ("release_id") REFERENCES "public"."releases"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "physical_copies" ADD CONSTRAINT "physical_copies_release_id_releases_id_fk" FOREIGN KEY ("release_id") REFERENCES "public"."releases"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "physical_copies" ADD CONSTRAINT "physical_copies_owner_id_profiles_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "listings" ADD CONSTRAINT "listings_physical_copy_id_physical_copies_id_fk" FOREIGN KEY ("physical_copy_id") REFERENCES "public"."physical_copies"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "listings" ADD CONSTRAINT "listings_seller_id_profiles_id_fk" FOREIGN KEY ("seller_id") REFERENCES "public"."profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "comments_listing_idx" ON "comments" USING btree ("listing_id");--> statement-breakpoint
 CREATE INDEX "comments_author_idx" ON "comments" USING btree ("author_id");--> statement-breakpoint
 CREATE INDEX "comments_created_at_idx" ON "comments" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "listing_photos_listing_idx" ON "listing_photos" USING btree ("listing_id");--> statement-breakpoint
 CREATE INDEX "listing_photos_order_idx" ON "listing_photos" USING btree ("listing_id","display_order");--> statement-breakpoint
+CREATE INDEX "physical_copies_release_idx" ON "physical_copies" USING btree ("release_id");--> statement-breakpoint
+CREATE INDEX "physical_copies_owner_idx" ON "physical_copies" USING btree ("owner_id");--> statement-breakpoint
 CREATE INDEX "listings_seller_idx" ON "listings" USING btree ("seller_id");--> statement-breakpoint
-CREATE INDEX "listings_release_idx" ON "listings" USING btree ("release_id");--> statement-breakpoint
+CREATE INDEX "listings_physical_copy_idx" ON "listings" USING btree ("physical_copy_id");--> statement-breakpoint
 CREATE INDEX "listings_status_idx" ON "listings" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "listings_price_idx" ON "listings" USING btree ("price");--> statement-breakpoint
 CREATE INDEX "listings_created_at_idx" ON "listings" USING btree ("created_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "listings_active_physical_copy_idx" ON "listings" USING btree ("physical_copy_id") WHERE "status" IN ('published', 'reserved');--> statement-breakpoint
 CREATE INDEX "releases_artist_idx" ON "releases" USING btree ("artist");--> statement-breakpoint
 CREATE INDEX "releases_title_idx" ON "releases" USING btree ("title");--> statement-breakpoint
 CREATE INDEX "releases_label_idx" ON "releases" USING btree ("label");--> statement-breakpoint
