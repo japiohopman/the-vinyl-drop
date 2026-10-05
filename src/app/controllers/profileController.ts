@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { getProfileByUsername, getProfileById, updateProfile } from '../services/profileService';
+import { getSellerPublishedListings } from '../services/listingService';
 import { profileUpdateSchema } from '../../validators/profile';
 import { formatZodFormErrors, FormViewModel } from '../view-models/formViewModel';
 import { renderWithLayout } from '../utils/render';
@@ -42,11 +43,19 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
     }
 
     const isOwner = Boolean(req.user && req.user.id === profile.id);
+    let listings: Awaited<ReturnType<typeof getSellerPublishedListings>> = [];
+
+    try {
+      listings = await getSellerPublishedListings(profile.username);
+    } catch {
+      listings = [];
+    }
 
     renderWithLayout(res, 'profiles/show', {
       title: `${profile.displayName || profile.username} (@${profile.username}) — The Vinyl Drop`,
       profile,
       isOwner,
+      listings,
     }, next);
   } catch (error) {
     next(error);

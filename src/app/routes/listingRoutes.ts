@@ -7,6 +7,8 @@ import {
   getSelectReleasePage,
   getCreateListingPage,
   postCreateListing,
+  getListingDetailPage,
+  postCreateComment,
   getEditListingPage,
   postEditListing,
   postUploadPhoto,
@@ -24,6 +26,12 @@ router.get('/', requireAuth, getSellerListings);
 router.get('/new', requireAuth, getSelectReleasePage);
 router.get('/create', requireAuth, getCreateListingPage);
 router.post('/', requireAuth, validateSameOrigin, postCreateListing);
+
+// Public Listing Detail Page
+router.get('/:id', getListingDetailPage);
+
+// Comment Thread Operations
+router.post('/:id/comments', requireAuth, validateSameOrigin, postCreateComment);
 
 // Preview (public or seller)
 router.get('/:id/preview', requireAuth, getPreviewListingPage);

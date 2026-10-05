@@ -1,11 +1,37 @@
-<section class="hero-section">
-  <h1><%= message %></h1>
-  <p class="tagline">Local community marketplace for buying, selling, and trading physical vinyl records.</p>
+<section class="hero-section" style="margin-bottom: var(--space-8); text-align: center; padding: var(--space-8) var(--space-4); background: var(--color-paper-muted); border: var(--border-thick); border-radius: var(--radius-md);">
+  <h1 style="font-family: var(--font-display); font-size: var(--font-size-3xl); margin-bottom: var(--space-2);"><%= message %></h1>
+  <p class="tagline" style="font-size: var(--font-size-lg); color: var(--color-ink-muted); max-width: 600px; margin: 0 auto var(--space-6);">
+    Local community marketplace for buying, selling, and trading physical vinyl records.
+  </p>
+  <div style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap;">
+    <a href="/browse" class="btn btn-primary btn-lg">Browse Record Drops</a>
+    <a href="/drop/new" class="btn btn-outline btn-lg">+ Drop a Record</a>
+  </div>
 </section>
 
 <section class="recent-drops">
-  <h2>Recent Drops</h2>
-  <div class="empty-state">
-    <p>No recent drops yet. Be the first to drop a record!</p>
+  <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-6); flex-wrap: wrap; gap: var(--space-4);">
+    <h2 style="font-family: var(--font-display); font-size: var(--font-size-2xl);">Recent Drops</h2>
+    <a href="/browse" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-rust-accessible); text-decoration: underline;">
+      View all drops →
+    </a>
   </div>
+
+  <% if (typeof listings !== 'undefined' && listings && listings.length > 0) { %>
+    <div class="listing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-6);">
+      <% listings.forEach(function(item) { %>
+        <%- include('../partials/listing-card', { listing: item }) %>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="empty-state" style="padding: var(--space-12) var(--space-4); text-align: center; border: 2px dashed var(--color-border-subtle); border-radius: var(--radius-md);">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: var(--space-4); color: var(--color-ink-muted);" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"></circle>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      <h3 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-2);">No recent drops yet</h3>
+      <p style="color: var(--color-ink-muted); margin-bottom: var(--space-6);">Be the first to list a vinyl record in our community crate!</p>
+      <a href="/drop/new" class="btn btn-primary">+ Drop a Record</a>
+    </div>
+  <% } %>
 </section>

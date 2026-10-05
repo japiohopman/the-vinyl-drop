@@ -4,6 +4,7 @@ import { listReleases, findReleaseById } from '../repositories/releaseRepository
 import {
   getUserListings,
   getListingWithDetails,
+  getListingWithDetailsForView,
   createListingFromRelease,
   updateListing,
   addPhotoToListing,
@@ -12,10 +13,11 @@ import {
   publishListing,
   archiveListing,
 } from '../services/listingService';
+import { getListingComments, addComment } from '../services/commentService';
 import { formatPrice } from '../view-models/listingCardViewModel';
 import { FormViewModel } from '../view-models/formViewModel';
 import { parsePriceEurToCents } from '../../validators/listing';
-import { ValidationError } from '../services/errors';
+import { ValidationError, NotFoundError, AuthorizationError } from '../services/errors';
 
 export async function getSellerListings(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -392,6 +394,118 @@ export async function postArchiveListing(req: Request, res: Response, next: Next
     await archiveListing(listingId, req.user.id);
 
     res.redirect('/listings');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getListingDetailPage(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const listingId = req.params.id;
+    const requestingUserId = req.user?.id;
+
+    let details;
+    try {
+      details = await getListingWithDetailsForView(listingId, requestingUserId);
+    } catch (err) {
+      if (err instanceof NotFoundError || err instanceof AuthorizationError) {
+        res.status(404);
+        return renderWithLayout(
+          res,
+          'errors/404',
+          {
+            title: 'Listing Not Found',
+            message: 'The requested record listing was not found or is no longer available.',
+          },
+          next
+        );
+      }
+      throw err;
+    }
+
+    const comments = await getListingComments(listingId, requestingUserId);
+    const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
+    const priceFormatted = formatPrice(details.listing.price, isTradeOnly);
+
+    renderWithLayout(
+      res,
+      'listings/show',
+      {
+        title: `${details.release.title} by ${details.release.artist} — The Vinyl Drop`,
+        listing: details.listing,
+        physicalCopy: details.physicalCopy,
+        release: details.release,
+        seller: details.seller,
+        photos: details.photos,
+        priceFormatted,
+        comments,
+        currentUser: req.user || null,
+        isSeller: requestingUserId === details.listing.sellerId,
+        commentError: (req.query.commentError as string) || null,
+      },
+      next
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function postCreateComment(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) {
+      return res.redirect('/auth/login');
+    }
+
+    const listingId = req.params.id;
+    const content = req.body.content || '';
+
+    try {
+      await addComment(listingId, req.user.id, content);
+      res.redirect(`/listings/${listingId}#comments`);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        res.status(404);
+        return renderWithLayout(
+          res,
+          'errors/404',
+          {
+            title: 'Listing Not Found',
+            message: 'Listing does not exist.',
+          },
+          next
+        );
+      }
+
+      if (err instanceof ValidationError || err instanceof AuthorizationError) {
+        const errMsg = (err as Error).message;
+        const details = await getListingWithDetailsForView(listingId, req.user.id);
+        const comments = await getListingComments(listingId, req.user.id);
+        const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
+
+        res.status(400);
+        return renderWithLayout(
+          res,
+          'listings/show',
+          {
+            title: `${details.release.title} by ${details.release.artist} — The Vinyl Drop`,
+            listing: details.listing,
+            physicalCopy: details.physicalCopy,
+            release: details.release,
+            seller: details.seller,
+            photos: details.photos,
+            priceFormatted: formatPrice(details.listing.price, isTradeOnly),
+            comments,
+            currentUser: req.user,
+            isSeller: req.user.id === details.listing.sellerId,
+            commentError: errMsg,
+            submittedContent: content,
+          },
+          next
+        );
+      }
+
+      throw err;
+    }
   } catch (error) {
     next(error);
   }

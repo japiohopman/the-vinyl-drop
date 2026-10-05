@@ -1,0 +1,393 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import request from 'supertest';
+import { createApp } from '../src/app';
+import { setSupabaseClient } from '../src/lib/supabase';
+import * as listingService from '../src/app/services/listingService';
+import * as commentService from '../src/app/services/commentService';
+import * as profileRepository from '../src/app/repositories/profileRepository';
+import { NotFoundError, ValidationError } from '../src/app/services/errors';
+import { Profile } from '../src/db/schema/profiles';
+import { Listing } from '../src/db/schema/listings';
+import { Release } from '../src/db/schema/releases';
+import { PhysicalCopy } from '../src/db/schema/physicalCopies';
+
+jest.mock('../src/app/services/listingService');
+jest.mock('../src/app/services/commentService');
+jest.mock('../src/app/repositories/profileRepository');
+
+describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Comments', () => {
+  let mockSupabase: any;
+
+  const mockUserAlice = {
+    id: '11111111-1111-1111-1111-111111111111',
+    email: 'alice@example.com',
+  };
+
+  const mockProfileAlice: Profile = {
+    id: mockUserAlice.id,
+    username: 'alice_records',
+    displayName: 'Alice Vinyl',
+    avatarUrl: 'https://example.com/alice.jpg',
+    bio: 'Crate digger & soul collector.',
+    location: 'Berlin, DE',
+    createdAt: new Date('2025-01-01'),
+    updatedAt: new Date('2025-01-01'),
+  };
+
+  const mockUserBob = {
+    id: '22222222-2222-2222-2222-222222222222',
+    email: 'bob@example.com',
+  };
+
+  const mockProfileBob: Profile = {
+    id: mockUserBob.id,
+    username: 'bob_grooves',
+    displayName: 'Bob Grooves',
+    avatarUrl: null,
+    bio: null,
+    location: null,
+    createdAt: new Date('2025-01-01'),
+    updatedAt: new Date('2025-01-01'),
+  };
+
+  const mockRelease: Release = {
+    id: 'rel-1111-1111-1111',
+    title: 'Blue Train',
+    artist: 'John Coltrane',
+    label: 'Blue Note',
+    catalogueNumber: 'BLP 1577',
+    releaseYear: 1957,
+    country: 'US',
+    format: '12" Vinyl',
+    barcode: null,
+    genre: 'Jazz',
+    externalSource: null,
+    externalId: null,
+    lastImportedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockPhysicalCopy: PhysicalCopy = {
+    id: 'copy-1111-1111-1111',
+    releaseId: mockRelease.id,
+    ownerId: mockUserAlice.id,
+    mediaCondition: 'VG+',
+    sleeveCondition: 'VG',
+    notes: 'Minor corner crease',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockPublishedListing: Listing = {
+    id: 'list-1111-1111-1111',
+    physicalCopyId: mockPhysicalCopy.id,
+    sellerId: mockUserAlice.id,
+    price: 3500,
+    currency: 'EUR',
+    tradeAvailable: true,
+    description: 'Original pressing in great shape.',
+    status: 'published',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockDraftListing: Listing = {
+    ...mockPublishedListing,
+    id: 'list-2222-2222-2222',
+    status: 'draft',
+  };
+
+  const mockListingCard = {
+    id: mockPublishedListing.id,
+    title: mockRelease.title,
+    artist: mockRelease.artist,
+    releaseYear: mockRelease.releaseYear,
+    format: mockRelease.format,
+    priceFormatted: '€35.00',
+    isTrade: true,
+    mediaCondition: 'VG+',
+    sleeveCondition: 'VG',
+    imageUrl: 'https://example.com/photo.webp',
+    imageAlt: 'Album cover artwork for Blue Train by John Coltrane',
+    sellerUsername: mockProfileAlice.username,
+    sellerLocation: mockProfileAlice.location,
+    url: `/listings/${mockPublishedListing.id}`,
+  };
+
+  const mockDetailedListing = {
+    listing: mockPublishedListing,
+    physicalCopy: mockPhysicalCopy,
+    release: mockRelease,
+    seller: mockProfileAlice,
+    photos: [
+      {
+        id: 'photo-1',
+        listingId: mockPublishedListing.id,
+        storagePath: 'photos/photo-1.webp',
+        publicUrl: 'https://example.com/photo-1.webp',
+        displayOrder: 0,
+        altText: 'Album cover artwork',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ],
+  };
+
+  const mockComment = {
+    id: 'comment-1111',
+    listingId: mockPublishedListing.id,
+    authorId: mockUserBob.id,
+    content: 'Is this an original US Mono pressing?',
+    createdAt: new Date('2025-01-02T10:00:00Z'),
+    updatedAt: new Date('2025-01-02T10:00:00Z'),
+    author: {
+      id: mockProfileBob.id,
+      username: mockProfileBob.username,
+      displayName: mockProfileBob.displayName,
+      avatarUrl: mockProfileBob.avatarUrl,
+    },
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockSupabase = {
+      auth: {
+        getUser: jest.fn(),
+        signOut: jest.fn().mockResolvedValue({ error: null }),
+      },
+    };
+
+    setSupabaseClient(mockSupabase);
+  });
+
+  describe('Homepage Feed (GET /)', () => {
+    it('should render homepage feed with published listing cards when drops exist', async () => {
+      (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([mockListingCard]);
+
+      const app = createApp();
+      const res = await request(app).get('/');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Blue Train');
+      expect(res.text).toContain('John Coltrane');
+      expect(res.text).toContain('€35.00');
+      expect(res.text).toContain('Recent Drops');
+    });
+
+    it('should render accessible empty state on homepage when no published drops exist', async () => {
+      (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([]);
+
+      const app = createApp();
+      const res = await request(app).get('/');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('No recent drops yet');
+      expect(res.text).toContain('Be the first to list a vinyl record');
+    });
+  });
+
+  describe('Browse & PostgreSQL Search (GET /browse & GET /search)', () => {
+    it('should handle search keywords and filter parameters on GET /browse', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app)
+        .get('/browse?q=Coltrane&genre=Jazz&condition=VG%2B&minPrice=10&maxPrice=50&sort=price_asc');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Coltrane');
+      expect(res.text).toContain('Blue Train');
+      expect(listingService.searchBrowseListings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          q: 'Coltrane',
+          genre: 'Jazz',
+          condition: 'VG+',
+          minPrice: 1000,
+          maxPrice: 5000,
+          sort: 'price_asc',
+          page: 1,
+        })
+      );
+    });
+
+    it('should render empty search results state when query matches no drops', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [],
+        totalCount: 0,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/browse?q=NonExistentArtist123');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('No records match your search');
+      expect(res.text).toContain('Clear Filters');
+    });
+
+    it('should delegate GET /search directly to browse controller', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/search?q=Blue');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Blue Train');
+    });
+  });
+
+  describe('Listing Detail View & Authorization Boundaries (GET /listings/:id)', () => {
+    it('should render public listing detail page for published listings', async () => {
+      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
+      (commentService.getListingComments as jest.Mock).mockResolvedValue([mockComment]);
+
+      const app = createApp();
+      const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Blue Train');
+      expect(res.text).toContain('John Coltrane');
+      expect(res.text).toContain('Blue Note');
+      expect(res.text).toContain('Is this an original US Mono pressing?');
+      expect(res.text).toContain('Sign in to post a comment');
+    });
+
+    it('should return 404 Not Found when attempting to view non-existent or unpublished listing as unauthorized user', async () => {
+      (listingService.getListingWithDetailsForView as jest.Mock).mockRejectedValue(
+        new NotFoundError('Listing not found')
+      );
+
+      const app = createApp();
+      const res = await request(app).get(`/listings/${mockDraftListing.id}`);
+
+      expect(res.status).toBe(404);
+      expect(res.text).toContain('404 - Page Not Found');
+    });
+  });
+
+  describe('Authenticated Comment Creation & CSRF (POST /listings/:id/comments)', () => {
+    it('should redirect unauthenticated users attempting to post comments to /auth/login', async () => {
+      const app = createApp();
+      const res = await request(app)
+        .post(`/listings/${mockPublishedListing.id}/comments`)
+        .send({ content: 'Nice copy!' });
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toContain('/auth/login');
+    });
+
+    it('should enforce CSRF origin/referer protection on comment creation', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserBob },
+        error: null,
+      });
+
+      const app = createApp();
+      const res = await request(app)
+        .post(`/listings/${mockPublishedListing.id}/comments`)
+        .set('Cookie', ['sb-access-token=bob-token'])
+        .send({ content: 'Nice copy!' });
+
+      expect(res.status).toBe(403);
+      expect(res.text).toContain('CSRF Forbidden');
+    });
+
+    it('should post comment and redirect to #comments when authenticated and origin is valid', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserBob },
+        error: null,
+      });
+
+      (commentService.addComment as jest.Mock).mockResolvedValue({
+        id: 'comment-999',
+        listingId: mockPublishedListing.id,
+        authorId: mockUserBob.id,
+        content: 'Is shipping included?',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const app = createApp();
+      const res = await request(app)
+        .post(`/listings/${mockPublishedListing.id}/comments`)
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=bob-token'])
+        .send({ content: 'Is shipping included?' });
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe(`/listings/${mockPublishedListing.id}#comments`);
+      expect(commentService.addComment).toHaveBeenCalledWith(
+        mockPublishedListing.id,
+        mockUserBob.id,
+        'Is shipping included?'
+      );
+    });
+
+    it('should return 400 Bad Request when posting invalid or empty comment', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserBob },
+        error: null,
+      });
+
+      (commentService.addComment as jest.Mock).mockRejectedValue(
+        new ValidationError('Invalid comment: Comment cannot be empty')
+      );
+      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
+      (commentService.getListingComments as jest.Mock).mockResolvedValue([]);
+
+      const app = createApp();
+      const res = await request(app)
+        .post(`/listings/${mockPublishedListing.id}/comments`)
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=bob-token'])
+        .send({ content: '   ' });
+
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Comment cannot be empty');
+    });
+  });
+
+  describe('Public Seller Profile View (GET /profiles/:username & GET /profile/:username)', () => {
+    it('should render public seller profile with active published drops', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue([mockListingCard]);
+
+      const app = createApp();
+      const res = await request(app).get('/profiles/alice_records');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Alice Vinyl');
+      expect(res.text).toContain('@alice_records');
+      expect(res.text).toContain('Active Record Drops (1)');
+      expect(res.text).toContain('Blue Train');
+    });
+
+    it('should render seller profile empty state when seller has 0 active drops', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileBob);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue([]);
+
+      const app = createApp();
+      const res = await request(app).get('/profile/bob_grooves');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Bob Grooves');
+      expect(res.text).toContain('@bob_grooves has no active record drops available right now.');
+    });
+  });
+});

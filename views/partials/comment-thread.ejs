@@ -1,0 +1,93 @@
+<section id="comments" class="comment-thread-section" style="margin-top: var(--space-12); padding-top: var(--space-8); border-top: var(--border-thick);">
+  <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-6);">
+    Community Discussion (<%= typeof comments !== 'undefined' && comments ? comments.length : 0 %>)
+  </h2>
+
+  <% if (typeof commentError !== 'undefined' && commentError) { %>
+    <div class="alert alert-error" role="alert" style="padding: var(--space-4); margin-bottom: var(--space-6); background: var(--color-error-bg); border: var(--border-thick) var(--color-error-border); border-radius: var(--radius-sm); color: var(--color-error-border);">
+      <p style="font-weight: 600;"><%= commentError %></p>
+    </div>
+  <% } %>
+
+  <!-- Comment List -->
+  <div class="comment-list" style="display: flex; flex-direction: column; gap: var(--space-6); margin-bottom: var(--space-8);">
+    <% if (typeof comments !== 'undefined' && comments && comments.length > 0) { %>
+      <% comments.forEach(function(c) { %>
+        <% const isSellerAuthor = (seller && c.authorId === seller.id) || (listing && c.authorId === listing.sellerId); %>
+        <article class="comment-card" style="padding: var(--space-4); border: var(--border-thin, 1px solid var(--color-border)); border-radius: var(--radius-sm); background: <%= isSellerAuthor ? 'var(--color-paper-muted)' : 'var(--color-white)' %>;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-2); flex-wrap: wrap; gap: var(--space-2);">
+            <div style="display: flex; align-items: center; gap: var(--space-3);">
+              <div class="comment-avatar" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--color-border); overflow: hidden; background: var(--color-paper-muted); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--font-size-sm); flex-shrink: 0;">
+                <% if (c.author.avatarUrl) { %>
+                  <img src="<%= c.author.avatarUrl %>" alt="<%= c.author.displayName || c.author.username %>'s avatar" style="width: 100%; height: 100%; object-fit: cover;">
+                <% } else { %>
+                  <span><%= (c.author.displayName || c.author.username || 'U').substring(0, 1).toUpperCase() %></span>
+                <% } %>
+              </div>
+
+              <div>
+                <a href="/profiles/<%= encodeURIComponent(c.author.username) %>" style="font-weight: 600; color: var(--color-ink); text-decoration: none;">
+                  <%= c.author.displayName || c.author.username %>
+                </a>
+                <span style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); margin-left: var(--space-1);">
+                  @<%= c.author.username %>
+                </span>
+
+                <% if (isSellerAuthor) { %>
+                  <span class="seller-badge" style="display: inline-block; margin-left: var(--space-2); padding: 1px var(--space-2); font-family: var(--font-mono); font-size: var(--font-size-3xs); text-transform: uppercase; font-weight: 700; background: var(--color-rust-accessible); color: var(--color-white); border-radius: var(--radius-xs);">
+                    Seller
+                  </span>
+                <% } %>
+              </div>
+            </div>
+
+            <time datetime="<%= new Date(c.createdAt).toISOString() %>" style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
+              <%= new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+            </time>
+          </div>
+
+          <div class="comment-content" style="font-size: var(--font-size-base); line-height: 1.5; word-break: break-word; margin-top: var(--space-2);">
+            <p style="white-space: pre-wrap; margin: 0;"><%= c.content %></p>
+          </div>
+        </article>
+      <% }); %>
+    <% } else { %>
+      <div class="empty-comments" style="padding: var(--space-6); text-align: center; border: 1px dashed var(--color-border-subtle); border-radius: var(--radius-sm); color: var(--color-ink-muted);">
+        <p>No comments yet. Be the first to start the discussion!</p>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Comment Form or Sign-in Prompt -->
+  <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+    <form action="/listings/<%= listing.id %>/comments" method="POST" style="display: flex; flex-direction: column; gap: var(--space-4);">
+      <div class="form-group">
+        <label for="comment-content" style="display: block; font-family: var(--font-display); font-size: var(--font-size-sm); margin-bottom: var(--space-2);">
+          Post a comment or question
+        </label>
+        <textarea
+          id="comment-content"
+          name="content"
+          rows="3"
+          required
+          maxlength="1000"
+          placeholder="Ask the seller about media condition, pressing details, or drop availability..."
+          style="width: 100%; padding: var(--space-3); font-family: var(--font-body); font-size: var(--font-size-base); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white);"
+        ><%= typeof submittedContent !== 'undefined' ? submittedContent : '' %></textarea>
+      </div>
+
+      <div>
+        <button type="submit" class="btn btn-primary">
+          Post Comment
+        </button>
+      </div>
+    </form>
+  <% } else { %>
+    <div class="login-prompt" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); text-align: center;">
+      <p style="margin-bottom: var(--space-3); font-size: var(--font-size-sm);">Have a question about this record?</p>
+      <a href="/auth/login?next=/listings/<%= listing.id %>" class="btn btn-outline btn-sm">
+        Sign in to post a comment
+      </a>
+    </div>
+  <% } %>
+</section>

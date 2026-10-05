@@ -1,5 +1,5 @@
-<div class="profile-page" style="max-width: 720px; margin: var(--space-8) auto;">
-  <div class="profile-header-card" style="padding: var(--space-6); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card);">
+<div class="profile-page" style="max-width: 1080px; margin: var(--space-8) auto; padding: 0 var(--space-4);">
+  <div class="profile-header-card" style="padding: var(--space-6); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card); margin-bottom: var(--space-8);">
     <div style="display: flex; gap: var(--space-6); align-items: flex-start; flex-wrap: wrap;">
       <div class="profile-avatar" style="width: 96px; height: 96px; border-radius: 50%; border: var(--border-thick); overflow: hidden; background-color: var(--color-paper-muted); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 2rem;">
         <% if (profile.avatarUrl) { %>
@@ -17,7 +17,10 @@
           </div>
 
           <% if (isOwner) { %>
-            <a href="/profile/edit" class="btn btn-outline btn-sm">Edit Profile</a>
+            <div style="display: flex; gap: var(--space-2);">
+              <a href="/listings" class="btn btn-outline btn-sm">My Listings</a>
+              <a href="/profile/edit" class="btn btn-primary btn-sm">Edit Profile</a>
+            </div>
           <% } %>
         </div>
 
@@ -37,4 +40,25 @@
       </div>
     </div>
   </div>
+
+  <!-- Seller's Published Record Drops -->
+  <section class="seller-listings-section">
+    <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-6);">
+      Active Record Drops (<%= typeof listings !== 'undefined' && listings ? listings.length : 0 %>)
+    </h2>
+
+    <% if (typeof listings !== 'undefined' && listings && listings.length > 0) { %>
+      <div class="listing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-6);">
+        <% listings.forEach(function(item) { %>
+          <%- include('../partials/listing-card', { listing: item }) %>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <div class="empty-state" style="padding: var(--space-8); text-align: center; border: 2px dashed var(--color-border-subtle); border-radius: var(--radius-md);">
+        <p style="color: var(--color-ink-muted);">
+          @<%= profile.username %> has no active record drops available right now.
+        </p>
+      </div>
+    <% } %>
+  </section>
 </div>
