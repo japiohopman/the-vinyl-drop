@@ -1,5 +1,7 @@
 <%
   const activePath = typeof currentPath !== 'undefined' ? currentPath : '/';
+  const user = typeof currentUser !== 'undefined' ? currentUser : null;
+  const userProfile = typeof currentProfile !== 'undefined' ? currentProfile : null;
 %>
 <nav class="site-nav" aria-label="Primary Navigation">
   <ul class="nav-list">
@@ -16,7 +18,18 @@
       <a href="/activity" class="nav-link<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>ACTIVITY</a>
     </li>
     <li class="nav-item">
-      <a href="/profile" class="nav-link<%= activePath.startsWith('/profile') ? ' active' : '' %>"<%- activePath.startsWith('/profile') ? ' aria-current="page"' : '' %>>YOU</a>
+      <a href="/profile" class="nav-link<%= activePath.startsWith('/profile') || activePath.startsWith('/profiles') ? ' active' : '' %>"<%- activePath.startsWith('/profile') || activePath.startsWith('/profiles') ? ' aria-current="page"' : '' %>><%= userProfile ? '@' + userProfile.username : 'YOU' %></a>
     </li>
+    <% if (user) { %>
+      <li class="nav-item">
+        <form action="/auth/logout" method="POST" class="inline-form" style="display: inline;">
+          <button type="submit" class="nav-link nav-link-button" style="background: none; border: none; font: inherit; cursor: pointer; padding: 0;">LOGOUT</button>
+        </form>
+      </li>
+    <% } else { %>
+      <li class="nav-item">
+        <a href="/auth/login" class="nav-link<%= activePath.startsWith('/auth/login') ? ' active' : '' %>"<%- activePath.startsWith('/auth/login') ? ' aria-current="page"' : '' %>>SIGN IN</a>
+      </li>
+    <% } %>
   </ul>
 </nav>

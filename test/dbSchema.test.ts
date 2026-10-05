@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getTableColumns, getTableName } from 'drizzle-orm';
 import { getDb } from '../src/db';
 import {
@@ -94,6 +95,6 @@ describe('Drizzle Database Schema Boundaries', () => {
   });
 
   it('should throw clear error from getDb() when DATABASE_URL is unconfigured', () => {
-    expect(() => getDb()).toThrow('DATABASE_URL environment variable is missing.');
+    expect(() => getDb(null as any)).toThrow('DATABASE_URL environment variable is missing.');
   });
 });

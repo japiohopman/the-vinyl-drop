@@ -1,16 +1,17 @@
-import { Response } from 'express';
+import { Response, NextFunction } from 'express';
 
 export function renderWithLayout(
   res: Response,
   view: string,
-  locals: Record<string, unknown>
+  locals: Record<string, unknown>,
+  next?: NextFunction
 ): void {
   res.render(view, locals, (err, bodyHtml) => {
     if (err) {
-      if (res.req && typeof res.req.next === 'function') {
-        return res.req.next(err);
+      if (next) {
+        return next(err);
       }
-      return;
+      return res.status(500).send(`Render Error: ${err.message}`);
     }
     res.render('layouts/main', {
       ...locals,

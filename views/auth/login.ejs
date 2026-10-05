@@ -1,0 +1,59 @@
+<div class="auth-page" style="max-width: 500px; margin: var(--space-8) auto;">
+  <div class="card" style="padding: var(--space-6); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card);">
+    <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">Welcome Back</h1>
+    <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin-bottom: var(--space-6);">
+      Sign in to access your profile and collection.
+    </p>
+
+    <% if (form.isSuccess && form.successMessage) { %>
+      <div class="form-success-banner" style="background-color: #EBF5F0; border: var(--border-thick); border-color: var(--color-deep-green); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-6); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-deep-green);">
+        <strong>Success:</strong> <%= form.successMessage %>
+      </div>
+    <% } %>
+
+    <%- include('../partials/form-errors', {
+      errors: form.generalErrors.length > 0
+        ? form.generalErrors
+        : Object.values(form.fieldErrors)
+    }) %>
+
+    <form action="/auth/login?next=<%= encodeURIComponent(nextUrl) %>" method="POST" class="auth-form" novalidate>
+      <input type="hidden" name="next" value="<%= nextUrl %>">
+
+      <%- include('../partials/form-input', {
+        type: 'email',
+        name: 'email',
+        label: 'Email Address',
+        value: form.values.email,
+        placeholder: 'you@example.com',
+        required: true,
+        error: form.fieldErrors.email
+      }) %>
+
+      <%- include('../partials/form-input', {
+        type: 'password',
+        name: 'password',
+        label: 'Password',
+        required: true,
+        error: form.fieldErrors.password
+      }) %>
+
+      <div style="margin-top: var(--space-6); display: flex; flex-direction: column; gap: var(--space-3);">
+        <%- include('../partials/button', {
+          text: 'Sign In',
+          type: 'submit',
+          variant: 'primary',
+          size: 'md'
+        }) %>
+
+        <a href="/auth/google?next=<%= encodeURIComponent(nextUrl) %>" class="btn btn-outline btn-md" style="display: flex; align-items: center; justify-content: center; gap: var(--space-2);">
+          <span>Sign in with Google</span>
+        </a>
+      </div>
+    </form>
+
+    <div style="margin-top: var(--space-6); text-align: center; font-size: var(--font-size-sm); color: var(--color-ink-muted);">
+      Don't have an account? <a href="/auth/signup?next=<%= encodeURIComponent(nextUrl) %>" style="color: var(--color-rust); font-weight: 600;">Sign up</a>
+    </div>
+  </div>
+</div>
