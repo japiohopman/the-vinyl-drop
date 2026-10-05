@@ -28,9 +28,32 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export function isAllowedRedirectUrl(url: string | undefined | null): boolean {
   if (!url) return false;
 
-  // Allow relative URLs starting with / (e.g. /profile), but forbid scheme-relative // (e.g. //evil.com)
-  if (url.startsWith('/') && !url.startsWith('//')) {
-    return true;
+  // Reject backslashes or control characters to prevent host escape / normalization tricks (e.g., /\\evil.com or /%5Cevil.com)
+  const hasControlChars = url.split('').some((char) => {
+    const code = char.charCodeAt(0);
+    return code < 32 || code === 127;
+  });
+
+  if (url.includes('\\') || hasControlChars) {
+    return false;
+  }
+
+  // Allow relative URLs starting with / (e.g. /profile), but forbid scheme-relative // or /\\
+  if (url.startsWith('/')) {
+    if (url.startsWith('//') || url.startsWith('/\\')) {
+      return false;
+    }
+
+    try {
+      const baseOrigin = new URL(config.APP_BASE_URL).origin;
+      const resolved = new URL(url, config.APP_BASE_URL);
+      if (resolved.origin !== baseOrigin) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   try {

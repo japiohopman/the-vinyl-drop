@@ -19,6 +19,12 @@ describe('Authentication & Session Handling', () => {
       expect(isAllowedRedirectUrl('//evil.com/login')).toBe(false);
     });
 
+    it('should reject backslash and normalization open redirect bypass attempts', () => {
+      expect(isAllowedRedirectUrl('/\\evil.com')).toBe(false);
+      expect(isAllowedRedirectUrl('/\\\\evil.com')).toBe(false);
+      expect(isAllowedRedirectUrl('/\\evil.com/login')).toBe(false);
+    });
+
     it('should allow trusted origins matching APP_BASE_URL', () => {
       expect(isAllowedRedirectUrl('http://localhost:3000/profile')).toBe(true);
     });
@@ -31,6 +37,7 @@ describe('Authentication & Session Handling', () => {
     it('should fallback safely when sanitizeRedirectUrl receives invalid inputs', () => {
       expect(sanitizeRedirectUrl('https://evil.com', '/fallback')).toBe('/fallback');
       expect(sanitizeRedirectUrl('//evil.com', '/profile')).toBe('/profile');
+      expect(sanitizeRedirectUrl('/\\evil.com', '/profile')).toBe('/profile');
       expect(sanitizeRedirectUrl('/valid-path', '/fallback')).toBe('/valid-path');
     });
   });
