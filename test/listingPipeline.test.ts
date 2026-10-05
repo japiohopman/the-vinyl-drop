@@ -410,6 +410,19 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(response.body.error).toContain('File upload size exceeds maximum limit');
     });
 
+    it('should reject requests exceeding 5 files file-count limit with 400 Bad Request (Blocker 1)', async () => {
+      const smallBuffer = Buffer.from('fake image content');
+      const req = supertest(uploadTestApp).post('/test-upload');
+
+      for (let i = 0; i < 6; i++) {
+        req.attach('photo', smallBuffer, { filename: `img${i}.jpg`, contentType: 'image/jpeg' });
+      }
+
+      const response = await req;
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Maximum photo upload limit');
+    });
+
     it('should reject form fields exceeding 10KB size limit with 400 Bad Request (Blocker 2)', async () => {
       const largeField = 'a'.repeat(12 * 1024); // 12KB
       const response = await supertest(uploadTestApp)
