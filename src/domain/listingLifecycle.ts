@@ -14,15 +14,24 @@ export class InvalidLifecycleTransitionError extends Error {
 }
 
 /**
+ * Terminal listing statuses that cannot undergo further field updates or status transitions.
+ */
+export const TERMINAL_LISTING_STATUSES: readonly ListingStatus[] = ['sold', 'traded', 'archived'] as const;
+
+export function isTerminalListingStatus(status: ListingStatus): boolean {
+  return TERMINAL_LISTING_STATUSES.includes(status);
+}
+
+/**
  * Explicit state transition map for listing lifecycle states.
- * Note: 'archived' is a terminal state to prevent recycling completed or archived listings.
+ * Note: 'archived', 'sold', and 'traded' are terminal states to prevent recycling or modifying completed offers.
  */
 export const LISTING_TRANSITION_MAP: Record<ListingStatus, readonly ListingStatus[]> = {
   draft: ['published', 'archived'],
   published: ['reserved', 'sold', 'traded', 'draft', 'archived'],
   reserved: ['sold', 'traded', 'published', 'archived'],
-  sold: ['archived'],
-  traded: ['archived'],
+  sold: [],
+  traded: [],
   archived: [],
 } as const;
 
@@ -46,7 +55,7 @@ export function canTransitionListingStatus(currentStatus: ListingStatus, targetS
 
 /**
  * Validates a status transition and resulting state invariants.
- * Validates structural transition rules as well as business state invariants (even when currentStatus === targetStatus).
+ * Validates terminal immutability, structural transition rules, and business state invariants.
  * Throws InvalidLifecycleTransitionError if transition or target state is invalid.
  */
 export function validateListingTransition(params: {
@@ -57,6 +66,15 @@ export function validateListingTransition(params: {
 }): void {
   const { currentStatus, targetStatus, price, tradeAvailable } = params;
 
+  // Terminal listings are immutable and cannot undergo field updates or status transitions
+  if (isTerminalListingStatus(currentStatus)) {
+    throw new InvalidLifecycleTransitionError(
+      currentStatus,
+      targetStatus,
+      `Listing in terminal state '${currentStatus}' is immutable and cannot be updated.`
+    );
+  }
+
   if (currentStatus !== targetStatus && !canTransitionListingStatus(currentStatus, targetStatus)) {
     throw new InvalidLifecycleTransitionError(
       currentStatus,
@@ -65,7 +83,7 @@ export function validateListingTransition(params: {
     );
   }
 
-  // Business invariant checks for the target resulting state (enforced on transitions and updates)
+  // Business invariant checks for the target resulting state
   if (targetStatus === 'published') {
     const hasPrice = price !== null && price !== undefined && price > 0;
     const isTrade = tradeAvailable === true;

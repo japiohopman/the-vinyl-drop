@@ -1,6 +1,7 @@
 import {
   canTransitionListingStatus,
   getAllowedNextStatuses,
+  isTerminalListingStatus,
   InvalidLifecycleTransitionError,
   validateListingTransition,
 } from '../src/domain/listingLifecycle';
@@ -120,17 +121,28 @@ describe('Phase 4A Domain Model & Lifecycle Rules', () => {
       expect(canTransitionListingStatus('reserved', 'sold')).toBe(true);
       expect(canTransitionListingStatus('reserved', 'published')).toBe(true);
 
-      expect(canTransitionListingStatus('sold', 'archived')).toBe(true);
-      expect(canTransitionListingStatus('sold', 'published')).toBe(false);
-
-      // Archived is terminal: recycling is forbidden
+      // Terminal states: no further transitions permitted
+      expect(canTransitionListingStatus('sold', 'archived')).toBe(false);
+      expect(canTransitionListingStatus('traded', 'archived')).toBe(false);
       expect(canTransitionListingStatus('archived', 'draft')).toBe(false);
       expect(canTransitionListingStatus('archived', 'published')).toBe(false);
     });
 
+    it('should identify terminal statuses', () => {
+      expect(isTerminalListingStatus('sold')).toBe(true);
+      expect(isTerminalListingStatus('traded')).toBe(true);
+      expect(isTerminalListingStatus('archived')).toBe(true);
+
+      expect(isTerminalListingStatus('draft')).toBe(false);
+      expect(isTerminalListingStatus('published')).toBe(false);
+      expect(isTerminalListingStatus('reserved')).toBe(false);
+    });
+
     it('should return correct allowed next statuses list', () => {
       expect(getAllowedNextStatuses('draft')).toEqual(['published', 'archived']);
-      expect(getAllowedNextStatuses('sold')).toEqual(['archived']);
+      expect(getAllowedNextStatuses('published')).toEqual(['reserved', 'sold', 'traded', 'draft', 'archived']);
+      expect(getAllowedNextStatuses('sold')).toEqual([]);
+      expect(getAllowedNextStatuses('traded')).toEqual([]);
       expect(getAllowedNextStatuses('archived')).toEqual([]);
     });
 
@@ -172,7 +184,56 @@ describe('Phase 4A Domain Model & Lifecycle Rules', () => {
       ).toThrow(InvalidLifecycleTransitionError);
     });
 
-    describe('Regression Tests: Target-state invariant preservation on updates', () => {
+    describe('Regression Tests: Terminal state immutability & invariant preservation', () => {
+      it('should reject any update on a sold listing', async () => {
+        (listingRepo.findListingById as jest.Mock).mockResolvedValue({
+          id: listingId,
+          sellerId,
+          status: 'sold',
+          price: 3000,
+          currency: 'EUR',
+          tradeAvailable: false,
+        });
+
+        await expect(
+          updateListing(listingId, sellerId, { description: 'Updated after sale' })
+        ).rejects.toThrow(InvalidLifecycleTransitionError);
+
+        await expect(
+          updateListing(listingId, sellerId, { price: 1000 })
+        ).rejects.toThrow(InvalidLifecycleTransitionError);
+      });
+
+      it('should reject any update on a traded listing', async () => {
+        (listingRepo.findListingById as jest.Mock).mockResolvedValue({
+          id: listingId,
+          sellerId,
+          status: 'traded',
+          price: null,
+          currency: 'EUR',
+          tradeAvailable: true,
+        });
+
+        await expect(
+          updateListing(listingId, sellerId, { tradeAvailable: false })
+        ).rejects.toThrow(InvalidLifecycleTransitionError);
+      });
+
+      it('should reject any update on an archived listing', async () => {
+        (listingRepo.findListingById as jest.Mock).mockResolvedValue({
+          id: listingId,
+          sellerId,
+          status: 'archived',
+          price: 2000,
+          currency: 'EUR',
+          tradeAvailable: false,
+        });
+
+        await expect(
+          updateListing(listingId, sellerId, { description: 'Attempt edit on archived' })
+        ).rejects.toThrow(InvalidLifecycleTransitionError);
+      });
+
       it('should reject updating published listing (price > 0, tradeAvailable false) to price null', async () => {
         (listingRepo.findListingById as jest.Mock).mockResolvedValue({
           id: listingId,
