@@ -1,13 +1,30 @@
+import crypto from 'crypto';
 import { getDb } from '../../db';
 import { ListingStatus } from '../../db/schema/enums';
+import { ListingPhoto } from '../../db/schema/listingPhotos';
 import { Listing } from '../../db/schema/listings';
-import { validateListingTransition } from '../../domain/listingLifecycle';
+import { PhysicalCopy } from '../../db/schema/physicalCopies';
+import { Profile } from '../../db/schema/profiles';
+import { Release } from '../../db/schema/releases';
+import { isTerminalListingStatus, validateListingTransition } from '../../domain/listingLifecycle';
 import {
+  CreateListingFromReleaseInput,
+  createListingFromReleaseSchema,
   CreateListingInput,
   createListingSchema,
-  UpdateListingInput,
-  updateListingSchema,
+  parsePriceEurToCents,
+  reorderPhotosSchema,
+  UpdateListingDetailsInput,
+  updateListingDetailsSchema,
 } from '../../validators/listing';
+import {
+  countPhotosByListingId,
+  createListingPhoto,
+  deleteListingPhoto,
+  findPhotoById,
+  findPhotosByListingId,
+  updatePhotoOrder,
+} from '../repositories/listingPhotoRepository';
 import {
   createListing as createListingInRepo,
   findListingById,
@@ -15,10 +32,35 @@ import {
   updateListing as updateListingInRepo,
   updateListingStatus as updateStatusInRepo,
 } from '../repositories/listingRepository';
-import { findPhysicalCopyById } from '../repositories/physicalCopyRepository';
+import {
+  createPhysicalCopy,
+  deletePhysicalCopy,
+  findPhysicalCopyById,
+  updatePhysicalCopy,
+} from '../repositories/physicalCopyRepository';
+import { findProfileById } from '../repositories/profileRepository';
+import { findReleaseById } from '../repositories/releaseRepository';
+import { ProcessedImage, processAndValidateImage } from '../utils/imageProcessor';
+import {
+  deleteListingPhotoFromStorage,
+  getPhotoPublicUrl,
+  uploadListingPhotoToStorage,
+} from './storageService';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
 
 type DbInstance = ReturnType<typeof getDb>;
+
+export interface ListingPhotoWithUrl extends ListingPhoto {
+  publicUrl: string;
+}
+
+export interface DetailedListing {
+  listing: Listing;
+  physicalCopy: PhysicalCopy;
+  release: Release;
+  seller: Profile;
+  photos: ListingPhotoWithUrl[];
+}
 
 export async function getListingById(id: string, dbOverride?: DbInstance): Promise<Listing | null> {
   return findListingById(id, dbOverride);
@@ -26,6 +68,45 @@ export async function getListingById(id: string, dbOverride?: DbInstance): Promi
 
 export async function getUserListings(sellerId: string, dbOverride?: DbInstance): Promise<Listing[]> {
   return findListingsBySellerId(sellerId, dbOverride);
+}
+
+export async function getListingWithDetails(
+  listingId: string,
+  dbOverride?: DbInstance
+): Promise<DetailedListing | null> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) {
+    return null;
+  }
+
+  const physicalCopy = await findPhysicalCopyById(listing.physicalCopyId, dbOverride);
+  if (!physicalCopy) {
+    throw new NotFoundError('Associated physical copy not found');
+  }
+
+  const release = await findReleaseById(physicalCopy.releaseId, dbOverride);
+  if (!release) {
+    throw new NotFoundError('Associated release not found');
+  }
+
+  const seller = await findProfileById(listing.sellerId, dbOverride);
+  if (!seller) {
+    throw new NotFoundError('Seller profile not found');
+  }
+
+  const photoRecords = await findPhotosByListingId(listingId, dbOverride);
+  const photos: ListingPhotoWithUrl[] = photoRecords.map((photo) => ({
+    ...photo,
+    publicUrl: getPhotoPublicUrl(photo.storagePath),
+  }));
+
+  return {
+    listing,
+    physicalCopy,
+    release,
+    seller,
+    photos,
+  };
 }
 
 export async function createListing(
@@ -45,7 +126,6 @@ export async function createListing(
 
   const data = parseResult.data;
 
-  // Verify referenced physical copy exists and is owned by seller
   const physicalCopy = await findPhysicalCopyById(data.physicalCopyId, dbOverride);
   if (!physicalCopy) {
     throw new NotFoundError('Referenced PhysicalCopy does not exist');
@@ -69,10 +149,76 @@ export async function createListing(
   );
 }
 
+export async function createListingFromRelease(
+  requestingUserId: string,
+  input: CreateListingFromReleaseInput,
+  dbOverride?: DbInstance
+): Promise<Listing> {
+  const parseResult = createListingFromReleaseSchema.safeParse(input);
+  if (!parseResult.success) {
+    const issueMsg = parseResult.error.issues.map((i) => i.message).join('; ');
+    throw new ValidationError(`Invalid listing input: ${issueMsg}`);
+  }
+
+  const data = parseResult.data;
+
+  const release = await findReleaseById(data.releaseId, dbOverride);
+  if (!release) {
+    throw new NotFoundError('Selected release not found');
+  }
+
+  let priceInCents: number | null = null;
+  try {
+    priceInCents = parsePriceEurToCents(data.priceEur);
+  } catch (err) {
+    throw new ValidationError((err as Error).message);
+  }
+
+  let createdCopyId: string | null = null;
+
+  try {
+    const physicalCopy = await createPhysicalCopy(
+      {
+        releaseId: data.releaseId,
+        ownerId: requestingUserId,
+        mediaCondition: data.mediaCondition,
+        sleeveCondition: data.sleeveCondition,
+        notes: data.notes || null,
+      },
+      dbOverride
+    );
+    createdCopyId = physicalCopy.id;
+
+    const listing = await createListingInRepo(
+      {
+        physicalCopyId: physicalCopy.id,
+        sellerId: requestingUserId,
+        price: priceInCents,
+        currency: 'EUR',
+        tradeAvailable: data.tradeAvailable,
+        description: data.description || null,
+        status: 'draft',
+      },
+      dbOverride
+    );
+
+    return listing;
+  } catch (err) {
+    if (createdCopyId) {
+      try {
+        await deletePhysicalCopy(createdCopyId, dbOverride);
+      } catch {
+        // Ignored compensating rollback error
+      }
+    }
+    throw err;
+  }
+}
+
 export async function updateListing(
   listingId: string,
   requestingUserId: string,
-  input: UpdateListingInput,
+  input: UpdateListingDetailsInput,
   dbOverride?: DbInstance
 ): Promise<Listing> {
   const existingListing = await findListingById(listingId, dbOverride);
@@ -84,7 +230,7 @@ export async function updateListing(
     throw new AuthorizationError('You are not authorized to update this listing');
   }
 
-  const parseResult = updateListingSchema.safeParse(input);
+  const parseResult = updateListingDetailsSchema.safeParse(input);
   if (!parseResult.success) {
     const issueMsg = parseResult.error.issues.map((i) => i.message).join('; ');
     throw new ValidationError(`Invalid listing update input: ${issueMsg}`);
@@ -97,13 +243,28 @@ export async function updateListing(
   const targetTradeAvailable =
     data.tradeAvailable !== undefined ? data.tradeAvailable : existingListing.tradeAvailable;
 
-  // Validate status transition and lifecycle invariants
   validateListingTransition({
     currentStatus: existingListing.status,
     targetStatus,
     price: targetPrice,
     tradeAvailable: targetTradeAvailable,
   });
+
+  // If physical copy attributes are updated, update physical copy record via Zod validated values
+  if (data.mediaCondition || data.sleeveCondition || data.notes !== undefined) {
+    const physicalCopy = await findPhysicalCopyById(existingListing.physicalCopyId, dbOverride);
+    if (physicalCopy) {
+      await updatePhysicalCopy(
+        physicalCopy.id,
+        {
+          ...(data.mediaCondition && { mediaCondition: data.mediaCondition }),
+          ...(data.sleeveCondition && { sleeveCondition: data.sleeveCondition }),
+          ...(data.notes !== undefined && { notes: data.notes }),
+        },
+        dbOverride
+      );
+    }
+  }
 
   const updated = await updateListingInRepo(
     listingId,
@@ -119,6 +280,226 @@ export async function updateListing(
 
   if (!updated) {
     throw new Error('Failed to update listing');
+  }
+
+  return updated;
+}
+
+export async function addPhotoToListing(
+  listingId: string,
+  requestingUserId: string,
+  file: { buffer: Buffer; mimetype: string; originalname?: string },
+  altText?: string,
+  dbOverride?: DbInstance
+): Promise<ListingPhotoWithUrl> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to upload photos to this listing');
+  }
+
+  if (isTerminalListingStatus(listing.status)) {
+    throw new ValidationError(`Cannot add photos to a listing in terminal state '${listing.status}'`);
+  }
+
+  const existingPhotoCount = await countPhotosByListingId(listingId, dbOverride);
+  if (existingPhotoCount >= 5) {
+    throw new ValidationError('Maximum photo limit (5 photos per listing) reached');
+  }
+
+  // Safe Sharp inspection and processing
+  let processed: ProcessedImage;
+  try {
+    processed = await processAndValidateImage(file.buffer, file.mimetype);
+  } catch (err) {
+    throw new ValidationError((err as Error).message);
+  }
+
+  const photoId = crypto.randomUUID();
+
+  // Upload processed buffer to storage
+  const storagePath = await uploadListingPhotoToStorage({
+    listingId,
+    photoId,
+    buffer: processed.buffer,
+    contentType: processed.contentType,
+    extension: processed.extension,
+  });
+
+  // Insert into DB with rollback handling if DB write fails
+  try {
+    const photoRecord = await createListingPhoto(
+      {
+        id: photoId,
+        listingId,
+        storagePath,
+        displayOrder: existingPhotoCount,
+        altText: altText || file.originalname || 'Listing photo',
+      },
+      dbOverride
+    );
+
+    return {
+      ...photoRecord,
+      publicUrl: getPhotoPublicUrl(storagePath),
+    };
+  } catch (dbErr) {
+    // Rollback: clean up orphaned file in storage if DB insert fails
+    await deleteListingPhotoFromStorage(storagePath);
+    throw dbErr;
+  }
+}
+
+export async function deletePhotoFromListing(
+  listingId: string,
+  photoId: string,
+  requestingUserId: string,
+  dbOverride?: DbInstance
+): Promise<boolean> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to modify photos for this listing');
+  }
+
+  if (isTerminalListingStatus(listing.status)) {
+    throw new ValidationError(`Cannot delete photos from a listing in terminal state '${listing.status}'`);
+  }
+
+  const photo = await findPhotoById(photoId, dbOverride);
+  if (!photo || photo.listingId !== listingId) {
+    throw new NotFoundError('Photo not found');
+  }
+
+  await deleteListingPhoto(photoId, dbOverride);
+  await deleteListingPhotoFromStorage(photo.storagePath);
+
+  // Compact display orders
+  const remainingPhotos = await findPhotosByListingId(listingId, dbOverride);
+  await updatePhotoOrder(
+    listingId,
+    remainingPhotos.map((p) => p.id),
+    dbOverride
+  );
+
+  return true;
+}
+
+export async function reorderListingPhotos(
+  listingId: string,
+  requestingUserId: string,
+  orderedPhotoIds: string[],
+  dbOverride?: DbInstance
+): Promise<ListingPhotoWithUrl[]> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to reorder photos for this listing');
+  }
+
+  if (isTerminalListingStatus(listing.status)) {
+    throw new ValidationError(`Cannot reorder photos on a listing in terminal state '${listing.status}'`);
+  }
+
+  // Parse and validate input photo array using Zod schema
+  const parseResult = reorderPhotosSchema.safeParse({ photoIds: orderedPhotoIds });
+  if (!parseResult.success) {
+    const issueMsg = parseResult.error.issues.map((i) => i.message).join('; ');
+    throw new ValidationError(`Invalid photo reorder payload: ${issueMsg}`);
+  }
+
+  const currentPhotos = await findPhotosByListingId(listingId, dbOverride);
+  const currentPhotoIds = new Set(currentPhotos.map((p) => p.id));
+
+  // Validate submitted IDs form an exact permutation of current photos
+  if (orderedPhotoIds.length !== currentPhotos.length) {
+    throw new ValidationError(
+      `Reordering requires exact count of current photos (${currentPhotos.length}), got ${orderedPhotoIds.length}`
+    );
+  }
+
+  const uniqueSubmittedIds = new Set(orderedPhotoIds);
+  if (uniqueSubmittedIds.size !== orderedPhotoIds.length) {
+    throw new ValidationError('Reorder request contains duplicate photo IDs');
+  }
+
+  for (const id of orderedPhotoIds) {
+    if (!currentPhotoIds.has(id)) {
+      throw new ValidationError(`Photo ID '${id}' does not belong to this listing`);
+    }
+  }
+
+  await updatePhotoOrder(listingId, orderedPhotoIds, dbOverride);
+
+  const updatedPhotos = await findPhotosByListingId(listingId, dbOverride);
+  return updatedPhotos.map((p) => ({
+    ...p,
+    publicUrl: getPhotoPublicUrl(p.storagePath),
+  }));
+}
+
+export async function publishListing(
+  listingId: string,
+  requestingUserId: string,
+  dbOverride?: DbInstance
+): Promise<Listing> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to publish this listing');
+  }
+
+  validateListingTransition({
+    currentStatus: listing.status,
+    targetStatus: 'published',
+    price: listing.price,
+    tradeAvailable: listing.tradeAvailable,
+  });
+
+  const updated = await updateStatusInRepo(listingId, 'published', dbOverride);
+  if (!updated) {
+    throw new Error('Failed to publish listing');
+  }
+
+  return updated;
+}
+
+export async function archiveListing(
+  listingId: string,
+  requestingUserId: string,
+  dbOverride?: DbInstance
+): Promise<Listing> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to archive this listing');
+  }
+
+  validateListingTransition({
+    currentStatus: listing.status,
+    targetStatus: 'archived',
+    price: listing.price,
+    tradeAvailable: listing.tradeAvailable,
+  });
+
+  const updated = await updateStatusInRepo(listingId, 'archived', dbOverride);
+  if (!updated) {
+    throw new Error('Failed to archive listing');
   }
 
   return updated;
