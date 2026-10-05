@@ -1,6 +1,7 @@
 import request from 'supertest';
 import express, { Request, Response, NextFunction } from 'express';
 import { errorHandler } from '../src/app/middleware/errorHandler';
+import { renderWithLayout } from '../src/app/utils/render';
 
 describe('Centralized Error Handler Middleware', () => {
   let consoleErrorSpy: jest.SpyInstance;
@@ -46,6 +47,25 @@ describe('Centralized Error Handler Middleware', () => {
 
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ error: 'Internal Server Error' });
+    expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
+  it('should propagate view rendering errors through next(err) when renderWithLayout fails', async () => {
+    const app = express();
+    app.set('views', './views');
+    app.set('view engine', 'ejs');
+
+    app.get('/invalid-render', (_req: Request, res: Response, next: NextFunction) => {
+      renderWithLayout(res, 'nonexistent/view', {}, next);
+    });
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .get('/invalid-render')
+      .set('Accept', 'text/html');
+
+    expect(response.status).toBe(500);
+    expect(response.text).toContain('500 - Server Error');
     expect(consoleErrorSpy).toHaveBeenCalled();
   });
 });
