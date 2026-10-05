@@ -122,6 +122,15 @@ describe('Authentication & Session Handling', () => {
       expect(res.text).toContain('name="email"');
     });
 
+    it('GET /auth/signup?next=%2Fprofile should render signup form page with next parameter', async () => {
+      const app = createApp();
+      const res = await request(app).get('/auth/signup?next=%2Fprofile');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Join The Vinyl Drop');
+      expect(res.text).toContain('value="/profile"');
+    });
+
     it('POST /auth/signup should reject invalid inputs with Zod form errors', async () => {
       const app = createApp();
       const res = await request(app)

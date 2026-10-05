@@ -1,11 +1,12 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { signUpSchema, loginSchema, sanitizeRedirectUrl } from '../../validators/auth';
 import { formatZodFormErrors, FormViewModel } from '../view-models/formViewModel';
 import { signUp, login, getGoogleOAuthUrl, handleOAuthCallback, signOut } from '../services/authService';
 import { setAuthCookies, clearAuthCookies } from '../middleware/auth';
 import { renderWithLayout } from '../utils/render';
+import { config } from '../../config/env';
 
-export async function getSignUpPage(req: Request, res: Response): Promise<void> {
+export async function getSignUpPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (req.user) {
     res.redirect('/profile');
     return;
@@ -22,10 +23,10 @@ export async function getSignUpPage(req: Request, res: Response): Promise<void> 
     title: 'Sign Up — The Vinyl Drop',
     form,
     nextUrl,
-  });
+  }, next);
 }
 
-export async function postSignUp(req: Request, res: Response): Promise<void> {
+export async function postSignUp(req: Request, res: Response, next: NextFunction): Promise<void> {
   const nextUrl = sanitizeRedirectUrl((req.query.next as string) || req.body.next, '/profile');
 
   const result = signUpSchema.safeParse(req.body);
@@ -41,7 +42,7 @@ export async function postSignUp(req: Request, res: Response): Promise<void> {
       title: 'Sign Up — The Vinyl Drop',
       form,
       nextUrl,
-    });
+    }, next);
     return;
   }
 
@@ -65,7 +66,7 @@ export async function postSignUp(req: Request, res: Response): Promise<void> {
       title: 'Sign Up — The Vinyl Drop',
       form,
       nextUrl,
-    });
+    }, next);
     return;
   }
 
@@ -84,7 +85,7 @@ export async function postSignUp(req: Request, res: Response): Promise<void> {
       title: 'Check Your Email — The Vinyl Drop',
       form,
       nextUrl,
-    });
+    }, next);
     return;
   }
 
@@ -93,7 +94,7 @@ export async function postSignUp(req: Request, res: Response): Promise<void> {
   res.redirect(nextUrl);
 }
 
-export async function getLoginPage(req: Request, res: Response): Promise<void> {
+export async function getLoginPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (req.user) {
     res.redirect('/profile');
     return;
@@ -110,10 +111,10 @@ export async function getLoginPage(req: Request, res: Response): Promise<void> {
     title: 'Sign In — The Vinyl Drop',
     form,
     nextUrl,
-  });
+  }, next);
 }
 
-export async function postLogin(req: Request, res: Response): Promise<void> {
+export async function postLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
   const nextUrl = sanitizeRedirectUrl((req.query.next as string) || req.body.next, '/profile');
 
   const result = loginSchema.safeParse(req.body);
@@ -127,7 +128,7 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
       title: 'Sign In — The Vinyl Drop',
       form,
       nextUrl,
-    });
+    }, next);
     return;
   }
 
@@ -149,7 +150,7 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
       title: 'Sign In — The Vinyl Drop',
       form,
       nextUrl,
-    });
+    }, next);
     return;
   }
 
@@ -157,9 +158,9 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
   res.redirect(nextUrl);
 }
 
-export async function getGoogleOAuth(req: Request, res: Response): Promise<void> {
+export async function getGoogleOAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const nextUrl = sanitizeRedirectUrl(req.query.next as string, '/profile');
-  const callbackUrl = `${req.protocol}://${req.get('host')}/auth/callback?next=${encodeURIComponent(nextUrl)}`;
+  const callbackUrl = `${config.APP_BASE_URL}/auth/callback?next=${encodeURIComponent(nextUrl)}`;
 
   try {
     const oauthUrl = await getGoogleOAuthUrl(callbackUrl, { req, res });
@@ -170,11 +171,11 @@ export async function getGoogleOAuth(req: Request, res: Response): Promise<void>
     renderWithLayout(res, 'errors/500', {
       title: 'OAuth Error',
       message: errMessage,
-    });
+    }, next);
   }
 }
 
-export async function getAuthCallback(req: Request, res: Response): Promise<void> {
+export async function getAuthCallback(req: Request, res: Response, next: NextFunction): Promise<void> {
   const code = req.query.code as string;
   const nextUrl = sanitizeRedirectUrl(req.query.next as string, '/profile');
 
@@ -188,7 +189,7 @@ export async function getAuthCallback(req: Request, res: Response): Promise<void
         generalErrors: ['Authorization code missing from provider callback.'],
       },
       nextUrl,
-    });
+    }, next);
     return;
   }
 
@@ -204,7 +205,7 @@ export async function getAuthCallback(req: Request, res: Response): Promise<void
         generalErrors: [authResult.error || 'OAuth verification failed.'],
       },
       nextUrl,
-    });
+    }, next);
     return;
   }
 

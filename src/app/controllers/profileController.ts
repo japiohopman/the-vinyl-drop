@@ -1,10 +1,10 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { getProfileByUsername, getProfileById, updateProfile } from '../services/profileService';
 import { profileUpdateSchema } from '../../validators/profile';
 import { formatZodFormErrors, FormViewModel } from '../view-models/formViewModel';
 import { renderWithLayout } from '../utils/render';
 
-export async function getCurrentProfile(req: Request, res: Response): Promise<void> {
+export async function getCurrentProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.user) {
     res.redirect('/auth/login');
     return;
@@ -16,14 +16,14 @@ export async function getCurrentProfile(req: Request, res: Response): Promise<vo
     renderWithLayout(res, 'errors/404', {
       title: 'Profile Not Found',
       message: 'Profile record does not exist for this user.',
-    });
+    }, next);
     return;
   }
 
   res.redirect(`/profiles/${encodeURIComponent(profile.username)}`);
 }
 
-export async function getPublicProfile(req: Request, res: Response): Promise<void> {
+export async function getPublicProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   const username = req.params.username;
   const profile = await getProfileByUsername(username);
 
@@ -32,7 +32,7 @@ export async function getPublicProfile(req: Request, res: Response): Promise<voi
     renderWithLayout(res, 'errors/404', {
       title: 'Profile Not Found',
       message: `User "@${username}" was not found.`,
-    });
+    }, next);
     return;
   }
 
@@ -42,10 +42,10 @@ export async function getPublicProfile(req: Request, res: Response): Promise<voi
     title: `${profile.displayName || profile.username} (@${profile.username}) — The Vinyl Drop`,
     profile,
     isOwner,
-  });
+  }, next);
 }
 
-export async function getEditProfilePage(req: Request, res: Response): Promise<void> {
+export async function getEditProfilePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.user) {
     res.redirect('/auth/login');
     return;
@@ -57,7 +57,7 @@ export async function getEditProfilePage(req: Request, res: Response): Promise<v
     renderWithLayout(res, 'errors/404', {
       title: 'Profile Not Found',
       message: 'Profile record does not exist.',
-    });
+    }, next);
     return;
   }
 
@@ -77,10 +77,10 @@ export async function getEditProfilePage(req: Request, res: Response): Promise<v
     title: 'Edit Profile — The Vinyl Drop',
     form,
     profile,
-  });
+  }, next);
 }
 
-export async function postEditProfile(req: Request, res: Response): Promise<void> {
+export async function postEditProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.user) {
     res.redirect('/auth/login');
     return;
@@ -92,7 +92,7 @@ export async function postEditProfile(req: Request, res: Response): Promise<void
     renderWithLayout(res, 'errors/404', {
       title: 'Profile Not Found',
       message: 'Profile record does not exist.',
-    });
+    }, next);
     return;
   }
 
@@ -111,7 +111,7 @@ export async function postEditProfile(req: Request, res: Response): Promise<void
       title: 'Edit Profile — The Vinyl Drop',
       form,
       profile,
-    });
+    }, next);
     return;
   }
 
@@ -139,6 +139,6 @@ export async function postEditProfile(req: Request, res: Response): Promise<void
       title: 'Edit Profile — The Vinyl Drop',
       form,
       profile,
-    });
+    }, next);
   }
 }
