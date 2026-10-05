@@ -354,7 +354,9 @@ export async function postPublishListing(req: Request, res: Response, next: Next
     }
 
     const listingId = req.params.id;
-    await publishListing(listingId, req.user.id);
+    const previewConfirmed = req.body.previewConfirmed === 'true' || req.body.previewConfirmed === true;
+
+    await publishListing(listingId, req.user.id, { previewConfirmed });
 
     res.redirect(`/listings/${listingId}/preview`);
   } catch (error) {

@@ -34,7 +34,6 @@ import {
 } from '../repositories/listingRepository';
 import {
   createPhysicalCopy,
-  deletePhysicalCopy,
   findPhysicalCopyById,
   updatePhysicalCopy,
 } from '../repositories/physicalCopyRepository';
@@ -174,9 +173,10 @@ export async function createListingFromRelease(
     throw new ValidationError((err as Error).message);
   }
 
-  let createdCopyId: string | null = null;
+  const db = dbOverride || getDb();
 
-  try {
+  // Execute PhysicalCopy and Listing creation inside a true database transaction
+  return db.transaction(async (tx) => {
     const physicalCopy = await createPhysicalCopy(
       {
         releaseId: data.releaseId,
@@ -185,9 +185,8 @@ export async function createListingFromRelease(
         sleeveCondition: data.sleeveCondition,
         notes: data.notes || null,
       },
-      dbOverride
+      tx as unknown as DbInstance
     );
-    createdCopyId = physicalCopy.id;
 
     const listing = await createListingInRepo(
       {
@@ -199,20 +198,11 @@ export async function createListingFromRelease(
         description: data.description || null,
         status: 'draft',
       },
-      dbOverride
+      tx as unknown as DbInstance
     );
 
     return listing;
-  } catch (err) {
-    if (createdCopyId) {
-      try {
-        await deletePhysicalCopy(createdCopyId, dbOverride);
-      } catch {
-        // Ignored compensating rollback error
-      }
-    }
-    throw err;
-  }
+  });
 }
 
 export async function updateListing(
@@ -450,8 +440,17 @@ export async function reorderListingPhotos(
 export async function publishListing(
   listingId: string,
   requestingUserId: string,
+  options: { previewConfirmed?: boolean } = {},
   dbOverride?: DbInstance
 ): Promise<Listing> {
+  const { previewConfirmed = false } = options;
+
+  if (!previewConfirmed) {
+    throw new ValidationError(
+      'Preview confirmation required before publishing listing. Please view the preview first.'
+    );
+  }
+
   const listing = await findListingById(listingId, dbOverride);
   if (!listing) {
     throw new NotFoundError('Listing not found');

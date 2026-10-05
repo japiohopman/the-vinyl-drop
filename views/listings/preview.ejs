@@ -83,6 +83,7 @@
     <div style="margin-top: var(--space-8); padding-top: var(--space-4); border-top: 2px solid var(--color-border-subtle); display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center;">
       <% if (listing.status === 'draft') { %>
         <form action="/listings/<%= listing.id %>/publish" method="POST" style="display: inline;">
+          <input type="hidden" name="previewConfirmed" value="true" />
           <%- include('../partials/button', {
             text: 'Publish Listing Now',
             type: 'submit',

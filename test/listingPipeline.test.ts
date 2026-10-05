@@ -1,8 +1,10 @@
 import supertest from 'supertest';
 import sharp from 'sharp';
+import express, { Request, Response } from 'express';
 import { createApp } from '../src/app';
 import { parsePriceEurToCents } from '../src/validators/listing';
 import { processAndValidateImage } from '../src/app/utils/imageProcessor';
+import { multipartUploadHandler } from '../src/app/middleware/upload';
 import {
   createListingFromRelease,
   addPhotoToListing,
@@ -16,7 +18,20 @@ import {
 import { ConditionGrade } from '../src/db/schema/enums';
 import { AuthorizationError, ValidationError } from '../src/app/services/errors';
 
-// Mock repository functions for isolated unit testing
+// Mock repository functions and database for isolated unit testing
+jest.mock('../src/db', () => {
+  const mockDb = {
+    transaction: jest.fn().mockImplementation(async (cb) => cb(mockDb)),
+    select: jest.fn(),
+    insert: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  };
+  return {
+    getDb: jest.fn().mockReturnValue(mockDb),
+  };
+});
+
 jest.mock('../src/app/repositories/releaseRepository');
 jest.mock('../src/app/repositories/profileRepository');
 jest.mock('../src/app/repositories/physicalCopyRepository');
@@ -165,7 +180,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       (photoRepo.createListingPhoto as jest.Mock).mockImplementation((data) => Promise.resolve({ ...data }));
     });
 
-    it('should create a draft listing linked to a release and physical copy', async () => {
+    it('should create a draft listing linked to a release and physical copy inside a transaction (Blocker 1)', async () => {
       const listing = await createListingFromRelease(sellerId, {
         releaseId,
         mediaCondition: 'NM',
@@ -200,19 +215,19 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(photoRepo.deleteListingPhoto).toHaveBeenCalledWith(photoId, undefined);
     });
 
-    it('should roll back physical copy creation if listing creation fails (Blocker 2)', async () => {
-      (listingRepo.createListing as jest.Mock).mockRejectedValueOnce(new Error('DB Listing Insert Failed'));
+    it('should reject publishing without server-side preview confirmation (Blocker 3)', async () => {
+      await expect(publishListing(listingId, sellerId)).rejects.toThrow('Preview confirmation required');
 
-      await expect(
-        createListingFromRelease(sellerId, {
-          releaseId,
-          mediaCondition: 'NM',
-          sleeveCondition: 'VG+',
-          priceEur: '25.00',
-        })
-      ).rejects.toThrow('DB Listing Insert Failed');
+      (listingRepo.updateListingStatus as jest.Mock).mockResolvedValue({
+        id: listingId,
+        sellerId,
+        status: 'published',
+        price: 2999,
+        tradeAvailable: true,
+      });
 
-      expect(copyRepo.deletePhysicalCopy).toHaveBeenCalledWith(copyId, undefined);
+      const published = await publishListing(listingId, sellerId, { previewConfirmed: true });
+      expect(published.status).toBe('published');
     });
 
     it('should reject invalid condition grades on listing updates via Zod schema (Blocker 4)', async () => {
@@ -297,7 +312,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       ).rejects.toThrow(AuthorizationError);
 
       // Non-seller cannot publish listing
-      await expect(publishListing(listingId, otherUserId)).rejects.toThrow(AuthorizationError);
+      await expect(publishListing(listingId, otherUserId, { previewConfirmed: true })).rejects.toThrow(AuthorizationError);
     });
 
     it('should transition draft listing to published and archived', async () => {
@@ -305,7 +320,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         Promise.resolve({ id, sellerId, status, price: 3500, tradeAvailable: false })
       );
 
-      const published = await publishListing(listingId, sellerId);
+      const published = await publishListing(listingId, sellerId, { previewConfirmed: true });
       expect(published.status).toBe('published');
 
       (listingRepo.findListingById as jest.Mock).mockResolvedValue({
@@ -322,7 +337,20 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
     });
   });
 
-  describe('HTTP Endpoints (/listings)', () => {
+  describe('HTTP Endpoints & Multipart Middleware Limits (/listings)', () => {
+    let uploadTestApp: express.Express;
+
+    beforeAll(() => {
+      uploadTestApp = express();
+      uploadTestApp.post('/test-upload', multipartUploadHandler, (req: Request, res: Response) => {
+        res.status(200).json({ files: req.files?.length || 0, body: req.body });
+      });
+      // Error handler
+      uploadTestApp.use((err: Error, req: Request, res: Response, _next: express.NextFunction) => {
+        res.status(400).json({ error: err.message });
+      });
+    });
+
     it('GET /listings should redirect unauthenticated requests to login', async () => {
       const response = await supertest(app).get('/listings');
       expect(response.status).toBe(302);
@@ -333,6 +361,27 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       const response = await supertest(app).get('/health');
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('ok');
+    });
+
+    it('should reject file uploads exceeding 5MB with 400 Bad Request (Blocker 2)', async () => {
+      const largeBuffer = Buffer.alloc(5.5 * 1024 * 1024); // 5.5MB
+      const response = await supertest(uploadTestApp)
+        .post('/test-upload')
+        .attach('photo', largeBuffer, { filename: 'large.jpg', contentType: 'image/jpeg' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('File upload size exceeds maximum limit');
+    });
+
+    it('should reject form fields exceeding 10KB size limit with 400 Bad Request (Blocker 2)', async () => {
+      const largeField = 'a'.repeat(12 * 1024); // 12KB
+      const response = await supertest(uploadTestApp)
+        .post('/test-upload')
+        .field('altText', largeField)
+        .attach('photo', Buffer.from('img'), { filename: 'img.jpg', contentType: 'image/jpeg' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('exceeds maximum limit of 10KB');
     });
   });
 });

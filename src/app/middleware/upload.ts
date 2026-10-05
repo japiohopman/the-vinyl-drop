@@ -64,12 +64,16 @@ export function multipartUploadHandler(req: Request, res: Response, next: NextFu
     limitExceededReason = 'Maximum form field count limit exceeded';
   });
 
+  busboy.on('fieldSizeLimit', () => {
+    limitExceededReason = `Form field size exceeds maximum limit of ${MAX_FIELD_SIZE_BYTES / 1024}KB`;
+  });
+
   busboy.on('partsLimit', () => {
     limitExceededReason = 'Maximum multipart request parts limit exceeded';
   });
 
-  busboy.on('field', (fieldname: string, val: string, fieldTruncated?: boolean) => {
-    if (fieldTruncated) {
+  busboy.on('field', (fieldname: string, val: string, nameTruncated?: boolean, valTruncated?: boolean) => {
+    if (nameTruncated || valTruncated) {
       limitExceededReason = `Form field '${fieldname}' size exceeds maximum limit of ${MAX_FIELD_SIZE_BYTES / 1024}KB`;
       return;
     }
