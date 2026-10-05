@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { User, Session } from '@supabase/supabase-js';
-import { getUserFromToken } from '../services/authService';
+import { getUserFromToken, refreshSession } from '../services/authService';
 import { getProfileById } from '../services/profileService';
 import { Profile } from '../../db/schema/profiles';
+import { config } from '../../config/env';
 
 // Extend Express Request type
 /* eslint-disable @typescript-eslint/no-namespace */
@@ -17,7 +18,38 @@ declare global {
 }
 
 /**
+ * Helper to write session tokens to response cookies
+ */
+export function setAuthCookies(res: Response, session: Session): void {
+  res.cookie('sb-access-token', session.access_token, {
+    httpOnly: true,
+    secure: config.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: (session.expires_in || 3600) * 1000,
+  });
+
+  if (session.refresh_token) {
+    res.cookie('sb-refresh-token', session.refresh_token, {
+      httpOnly: true,
+      secure: config.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+  }
+}
+
+/**
+ * Helper to clear session cookies
+ */
+export function clearAuthCookies(res: Response): void {
+  res.clearCookie('sb-access-token');
+  res.clearCookie('sb-refresh-token');
+}
+
+/**
  * Extracts session/user from cookies or authorization header and attaches to req and res.locals.
+ * Automatically performs server-side session refresh if access token is expired or missing
+ * but a valid refresh token exists in cookies.
  */
 export async function sessionMiddleware(
   req: Request,
@@ -31,21 +63,37 @@ export async function sessionMiddleware(
         ? req.headers.authorization.split(' ')[1]
         : null);
 
-    if (accessToken) {
-      const user = await getUserFromToken(accessToken);
-      if (user) {
-        req.user = user;
-        res.locals.currentUser = user;
+    const refreshToken = req.cookies?.['sb-refresh-token'];
 
-        const profile = await getProfileById(user.id);
-        if (profile) {
-          req.profile = profile;
-          res.locals.currentProfile = profile;
-        }
+    let activeUser: User | null = null;
+
+    if (accessToken) {
+      activeUser = await getUserFromToken(accessToken);
+    }
+
+    // Server-side session refresh path if access token is invalid/expired but refresh token is present
+    if (!activeUser && refreshToken) {
+      const refreshResult = await refreshSession(refreshToken);
+      if (refreshResult.user && refreshResult.session) {
+        activeUser = refreshResult.user;
+        req.session = refreshResult.session;
+        // Rotate and rewrite access and refresh cookies
+        setAuthCookies(res, refreshResult.session);
+      }
+    }
+
+    if (activeUser) {
+      req.user = activeUser;
+      res.locals.currentUser = activeUser;
+
+      const profile = await getProfileById(activeUser.id);
+      if (profile) {
+        req.profile = profile;
+        res.locals.currentProfile = profile;
       }
     }
   } catch {
-    // If session extraction fails, clear locals and continue unauthenticated
+    // If session extraction or refresh fails, clear locals and continue unauthenticated
     req.user = null;
     req.profile = null;
     res.locals.currentUser = null;
@@ -96,7 +144,8 @@ export function requireOwnership(getOwnerId: (req: Request) => Promise<string | 
           res.status(403).json({ error: 'Forbidden' });
           return;
         }
-        res.status(403).render('errors/500', {
+        res.status(403);
+        res.render('errors/500', {
           title: '403 Forbidden',
           message: 'You do not have permission to access or modify this resource.',
         });

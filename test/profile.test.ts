@@ -80,7 +80,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
 
       const app = createApp();
-      const res = await request(app).get('/nonexistent_user_profile_123');
+      const res = await request(app).get('/profiles/nonexistent_user_profile_123');
 
       expect(res.status).toBe(404);
       expect(res.text).toContain('404 - Page Not Found');

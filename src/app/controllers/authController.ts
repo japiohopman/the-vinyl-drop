@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { signUpSchema, loginSchema, sanitizeRedirectUrl } from '../../validators/auth';
 import { formatZodFormErrors, FormViewModel } from '../view-models/formViewModel';
 import { signUp, login, getGoogleOAuthUrl, handleOAuthCallback, signOut } from '../services/authService';
-import { config } from '../../config/env';
+import { setAuthCookies, clearAuthCookies } from '../middleware/auth';
 import { renderWithLayout } from '../utils/render';
 
 export async function getSignUpPage(req: Request, res: Response): Promise<void> {
@@ -45,9 +45,9 @@ export async function postSignUp(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const authResult = await signUp(result.data);
+  const authResult = await signUp(result.data, { req, res });
 
-  if (authResult.error || !authResult.session) {
+  if (authResult.error || !authResult.user) {
     const form: FormViewModel = {
       values: {
         email: req.body.email || '',
@@ -69,23 +69,27 @@ export async function postSignUp(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  // Set session cookies
-  res.cookie('sb-access-token', authResult.session.access_token, {
-    httpOnly: true,
-    secure: config.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: (authResult.session.expires_in || 3600) * 1000,
-  });
-
-  if (authResult.session.refresh_token) {
-    res.cookie('sb-refresh-token', authResult.session.refresh_token, {
-      httpOnly: true,
-      secure: config.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+  // If email confirmation is required (session is null), inform the user cleanly
+  if (authResult.requiresEmailConfirmation || !authResult.session) {
+    const form: FormViewModel = {
+      values: { email: req.body.email || '', password: '' },
+      fieldErrors: {},
+      generalErrors: [],
+      isSubmitted: true,
+      isSuccess: true,
+      successMessage: 'Account created! Please check your email to confirm your account before signing in.',
+    };
+    res.status(200);
+    renderWithLayout(res, 'auth/login', {
+      title: 'Check Your Email — The Vinyl Drop',
+      form,
+      nextUrl,
     });
+    return;
   }
 
+  // Set session cookies on immediate session
+  setAuthCookies(res, authResult.session);
   res.redirect(nextUrl);
 }
 
@@ -127,7 +131,7 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  const authResult = await login(result.data);
+  const authResult = await login(result.data, { req, res });
 
   if (authResult.error || !authResult.session) {
     const form: FormViewModel = {
@@ -149,31 +153,16 @@ export async function postLogin(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  res.cookie('sb-access-token', authResult.session.access_token, {
-    httpOnly: true,
-    secure: config.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: (authResult.session.expires_in || 3600) * 1000,
-  });
-
-  if (authResult.session.refresh_token) {
-    res.cookie('sb-refresh-token', authResult.session.refresh_token, {
-      httpOnly: true,
-      secure: config.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-  }
-
+  setAuthCookies(res, authResult.session);
   res.redirect(nextUrl);
 }
 
 export async function getGoogleOAuth(req: Request, res: Response): Promise<void> {
   const nextUrl = sanitizeRedirectUrl(req.query.next as string, '/profile');
-  const callbackUrl = `${config.APP_BASE_URL}/auth/callback?next=${encodeURIComponent(nextUrl)}`;
+  const callbackUrl = `${req.protocol}://${req.get('host')}/auth/callback?next=${encodeURIComponent(nextUrl)}`;
 
   try {
-    const oauthUrl = await getGoogleOAuthUrl(callbackUrl);
+    const oauthUrl = await getGoogleOAuthUrl(callbackUrl, { req, res });
     res.redirect(oauthUrl);
   } catch (error) {
     const errMessage = error instanceof Error ? error.message : 'Failed to initiate Google OAuth login.';
@@ -203,7 +192,7 @@ export async function getAuthCallback(req: Request, res: Response): Promise<void
     return;
   }
 
-  const authResult = await handleOAuthCallback(code);
+  const authResult = await handleOAuthCallback(code, { req, res });
 
   if (authResult.error || !authResult.session) {
     res.status(400);
@@ -219,28 +208,12 @@ export async function getAuthCallback(req: Request, res: Response): Promise<void
     return;
   }
 
-  res.cookie('sb-access-token', authResult.session.access_token, {
-    httpOnly: true,
-    secure: config.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: (authResult.session.expires_in || 3600) * 1000,
-  });
-
-  if (authResult.session.refresh_token) {
-    res.cookie('sb-refresh-token', authResult.session.refresh_token, {
-      httpOnly: true,
-      secure: config.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-  }
-
+  setAuthCookies(res, authResult.session);
   res.redirect(nextUrl);
 }
 
-export async function postLogout(_req: Request, res: Response): Promise<void> {
-  await signOut();
-  res.clearCookie('sb-access-token');
-  res.clearCookie('sb-refresh-token');
+export async function postLogout(req: Request, res: Response): Promise<void> {
+  await signOut({ req, res });
+  clearAuthCookies(res);
   res.redirect('/');
 }

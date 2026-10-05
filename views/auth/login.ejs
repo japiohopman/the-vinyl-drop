@@ -5,6 +5,12 @@
       Sign in to access your profile and collection.
     </p>
 
+    <% if (form.isSuccess && form.successMessage) { %>
+      <div class="form-success-banner" style="background-color: #EBF5F0; border: var(--border-thick); border-color: var(--color-deep-green); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-6); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-deep-green);">
+        <strong>Success:</strong> <%= form.successMessage %>
+      </div>
+    <% } %>
+
     <%- include('../partials/form-errors', {
       errors: form.generalErrors.length > 0
         ? form.generalErrors

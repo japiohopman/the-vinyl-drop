@@ -1,4 +1,5 @@
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, SupabaseClient } from '@supabase/supabase-js';
+import { Request, Response } from 'express';
 import { getSupabaseClient } from '../../lib/supabase';
 import { findProfileById, findProfileByUsername, createProfile } from '../repositories/profileRepository';
 import { Profile } from '../../db/schema/profiles';
@@ -13,6 +14,14 @@ export interface AuthResult {
   session: Session | null;
   profile: Profile | null;
   error?: string;
+  requiresEmailConfirmation?: boolean;
+}
+
+export interface AuthOptions {
+  req?: Request;
+  res?: Response;
+  supabase?: SupabaseClient;
+  dbOverride?: DbInstance;
 }
 
 /**
@@ -77,11 +86,11 @@ export async function ensureProfileForUser(
   return newProfile;
 }
 
-export async function signUp(input: SignUpInput, dbOverride?: DbInstance): Promise<AuthResult> {
-  const supabase = getSupabaseClient();
+export async function signUp(input: SignUpInput, options?: AuthOptions): Promise<AuthResult> {
+  const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
 
   // Check if username is already taken in profiles table
-  const existingUsername = await findProfileByUsername(input.username, dbOverride);
+  const existingUsername = await findProfileByUsername(input.username, options?.dbOverride);
   if (existingUsername) {
     return {
       user: null,
@@ -111,17 +120,18 @@ export async function signUp(input: SignUpInput, dbOverride?: DbInstance): Promi
     };
   }
 
-  const profile = await ensureProfileForUser(data.user, input.username, dbOverride);
+  const profile = await ensureProfileForUser(data.user, input.username, options?.dbOverride);
 
   return {
     user: data.user,
     session: data.session,
     profile,
+    requiresEmailConfirmation: !data.session,
   };
 }
 
-export async function login(input: LoginInput, dbOverride?: DbInstance): Promise<AuthResult> {
-  const supabase = getSupabaseClient();
+export async function login(input: LoginInput, options?: AuthOptions): Promise<AuthResult> {
+  const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email: input.email,
@@ -137,7 +147,7 @@ export async function login(input: LoginInput, dbOverride?: DbInstance): Promise
     };
   }
 
-  const profile = await ensureProfileForUser(data.user, undefined, dbOverride);
+  const profile = await ensureProfileForUser(data.user, undefined, options?.dbOverride);
 
   return {
     user: data.user,
@@ -146,8 +156,8 @@ export async function login(input: LoginInput, dbOverride?: DbInstance): Promise
   };
 }
 
-export async function getGoogleOAuthUrl(redirectTo?: string): Promise<string> {
-  const supabase = getSupabaseClient();
+export async function getGoogleOAuthUrl(redirectTo?: string, options?: AuthOptions): Promise<string> {
+  const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
   const callbackUrl = redirectTo || `${config.APP_BASE_URL}/auth/callback`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -164,8 +174,8 @@ export async function getGoogleOAuthUrl(redirectTo?: string): Promise<string> {
   return data.url;
 }
 
-export async function handleOAuthCallback(code: string, dbOverride?: DbInstance): Promise<AuthResult> {
-  const supabase = getSupabaseClient();
+export async function handleOAuthCallback(code: string, options?: AuthOptions): Promise<AuthResult> {
+  const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
 
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -178,7 +188,7 @@ export async function handleOAuthCallback(code: string, dbOverride?: DbInstance)
     };
   }
 
-  const profile = await ensureProfileForUser(data.user, undefined, dbOverride);
+  const profile = await ensureProfileForUser(data.user, undefined, options?.dbOverride);
 
   return {
     user: data.user,
@@ -187,8 +197,8 @@ export async function handleOAuthCallback(code: string, dbOverride?: DbInstance)
   };
 }
 
-export async function getUserFromToken(accessToken: string): Promise<User | null> {
-  const supabase = getSupabaseClient();
+export async function getUserFromToken(accessToken: string, supabaseClient?: SupabaseClient): Promise<User | null> {
+  const supabase = supabaseClient || getSupabaseClient();
   const { data, error } = await supabase.auth.getUser(accessToken);
   if (error || !data.user) {
     return null;
@@ -196,7 +206,21 @@ export async function getUserFromToken(accessToken: string): Promise<User | null
   return data.user;
 }
 
-export async function signOut(): Promise<void> {
-  const supabase = getSupabaseClient();
-  await supabase.auth.signOut();
+export async function refreshSession(
+  refreshToken: string,
+  supabaseClient?: SupabaseClient
+): Promise<{ user: User | null; session: Session | null }> {
+  const supabase = supabaseClient || getSupabaseClient();
+  const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+
+  if (error || !data.session || !data.user) {
+    return { user: null, session: null };
+  }
+
+  return { user: data.user, session: data.session };
+}
+
+export async function signOut(options?: AuthOptions): Promise<void> {
+  const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
+  await supabase.auth.signOut({ scope: 'local' });
 }

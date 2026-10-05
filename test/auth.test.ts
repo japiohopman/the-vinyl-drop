@@ -91,7 +91,7 @@ describe('Authentication & Session Handling', () => {
     });
   });
 
-  describe('HTTP Auth Endpoints with Mocked Supabase Auth Client', () => {
+  describe('HTTP Auth Endpoints & Session Refresh with Mocked Supabase Auth Client', () => {
     let mockSupabase: any;
 
     beforeEach(() => {
@@ -104,6 +104,7 @@ describe('Authentication & Session Handling', () => {
           signInWithOAuth: jest.fn(),
           exchangeCodeForSession: jest.fn(),
           getUser: jest.fn(),
+          refreshSession: jest.fn(),
           signOut: jest.fn().mockResolvedValue({ error: null }),
         },
       };
@@ -137,7 +138,7 @@ describe('Authentication & Session Handling', () => {
       expect(res.text).toContain('Password must be at least 8 characters long');
     });
 
-    it('POST /auth/signup should create user and set session cookies on success', async () => {
+    it('POST /auth/signup should create user and set session cookies on immediate session', async () => {
       const mockUser = {
         id: '22222222-2222-2222-2222-222222222222',
         email: 'newuser@example.com',
@@ -181,6 +182,101 @@ describe('Authentication & Session Handling', () => {
       const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
       expect(cookies).toContain('sb-access-token=mock-access-token-123');
       expect(cookies).toContain('sb-refresh-token=mock-refresh-token-456');
+    });
+
+    it('POST /auth/signup should handle user creation with null session (email confirmation required) cleanly', async () => {
+      const mockUser = {
+        id: '55555555-5555-5555-5555-555555555555',
+        email: 'unconfirmed@example.com',
+      };
+
+      mockSupabase.auth.signUp.mockResolvedValue({
+        data: {
+          user: mockUser,
+          session: null, // Email confirmation required by Supabase
+        },
+        error: null,
+      });
+
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(null);
+      const createProfileSpy = jest.spyOn(profileRepository, 'createProfile').mockImplementation(async (data: any) => ({
+        ...data,
+        bio: null,
+        location: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/auth/signup')
+        .send({
+          username: 'unconfirmed_digger',
+          email: 'unconfirmed@example.com',
+          password: 'securepassword123',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Please check your email to confirm your account');
+      expect(createProfileSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: mockUser.id,
+          username: 'unconfirmed_digger',
+        }),
+        undefined
+      );
+    });
+
+    it('sessionMiddleware should refresh session using refresh_token when access_token is expired or missing', async () => {
+      const mockUser = {
+        id: '66666666-6666-6666-6666-666666666666',
+        email: 'refreshed@example.com',
+      };
+
+      const mockProfile: Profile = {
+        id: mockUser.id,
+        username: 'refreshed_user',
+        displayName: 'Refreshed User',
+        avatarUrl: null,
+        bio: null,
+        location: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Access token fails or is missing
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'Invalid JWT' },
+      });
+
+      // Refresh token succeeds
+      mockSupabase.auth.refreshSession.mockResolvedValue({
+        data: {
+          user: mockUser,
+          session: {
+            access_token: 'new-rotated-access-token',
+            refresh_token: 'new-rotated-refresh-token',
+            expires_in: 3600,
+          },
+        },
+        error: null,
+      });
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfile);
+
+      const app = createApp();
+      const res = await request(app)
+        .get('/profile')
+        .set('Cookie', ['sb-refresh-token=valid-refresh-token']);
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/profiles/refreshed_user');
+      const cookieHeader = res.header['set-cookie'];
+      const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
+      expect(cookies).toContain('sb-access-token=new-rotated-access-token');
+      expect(cookies).toContain('sb-refresh-token=new-rotated-refresh-token');
     });
 
     it('GET /auth/login should render login page', async () => {
