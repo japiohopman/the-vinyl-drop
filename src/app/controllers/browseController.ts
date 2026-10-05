@@ -46,14 +46,18 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
         page,
         limit: 12,
       });
-    } catch {
-      results = {
-        items: [],
-        totalCount: 0,
-        page,
-        limit: 12,
-        totalPages: 1,
-      };
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('DATABASE_URL environment variable is missing')) {
+        results = {
+          items: [],
+          totalCount: 0,
+          page: 1,
+          limit: 12,
+          totalPages: 1,
+        };
+      } else {
+        throw err;
+      }
     }
 
     renderWithLayout(

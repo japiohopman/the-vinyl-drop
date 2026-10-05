@@ -10,8 +10,12 @@ export async function getHomePage(req: Request, res: Response, next: NextFunctio
 
     try {
       listings = await getHomeFeedListings(6);
-    } catch {
-      listings = [];
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('DATABASE_URL environment variable is missing')) {
+        listings = [];
+      } else {
+        throw err;
+      }
     }
 
     renderWithLayout(

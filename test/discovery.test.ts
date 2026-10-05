@@ -390,4 +390,43 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('@bob_grooves has no active record drops available right now.');
     });
   });
+
+  describe('Operational & Database Error Propagation', () => {
+    it('should propagate database failure on GET / to error handler (500 status)', async () => {
+      (listingService.getHomeFeedListings as jest.Mock).mockRejectedValue(
+        new Error('Database connection failed')
+      );
+
+      const app = createApp();
+      const res = await request(app).get('/');
+
+      expect(res.status).toBe(500);
+      expect(res.text).toContain('500 - Server Error');
+    });
+
+    it('should propagate database failure on GET /browse to error handler (500 status)', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockRejectedValue(
+        new Error('Database query error')
+      );
+
+      const app = createApp();
+      const res = await request(app).get('/browse');
+
+      expect(res.status).toBe(500);
+      expect(res.text).toContain('500 - Server Error');
+    });
+
+    it('should propagate database failure on GET /profiles/:username to error handler (500 status)', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.getSellerPublishedListings as jest.Mock).mockRejectedValue(
+        new Error('Database query error')
+      );
+
+      const app = createApp();
+      const res = await request(app).get('/profiles/alice_records');
+
+      expect(res.status).toBe(500);
+      expect(res.text).toContain('500 - Server Error');
+    });
+  });
 });
