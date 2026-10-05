@@ -12,7 +12,7 @@
       <a href="/browse" class="nav-link<%= activePath.startsWith('/browse') ? ' active' : '' %>"<%- activePath.startsWith('/browse') ? ' aria-current="page"' : '' %>>BROWSE</a>
     </li>
     <li class="nav-item">
-      <a href="/drop/new" class="nav-link nav-link-action<%= activePath.startsWith('/drop') ? ' active' : '' %>"<%- activePath.startsWith('/drop') ? ' aria-current="page"' : '' %>>+ DROP</a>
+      <a href="/drop/new" class="nav-link nav-link-action<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' aria-current="page"' : '' %>>+ DROP</a>
     </li>
     <li class="nav-item">
       <a href="/activity" class="nav-link<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>ACTIVITY</a>
