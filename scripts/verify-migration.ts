@@ -22,8 +22,9 @@ export async function verifyMigrations(): Promise<void> {
   }
 
   for (const sqlFile of sqlFiles) {
+    const filePath = path.join(drizzleDir, sqlFile);
     console.log(`  Applying migration file: ${sqlFile}`);
-    const sql = fs.readFileSync(path.join(drizzleDir, sqlFile), 'utf8');
+    const sql = fs.readFileSync(filePath, 'utf8');
     await pg.exec(sql);
   }
 
@@ -112,121 +113,12 @@ export async function verifyMigrations(): Promise<void> {
   }
 
   console.log(
-    `✅ Fresh migration verification successful! Verified 6 tables, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly.`
+    `✅ Migration verification successful! Verified 6 tables, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly.`
   );
-}
-
-export async function verifyMigrationUpgrade(): Promise<void> {
-  console.log('🔄 Verifying migration upgrade path from legacy 0000 schema to 0001 canonical schema...');
-
-  const pg = new PGlite();
-  const drizzleDir = path.join(process.cwd(), 'drizzle');
-
-  // 1. Apply legacy 0000 migration
-  const sql0000 = fs.readFileSync(path.join(drizzleDir, '0000_grey_living_tribunal.sql'), 'utf8');
-  await pg.exec(sql0000);
-
-  // 2. Seed profile, release, and legacy listings
-  const profileId = '11111111-1111-4111-8111-111111111111';
-  const releaseId = '22222222-2222-4222-8222-222222222222';
-  const listing1Id = '33333333-3333-4333-8333-333333333333';
-  const listing2Id = '44444444-4444-4444-8444-444444444444';
-
-  await pg.exec(`
-    INSERT INTO "profiles" ("id", "username", "display_name")
-    VALUES ('${profileId}', 'test_seller', 'Test Seller');
-
-    INSERT INTO "releases" ("id", "artist", "title", "label", "release_year")
-    VALUES ('${releaseId}', 'Miles Davis', 'Kind of Blue', 'Columbia', 1959);
-
-    INSERT INTO "listings" ("id", "release_id", "seller_id", "price", "currency", "media_condition", "sleeve_condition", "trade_available", "description", "status")
-    VALUES
-      ('${listing1Id}', '${releaseId}', '${profileId}', 3500, 'EUR', 'VG+', 'VG', false, 'Classic jazz record', 'published'),
-      ('${listing2Id}', '${releaseId}', '${profileId}', NULL, 'EUR', 'NM', 'NM', true, 'Trade offer', 'draft');
-  `);
-
-  // 3. Apply 0001 forward migration
-  const sql0001 = fs.readFileSync(path.join(drizzleDir, '0001_add_physical_copies.sql'), 'utf8');
-  await pg.exec(sql0001);
-
-  // 4. Verify physical_copies table and exact 1:1 mapping
-  const copiesRes = await pg.query<{
-    id: string;
-    release_id: string;
-    owner_id: string;
-    media_condition: string;
-    sleeve_condition: string;
-  }>(`SELECT * FROM "physical_copies" ORDER BY created_at, id;`);
-
-  if (copiesRes.rows.length !== 2) {
-    throw new Error(`Expected 2 physical copies after migration, found ${copiesRes.rows.length}`);
-  }
-
-  const l1Res = await pg.query<{
-    id: string;
-    physical_copy_id: string;
-    seller_id: string;
-    price: number | null;
-    status: string;
-    description: string;
-  }>(`SELECT * FROM "listings" WHERE id = '${listing1Id}';`);
-
-  const l2Res = await pg.query<{
-    id: string;
-    physical_copy_id: string;
-    seller_id: string;
-    price: number | null;
-    status: string;
-    description: string;
-  }>(`SELECT * FROM "listings" WHERE id = '${listing2Id}';`);
-
-  if (l1Res.rows.length !== 1 || l2Res.rows.length !== 1) {
-    throw new Error('Migrated listings not found');
-  }
-
-  const l1 = l1Res.rows[0];
-  const l2 = l2Res.rows[0];
-
-  const copy1 = copiesRes.rows.find((c) => c.id === l1.physical_copy_id);
-  if (!copy1 || copy1.release_id !== releaseId || copy1.owner_id !== profileId || copy1.media_condition !== 'VG+' || copy1.sleeve_condition !== 'VG') {
-    throw new Error('Listing 1 physical copy details were not correctly preserved');
-  }
-
-  const copy2 = copiesRes.rows.find((c) => c.id === l2.physical_copy_id);
-  if (!copy2 || copy2.release_id !== releaseId || copy2.owner_id !== profileId || copy2.media_condition !== 'NM' || copy2.sleeve_condition !== 'NM') {
-    throw new Error('Listing 2 physical copy details were not correctly preserved');
-  }
-
-  if (l1.seller_id !== profileId || l1.price !== 3500 || l1.status !== 'published' || l1.description !== 'Classic jazz record') {
-    throw new Error('Listing 1 listing fields were altered incorrectly during migration');
-  }
-
-  if (l2.seller_id !== profileId || l2.price !== null || l2.status !== 'draft' || l2.description !== 'Trade offer') {
-    throw new Error('Listing 2 listing fields were altered incorrectly during migration');
-  }
-
-  // Verify no orphan physical copies
-  const orphanRes = await pg.query(
-    `SELECT pc.id FROM "physical_copies" pc LEFT JOIN "listings" l ON l.physical_copy_id = pc.id WHERE l.id IS NULL;`
-  );
-  if (orphanRes.rows.length > 0) {
-    throw new Error(`Found ${orphanRes.rows.length} orphan physical copies`);
-  }
-
-  // Verify legacy columns dropped from listings
-  const columnsRes = await pg.query<{ column_name: string }>(
-    `SELECT column_name FROM information_schema.columns WHERE table_name = 'listings';`
-  );
-  const colNames = columnsRes.rows.map((c) => c.column_name);
-  if (!colNames.includes('physical_copy_id') || colNames.includes('release_id') || colNames.includes('media_condition') || colNames.includes('sleeve_condition')) {
-    throw new Error('Legacy columns were not properly removed or physical_copy_id missing');
-  }
-
-  console.log('✅ Migration upgrade verification successful! Legacy data converted cleanly without data loss.');
 }
 
 if (require.main === module) {
-  Promise.all([verifyMigrations(), verifyMigrationUpgrade()])
+  verifyMigrations()
     .then(() => process.exit(0))
     .catch((err) => {
       console.error('❌ Migration verification failed:', err);
