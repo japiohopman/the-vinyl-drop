@@ -68,6 +68,30 @@ export async function findListingsBySellerId(sellerId: string, dbOverride?: DbIn
   return db.select().from(listings).where(eq(listings.sellerId, sellerId));
 }
 
+export async function findPublishedListingsBySellerId(
+  sellerId: string,
+  dbOverride?: DbInstance
+): Promise<Listing[]> {
+  const db = dbOverride || getDb();
+  return db
+    .select()
+    .from(listings)
+    .where(and(eq(listings.sellerId, sellerId), eq(listings.status, 'published')));
+}
+
+export async function findRecentPublishedListings(
+  limit = 10,
+  dbOverride?: DbInstance
+): Promise<Listing[]> {
+  const db = dbOverride || getDb();
+  return db
+    .select()
+    .from(listings)
+    .where(eq(listings.status, 'published'))
+    .orderBy(desc(listings.createdAt))
+    .limit(limit);
+}
+
 export async function createListing(data: NewListing, dbOverride?: DbInstance): Promise<Listing> {
   const db = dbOverride || getDb();
   const results = await db.insert(listings).values(data).returning();

@@ -50,6 +50,7 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
       profile,
       isOwner,
       listings,
+      crateListings: listings,
     }, next);
   } catch (error) {
     next(error);

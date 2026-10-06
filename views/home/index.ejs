@@ -17,9 +17,10 @@
     </a>
   </div>
 
-  <% if (typeof listings !== 'undefined' && listings && listings.length > 0) { %>
+  <% const dropsList = (typeof listings !== 'undefined' && listings) ? listings : ((typeof recentDrops !== 'undefined' && recentDrops) ? recentDrops : []); %>
+  <% if (dropsList && dropsList.length > 0) { %>
     <div class="listing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-6);">
-      <% listings.forEach(function(item) { %>
+      <% dropsList.forEach(function(item) { %>
         <%- include('../partials/listing-card', { listing: item }) %>
       <% }); %>
     </div>

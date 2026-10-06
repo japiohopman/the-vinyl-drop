@@ -1,0 +1,79 @@
+<div class="custom-release-page" style="max-width: 600px; margin: var(--space-8) auto;">
+  <div style="margin-bottom: var(--space-6);">
+    <a href="/drop/new" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: none;">&larr; Back to Catalog Search</a>
+    <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-top: var(--space-2); margin-bottom: var(--space-1);">Add Custom Release</h1>
+    <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
+      For unindexed white labels, test pressings, promos, or local records not found in external databases.
+    </p>
+  </div>
+
+  <% if (form && form.generalErrors && form.generalErrors.length > 0) { %>
+    <div style="padding: var(--space-3); background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; border-radius: var(--radius-sm); margin-bottom: var(--space-4); font-family: var(--font-mono); font-size: var(--font-size-sm);">
+      <%= form.generalErrors.join(', ') %>
+    </div>
+  <% } %>
+
+  <form action="/releases/new" method="POST" enctype="multipart/form-data" class="card" style="padding: var(--space-6); border: var(--border-thick); background: var(--color-surface-card); display: flex; flex-direction: column; gap: var(--space-4);">
+    <div>
+      <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Artist Name *</label>
+      <input type="text" name="artist" value="<%= form.values.artist || '' %>" required class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Unknown Artist or White Label" />
+    </div>
+
+    <div>
+      <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Release / Track Title *</label>
+      <input type="text" name="title" value="<%= form.values.title || '' %>" required class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Untitled White Label EP" />
+    </div>
+
+    <div>
+      <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Cover Artwork / Photo (Optional)</label>
+      <input type="file" name="coverArt" accept="image/jpeg,image/png,image/webp" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" />
+      <span style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); display: block; margin-top: var(--space-1);">Upload cover artwork for white labels, test pressings or unindexed releases (JPEG, PNG, WebP up to 5MB).</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+      <div>
+        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Record Label</label>
+        <input type="text" name="label" value="<%= form.values.label || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Self-Released" />
+      </div>
+
+      <div>
+        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Catalog Number</label>
+        <input type="text" name="catalogueNumber" value="<%= form.values.catalogueNumber || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. WL-001" />
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+      <div>
+        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Release Year</label>
+        <input type="number" name="releaseYear" value="<%= form.values.releaseYear || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. 1995" />
+      </div>
+
+      <div>
+        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Format</label>
+        <select name="format" class="form-select" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);">
+          <option value="12&quot;" <%= form.values.format === '12"' ? 'selected' : '' %>>12" Single / EP</option>
+          <option value="LP" <%= form.values.format === 'LP' ? 'selected' : '' %>>LP (Album)</option>
+          <option value="7&quot;" <%= form.values.format === '7"' ? 'selected' : '' %>>7" Single</option>
+          <option value="10&quot;" <%= form.values.format === '10"' ? 'selected' : '' %>>10" EP</option>
+          <option value="2xLP" <%= form.values.format === '2xLP' ? 'selected' : '' %>>2xLP</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+      <div>
+        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Barcode (EAN/UPC)</label>
+        <input type="text" name="barcode" value="<%= form.values.barcode || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="Optional" />
+      </div>
+
+      <div>
+        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Genre / Style</label>
+        <input type="text" name="genre" value="<%= form.values.genre || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Hip Hop, Boom Bap" />
+      </div>
+    </div>
+
+    <div style="margin-top: var(--space-2);">
+      <button type="submit" class="btn btn-primary" style="width: 100%;">Create Release & Continue &rarr;</button>
+    </div>
+  </form>
+</div>

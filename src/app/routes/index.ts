@@ -7,6 +7,7 @@ import { getSelectReleasePage } from '../controllers/listingController';
 import authRoutes from './authRoutes';
 import profileRoutes from './profileRoutes';
 import listingRoutes from './listingRoutes';
+import releaseRoutes from './releaseRoutes';
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.get('/search', getSearchPage);
 
 router.use('/auth', authRoutes);
 router.use('/listings', listingRoutes);
+router.use('/releases', releaseRoutes);
 
 // Narrow route compatibility for the + DROP product navigation contract
 router.get('/drop/new', requireAuth, getSelectReleasePage);

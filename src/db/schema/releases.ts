@@ -13,6 +13,7 @@ export const releases = pgTable(
     format: text('format'),
     barcode: text('barcode'),
     genre: text('genre'),
+    coverArtUrl: text('cover_art_url'),
     externalSource: text('external_source'),
     externalId: text('external_id'),
     lastImportedAt: timestamp('last_imported_at', { withTimezone: true }),

@@ -61,6 +61,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     format: '12" Vinyl',
     barcode: null,
     genre: 'Jazz',
+    coverArtUrl: null,
     externalSource: null,
     externalId: null,
     lastImportedAt: null,
@@ -374,7 +375,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.status).toBe(200);
       expect(res.text).toContain('Alice Vinyl');
       expect(res.text).toContain('@alice_records');
-      expect(res.text).toContain('Active Record Drops (1)');
+      expect(res.text).toContain('1 record for sale');
       expect(res.text).toContain('Blue Train');
     });
 

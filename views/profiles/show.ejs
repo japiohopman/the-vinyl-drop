@@ -42,22 +42,31 @@
   </div>
 
   <!-- Seller's Published Record Drops -->
+  <% const sellerListings = (typeof listings !== 'undefined' && listings) ? listings : ((typeof crateListings !== 'undefined' && crateListings) ? crateListings : []); %>
   <section class="seller-listings-section">
-    <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-6);">
-      Active Record Drops (<%= typeof listings !== 'undefined' && listings ? listings.length : 0 %>)
-    </h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); border-bottom: var(--border-thick); padding-bottom: var(--space-2);">
+      <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin: 0; display: flex; align-items: center; gap: var(--space-2);">
+        📦 <%= isOwner ? 'My Crate (Active Listings)' : (profile.displayName || profile.username) + "'s Crate" %>
+      </h2>
+      <span style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
+        <%= sellerListings.length %> <%= sellerListings.length === 1 ? 'record' : 'records' %> for sale
+      </span>
+    </div>
 
-    <% if (typeof listings !== 'undefined' && listings && listings.length > 0) { %>
+    <% if (sellerListings && sellerListings.length > 0) { %>
       <div class="listing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-6);">
-        <% listings.forEach(function(item) { %>
+        <% sellerListings.forEach(function(item) { %>
           <%- include('../partials/listing-card', { listing: item }) %>
         <% }); %>
       </div>
     <% } else { %>
       <div class="empty-state" style="padding: var(--space-8); text-align: center; border: 2px dashed var(--color-border-subtle); border-radius: var(--radius-md);">
         <p style="color: var(--color-ink-muted);">
-          @<%= profile.username %> has no active record drops available right now.
+          <%= isOwner ? 'Your crate is currently empty.' : '@' + profile.username + ' has no active record drops available right now.' %>
         </p>
+        <% if (isOwner) { %>
+          <a href="/drop/new" class="btn btn-primary btn-sm" style="margin-top: var(--space-3);">+ Drop a Record for Sale</a>
+        <% } %>
       </div>
     <% } %>
   </section>
