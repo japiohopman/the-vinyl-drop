@@ -444,6 +444,74 @@
 ● Edit(~/Documents/GitHub/the-vinyl-drop/src/app/controllers/listingController.ts)
 ● Read(~/Documents/GitHub/the-vinyl-drop/views/releases/new.ejs)
 ● Edit(~/Documents/GitHub/the-vinyl-drop/views/releases/new.ejs)
+
+
+ ik heb alles nog een keer door genomen niet met elke keus ben ik het eens. waarom? bravo voor mail is 6,50 per maand! ook het hele belastingdienst komt je halen verhaal. ik wil dit inderdaad professioneel op zetten  maar in het begin zullen we gewoon een   vriendengroepje zijn in amsredam oost en de rest van amsterdam. geen platen verzenden maar gewoon afspreken net als vroeger. platen kopen heeft wat nostalgisch de de ervaring van gezellig afspreken met een biertje was de bedoeling.   nou back to work! feature/issue-13-phase-5-discovery-6911120434680647110 staat open en moet gelijk aan main met de updates!  
+
+Ja. We zitten weer op het juiste spoor.
+
+Ik heb live gecontroleerd:
+
+main staat nu op 030da1c95
+feature/issue-13-phase-5-discovery-6911120434680647110 staat op e266d911
+de branch loopt 4 commits achter op main en de histories zijn inmiddels diverged
+main bevat inmiddels ook de Discogs-import uit #42, migration 0002 en je nieuwste logo.
+
+Ik heb PR #36 daarom bijgewerkt met een expliciete @Jules instructie:
+
+merge de actuele main in de bestaande Phase-5 branch, zonder Phase 5 werk weg te gooien, zonder force-push/reset en met beide kanten zorgvuldig gereconcilieerd.
+
+Daarbij heb ik specifiek vastgezet:
+
+0000 legacy → 0001 PhysicalCopy → 0002 cover art` moet intact blijven.
+
+De Discogs/cataloguswijzigingen uit main moeten behouden blijven.
+
+De Phase 5 discovery/comment/profile wijzigingen moeten behouden blijven.
+
+Na die sync moeten lint, typecheck, tests, build én migratieverificatie opnieuw groen.
+
+De PR blijft bewust NOT READY totdat dat gebeurd is.
+
+En je productcorrectie neem ik mee in onze architectuurblik: geen Bravo van €6,50 omdat “we nu eenmaal e-mail nodig hebben”, geen zware verzend- en belastingmachine omdat we professioneel willen zijn. De eerste echte productversie is:
+
+Amsterdam Oost → Amsterdam → mensen → platen → afspreken → plaat bekijken → biertje → deal.
+
+Dat is juist een sterk productverhaal. Online is de discoverylaag; de waarde zit uiteindelijk in de fysieke community marketplace.
+
+Voor nu dus: Jules eerst main laten bijtrekken. Daarna review ik de nieuwe HEAD opnieuw.
+
+ yes, geef jij de instructies weer door in de PR body met @jules 
+
+Ja, staat erin. Ik heb de PR-body van #36 opnieuw bijgewerkt met @jules en de volledige, concrete sync-instructie.
+
+Jules moet nu eerst de actuele main in de bestaande Phase-5 branch mergen, zonder werk weg te gooien of migrations terug te draaien. Daarna pas opnieuw testen.
+
+PR blijft NOT READY.
+
+e kan reviewen
+
+Ja. Ik heb PR #36 opnieuw tegen de huidige main gereviewd.
+
+Verdict: NOT READY
+
+Er zijn nu vier echte blockers:
+
+De main-sync is nog niet gedaan.
+GitHub meldt nog steeds 4 commits behind, diverged en mergeable: false.
+De Safety Gate-status ontbrak in de PR body.
+Ik heb zelf onderaan toegevoegd:
+### Status → NOT READY.
+Jules heeft .github/workflows/phase-safety-gate.yml aangepast binnen PR #36.
+Dat hoort niet bij Phase 5 #13. Bij de sync moet de huidige main-versie leidend blijven.
+Cover-art dreigt verloren te gaan bij de reconciliation.
+main heeft nu Release.coverArtUrl en gebruikt dat als fallback wanneer een listing geen eigen foto heeft. De huidige Phase 5-head doet dat in recordToListingCardViewModel() niet. Dat moet bij de merge bewust behouden worden.
+
+Ik heb ook een nieuwe ChatGPT review — NOT READY comment op PR #36 gezet met deze punten en de exacte vervolgstappen.
+
+De inhoudelijke Phase 5-punten zelf zien er verder goed uit: browse/search, listing detail, comments + CSRF, seller profiles en foutpropagatie zitten architectonisch op de juiste plek. De eerder bekende punten rond condition semantics, trade-only sorting, malformed parameters en bounded retrieval blijven netjes non-blocking voor later.
+
+Dus nu niet mergen. Eerst moet Jules de bestaande branch echt met huidige main samenvoegen en daarna alle verificatie opnieuw groen krijgen.
 ● Bash(npm run typecheck; npm run lint; npm run build) (ctrl+o to expand)
 
   task-191 has been launched in the background to run typecheck, lint, and build. I will wait for it to complete.
