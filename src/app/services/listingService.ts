@@ -68,7 +68,9 @@ export interface DetailedListing {
 }
 
 function recordToListingCardViewModel(record: JoinedListingRecord): ListingCardViewModel {
-  const imageUrl = record.primaryPhotoPath ? getPhotoPublicUrl(record.primaryPhotoPath) : undefined;
+  const imageUrl = record.primaryPhotoPath
+    ? getPhotoPublicUrl(record.primaryPhotoPath)
+    : (record.release.coverArtUrl || undefined);
   return buildListingCardViewModel({
     id: record.listing.id,
     title: record.release.title,
