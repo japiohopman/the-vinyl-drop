@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getHomePage } from '../controllers/homeController';
+import { getBrowsePage } from '../controllers/browseController';
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
 import { requireAuth } from '../middleware/auth';
 import { getSelectReleasePage } from '../controllers/listingController';
@@ -11,6 +12,7 @@ import releaseRoutes from './releaseRoutes';
 const router = Router();
 
 router.get('/', getHomePage);
+router.get('/browse', getBrowsePage);
 
 router.use('/auth', authRoutes);
 router.use('/listings', listingRoutes);

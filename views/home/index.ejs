@@ -3,9 +3,23 @@
   <p class="tagline">Local community marketplace for buying, selling, and trading physical vinyl records.</p>
 </section>
 
-<section class="recent-drops">
-  <h2>Recent Drops</h2>
-  <div class="empty-state">
-    <p>No recent drops yet. Be the first to drop a record!</p>
+<section class="recent-drops" style="margin-top: var(--space-8);">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+    <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin: 0;">Recent Drops</h2>
+    <a href="/drop/new" class="btn btn-outline btn-sm">+ Drop a Record</a>
   </div>
+
+  <% if (typeof recentDrops !== 'undefined' && recentDrops && recentDrops.length > 0) { %>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4);">
+      <% recentDrops.forEach(function(listing) { %>
+        <%- include('../partials/listing-card', { listing }) %>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="empty-state" style="padding: var(--space-6); text-align: center; border: var(--border-thick); background: var(--color-surface-card);">
+      <p style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-2);">No recent drops yet.</p>
+      <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">Be the first to drop a record for sale or trade!</p>
+      <a href="/drop/new" class="btn btn-primary btn-sm" style="margin-top: var(--space-3);">+ Sell a Record</a>
+    </div>
+  <% } %>
 </section>

@@ -37,4 +37,33 @@
       </div>
     </div>
   </div>
+
+  <!-- Seller's Crate Section -->
+  <div class="profile-crate-section" style="margin-top: var(--space-8);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); border-bottom: var(--border-thick); padding-bottom: var(--space-2);">
+      <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin: 0; display: flex; align-items: center; gap: var(--space-2);">
+        📦 <%= isOwner ? 'My Crate (Active Listings)' : (profile.displayName || profile.username) + "'s Crate" %>
+      </h2>
+      <span style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
+        <%= (typeof crateListings !== 'undefined' && crateListings) ? crateListings.length : 0 %> <%= (typeof crateListings !== 'undefined' && crateListings && crateListings.length === 1) ? 'record' : 'records' %> for sale
+      </span>
+    </div>
+
+    <% if (typeof crateListings === 'undefined' || !crateListings || crateListings.length === 0) { %>
+      <div class="card" style="padding: var(--space-6); text-align: center; border: var(--border-thick); background: var(--color-surface-card);">
+        <p style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-2);">
+          <%= isOwner ? 'Your crate is currently empty.' : 'This seller has no active listings in their crate right now.' %>
+        </p>
+        <% if (isOwner) { %>
+          <a href="/drop/new" class="btn btn-primary btn-sm" style="margin-top: var(--space-2);">+ Drop a Record for Sale</a>
+        <% } %>
+      </div>
+    <% } else { %>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4);">
+        <% crateListings.forEach(function(listing) { %>
+          <%- include('../partials/listing-card', { listing }) %>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
 </div>

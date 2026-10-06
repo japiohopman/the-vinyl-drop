@@ -50,6 +50,8 @@ export async function searchDiscogs(query: string): Promise<DiscogsSearchResult[
     label: r.label ? [r.label] : undefined,
     catno: r.catalogueNumber || undefined,
     barcode: r.barcode ? [r.barcode] : undefined,
+    coverImage: r.coverArtUrl || undefined,
+    thumb: r.coverArtUrl || undefined,
     country: r.country || undefined,
     genre: r.genre ? [r.genre] : undefined,
   }));
@@ -165,6 +167,8 @@ export async function importDiscogsRelease(discogsId: number): Promise<Release> 
     formats?: Array<{ name: string; descriptions?: string[] }>;
     genres?: string[];
     identifiers?: Array<{ type: string; value: string }>;
+    images?: Array<{ resource_url?: string; uri?: string }>;
+    thumb?: string;
   };
 
   const artistName = data.artists?.[0]?.name.replace(/\s*\(\d+\)$/, '') || 'Unknown Artist';
@@ -173,6 +177,7 @@ export async function importDiscogsRelease(discogsId: number): Promise<Release> 
   const formatName = data.formats?.[0]?.name || 'LP';
   const barcode = data.identifiers?.find((i) => i.type === 'Barcode')?.value || null;
   const genreStr = data.genres?.join(', ') || null;
+  const coverArtUrl = data.images?.[0]?.resource_url || data.images?.[0]?.uri || data.thumb || null;
 
   const [inserted] = await db
     .insert(releases)
@@ -186,6 +191,7 @@ export async function importDiscogsRelease(discogsId: number): Promise<Release> 
       format: formatName,
       barcode,
       genre: genreStr,
+      coverArtUrl,
       externalSource: 'discogs',
       externalId: String(discogsId),
       lastImportedAt: new Date(),

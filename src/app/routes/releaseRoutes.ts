@@ -7,10 +7,12 @@ import {
   postImportDiscogsRelease,
 } from '../controllers/releaseController';
 
+import { multipartUploadHandler } from '../middleware/upload';
+
 const router = Router();
 
 router.get('/new', requireAuth, getCreateCustomReleasePage);
-router.post('/new', requireAuth, validateSameOrigin, postCreateCustomRelease);
+router.post('/new', requireAuth, validateSameOrigin, multipartUploadHandler, postCreateCustomRelease);
 router.post('/import-discogs', requireAuth, validateSameOrigin, postImportDiscogsRelease);
 
 export default router;

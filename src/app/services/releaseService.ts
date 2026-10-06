@@ -30,6 +30,7 @@ export async function createRelease(input: ReleaseInput, dbOverride?: DbInstance
       format: data.format || null,
       barcode: data.barcode || null,
       genre: data.genre || null,
+      coverArtUrl: data.coverArtUrl || null,
       externalSource: data.externalSource || null,
       externalId: data.externalId || null,
     },

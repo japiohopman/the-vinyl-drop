@@ -1,7 +1,7 @@
 <div class="select-release-page" style="max-width: 800px; margin: var(--space-8) auto;">
   <div style="margin-bottom: var(--space-6);">
     <a href="/listings" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: none;">&larr; Back to My Listings</a>
-    <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-top: var(--space-2); margin-bottom: var(--space-1);">Select or Search a Release</h1>
+    <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-top: var(--space-2); margin-bottom: var(--space-1);">Select a Release to Sell</h1>
     <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
       Search Discogs by album title, artist, barcode (EAN/UPC), or catalog number to auto-import release data.
     </p>
@@ -46,7 +46,7 @@
           <div class="card" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);">
             <div style="display: flex; align-items: center; gap: var(--space-4);">
               <% if (item.thumb || item.coverImage) { %>
-                <img src="<%= item.thumb || item.coverImage %>" alt="<%= item.title %>" style="width: 60px; height: 60px; object-fit: cover; border: var(--border-thin);" />
+                <img src="<%= item.thumb || item.coverImage %>" alt="<%= item.title %>" style="width: 60px; height: 60px; object-fit: cover; border: var(--border-thin);" referrerpolicy="no-referrer" />
               <% } else { %>
                 <div style="width: 60px; height: 60px; background: var(--color-surface-muted); border: var(--border-thin); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-muted);">VINYL</div>
               <% } %>
@@ -81,12 +81,19 @@
   <% } else { %>
     <div style="display: flex; flex-direction: column; gap: var(--space-3);">
       <% releases.forEach(function(rel) { %>
-        <div class="card" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <h3 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin-bottom: var(--space-1);"><%= rel.title %></h3>
-            <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0;">
-              <%= rel.artist %> &bull; <%= rel.label || 'Unknown Label' %> (<%= rel.releaseYear || 'N/A' %>) &bull; Format: <%= rel.format || 'Vinyl' %>
-            </p>
+        <div class="card" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);">
+          <div style="display: flex; align-items: center; gap: var(--space-4);">
+            <% if (rel.coverArtUrl) { %>
+              <img src="<%= rel.coverArtUrl %>" alt="<%= rel.title %>" style="width: 60px; height: 60px; object-fit: cover; border: var(--border-thin);" referrerpolicy="no-referrer" />
+            <% } else { %>
+              <div style="width: 60px; height: 60px; background: var(--color-surface-muted); border: var(--border-thin); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-muted);">VINYL</div>
+            <% } %>
+            <div>
+              <h3 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin-bottom: var(--space-1);"><%= rel.title %></h3>
+              <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0;">
+                <%= rel.artist %> &bull; <%= rel.label || 'Unknown Label' %> (<%= rel.releaseYear || 'N/A' %>) &bull; Format: <%= rel.format || 'Vinyl' %>
+              </p>
+            </div>
           </div>
           <a href="/listings/create?releaseId=<%= rel.id %>" class="btn btn-primary btn-sm">Select Release &rarr;</a>
         </div>

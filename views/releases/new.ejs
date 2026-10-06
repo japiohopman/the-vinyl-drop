@@ -13,7 +13,7 @@
     </div>
   <% } %>
 
-  <form action="/releases/new" method="POST" class="card" style="padding: var(--space-6); border: var(--border-thick); background: var(--color-surface-card); display: flex; flex-direction: column; gap: var(--space-4);">
+  <form action="/releases/new" method="POST" enctype="multipart/form-data" class="card" style="padding: var(--space-6); border: var(--border-thick); background: var(--color-surface-card); display: flex; flex-direction: column; gap: var(--space-4);">
     <div>
       <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Artist Name *</label>
       <input type="text" name="artist" value="<%= form.values.artist || '' %>" required class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Unknown Artist or White Label" />
@@ -22,6 +22,12 @@
     <div>
       <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Release / Track Title *</label>
       <input type="text" name="title" value="<%= form.values.title || '' %>" required class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Untitled White Label EP" />
+    </div>
+
+    <div>
+      <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Cover Artwork / Photo (Optional)</label>
+      <input type="file" name="coverArt" accept="image/jpeg,image/png,image/webp" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" />
+      <span style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); display: block; margin-top: var(--space-1);">Upload cover artwork for white labels, test pressings or unindexed releases (JPEG, PNG, WebP up to 5MB).</span>
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">

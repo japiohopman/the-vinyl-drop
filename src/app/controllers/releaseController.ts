@@ -4,6 +4,8 @@ import { importDiscogsRelease } from '../services/discogsService';
 import { createRelease } from '../services/releaseService';
 import { FormViewModel } from '../view-models/formViewModel';
 
+import { processAndValidateImage } from '../utils/imageProcessor';
+
 export async function getCreateCustomReleasePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const formVm: FormViewModel<{
@@ -38,6 +40,16 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
 
     const parsedYear = releaseYear ? parseInt(releaseYear, 10) : undefined;
 
+    let coverArtUrl: string | undefined = undefined;
+
+    if (req.files && req.files.length > 0) {
+      const coverFile = req.files.find((f) => f.fieldname === 'coverArt') || req.files[0];
+      if (coverFile && coverFile.buffer && coverFile.buffer.length > 0) {
+        const processed = await processAndValidateImage(coverFile.buffer, coverFile.mimetype);
+        coverArtUrl = `data:image/webp;base64,${processed.buffer.toString('base64')}`;
+      }
+    }
+
     try {
       const release = await createRelease({
         artist,
@@ -48,6 +60,7 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
         format: format || 'LP',
         barcode: barcode || undefined,
         genre: genre || undefined,
+        coverArtUrl,
         externalSource: 'custom',
       });
 
