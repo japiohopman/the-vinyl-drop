@@ -6,17 +6,7 @@ import { renderWithLayout } from '../utils/render';
 export async function getHomePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const data = homeService.getHomeData();
-    let listings: Awaited<ReturnType<typeof getHomeFeedListings>> = [];
-
-    try {
-      listings = await getHomeFeedListings(6);
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('DATABASE_URL environment variable is missing')) {
-        listings = [];
-      } else {
-        throw err;
-      }
-    }
+    const listings = await getHomeFeedListings(6);
 
     renderWithLayout(
       res,

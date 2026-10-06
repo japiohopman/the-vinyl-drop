@@ -34,31 +34,16 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
     const pageNum = parseInt(typeof req.query.page === 'string' ? req.query.page : '1', 10);
     const page = isNaN(pageNum) || pageNum < 1 ? 1 : pageNum;
 
-    let results: Awaited<ReturnType<typeof searchBrowseListings>>;
-    try {
-      results = await searchBrowseListings({
-        q: q || undefined,
-        genre: genre || undefined,
-        condition,
-        minPrice,
-        maxPrice,
-        sort,
-        page,
-        limit: 12,
-      });
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('DATABASE_URL environment variable is missing')) {
-        results = {
-          items: [],
-          totalCount: 0,
-          page: 1,
-          limit: 12,
-          totalPages: 1,
-        };
-      } else {
-        throw err;
-      }
-    }
+    const results = await searchBrowseListings({
+      q: q || undefined,
+      genre: genre || undefined,
+      condition,
+      minPrice,
+      maxPrice,
+      sort,
+      page,
+      limit: 12,
+    });
 
     renderWithLayout(
       res,

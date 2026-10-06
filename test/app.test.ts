@@ -1,9 +1,17 @@
 import request from 'supertest';
 import { createApp } from '../src/app';
+import * as listingService from '../src/app/services/listingService';
+
+jest.mock('../src/app/services/listingService');
 
 const app = createApp();
 
 describe('App Routes and Error Handling', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([]);
+  });
+
   describe('GET /', () => {
     it('should render the home page with 200 OK and HTML content', async () => {
       const response = await request(app)

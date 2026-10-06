@@ -3,8 +3,11 @@ import request from 'supertest';
 import { createApp } from '../src/app';
 import { setSupabaseClient } from '../src/lib/supabase';
 import * as profileRepository from '../src/app/repositories/profileRepository';
+import * as listingService from '../src/app/services/listingService';
 import { updateProfile, AuthorizationError } from '../src/app/services/profileService';
 import { Profile } from '../src/db/schema/profiles';
+
+jest.mock('../src/app/services/listingService');
 
 describe('Profile Foundation & Server-Side Ownership', () => {
   let mockSupabase: any;
@@ -32,6 +35,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue([]);
 
     mockSupabase = {
       auth: {

@@ -43,17 +43,7 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
     }
 
     const isOwner = Boolean(req.user && req.user.id === profile.id);
-    let listings: Awaited<ReturnType<typeof getSellerPublishedListings>> = [];
-
-    try {
-      listings = await getSellerPublishedListings(profile.username);
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('DATABASE_URL environment variable is missing')) {
-        listings = [];
-      } else {
-        throw err;
-      }
-    }
+    const listings = await getSellerPublishedListings(profile.username);
 
     renderWithLayout(res, 'profiles/show', {
       title: `${profile.displayName || profile.username} (@${profile.username}) — The Vinyl Drop`,
