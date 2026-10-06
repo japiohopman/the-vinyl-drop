@@ -15,6 +15,13 @@
       "when": 1791200000000,
       "tag": "0001_add_physical_copies",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791210000000,
+      "tag": "0002_add_release_cover_art",
+      "breakpoints": true
     }
   ]
 }

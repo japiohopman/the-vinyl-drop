@@ -2,22 +2,98 @@
   <div style="margin-bottom: var(--space-6);">
     <a href="/listings" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: none;">&larr; Back to My Listings</a>
     <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-top: var(--space-2); margin-bottom: var(--space-1);">Select a Release to Sell</h1>
-    <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">Choose an existing canonical album release from the database to create your listing offer.</p>
+    <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
+      Search Discogs by album title, artist, barcode (EAN/UPC), or catalog number to auto-import release data.
+    </p>
   </div>
 
+  <!-- Search Box for External Catalog & Local DB -->
+  <form action="/drop/new" method="GET" style="margin-bottom: var(--space-6); display: flex; gap: var(--space-2);">
+    <input
+      type="text"
+      name="q"
+      value="<%= typeof query !== 'undefined' ? query : '' %>"
+      placeholder="Type Artist, Album Title, Barcode or Catalog Number..."
+      class="form-input"
+      style="flex: 1; padding: var(--space-3); font-family: var(--font-body); font-size: var(--font-size-md); border: var(--border-thick);"
+      required
+    />
+    <button type="submit" class="btn btn-primary" style="padding: 0 var(--space-5);">Search Discogs &rarr;</button>
+  </form>
+
+  <!-- Add Custom Release Option -->
+  <div style="margin-bottom: var(--space-6); padding: var(--space-4); background: #fef3c7; border: var(--border-thin); border-color: #f59e0b; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <span style="font-family: var(--font-heading); font-size: var(--font-size-sm); color: #92400e; display: block;">Unindexed White Label, Test Pressing or Local Release?</span>
+      <span style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: #b45309;">Add a custom release directly to the catalog.</span>
+    </div>
+    <a href="/releases/new" class="btn btn-secondary btn-sm" style="white-space: nowrap;">+ Add Custom Release</a>
+  </div>
+
+  <!-- Discogs & Local Search Results -->
+  <% if (typeof query !== 'undefined' && query) { %>
+    <h2 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin-bottom: var(--space-3);">Search Results for "<%= query %>"</h2>
+    <% if (!searchResults || searchResults.length === 0) { %>
+      <div class="card" style="padding: var(--space-6); text-align: center; border: var(--border-thick); background: var(--color-surface-card);">
+        <p style="font-family: var(--font-display); margin-bottom: var(--space-2);">No releases found for "<%= query %>".</p>
+        <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
+          Try searching by barcode or <a href="/releases/new" style="text-decoration: underline;">create a custom release</a>.
+        </p>
+      </div>
+    <% } else { %>
+      <div style="display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-8);">
+        <% searchResults.forEach(function(item) { %>
+          <div class="card" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);">
+            <div style="display: flex; align-items: center; gap: var(--space-4);">
+              <% if (item.thumb || item.coverImage) { %>
+                <img src="<%= item.thumb || item.coverImage %>" alt="<%= item.title %>" style="width: 60px; height: 60px; object-fit: cover; border: var(--border-thin);" referrerpolicy="no-referrer" />
+              <% } else { %>
+                <div style="width: 60px; height: 60px; background: var(--color-surface-muted); border: var(--border-thin); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-muted);">VINYL</div>
+              <% } %>
+              <div>
+                <h3 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin-bottom: var(--space-1);"><%= item.title %></h3>
+                <p style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); margin: 0;">
+                  <%= item.year || 'Unknown Year' %> &bull; <%= (item.label && item.label[0]) || 'Unknown Label' %> <%= item.catno ? '(' + item.catno + ')' : '' %> &bull; <%= (item.format && item.format.join(', ')) || 'Vinyl' %>
+                </p>
+              </div>
+            </div>
+
+            <% if (item.id === -1) { %>
+              <span class="btn btn-secondary btn-sm" style="opacity: 0.6;">Local Record</span>
+            <% } else { %>
+              <form action="/releases/import-discogs" method="POST">
+                <input type="hidden" name="discogsId" value="<%= item.id %>" />
+                <button type="submit" class="btn btn-primary btn-sm">Import & Drop &rarr;</button>
+              </form>
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+  <% } %>
+
+  <!-- Catalog Releases List -->
+  <h2 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin-bottom: var(--space-3);">Recent Catalog Releases</h2>
   <% if (releases.length === 0) { %>
     <div class="card" style="padding: var(--space-6); text-align: center; border: var(--border-thick); background: var(--color-surface-card);">
-      <p style="font-family: var(--font-display); margin-bottom: var(--space-2);">No releases found in the catalog.</p>
+      <p style="font-family: var(--font-display); margin-bottom: var(--space-2);">No releases found in the local catalog.</p>
     </div>
   <% } else { %>
     <div style="display: flex; flex-direction: column; gap: var(--space-3);">
       <% releases.forEach(function(rel) { %>
-        <div class="card" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <h2 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin-bottom: var(--space-1);"><%= rel.title %></h2>
-            <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0;">
-              <%= rel.artist %> &bull; <%= rel.label || 'Unknown Label' %> (<%= rel.releaseYear || 'N/A' %>) &bull; Format: <%= rel.format || 'Vinyl' %>
-            </p>
+        <div class="card" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);">
+          <div style="display: flex; align-items: center; gap: var(--space-4);">
+            <% if (rel.coverArtUrl) { %>
+              <img src="<%= rel.coverArtUrl %>" alt="<%= rel.title %>" style="width: 60px; height: 60px; object-fit: cover; border: var(--border-thin);" referrerpolicy="no-referrer" />
+            <% } else { %>
+              <div style="width: 60px; height: 60px; background: var(--color-surface-muted); border: var(--border-thin); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-muted);">VINYL</div>
+            <% } %>
+            <div>
+              <h3 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin-bottom: var(--space-1);"><%= rel.title %></h3>
+              <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0;">
+                <%= rel.artist %> &bull; <%= rel.label || 'Unknown Label' %> (<%= rel.releaseYear || 'N/A' %>) &bull; Format: <%= rel.format || 'Vinyl' %>
+              </p>
+            </div>
           </div>
           <a href="/listings/create?releaseId=<%= rel.id %>" class="btn btn-primary btn-sm">Select Release &rarr;</a>
         </div>

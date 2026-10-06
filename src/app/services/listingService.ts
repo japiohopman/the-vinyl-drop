@@ -29,6 +29,8 @@ import {
   createListing as createListingInRepo,
   findListingById,
   findListingsBySellerId,
+  findPublishedListingsBySellerId,
+  findRecentPublishedListings as findRecentInRepo,
   updateListing as updateListingInRepo,
   updateListingStatus as updateStatusInRepo,
 } from '../repositories/listingRepository';
@@ -67,6 +69,36 @@ export async function getListingById(id: string, dbOverride?: DbInstance): Promi
 
 export async function getUserListings(sellerId: string, dbOverride?: DbInstance): Promise<Listing[]> {
   return findListingsBySellerId(sellerId, dbOverride);
+}
+
+export async function getPublishedListingsBySeller(
+  sellerId: string,
+  dbOverride?: DbInstance
+): Promise<DetailedListing[]> {
+  const listings = await findPublishedListingsBySellerId(sellerId, dbOverride);
+  const results: DetailedListing[] = [];
+  for (const l of listings) {
+    const details = await getListingWithDetails(l.id, dbOverride);
+    if (details) {
+      results.push(details);
+    }
+  }
+  return results;
+}
+
+export async function getRecentPublishedListings(
+  limit = 10,
+  dbOverride?: DbInstance
+): Promise<DetailedListing[]> {
+  const listings = await findRecentInRepo(limit, dbOverride);
+  const results: DetailedListing[] = [];
+  for (const l of listings) {
+    const details = await getListingWithDetails(l.id, dbOverride);
+    if (details) {
+      results.push(details);
+    }
+  }
+  return results;
 }
 
 export async function getListingWithDetails(

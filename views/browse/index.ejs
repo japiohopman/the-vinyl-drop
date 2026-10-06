@@ -1,0 +1,19 @@
+<div class="container py-8">
+  <div class="browse-header mb-8">
+    <h1 class="text-3xl font-bold">Browse Marketplace</h1>
+    <p class="text-muted">Explore published vinyl drops and listings from seller crates.</p>
+  </div>
+
+  <% if (listings && listings.length > 0) { %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <% listings.forEach(function(listing) { %>
+        <%- include('../partials/listing-card', { listing: listing }) %>
+      <% }); %>
+    </div>
+  <% } else { %>
+    <div class="empty-crate-state text-center py-12 border border-dashed rounded-lg">
+      <p class="text-lg text-muted mb-4">No published listings available right now.</p>
+      <a href="/drop/new" class="btn btn-primary">+ Drop a Vinyl</a>
+    </div>
+  <% } %>
+</div>

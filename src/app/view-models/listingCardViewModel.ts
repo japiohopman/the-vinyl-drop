@@ -73,3 +73,35 @@ export function buildListingCardViewModel(params: {
     url: params.url || `/listings/${params.id}`,
   };
 }
+
+/**
+ * Build ListingCardViewModel from DetailedListing object
+ */
+export function buildListingCardFromDetails(details: {
+  listing: { id: string; price: number | null; tradeAvailable: boolean };
+  release: { title: string; artist: string; releaseYear?: number | null; format?: string | null; coverArtUrl?: string | null };
+  physicalCopy: { mediaCondition: string; sleeveCondition: string };
+  seller: { username: string; location?: string | null };
+  photos?: Array<{ publicUrl: string }>;
+}): ListingCardViewModel {
+  const primaryImage =
+    details.photos && details.photos.length > 0
+      ? details.photos[0].publicUrl
+      : details.release.coverArtUrl || undefined;
+
+  return buildListingCardViewModel({
+    id: details.listing.id,
+    title: details.release.title,
+    artist: details.release.artist,
+    releaseYear: details.release.releaseYear || undefined,
+    format: details.release.format || undefined,
+    priceMinorUnits: details.listing.price,
+    isTrade: details.listing.tradeAvailable,
+    mediaCondition: details.physicalCopy.mediaCondition,
+    sleeveCondition: details.physicalCopy.sleeveCondition,
+    imageUrl: primaryImage,
+    sellerUsername: details.seller.username,
+    sellerLocation: details.seller.location || undefined,
+    url: `/listings/${details.listing.id}/preview`,
+  });
+}

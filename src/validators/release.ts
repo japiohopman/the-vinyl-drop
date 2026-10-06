@@ -15,6 +15,7 @@ export const releaseSchema = z.object({
   format: z.string().trim().optional(),
   barcode: z.string().trim().optional(),
   genre: z.string().trim().optional(),
+  coverArtUrl: z.string().trim().optional(),
   externalSource: z.string().trim().optional(),
   externalId: z.string().trim().optional(),
 });

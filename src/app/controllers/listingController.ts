@@ -51,10 +51,20 @@ export async function getSellerListings(req: Request, res: Response, next: NextF
 
 export async function getSelectReleasePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const releases = await listReleases(100);
+    const query = (req.query.q as string || '').trim();
+    let searchResults: Array<import('../services/discogsService').DiscogsSearchResult> = [];
+
+    if (query) {
+      const { searchDiscogs } = await import('../services/discogsService');
+      searchResults = await searchDiscogs(query);
+    }
+
+    const releases = await listReleases(50);
     renderWithLayout(res, 'listings/select-release', {
       title: 'Select a Release - The Vinyl Drop',
       releases,
+      query,
+      searchResults,
     });
   } catch (error) {
     next(error);
