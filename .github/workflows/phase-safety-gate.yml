@@ -63,8 +63,8 @@ jobs:
 
             let prBody = pr.body || '';
 
-            // If PR body from payload lacks contract section, attempt fallback to latest commit message or live PR body
-            if (!prBody.includes('## Phase / Governing Issue')) {
+            // If PR body from payload lacks contract section or refs/status, attempt fallback to latest commit message or live PR body
+            if (!prBody.includes('## Phase / Governing Issue') || !prBody.includes('Refs #') || !prBody.includes('### Status')) {
               try {
                 const commits = await github.rest.pulls.listCommits({
                   owner: context.repo.owner,
