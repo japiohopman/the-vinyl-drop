@@ -335,6 +335,26 @@ When a review finds defects inside scope:
 
 If the required work is genuinely new scope, create a new Issue instead of quietly expanding the active one.
 
+### PR-body control protocol
+
+The **PR body is the operational control surface for Jules after a PR exists**.
+
+When ChatGPT continues or corrects Jules work:
+- put the authoritative continuation instruction in the existing PR body;
+- explicitly address Jules with **\`@Jules\`** so the instruction is surfaced to the implementation agent;
+- state **NOT READY** while required work remains;
+- describe exact required changes, exact verification, and explicit "do not change" boundaries;
+- keep the continuation on the same branch and PR when the work remains within the governing Issue;
+- do not create a second implementation branch merely to continue normal review work;
+- do not rely on an informal chat message as the durable implementation instruction once a PR exists.
+
+When the implementation is correct:
+- update the PR body to **READY FOR HUMAN REVIEW**;
+- keep the exact Phase Safety Gate headings and Definition of Done contract intact;
+- the human, not Jules, performs the final merge.
+
+The \`@Jules\` mention is a delivery mechanism; the GitHub Issue remains the execution authority and the PR remains the active review/continuation contract.
+
 ---
 
 ## Specialist roles
