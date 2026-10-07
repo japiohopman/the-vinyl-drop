@@ -1,107 +1,126 @@
 # Application Page and Route Map
 
-This document defines the intended public and authenticated surface before implementation.
+This document records the exact route and view architecture implemented in the application as of Phase 5.
 
-## Public routes
+## Implemented public routes
 
-| Route | Purpose | Primary data |
-| --- | --- | --- |
-| / | discovery feed | recent listings, local/community highlights |
-| /browse | browse/search | listings + release metadata |
-| /search | search results | listings + release metadata |
-| /listing/:id | listing detail | listing, release, photos, seller, comments |
-| /profile/:username | public profile | profile + active listings |
-| /login | sign in | auth |
-| /signup | account creation | auth |
+| Route | HTTP Method | Controller Action | Primary Data / Purpose |
+| --- | --- | --- | --- |
+| `/` | `GET` | `homeController.getHomePage` | Discovery feed displaying recent published listings |
+| `/browse` | `GET` | `browseController.getBrowsePage` | Filtered browse page (genre, condition grade, price range, trade flag) |
+| `/search` | `GET` | `browseController.getSearchPage` | Search results matching keyword query across releases & descriptions |
+| `/listings/:id` | `GET` | `listingController.getListingDetailPage` | Listing detail page (release metadata, physical copy, photos, seller, comments) |
+| `/profiles/:username` | `GET` | `profileController.getPublicProfile` | Public seller profile and active listings grid |
+| `/profile/:username` | `GET` | `profileController.getPublicProfile` | Public seller profile alias |
+| `/auth/login` | `GET` | `authController.getLoginPage` | User login form |
+| `/auth/signup` | `GET` | `authController.getSignUpPage` | User registration form |
+| `/auth/google` | `GET` | `authController.getGoogleOAuth` | Initiate Google OAuth PKCE flow |
+| `/auth/callback` | `GET` | `authController.getAuthCallback` | Supabase OAuth callback route |
+| `/health` | `GET` | Inline handler | Health check JSON status (`200 OK`) |
+| `/design-system` | `GET` | `designSystemController.getDesignSystemPage` | Design system component showcase |
 
-## Authenticated routes
+## Implemented authenticated routes (`requireAuth` enforced)
 
-| Route | Purpose |
-| --- | --- |
-| /drop/new | start a listing |
-| /drop/:id/edit | edit a listing |
-| /drop/:id/photos | manage listing photos |
-| /drop/:id/preview | preview before publishing |
-| /profile/edit | edit own profile |
-| /my-listings | manage own listings |
-| /activity | personal/community activity |
+| Route | HTTP Method | Controller Action | Purpose |
+| --- | --- | --- | --- |
+| `/drop/new` | `GET` | `listingController.getSelectReleasePage` | + DROP product entrypoint (select or find release) |
+| `/listings` | `GET` | `listingController.getSellerListings` | Seller dashboard ("My Listings") |
+| `/listings/new` | `GET` | `listingController.getSelectReleasePage` | Select existing release for listing creation |
+| `/listings/create` | `GET` / `POST` | `getCreateListingPage` / `postCreateListing` | Describe physical copy and create draft listing |
+| `/listings/:id/edit` | `GET` / `POST` | `getEditListingPage` / `postEditListing` | Edit draft or published listing details |
+| `/listings/:id/photos` | `POST` | `postUploadPhoto` | Upload photo (busboy streaming + sharp WebP processing) |
+| `/listings/:id/photos/:photoId/delete` | `POST` | `postDeletePhoto` | Delete photo and re-compact display order |
+| `/listings/:id/photos/reorder` | `POST` | `postReorderPhotos` | Reorder listing photo array |
+| `/listings/:id/preview` | `GET` | `getPreviewListingPage` | Preview listing before publishing |
+| `/listings/:id/publish` | `POST` | `postPublishListing` | Transition draft listing to `published` |
+| `/listings/:id/archive` | `POST` | `postArchiveListing` | Transition listing to `archived` status |
+| `/listings/:id/comments` | `POST` | `postCreateComment` | Post public comment on listing |
+| `/releases/new` | `GET` / `POST` | `getCreateCustomReleasePage` / `postCreateCustomRelease` | Create custom catalog release |
+| `/releases/import-discogs` | `POST` | `postImportDiscogsRelease` | Import release metadata from Discogs API |
+| `/profile` | `GET` | `profileController.getCurrentProfile` | Redirect authenticated user to own public profile |
+| `/profile/edit` | `GET` / `POST` | `getEditProfilePage` / `postEditProfile` | Edit own profile details (display name, bio, location) |
+| `/auth/logout` | `POST` | `authController.postLogout` | Log out user and clear auth cookies |
 
-Future routes such as messaging, favorites, wanted lists and trade requests are introduced only with their corresponding feature phases.
+## Non-implemented / Future routes
 
-## EJS view map
+The following routes are **NOT implemented** in current code:
+- `/activity`: Personal or community activity feed (future Phase 6 concept).
+- `/messages`: Private messaging threads (future Phase 7 concept).
+- `/favorites` / `/wantlist`: Saved records or user wantlists (future Phase 6 concept).
 
+## View hierarchy (`views/`)
+
+```
 views/
-  layouts/main.ejs
-  partials/header.ejs
-  partials/mobile-nav.ejs
-  partials/listing-card.ejs
-  partials/release-meta.ejs
-  partials/condition.ejs
-  partials/profile-header.ejs
-  partials/comment-thread.ejs
-  partials/flash.ejs
+  layouts/
+    main.ejs                     # Master HTML shell with header, nav, flash, footer
+  partials/
+    header.ejs                   # Top brand mark header
+    nav.ejs                      # Responsive navigation bar
+    footer.ejs                   # Footer section
+    listing-card.ejs             # Reusable record listing card component
+    condition-badge.ejs          # Goldmine condition grade badge component
+    comment-thread.ejs           # Listing comment thread component
+    flash.ejs                    # Success/error alert banner component
+    button.ejs                   # Accessible button primitive
+    form-errors.ejs              # Accessible form validation error summary
+    form-input.ejs               # Text/number input field partial
+    form-select.ejs              # Select dropdown partial
+    form-textarea.ejs            # Textarea input field partial
+  home/
+    index.ejs                    # Discovery feed view
+  browse/
+    index.ejs                    # Browse with filters view
+  search/
+    index.ejs                    # Search results view
+  listings/
+    show.ejs                     # Listing detail view with photos & comments
+    select-release.ejs           # Select or search release step
+    create.ejs                   # Physical copy condition & price form
+    edit.ejs                     # Edit listing details form
+    photos.ejs                   # Photo upload & reorder interface
+    preview.ejs                  # Pre-publication preview view
+    my-listings.ejs              # Seller listings dashboard
+  profiles/
+    show.ejs                     # Public seller profile view
+    edit.ejs                     # Edit profile form
+  auth/
+    login.ejs                    # Sign in view
+    signup.ejs                   # Account creation view
+  releases/
+    new.ejs                      # Custom release creation form
+  errors/
+    404.ejs                      # Not found error view
+    500.ejs                      # Internal server error view
+  design-system/
+    index.ejs                    # Design tokens & UI components showcase
+```
 
-  home/index.ejs
-  browse/index.ejs
-  search/index.ejs
+## Layered execution flow
 
-  listings/show.ejs
-  listings/new.ejs
-  listings/edit.ejs
-  listings/photos.ejs
-  listings/preview.ejs
+Request processing adheres strictly to the following architecture:
 
-  profiles/show.ejs
-  profiles/edit.ejs
+1. **HTTP Request & Middleware Boundary:**
+   - Request enters Express pipeline (`src/app/routes/`).
+   - `sessionMiddleware` verifies Supabase Auth cookies (`sb-access-token`, `sb-refresh-token`) and attaches `req.user` / `req.profile`.
+   - `requireAuth` enforces login redirects for protected routes.
+   - `validateSameOrigin` enforces CSRF same-origin origin/referer verification on state-changing requests (`POST`).
+   - `multipartUploadHandler` parses file uploads via `@fastify/busboy`.
 
-  auth/login.ejs
-  auth/signup.ejs
+2. **Controller Layer (`src/app/controllers/`):**
+   - Parses HTTP parameters, query parameters, or form body data.
+   - Invokes Zod validator schemas (`src/validators/`).
+   - Calls underlying services or repository functions (`src/services/` / `src/db/`).
+   - Catches domain validation errors and maps them into view models.
 
-  errors/404.ejs
-  errors/500.ejs
+3. **Domain Service & Repository Layer (`src/services/` / `src/db/`):**
+   - Executes business rules, state transitions, and authorization checks (e.g. verifying `listing.sellerId === req.user.id`).
+   - Interacts with PostgreSQL using Drizzle ORM queries.
 
-The actual folder structure may be adjusted by implementation, but shared presentation primitives should remain reusable.
+4. **View Model & Presentation Boundary (`src/app/view-models/` / `views/`):**
+   - Constructs typed view model payloads (e.g. converting price cents into Euros `€XX.XX`, formatting condition badges, mapping Zod errors into `FormViewModel`).
+   - Calls `renderWithLayout(res, 'view-name', viewModel)` (`src/app/utils/render.ts`) to wrap the view inside `views/layouts/main.ejs`.
 
-## Page ownership
-
-### Home
-
-Owns discovery presentation only.
-
-The home route should not become a second listing/search service. It consumes a feed/view model.
-
-### Browse/search
-
-Own search/filter input and result presentation.
-
-Search behavior belongs in the data/service layer.
-
-### Listing detail
-
-Consumes one prepared listing view model containing:
-- release metadata;
-- physical-copy condition;
-- price/trade state;
-- ordered photos;
-- seller summary;
-- comments.
-
-### Sell flow
-
-The sell flow is one domain operation exposed through several pages/stages.
-
-Do not create independent databases or parallel listing models for each step.
-
-## Responsive behavior
-
-A page must have a meaningful mobile composition before desktop enhancement is added.
-
-Where desktop and mobile differ, they should consume the same domain/view model rather than fork business logic.
-
-## URL principles
-
-Public listing and profile URLs should be stable enough to share.
-
-Do not expose internal database structure in URLs when a public identifier can provide a cleaner route.
-
-Authorization must never depend on secrecy of a URL.
+5. **Error Boundary (`src/app/middleware/errorHandler.ts`):**
+   - Unhandled controller errors propagate to `errorHandler.ts`.
+   - Renders `errors/500.ejs` with 500 status code for HTML requests, or returns 500 JSON error for API requests.

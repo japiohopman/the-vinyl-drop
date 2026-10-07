@@ -4,160 +4,172 @@
 
 The canonical persistence layer is **PostgreSQL** hosted by **Supabase**.
 
-Supabase provides a full PostgreSQL database rather than a proprietary database abstraction. Its Auth and Storage services integrate with the same project. Drizzle has documented PostgreSQL and Supabase integration paths.
+Supabase provides full PostgreSQL instance capabilities rather than a proprietary database layer. Authentication (`auth.users`) and Storage (`listing-photos` bucket) integrate with the same project.
 
-References:
-- https://supabase.com/docs/guides/database/overview
-- https://supabase.com/docs/guides/auth
-- https://supabase.com/docs/guides/storage
-- https://orm.drizzle.team/docs/get-started/postgresql
-- https://orm.drizzle.team/docs/get-started/supabase
+## ORM and migration architecture
 
-## ORM and migrations
-
-**Drizzle ORM + Drizzle Kit** is the planned database access and migration layer.
+**Drizzle ORM + Drizzle Kit** is the application schema and migration layer (`src/db/schema/`).
 
 Rules:
-- application schema definitions live in source control;
-- migrations are committed;
-- production schema changes must be reproducible;
-- application code must not rely on manually edited production tables;
-- database constraints are used for invariants that must survive application bugs.
+- Application database schemas are source-controlled under `src/db/schema/`.
+- Generated migration SQL files are committed in `drizzle/`.
+- Production and local database migrations are applied reproducibly using `drizzle-kit migrate`.
+- Database schema changes are tested in isolation using `@electric-sql/pglite` (`scripts/verify-migration.ts`) during `npm test` and CI runs.
+- Schema integrity constraints and indexes enforce invariants directly in PostgreSQL.
 
-The initial implementation should use one clearly defined database module and one schema boundary.
+## Implemented database tables
 
-## Initial tables
+### `profiles` (`src/db/schema/profiles.ts`)
 
-### profiles
+Public community profile data linked 1:1 with Supabase Auth identities.
 
-Public user profile data.
+Columns:
+- `id`: `uuid` (Primary Key, references `auth.users.id` without `defaultRandom()` fallback to enforce 1:1 auth identity mapping).
+- `username`: `text` (Not Null, Unique index `profiles_username_idx`).
+- `displayName`: `text` (Not Null).
+- `avatarUrl`: `text` (Nullable).
+- `bio`: `text` (Nullable).
+- `coarseLocation`: `text` (Nullable).
+- `createdAt`: `timestamp with time zone` (Not Null, default `now()`).
+- `updatedAt`: `timestamp with time zone` (Not Null, default `now()`).
 
-Important constraints:
-- one profile per authenticated user;
-- unique username;
-- no private auth secrets.
+### `releases` (`src/db/schema/releases.ts`)
 
-### releases
+Canonical catalog release metadata.
 
-Canonical release metadata.
+Columns:
+- `id`: `uuid` (Primary Key, default `gen_random_uuid()`).
+- `artist`: `text` (Not Null).
+- `title`: `text` (Not Null).
+- `label`: `text` (Not Null).
+- `catalogNumber`: `text` (Nullable).
+- `releaseYear`: `integer` (Nullable).
+- `country`: `text` (Nullable).
+- `format`: `text` (Not Null, default `'12" Vinyl'`).
+- `barcode`: `text` (Nullable).
+- `genre`: `text` (Nullable).
+- `discogsReleaseId`: `integer` (Nullable).
+- `createdAt`: `timestamp with time zone` (Not Null, default `now()`).
+- `updatedAt`: `timestamp with time zone` (Not Null, default `now()`).
 
-Important indexes will likely cover:
-- artist;
-- title;
-- label;
-- catalogue number;
-- year;
-- normalized search fields.
+Indexes:
+- `releases_artist_idx` on `artist`
+- `releases_title_idx` on `title`
+- `releases_label_idx` on `label`
+- `releases_genre_idx` on `genre`
 
-### listings
+### `physical_copies` (`src/db/schema/physicalCopies.ts`)
 
-Physical-copy offers.
+Owned physical record items connecting releases and profiles.
 
-Important indexes will likely cover:
-- seller;
-- status;
-- release;
-- published timestamp;
-- price;
-- trade availability.
+Columns:
+- `id`: `uuid` (Primary Key, default `gen_random_uuid()`).
+- `releaseId`: `uuid` (Not Null, FK -> `releases.id` CASCADE).
+- `ownerId`: `uuid` (Not Null, FK -> `profiles.id` CASCADE).
+- `mediaCondition`: `condition_grade_enum` (Not Null).
+- `sleeveCondition`: `condition_grade_enum` (Not Null).
+- `notes`: `text` (Nullable).
+- `createdAt`: `timestamp with time zone` (Not Null, default `now()`).
+- `updatedAt`: `timestamp with time zone` (Not Null, default `now()`).
 
-### listing_photos
+Indexes:
+- `physical_copies_release_idx` on `releaseId`
+- `physical_copies_owner_idx` on `ownerId`
 
-Listing-to-storage references.
+### `listings` (`src/db/schema/listings.ts`)
 
-Important constraints:
-- valid listing foreign key;
-- deterministic sort order;
-- safe storage path ownership.
+Marketplace offers referencing physical copies.
 
-### comments
+Columns:
+- `id`: `uuid` (Primary Key, default `gen_random_uuid()`).
+- `physicalCopyId`: `uuid` (Not Null, FK -> `physical_copies.id` CASCADE).
+- `sellerId`: `uuid` (Not Null, FK -> `profiles.id` CASCADE).
+- `price`: `integer` (Nullable, minor units / cents).
+- `currency`: `text` (Not Null, default `'EUR'`).
+- `tradeAvailable`: `boolean` (Not Null, default `false`).
+- `description`: `text` (Nullable).
+- `status`: `listing_status_enum` (Not Null, default `'draft'`).
+- `createdAt`: `timestamp with time zone` (Not Null, default `now()`).
+- `updatedAt`: `timestamp with time zone` (Not Null, default `now()`).
 
-Community interaction on listings.
+Constraints & Indexes:
+- Check constraint `listings_price_check`: `price IS NULL OR price >= 0`.
+- `listings_seller_idx` on `sellerId`
+- `listings_physical_copy_idx` on `physicalCopyId`
+- `listings_status_idx` on `status`
+- `listings_price_idx` on `price`
+- `listings_created_at_idx` on `createdAt`
+- Partial Unique Index `listings_active_physical_copy_idx` on `physicalCopyId` WHERE `status IN ('published', 'reserved')` to prevent concurrent active listings on a single physical copy.
 
-Important indexes will likely cover:
-- listing;
-- author;
-- created timestamp.
+### `listing_photos` (`src/db/schema/listingPhotos.ts`)
 
-## Future tables
+Storage key references and order for listing photography.
 
-Add only when the feature enters an implementation phase:
-- favorites;
-- wanted_items;
-- trade_requests;
-- conversations;
-- conversation_members;
-- messages;
-- notifications;
-- reports;
-- moderation_actions.
+Columns:
+- `id`: `uuid` (Primary Key, default `gen_random_uuid()`).
+- `listingId`: `uuid` (Not Null, FK -> `listings.id` CASCADE).
+- `storagePath`: `text` (Not Null).
+- `displayOrder`: `integer` (Not Null, default `0`).
+- `altText`: `text` (Nullable).
+- `createdAt`: `timestamp with time zone` (Not Null, default `now()`).
+- `updatedAt`: `timestamp with time zone` (Not Null, default `now()`).
 
-## External metadata
+Indexes:
+- `listing_photos_listing_idx` on `listingId`
+- `listing_photos_order_idx` on `(listingId, displayOrder)`
 
-The database should support optional references such as:
-- source;
-- external ID;
-- last imported/verified timestamp.
+### `comments` (`src/db/schema/comments.ts`)
 
-External catalogues are enrichment sources.
+Public discussion threads on listings.
 
-They must not become hidden dependencies for:
-- displaying a listing;
-- loading an existing release;
-- editing a listing;
-- maintaining ownership history.
+Columns:
+- `id`: `uuid` (Primary Key, default `gen_random_uuid()`).
+- `listingId`: `uuid` (Not Null, FK -> `listings.id` CASCADE).
+- `authorId`: `uuid` (Not Null, FK -> `profiles.id` CASCADE).
+- `content`: `text` (Not Null).
+- `createdAt`: `timestamp with time zone` (Not Null, default `now()`).
+- `updatedAt`: `timestamp with time zone` (Not Null, default `now()`).
 
-## Search
+Indexes:
+- `comments_listing_idx` on `listingId`
+- `comments_author_idx` on `authorId`
+- `comments_created_at_idx` on `createdAt`
 
-Start with PostgreSQL.
+## Enums (`src/db/schema/enums.ts`)
 
-Expected strategy:
-- normal indexes for exact/filter queries;
-- normalized text fields for predictable matching;
-- PostgreSQL text search/trigram capabilities only when actual requirements justify them.
+- `condition_grade_enum`: `'M'`, `'NM'`, `'VG+'`, `'VG'`, `'VG-'`, `'G+'`, `'G'`, `'F'`, `'P'`.
+- `listing_status_enum`: `'draft'`, `'published'`, `'reserved'`, `'sold'`, `'traded'`, `'archived'`.
 
-Do not introduce Elasticsearch or another search service in the MVP.
+## Storage architecture
 
-## Storage
+User uploaded record images live in Supabase Storage under the `listing-photos` bucket.
 
-Record images live in object storage.
+Rules:
+- Streams are processed using `@fastify/busboy` with strict limits (5MB file size limit, 5 photo limit per listing).
+- Images are inspected, stripped of EXIF metadata, scaled to 2048px max dimension, and converted to optimized WebP format using `sharp`.
+- Storage paths are saved in `listing_photos.storage_path`.
+- Transactional rollback guarantees cleanup of storage objects if database record insertion fails.
 
-Database rows contain:
-- storage path/key;
-- metadata;
-- ownership relationship;
-- ordering.
+## Auth persistence & session storage
 
-The application must validate that users may only mutate photos belonging to listings they own.
+Authentication utilizes Supabase Auth with Express cookie-backed PKCE storage (`createExpressSupabaseClient`) in `src/lib/supabase.ts`.
 
-## Transactions
+Cookies:
+- `sb-access-token`: short-lived JWT access token.
+- `sb-refresh-token`: refresh token for automatic token rotation.
 
-Database transactions are required whenever one user action must update multiple records atomically.
+Middleware (`sessionMiddleware` and `requireAuth`) binds `req.user` and `req.profile` to Express requests.
 
-Examples:
-- publishing a listing together with required metadata;
-- reordering/deleting listing photos;
-- changing a listing to a terminal state and creating associated records later in the marketplace lifecycle.
+## Application request flow
 
-## Deletion policy
-
-Prefer soft/historical states for marketplace records.
-
-Normal user actions should not physically delete:
-- sold listings;
-- traded listings;
-- important moderation records.
-
-Personal data deletion must be handled as a separate privacy operation rather than by cascading arbitrary public-record deletions.
-
-## Canonical data flow
-
-Request
--> route
--> validation
--> application service
--> repository/database
--> view model
--> EJS
-
-The EJS layer receives prepared view data and does not run queries.
+```
+HTTP Request
+  └─> Route handler (`src/app/routes/`)
+        └─> Middleware (`sessionMiddleware`, `requireAuth`, `validateSameOrigin`)
+              └─> Controller (`src/app/controllers/`)
+                    └─> Validation (Zod schemas in `src/validators/`)
+                          └─> Service (`src/services/`)
+                                └─> Repository / Drizzle ORM (`src/db/`)
+                                      └─> View Model (`src/app/view-models/`)
+                                            └─> EJS Template (`views/`)
+```

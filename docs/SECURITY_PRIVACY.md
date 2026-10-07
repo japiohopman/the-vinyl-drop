@@ -2,159 +2,87 @@
 
 ## Trust model
 
-The Vinyl Drop is a community marketplace for physical goods.
+The Vinyl Drop is a local community marketplace for buying, selling, and trading physical vinyl records.
 
-The application therefore handles:
-- user identities;
-- public profiles;
-- private authentication data through an auth provider;
-- private messages in future phases;
-- user-uploaded images;
-- marketplace content.
+The application handles:
+- user identity and authentication credentials (via Supabase Auth);
+- public seller profiles and coarse location data;
+- record catalog metadata and physical copy condition details;
+- uploaded record listing photography;
+- public listing discussion comments.
 
-Security is a product requirement from the first implementation phase.
+Security boundaries are enforced at the application middleware, service authorization, and PostgreSQL schema layers.
 
-## Authentication
+## Implemented authentication architecture
 
-Use Supabase Auth for user authentication.
+Authentication is powered by **Supabase Auth** using Express cookie-backed PKCE session management (`src/lib/supabase.ts` and `src/app/middleware/sessionMiddleware.ts`).
 
-Application profile records reference the authenticated user identity.
+- User passwords and OAuth credentials are managed entirely by Supabase Auth; custom application code never handles raw passwords.
+- Authenticated session tokens (`sb-access-token` and `sb-refresh-token`) are stored in HTTP cookies and validated on incoming requests.
+- `profiles.id` maps 1:1 to `auth.users.id` (enforced as a UUID primary key without random default fallback).
+- Protected endpoints (`/listings/create`, `/profile/edit`, `/listings/:id/photos`, etc.) enforce `requireAuth` middleware, redirecting unauthenticated users to `/auth/login`.
 
-Rules:
-- passwords are never handled by custom application code if Supabase Auth can own the flow;
-- session validation happens before protected actions;
-- public pages must not accidentally expose session or auth metadata.
+## Implemented server-side authorization
 
-## Authorization
+Authorization checks verify that an authenticated user has permission to perform state-changing operations:
 
-Authentication answers "who are you?"
+- **Profile Editing:** `profileService.updateProfile` verifies `requestingUserId === targetUserId`.
+- **Listing Management:** `listingService` verifies `listing.sellerId === requestingUserId` before allowing listing updates, preview generation, status transitions, or photo operations.
+- **Photo Operations:** Photo upload, deletion, and reordering require authenticated seller ownership of the target listing.
+- **Comment Creation:** Comment posting requires an authenticated session (`req.user.id`).
+- **State Machine Enforcement:** Status transitions (`draft` -> `published` -> `sold`/`archived`) are validated in `src/domain/listingLifecycle.ts`. Terminal states (`sold`, `traded`, `archived`) reject further updates.
 
-Authorization answers "may you perform this action?"
+Authorization logic is strictly server-side. EJS template conditionals (e.g., displaying an "Edit Listing" button) are presentation conveniences only and never serve as authorization boundaries.
 
-Ownership checks must happen server-side.
+## Implemented CSRF protection
 
-Examples:
-- only a listing owner can edit or publish their listing;
-- only authorized users can mutate their own profile;
-- only authorized users can mutate their own listing photos;
-- comments require authenticated authors;
-- future private messages must never be accessible through public listing queries.
+State-changing HTTP requests (`POST`, `PUT`, `DELETE`, `PATCH`) pass through `validateSameOrigin` middleware (`src/app/middleware/csrf.ts`).
 
-Do not rely on hidden buttons or EJS conditionals as authorization.
+- Evaluates request origin using `Origin` and `Referer` headers against the server's expected request host.
+- Rejects state-changing requests missing both origin headers with a `403 Forbidden` response.
+- Logout (`POST /auth/logout`) strictly requires `POST` method with same-origin verification.
 
-## Database security
+## Input validation and sanitization
 
-When using Supabase access patterns that rely on direct client data access, Row Level Security policies must enforce authorization.
+- **Zod Schema Validation:** All route parameters, query strings, and form bodies are validated using Zod schemas (`src/validators/`).
+- **Controlled Vocabularies:** Condition grades (`M`, `NM`, `VG+`, `VG`, `VG-`, `G+`, `G`, `F`, `P`) and listing statuses (`draft`, `published`, `reserved`, `sold`, `traded`, `archived`) are validated against Zod enums and backed by PostgreSQL `enum` types.
+- **Monetary Inputs:** Prices are validated and parsed into integer minor currency units (cents) at controller boundaries (`parsePriceEurToCents`). Negative price values and non-numeric inputs are rejected with 400 Bad Request responses.
+- **SQL Injection Prevention:** Database queries use Drizzle ORM parameterized SQL statements, eliminating raw string concatenation.
+- **XSS Prevention:** EJS template rendering automatically HTML-escapes string values (`<%= %>`). Comments and descriptions are rendered as plain text.
 
-The server-side application should still keep a clear ownership/service boundary.
+## Implemented file upload & photo security
 
-## Input security
+Listing photo uploads pass through a multi-stage security pipeline:
 
-All untrusted input is validated.
+1. **Streaming Limits:** `@fastify/busboy` limits upload payloads to a maximum file size of **5MB** per file and a maximum of **5 photos** per listing. Excess files or oversized uploads are rejected with a 400 Bad Request error.
+2. **Buffer Inspection & Format Processing:** Image buffers are processed server-side using `sharp` (`processAndValidateImage`):
+   - Validates image structure; non-image binaries or unsupported formats are rejected.
+   - Converts images to optimized WebP format.
+   - Downscales images exceeding 2048px in maximum dimension.
+   - Strips EXIF metadata (GPS coordinates, camera metadata) to protect seller privacy.
+3. **Storage & Rollback:** Storage paths are generated deterministically and saved in Supabase Storage (`listing-photos` bucket). If database transaction insertion fails, storage objects are automatically deleted.
 
-Threats to address:
-- XSS through profile/listing/comment text;
-- SQL injection through query construction;
-- unsafe file uploads;
-- path traversal;
-- request forgery;
-- authorization bypass;
-- mass assignment.
+## Implemented privacy boundaries
 
-Never concatenate SQL from user input.
+**Public Data (Accessible without authentication):**
+- Profile `username`, `displayName`, `avatarUrl`, `bio`, and `coarseLocation`;
+- Published record listings, release metadata, condition grades, prices, and photos;
+- Public listing comments and author display names.
 
-Never trust client-submitted ownership fields.
+**Private Data (Never published or exposed):**
+- User email addresses;
+- Supabase Auth provider tokens and session refresh tokens;
+- User street addresses or precise geolocation data;
+- Unpublished draft listings (accessible only to the listing owner).
 
-## HTML safety
+Location data is intentionally limited to coarse neighborhood or city names (e.g. "Amsterdam Oost") to facilitate local meetups without compromising home address privacy.
 
-EJS templates must escape untrusted values by default.
+## Future security & moderation capabilities (Not currently implemented)
 
-Any future explicit HTML rendering must be separately reviewed and sanitized.
+The following security and moderation capabilities are documented as future roadmap items and are **NOT implemented** in current code:
 
-Comments and descriptions are plain text in the MVP.
-
-## Image uploads
-
-Images require:
-- MIME/type validation;
-- size limits;
-- dimensions where appropriate;
-- server-side ownership checks;
-- generated storage paths;
-- safe transformations before public delivery;
-- no execution of uploaded files.
-
-Sharp is the planned image-processing boundary.
-
-## Privacy
-
-Public:
-- username/display name;
-- avatar;
-- bio;
-- coarse location;
-- public listings;
-- public comments.
-
-Private:
-- email;
-- auth/session data;
-- private messages;
-- internal moderation notes;
-- precise location/contact data unless explicitly required later.
-
-Never publish a user's home address.
-
-## Moderation
-
-MVP moderation should at minimum have a documented path for:
-- reporting abusive content;
-- hiding/deleting inappropriate comments;
-- removing fraudulent listings;
-- dealing with malicious uploads.
-
-A full moderation dashboard is not required before basic reporting exists.
-
-## Abuse controls
-
-As the community grows, add:
-- rate limiting;
-- upload limits;
-- comment throttling;
-- login abuse protection;
-- report rate limits.
-
-Do not build heavy anti-abuse infrastructure before a concrete threat model requires it.
-
-## Data retention
-
-Keep marketplace history useful without retaining unnecessary personal data indefinitely.
-
-Privacy/deletion flows must distinguish:
-- identity deletion;
-- public marketplace history;
-- moderation/audit requirements.
-
-This policy must be implemented deliberately; it should not emerge accidentally from database cascade rules.
-
-## Secrets
-
-Never commit:
-- Supabase service-role keys;
-- database passwords;
-- API keys;
-- session secrets.
-
-All production secrets belong in GitHub/Supabase deployment secret storage.
-
-Public browser keys are not equivalent to service-role credentials and must still be handled according to Supabase's security model.
-
-## Security review gates
-
-Security-sensitive PRs must explicitly document:
-- authentication impact;
-- authorization path;
-- data exposure;
-- upload handling;
-- migrations;
-- tests covering the changed permission boundary.
+- User-facing content reporting buttons (for flagrant listings or abusive comments);
+- Administrative moderation dashboard;
+- IP-based or user-based API rate limiting;
+- Automated content abuse filtering;
+- Data export and right-to-be-forgotten automated account deletion tools.

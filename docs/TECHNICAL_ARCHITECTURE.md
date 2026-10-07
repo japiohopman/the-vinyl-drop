@@ -1,244 +1,102 @@
 # Technical Architecture
 
-## Planned stack
+## Stack choices
 
-| Area | Choice |
-| --- | --- |
-| Runtime | Node.js |
-| Language | TypeScript |
-| HTTP framework | Express |
-| Rendering | EJS |
-| Database | PostgreSQL |
-| Database platform | Supabase |
-| ORM | Drizzle ORM |
-| Validation | Zod |
-| Images | Supabase Storage |
-| Image processing | Sharp |
-| Testing | Unit/integration tests plus Playwright for browser flows |
-| CI | GitHub Actions |
+| Layer | Implemented Technology | Notes / Details |
+| --- | --- | --- |
+| Runtime | Node.js (v22+) | Server environment |
+| Language | TypeScript (v5.8) | Strict mode configuration |
+| Web Framework | Express (v4.21) | HTTP routing and middleware |
+| View Rendering | EJS (v3.1) | Server-rendered HTML templates |
+| Database | PostgreSQL | Hosted on Supabase; tested locally via `@electric-sql/pglite` |
+| Database ORM | Drizzle ORM (v0.45) | Schema definitions in `src/db/schema/` |
+| Migration Tool | Drizzle Kit (v0.31) | SQL migrations in `drizzle/` |
+| Input Validation | Zod (v3.24) | Route, body, and schema validation |
+| Authentication | Supabase Auth | PKCE cookie-backed storage (`src/lib/supabase.ts`) |
+| Storage | Supabase Storage | `listing-photos` bucket |
+| Multipart Uploads | `@fastify/busboy` | Streaming file upload parser (5MB limit, 5 files max) |
+| Image Processing | Sharp (v0.35) | Server-side WebP conversion, 2048px downscaling, EXIF stripping |
+| Testing | Jest (v29) & Supertest (v7) | Unit and integration testing |
+| Accessibility Testing | `@axe-core/playwright` / Playwright | Automated WCAG compliance checks (`npm run test:a11y`) |
+| Styling & Tokens | Vanilla CSS | Tokens & utilities in `public/css/style.css` |
 
-This is intentionally a server-rendered web application.
+## Application layers and responsibilities
 
-Express officially supports template-engine rendering, including EJS-style engines. Drizzle supports PostgreSQL and documents Supabase integration.
+```
+HTTP Request
+  │
+  ├── 1. Routes (`src/app/routes/`)
+  │      Maps methods and URL paths to controllers
+  │
+  ├── 2. Middleware (`src/app/middleware/`)
+  │      - `sessionMiddleware`: Binds Supabase Auth user & profile to `req`
+  │      - `requireAuth`: Enforces login redirect for protected routes
+  │      - `validateSameOrigin`: Enforces CSRF same-origin origin/referer validation
+  │      - `multipartUploadHandler`: Streaming busboy upload parser
+  │      - `errorHandler`: Centralized error catching & 500 HTML/JSON response
+  │
+  ├── 3. Controllers (`src/app/controllers/`)
+  │      Extracts params, calls validators, calls services, prepares view models
+  │
+  ├── 4. Validation (`src/validators/`)
+  │      Zod schemas for condition, price, release, listing, comment, and profile inputs
+  │
+  ├── 5. Domain Services & Repositories (`src/services/` & `src/db/`)
+  │      Executes business logic, authorization checks, and Drizzle ORM database queries
+  │
+  └── 6. View Models & EJS Rendering (`src/app/utils/render.ts` & `views/`)
+         Constructs structured presentation view data and renders HTML via `renderWithLayout`
+```
 
-## Why server-rendered EJS
+## Implemented source tree
 
-The product is primarily catalogue content, forms, profiles, listing pages, search/filter pages and comments.
-
-A client-side SPA is not required for the core experience.
-
-Benefits:
-- simple routing;
-- excellent initial page delivery;
-- predictable HTML;
-- lower client complexity;
-- straightforward public listing URLs;
-- less duplicated state;
-- easier agentic maintenance.
-
-Interactive islands can use small TypeScript modules where justified.
-
-Do not introduce a frontend framework to solve a localized interaction.
-
-## Application layers
-
-### Routes
-
-Map HTTP requests to application operations.
-
-Responsibilities:
-- HTTP method/path;
-- parameter extraction;
-- authentication middleware;
-- call controller/application service;
-- choose response.
-
-Routes do not own business rules.
-
-### Controllers
-
-Translate HTTP requests into application inputs and responses.
-
-Responsibilities:
-- assemble input;
-- handle validation failures;
-- call services;
-- prepare view models.
-
-### Services
-
-Own domain/application rules.
-
-Examples:
-- listingService;
-- releaseService;
-- profileService;
-- commentService.
-
-Services must be testable without EJS.
-
-### Repositories
-
-Own database queries and persistence operations.
-
-Rules:
-- no SQL in routes;
-- no database calls in templates;
-- avoid repository methods whose behavior hides unrelated side effects.
-
-### View models
-
-Convert domain/service results into data safe and useful for presentation.
-
-This prevents raw database rows becoming the implicit UI API.
-
-### EJS views
-
-Own presentation only.
-
-EJS must not:
-- query the database;
-- mutate domain state;
-- contain authorization logic;
-- reimplement pricing or condition rules.
-
-## Proposed source structure
-
+```
 src/
   app/
-    routes/
-    controllers/
-    services/
-    repositories/
-    validators/
-    view-models/
+    controllers/        # Route controllers (home, browse, listing, profile, auth, release)
+    middleware/         # Session, auth, csrf, upload, and errorHandler middleware
+    routes/             # Express router definitions (auth, listing, profile, release, index)
+    utils/              # EJS layout renderer helper (`renderWithLayout`)
   db/
-    schema/
-    migrations/
-  auth/
-  storage/
-  shared/
-  server.ts
+    schema/             # Drizzle database schemas (profiles, releases, physicalCopies, listings, listingPhotos, comments, enums)
+    index.ts            # Drizzle client initialization
+  domain/               # Core domain lifecycle rules (`listingLifecycle.ts`)
+  lib/                  # Supabase client factory (`supabase.ts`)
+  services/             # Application services (listingService, profileService, discogsService)
+  validators/           # Zod validation schemas
+  workflow/             # Agentic workflow modules (julesDispatcher, julesSessionCleanup, chatgptReviewRelay)
+  server.ts             # Express server entry point
 
 views/
-  layouts/
-  partials/
-  home/
-  browse/
-  listings/
-  profiles/
-  auth/
-  errors/
+  layouts/              # Master EJS layout (`main.ejs`)
+  partials/             # Shared HTML partials (header, nav, footer, listing-card, condition-badge, comment-thread, form controls)
+  home/                 # Discovery feed view
+  browse/               # Filtered browse view
+  search/               # Search results view
+  listings/             # Listing show, create, edit, photo, preview, dashboard views
+  profiles/             # Public profile and edit profile views
+  auth/                 # Login and signup views
+  releases/             # Custom release creation view
+  errors/               # 404 and 500 error views
+  design-system/        # Design tokens and UI primitives showcase
 
 public/
-  css/
-  js/
-  icons/
-  images/
+  css/                  # Central design tokens and styles (`style.css`)
 
-tests/
-  unit/
-  integration/
-  browser/
+drizzle/                # Generated SQL migration scripts managed by Drizzle Kit
+```
 
-The exact folder structure may change once implementation begins, but architectural boundaries should not.
+## Security boundaries
 
-## EJS view structure
+1. **Authentication:** Supabase Auth handles authentication credentials. Application sessions are persisted securely in HTTP-only cookies (`sb-access-token`, `sb-refresh-token`).
+2. **Authorization:** Server-side authorization checks verify ownership before profile edits, listing modifications, photo upload/deletion, or status transitions. EJS template rendering never acts as an authorization boundary.
+3. **CSRF Protection:** State-changing requests (`POST`, `PUT`, `DELETE`, `PATCH`) pass through `validateSameOrigin` middleware to verify same-origin provenance via `Origin` and `Referer` headers.
+4. **File Upload Security:** Multipart uploads streaming through `@fastify/busboy` are bounded by strict file size (5MB) and photo count limits (5 per listing). Sharp processes image buffers, strips EXIF metadata, converts to WebP, and validates image structure before storage.
+5. **Database Parameterization:** All database queries utilize Drizzle ORM parameterized SQL statements, preventing SQL injection vulnerabilities.
 
-Views should be composed from small reusable partials.
+## Testing and verification architecture
 
-Expected shared partials include:
-- header;
-- mobile navigation;
-- listing card;
-- release metadata;
-- condition display;
-- profile header;
-- comment thread;
-- flash/status message.
-
-Do not build one giant page template.
-
-## Static assets
-
-Repository-local assets are preferred.
-
-For record imagery uploaded by users, storage URLs come from the storage layer after authorization checks.
-
-## Configuration
-
-Environment values must be externalized.
-
-Expected categories:
-- database connection;
-- authentication;
-- storage;
-- application URL;
-- session/security configuration.
-
-Never commit secrets.
-
-Provide a documented .env.example in the implementation phase.
-
-## Validation
-
-Zod validates untrusted application input at boundaries.
-
-Important boundaries:
-- form input;
-- query parameters;
-- route parameters;
-- upload metadata;
-- externally sourced metadata before persistence.
-
-Validation does not replace database constraints.
-
-## Testing architecture
-
-### Unit
-
-Pure validation, domain rules and formatting.
-
-### Integration
-
-Services with database boundaries.
-
-### Browser
-
-Critical user journeys:
-- browse;
-- sign in;
-- create listing;
-- edit listing;
-- upload/reorder photos;
-- comment.
-
-The exact browser matrix will be documented when the app shell exists.
-
-## Performance principles
-
-Start simple.
-
-Optimize:
-- database indexes;
-- image sizes;
-- response payloads;
-- repeated queries.
-
-Do not introduce caches or distributed infrastructure before measurements justify them.
-
-## Accessibility
-
-Every interactive flow must remain keyboard-accessible and have meaningful labels.
-
-Mobile usability is a design requirement, not a later CSS pass.
-
-## Technical references
-
-- Express: https://expressjs.com/en/5x/guide/using-template-engines/
-- Supabase Database: https://supabase.com/docs/guides/database/overview
-- Supabase Auth: https://supabase.com/docs/guides/auth
-- Supabase Storage: https://supabase.com/docs/guides/storage
-- Drizzle PostgreSQL: https://orm.drizzle.team/docs/get-started/postgresql
-- Drizzle Supabase: https://orm.drizzle.team/docs/get-started/supabase
-- Zod: https://zod.dev/
+- **Unit Tests:** Pure validators (`condition`, `listingStatus`, `release`), lifecycle state machine rules (`listingLifecycle.ts`), and monetary price converters (`parsePriceEurToCents`).
+- **Integration Tests:** Endpoint HTTP integration tests (`Supertest`), Supabase Auth cookie session flows, profile updates, listing lifecycle transitions, and comment posting.
+- **Database Migration Testing:** Isolated in-memory PostgreSQL engine (`@electric-sql/pglite` via `scripts/verify-migration.ts`) tests fresh migration execution and forward upgrade data preservation without external database dependencies.
+- **Accessibility Testing:** Automated Playwright axe-core audits (`scripts/test-accessibility.ts` / `npm run test:a11y`) verify WCAG AAA contrast, semantic HTML, and ARIA form labeling.
