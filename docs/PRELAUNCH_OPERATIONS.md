@@ -114,6 +114,6 @@ Operational procedures for maintaining catalog and community safety:
 Before promoting the platform to production launch, all pre-launch gates must pass:
 
 1. **Security & Penetration Audit:** Independent security audit verifying Auth cookie security, CSRF same-origin enforcement, file upload isolation, and SQL injection safety.
-2. **Accessibility Audit:** Automated (`npm run test:a11y`) and manual WCAG AAA screen reader testing across phone and desktop viewports.
+2. **Accessibility Audit:** Automated (`npm run test:a11y` checking WCAG 2.1 AA rules) and manual screen reader testing across phone and desktop viewports.
 3. **Load & Stress Testing:** Performance benchmarking verifying response times under simulated concurrent browse, search, and upload traffic.
 4. **Legal & Compliance Gate:** Published Terms of Service, Privacy Policy, Cookie Policy, and Community Guidelines compliant with local GDPR regulations.

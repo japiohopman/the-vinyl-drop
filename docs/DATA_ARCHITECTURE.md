@@ -26,10 +26,10 @@ Public community profile data linked 1:1 with Supabase Auth identities.
 Columns:
 - `id`: `uuid` (Primary Key, references `auth.users.id` without `defaultRandom()` fallback to enforce 1:1 auth identity mapping).
 - `username`: `text` (Not Null, Unique index `profiles_username_idx`).
-- `displayName`: `text` (Not Null).
+- `displayName`: `text` (Nullable).
 - `avatarUrl`: `text` (Nullable).
 - `bio`: `text` (Nullable).
-- `coarseLocation`: `text` (Nullable).
+- `location`: `text` (Nullable).
 - `createdAt`: `timestamp with time zone` (Not Null, default `now()`).
 - `updatedAt`: `timestamp with time zone` (Not Null, default `now()`).
 
@@ -41,14 +41,17 @@ Columns:
 - `id`: `uuid` (Primary Key, default `gen_random_uuid()`).
 - `artist`: `text` (Not Null).
 - `title`: `text` (Not Null).
-- `label`: `text` (Not Null).
-- `catalogNumber`: `text` (Nullable).
+- `label`: `text` (Nullable).
+- `catalogueNumber`: `text` (Nullable).
 - `releaseYear`: `integer` (Nullable).
 - `country`: `text` (Nullable).
-- `format`: `text` (Not Null, default `'12" Vinyl'`).
+- `format`: `text` (Nullable).
 - `barcode`: `text` (Nullable).
 - `genre`: `text` (Nullable).
-- `discogsReleaseId`: `integer` (Nullable).
+- `coverArtUrl`: `text` (Nullable).
+- `externalSource`: `text` (Nullable).
+- `externalId`: `text` (Nullable).
+- `lastImportedAt`: `timestamp with time zone` (Nullable).
 - `createdAt`: `timestamp with time zone` (Not Null, default `now()`).
 - `updatedAt`: `timestamp with time zone` (Not Null, default `now()`).
 
@@ -56,7 +59,8 @@ Indexes:
 - `releases_artist_idx` on `artist`
 - `releases_title_idx` on `title`
 - `releases_label_idx` on `label`
-- `releases_genre_idx` on `genre`
+- `releases_cat_num_idx` on `catalogueNumber`
+- `releases_year_idx` on `releaseYear`
 
 ### `physical_copies` (`src/db/schema/physicalCopies.ts`)
 

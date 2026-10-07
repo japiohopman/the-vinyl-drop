@@ -14,10 +14,10 @@
 | Input Validation | Zod (v3.24) | Route, body, and schema validation |
 | Authentication | Supabase Auth | PKCE cookie-backed storage (`src/lib/supabase.ts`) |
 | Storage | Supabase Storage | `listing-photos` bucket |
-| Multipart Uploads | `@fastify/busboy` | Streaming file upload parser (5MB limit, 5 files max) |
+| Multipart Uploads | `@fastify/busboy` | Streaming file upload parser (`multipartUploadHandler` in `src/app/middleware/upload.ts`) |
 | Image Processing | Sharp (v0.35) | Server-side WebP conversion, 2048px downscaling, EXIF stripping |
 | Testing | Jest (v29) & Supertest (v7) | Unit and integration testing |
-| Accessibility Testing | `@axe-core/playwright` / Playwright | Automated WCAG compliance checks (`npm run test:a11y`) |
+| Accessibility Testing | `@axe-core/playwright` / Playwright | Automated WCAG 2.1 AA checks (`npm run test:a11y`) |
 | Styling & Tokens | Vanilla CSS | Tokens & utilities in `public/css/style.css` |
 
 ## Application layers and responsibilities
@@ -29,11 +29,10 @@ HTTP Request
   │      Maps methods and URL paths to controllers
   │
   ├── 2. Middleware (`src/app/middleware/`)
-  │      - `sessionMiddleware`: Binds Supabase Auth user & profile to `req`
-  │      - `requireAuth`: Enforces login redirect for protected routes
-  │      - `validateSameOrigin`: Enforces CSRF same-origin origin/referer validation
-  │      - `multipartUploadHandler`: Streaming busboy upload parser
-  │      - `errorHandler`: Centralized error catching & 500 HTML/JSON response
+  │      - `src/app/middleware/auth.ts`: `sessionMiddleware`, `requireAuth`, `requireOwnership`
+  │      - `src/app/middleware/csrf.ts`: `validateSameOrigin` (same-origin CSRF verification)
+  │      - `src/app/middleware/upload.ts`: `multipartUploadHandler` (streaming busboy upload parser)
+  │      - `src/app/middleware/errorHandler.ts`: `errorHandler` (centralized error handler)
   │
   ├── 3. Controllers (`src/app/controllers/`)
   │      Extracts params, calls validators, calls services, prepares view models
@@ -54,7 +53,7 @@ HTTP Request
 src/
   app/
     controllers/        # Route controllers (home, browse, listing, profile, auth, release)
-    middleware/         # Session, auth, csrf, upload, and errorHandler middleware
+    middleware/         # auth.ts, csrf.ts, upload.ts, sessionMiddleware.ts, and errorHandler.ts
     routes/             # Express router definitions (auth, listing, profile, release, index)
     utils/              # EJS layout renderer helper (`renderWithLayout`)
   db/
@@ -64,7 +63,7 @@ src/
   lib/                  # Supabase client factory (`supabase.ts`)
   services/             # Application services (listingService, profileService, discogsService)
   validators/           # Zod validation schemas
-  workflow/             # Agentic workflow modules (julesDispatcher, julesSessionCleanup, chatgptReviewRelay)
+  workflow/             # Agentic workflow modules (julesDispatcher, julesSessionCleanup, chatgptReviewRelay, prSafetyGate)
   server.ts             # Express server entry point
 
 views/
@@ -89,9 +88,9 @@ drizzle/                # Generated SQL migration scripts managed by Drizzle Kit
 ## Security boundaries
 
 1. **Authentication:** Supabase Auth handles authentication credentials. Application sessions are persisted securely in HTTP-only cookies (`sb-access-token`, `sb-refresh-token`).
-2. **Authorization:** Server-side authorization checks verify ownership before profile edits, listing modifications, photo upload/deletion, or status transitions. EJS template rendering never acts as an authorization boundary.
-3. **CSRF Protection:** State-changing requests (`POST`, `PUT`, `DELETE`, `PATCH`) pass through `validateSameOrigin` middleware to verify same-origin provenance via `Origin` and `Referer` headers.
-4. **File Upload Security:** Multipart uploads streaming through `@fastify/busboy` are bounded by strict file size (5MB) and photo count limits (5 per listing). Sharp processes image buffers, strips EXIF metadata, converts to WebP, and validates image structure before storage.
+2. **Authorization:** Server-side authorization checks (`requireAuth`, `requireOwnership` in `src/app/middleware/auth.ts`) verify ownership before profile edits, listing modifications, photo upload/deletion, or status transitions. EJS template rendering never acts as an authorization boundary.
+3. **CSRF Protection:** State-changing requests (`POST`, `PUT`, `DELETE`, `PATCH`) pass through `validateSameOrigin` middleware (`src/app/middleware/csrf.ts`) to verify same-origin provenance via `Origin` and `Referer` headers.
+4. **File Upload Security:** Multipart uploads streaming through `multipartUploadHandler` (`src/app/middleware/upload.ts`) via `@fastify/busboy` are bounded by strict file size (5MB) and photo count limits (5 per listing). Sharp processes image buffers, strips EXIF metadata, converts to WebP, and validates image structure before storage.
 5. **Database Parameterization:** All database queries utilize Drizzle ORM parameterized SQL statements, preventing SQL injection vulnerabilities.
 
 ## Testing and verification architecture
@@ -99,4 +98,4 @@ drizzle/                # Generated SQL migration scripts managed by Drizzle Kit
 - **Unit Tests:** Pure validators (`condition`, `listingStatus`, `release`), lifecycle state machine rules (`listingLifecycle.ts`), and monetary price converters (`parsePriceEurToCents`).
 - **Integration Tests:** Endpoint HTTP integration tests (`Supertest`), Supabase Auth cookie session flows, profile updates, listing lifecycle transitions, and comment posting.
 - **Database Migration Testing:** Isolated in-memory PostgreSQL engine (`@electric-sql/pglite` via `scripts/verify-migration.ts`) tests fresh migration execution and forward upgrade data preservation without external database dependencies.
-- **Accessibility Testing:** Automated Playwright axe-core audits (`scripts/test-accessibility.ts` / `npm run test:a11y`) verify WCAG AAA contrast, semantic HTML, and ARIA form labeling.
+- **Accessibility Testing:** Automated Playwright axe-core audits (`scripts/test-accessibility.ts` / `npm run test:a11y`) verify WCAG 2.1 AA compliance (checking `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` rule sets).

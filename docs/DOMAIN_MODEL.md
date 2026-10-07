@@ -6,7 +6,7 @@ The core domain model enforces a strict, explicit three-tier separation:
 
 **`Release -> PhysicalCopy -> Listing`**
 
-1. **`Release`**: Represents canonical music release metadata (artist, album title, record label, catalog number, release year, country, format, barcode, genre). Independent of any user or physical record.
+1. **`Release`**: Represents canonical music release metadata (artist, album title, record label, catalogue number, release year, country, format, barcode, genre, external metadata references). Independent of any user or physical record.
 2. **`PhysicalCopy`**: Represents an individual physical vinyl record owned by a user (`ownerId`). Holds media condition grade, sleeve condition grade, and copy-specific notes.
 3. **`Listing`**: Represents a seller's active marketplace offer for a specific physical copy. Holds price (integer minor units / cents), currency, trade availability flag, offer description, and lifecycle status (`draft`, `published`, `reserved`, `sold`, `traded`, `archived`).
 
@@ -26,10 +26,10 @@ Represents the public community identity of an authenticated user.
 - **Primary Key:** `id` (UUID), matching Supabase Auth `auth.users.id` 1:1.
 - **Fields:**
   - `username` (text, required, unique, lowercased validation);
-  - `displayName` (text, required);
+  - `displayName` (text, optional);
   - `avatarUrl` (text, optional);
   - `bio` (text, optional);
-  - `coarseLocation` (text, optional, e.g., "Amsterdam Oost");
+  - `location` (text, optional, e.g., "Amsterdam Oost");
   - `createdAt`, `updatedAt` (timestamps).
 - **Rules:**
   - Public profile never exposes email, auth keys, or private session tokens.
@@ -44,18 +44,21 @@ Represents canonical metadata for a musical release.
 - **Fields:**
   - `artist` (text, required);
   - `title` (text, required);
-  - `label` (text, required);
-  - `catalogNumber` (text, optional);
+  - `label` (text, optional);
+  - `catalogueNumber` (text, optional);
   - `releaseYear` (integer, optional);
   - `country` (text, optional);
-  - `format` (text, default `'12" Vinyl'`);
+  - `format` (text, optional);
   - `barcode` (text, optional);
   - `genre` (text, optional);
-  - `discogsReleaseId` (integer, optional external reference);
+  - `coverArtUrl` (text, optional);
+  - `externalSource` (text, optional external metadata provider, e.g. `'discogs'`);
+  - `externalId` (text, optional external release ID);
+  - `lastImportedAt` (timestamp with time zone, optional);
   - `createdAt`, `updatedAt` (timestamps).
 - **Rules:**
   - Independent of seller ownership or listing state.
-  - External IDs (e.g. Discogs ID) are enrichment references, not canonical authorities.
+  - External IDs and cover art URLs are enrichment references, not canonical authorities.
 
 ### PhysicalCopy
 

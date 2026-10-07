@@ -55,7 +55,7 @@ Custom properties defined in `public/css/style.css`:
 - Rust accent: `#C94B2C`
 - Deep green accent: `#30463D`
 
-All color combinations satisfy WCAG AAA contrast requirements for text readability.
+All color combinations satisfy WCAG contrast requirements for text readability.
 
 ## Typography strategy
 
@@ -63,7 +63,7 @@ Typography stack defined in system styles:
 - **Brand Wordmark:** `Capriola` (used exclusively for "THE VINYL DROP" logo mark).
 - **Display / Headings:** `Space Grotesk` geometric sans.
 - **Body / Interface:** `DM Sans` sans-serif.
-- **Metadata / Catalog Values:** `IBM Plex Mono` monospace for catalog numbers, release years, prices, and condition grades.
+- **Metadata / Catalog Values:** `IBM Plex Mono` monospace for catalogue numbers, release years, prices, and condition grades.
 
 Typography choices prioritize legibility, fast web font delivery, and catalog structure.
 
@@ -104,7 +104,7 @@ Key sections:
 Filter and search interfaces designed for one-handed phone use.
 
 Filters:
-- keyword search (artist, title, label, catalog number, description);
+- keyword search (artist, title, label, catalogue number, description);
 - genre;
 - media / sleeve condition grade;
 - price range (min/max in Euros);
@@ -119,8 +119,8 @@ Prioritizes listing information in logical hierarchy:
 2. artist and release title;
 3. price formatted in Euros (e.g. `€34.95`) or `FOR TRADE` status;
 4. Goldmine condition badges (Media condition and Sleeve condition);
-5. structured release metadata (label, catalog number, year, country, format, genre);
-6. seller profile card and coarse location;
+5. structured release metadata (label, catalogue number, year, country, format, genre);
+6. seller profile card and location;
 7. seller's physical copy description;
 8. authenticated public comment thread for buyer-seller inquiries.
 
@@ -137,7 +137,7 @@ Form fields preserve user input on validation errors using structured Zod error 
 ## Public profile view (`/profiles/:username`)
 
 Presents a seller's marketplace footprint:
-- display name, username, coarse location, bio, and avatar;
+- display name, username, location, bio, and avatar;
 - active published listings grid;
 - edit profile trigger (visible strictly when viewed by the profile owner).
 
@@ -155,11 +155,11 @@ Private messaging is not supported via comments.
 
 ## Accessibility standards
 
-Accessibility baseline verified via automated `npm run test:a11y` Playwright axe-core checks:
+Automated accessibility checks pass against WCAG 2.1 AA (`npm run test:a11y` checking `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` rules):
 - semantic HTML sectioning and landmarks (`header`, `nav`, `main`, `footer`);
 - accessible form labeling and `aria-describedby` error references;
 - visible focus rings across all interactive controls;
-- high-contrast text and badge colors;
+- sufficient color contrast for text readability;
 - descriptive alt text on record photography;
 - keyboard tab navigation throughout form and listing flows.
 
