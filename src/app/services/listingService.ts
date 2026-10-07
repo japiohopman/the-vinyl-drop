@@ -31,6 +31,9 @@ import {
   findListingsBySellerId,
   findPublishedListingsBySellerId,
   findRecentPublishedListings as findRecentInRepo,
+  JoinedListingRecord,
+  searchListings,
+  SearchListingsParams,
   updateListing as updateListingInRepo,
   updateListingStatus as updateStatusInRepo,
 } from '../repositories/listingRepository';
@@ -48,6 +51,7 @@ import {
   uploadListingPhotoToStorage,
 } from './storageService';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
+import { buildListingCardViewModel, ListingCardViewModel } from '../view-models/listingCardViewModel';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -61,6 +65,27 @@ export interface DetailedListing {
   release: Release;
   seller: Profile;
   photos: ListingPhotoWithUrl[];
+}
+
+function recordToListingCardViewModel(record: JoinedListingRecord): ListingCardViewModel {
+  const imageUrl = record.primaryPhotoPath
+    ? getPhotoPublicUrl(record.primaryPhotoPath)
+    : (record.release.coverArtUrl || undefined);
+  return buildListingCardViewModel({
+    id: record.listing.id,
+    title: record.release.title,
+    artist: record.release.artist,
+    releaseYear: record.release.releaseYear || undefined,
+    format: record.release.format || undefined,
+    priceMinorUnits: record.listing.price,
+    isTrade: record.listing.tradeAvailable,
+    mediaCondition: record.physicalCopy.mediaCondition,
+    sleeveCondition: record.physicalCopy.sleeveCondition,
+    imageUrl,
+    sellerUsername: record.seller.username,
+    sellerLocation: record.seller.location || undefined,
+    url: `/listings/${record.listing.id}`,
+  });
 }
 
 export async function getListingById(id: string, dbOverride?: DbInstance): Promise<Listing | null> {
@@ -138,6 +163,67 @@ export async function getListingWithDetails(
     seller,
     photos,
   };
+}
+
+export async function getListingWithDetailsForView(
+  listingId: string,
+  requestingUserId?: string,
+  dbOverride?: DbInstance
+): Promise<DetailedListing> {
+  const detailed = await getListingWithDetails(listingId, dbOverride);
+  if (!detailed) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  // Public visibility boundary:
+  // Non-published listings can only be viewed by the seller.
+  if (detailed.listing.status !== 'published' && detailed.listing.sellerId !== requestingUserId) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  return detailed;
+}
+
+export async function getHomeFeedListings(
+  limit = 6,
+  dbOverride?: DbInstance
+): Promise<ListingCardViewModel[]> {
+  const result = await searchListings(
+    { status: 'published', sort: 'newest', page: 1, limit },
+    dbOverride
+  );
+  return result.records.map(recordToListingCardViewModel);
+}
+
+export async function searchBrowseListings(
+  params: SearchListingsParams,
+  dbOverride?: DbInstance
+): Promise<{
+  items: ListingCardViewModel[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> {
+  const result = await searchListings(params, dbOverride);
+  return {
+    items: result.records.map(recordToListingCardViewModel),
+    totalCount: result.totalCount,
+    page: result.page,
+    limit: result.limit,
+    totalPages: result.totalPages,
+  };
+}
+
+export async function getSellerPublishedListings(
+  sellerUsername: string,
+  dbOverride?: DbInstance
+): Promise<ListingCardViewModel[]> {
+  const result = await searchListings(
+    { status: 'published', sellerUsername, sort: 'newest', page: 1, limit: 100 },
+    dbOverride
+  );
+  return result.records.map(recordToListingCardViewModel);
 }
 
 export async function createListing(

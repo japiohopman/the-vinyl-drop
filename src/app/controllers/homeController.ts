@@ -1,17 +1,23 @@
 import { Request, Response, NextFunction } from 'express';
 import { homeService } from '../services/homeService';
-import { getRecentPublishedListings } from '../services/listingService';
-import { buildListingCardFromDetails } from '../view-models/listingCardViewModel';
-import { buildHomeViewModel } from '../view-models/homeViewModel';
+import { getHomeFeedListings } from '../services/listingService';
 import { renderWithLayout } from '../utils/render';
 
 export async function getHomePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const data = homeService.getHomeData();
-    const recentDropsDetails = await getRecentPublishedListings(6);
-    const recentDrops = recentDropsDetails.map((details) => buildListingCardFromDetails(details));
-    const viewModel = buildHomeViewModel(data.welcomeMessage, recentDrops);
-    renderWithLayout(res, 'home/index', viewModel);
+    const listings = await getHomeFeedListings(6);
+
+    renderWithLayout(
+      res,
+      'home/index',
+      {
+        title: 'The Vinyl Drop — Local Vinyl Record Marketplace',
+        message: data.welcomeMessage,
+        listings,
+      },
+      next
+    );
   } catch (error) {
     next(error);
   }

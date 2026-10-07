@@ -1,19 +1,159 @@
-<div class="container py-8">
-  <div class="browse-header mb-8">
-    <h1 class="text-3xl font-bold">Browse Marketplace</h1>
-    <p class="text-muted">Explore published vinyl drops and listings from seller crates.</p>
+<div class="browse-page-container" style="max-width: 1140px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
+  <div class="browse-header" style="margin-bottom: var(--space-6);">
+    <h1 style="font-family: var(--font-display); font-size: var(--font-size-3xl); margin-bottom: var(--space-2);">
+      <%= filters.q ? `Search: "${filters.q}"` : 'Browse Vinyl Record Drops' %>
+    </h1>
+    <p style="color: var(--color-ink-muted); font-size: var(--font-size-md);">
+      Dig through physical vinyl records available in our local community marketplace.
+    </p>
   </div>
 
+  <!-- Search & Filter Form -->
+  <form action="/browse" method="GET" class="filter-form" style="margin-bottom: var(--space-8); padding: var(--space-6); background: var(--color-paper-muted); border: var(--border-thick); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-4);">
+    <div style="display: flex; gap: var(--space-4); flex-wrap: wrap;">
+      <div style="flex: 2; min-width: 240px;">
+        <label for="search-q" style="display: block; font-family: var(--font-display); font-size: var(--font-size-xs); text-transform: uppercase; margin-bottom: var(--space-1);">Search Keyword</label>
+        <input
+          type="search"
+          id="search-q"
+          name="q"
+          value="<%= filters.q || '' %>"
+          placeholder="Artist, album title, label, or catalog #..."
+          style="width: 100%; padding: var(--space-3); font-family: var(--font-body); font-size: var(--font-size-base); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white);"
+        />
+      </div>
+
+      <div style="flex: 1; min-width: 140px;">
+        <label for="filter-genre" style="display: block; font-family: var(--font-display); font-size: var(--font-size-xs); text-transform: uppercase; margin-bottom: var(--space-1);">Genre</label>
+        <select
+          id="filter-genre"
+          name="genre"
+          style="width: 100%; padding: var(--space-3); font-family: var(--font-body); font-size: var(--font-size-base); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white);"
+        >
+          <option value="">All Genres</option>
+          <% const genres = ['Electronic', 'Hip Hop', 'Rock', 'Jazz', 'Funk / Soul', 'Reggae', 'Ambient', 'Classical', 'Pop']; %>
+          <% genres.forEach(function(g) { %>
+            <option value="<%= g %>" <%= filters.genre === g ? 'selected' : '' %>><%= g %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <div style="flex: 1; min-width: 120px;">
+        <label for="filter-condition" style="display: block; font-family: var(--font-display); font-size: var(--font-size-xs); text-transform: uppercase; margin-bottom: var(--space-1);">Condition</label>
+        <select
+          id="filter-condition"
+          name="condition"
+          style="width: 100%; padding: var(--space-3); font-family: var(--font-body); font-size: var(--font-size-base); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white);"
+        >
+          <option value="">Any Condition</option>
+          <% const conditions = ['M', 'NM', 'VG+', 'VG', 'VG-', 'G+', 'G', 'F', 'P']; %>
+          <% conditions.forEach(function(c) { %>
+            <option value="<%= c %>" <%= filters.condition === c ? 'selected' : '' %>><%= c %></option>
+          <% }); %>
+        </select>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: var(--space-4); flex-wrap: wrap; align-items: flex-end;">
+      <div style="display: flex; gap: var(--space-2); min-width: 200px;">
+        <div>
+          <label for="filter-min-price" style="display: block; font-family: var(--font-display); font-size: var(--font-size-xs); text-transform: uppercase; margin-bottom: var(--space-1);">Min €</label>
+          <input
+            type="number"
+            id="filter-min-price"
+            name="minPrice"
+            step="0.01"
+            min="0"
+            value="<%= filters.minPrice || '' %>"
+            placeholder="0.00"
+            style="width: 100%; padding: var(--space-3); font-family: var(--font-body); font-size: var(--font-size-base); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white);"
+          />
+        </div>
+        <div>
+          <label for="filter-max-price" style="display: block; font-family: var(--font-display); font-size: var(--font-size-xs); text-transform: uppercase; margin-bottom: var(--space-1);">Max €</label>
+          <input
+            type="number"
+            id="filter-max-price"
+            name="maxPrice"
+            step="0.01"
+            min="0"
+            value="<%= filters.maxPrice || '' %>"
+            placeholder="50.00"
+            style="width: 100%; padding: var(--space-3); font-family: var(--font-body); font-size: var(--font-size-base); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white);"
+          />
+        </div>
+      </div>
+
+      <div style="flex: 1; min-width: 160px;">
+        <label for="filter-sort" style="display: block; font-family: var(--font-display); font-size: var(--font-size-xs); text-transform: uppercase; margin-bottom: var(--space-1);">Sort By</label>
+        <select
+          id="filter-sort"
+          name="sort"
+          style="width: 100%; padding: var(--space-3); font-family: var(--font-body); font-size: var(--font-size-base); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white);"
+        >
+          <option value="newest" <%= filters.sort === 'newest' ? 'selected' : '' %>>Newest Additions</option>
+          <option value="price_asc" <%= filters.sort === 'price_asc' ? 'selected' : '' %>>Price: Low to High</option>
+          <option value="price_desc" <%= filters.sort === 'price_desc' ? 'selected' : '' %>>Price: High to Low</option>
+          <option value="artist_asc" <%= filters.sort === 'artist_asc' ? 'selected' : '' %>>Artist: A-Z</option>
+          <option value="title_asc" <%= filters.sort === 'title_asc' ? 'selected' : '' %>>Title: A-Z</option>
+        </select>
+      </div>
+
+      <div style="display: flex; gap: var(--space-3); align-items: center;">
+        <button type="submit" class="btn btn-primary">Apply Filters</button>
+        <% if (filters.q || filters.genre || filters.condition || filters.minPrice || filters.maxPrice || filters.sort !== 'newest') { %>
+          <a href="/browse" class="btn btn-outline btn-sm">Clear</a>
+        <% } %>
+      </div>
+    </div>
+  </form>
+
+  <!-- Results Count -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
+    <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
+      Showing <strong><%= listings.length %></strong> of <strong><%= pagination.totalCount %></strong> drops
+    </p>
+  </div>
+
+  <!-- Listings Grid or Empty State -->
   <% if (listings && listings.length > 0) { %>
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-      <% listings.forEach(function(listing) { %>
-        <%- include('../partials/listing-card', { listing: listing }) %>
+    <div class="listing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-8);">
+      <% listings.forEach(function(item) { %>
+        <%- include('../partials/listing-card', { listing: item }) %>
       <% }); %>
     </div>
+
+    <!-- Pagination Controls -->
+    <% if (pagination.totalPages > 1) { %>
+      <nav class="pagination-nav" aria-label="Browse pagination" style="display: flex; justify-content: center; align-items: center; gap: var(--space-4); margin-top: var(--space-8);">
+        <% const queryBase = `q=${encodeURIComponent(filters.q || '')}&genre=${encodeURIComponent(filters.genre || '')}&condition=${encodeURIComponent(filters.condition || '')}&minPrice=${encodeURIComponent(filters.minPrice || '')}&maxPrice=${encodeURIComponent(filters.maxPrice || '')}&sort=${encodeURIComponent(filters.sort || 'newest')}`; %>
+
+        <% if (pagination.page > 1) { %>
+          <a href="/browse?<%= queryBase %>&page=<%= pagination.page - 1 %>" class="btn btn-outline btn-sm">
+            ← Previous
+          </a>
+        <% } %>
+
+        <span style="font-family: var(--font-mono); font-size: var(--font-size-sm);">
+          Page <%= pagination.page %> of <%= pagination.totalPages %>
+        </span>
+
+        <% if (pagination.page < pagination.totalPages) { %>
+          <a href="/browse?<%= queryBase %>&page=<%= pagination.page + 1 %>" class="btn btn-outline btn-sm">
+            Next →
+          </a>
+        <% } %>
+      </nav>
+    <% } %>
   <% } else { %>
-    <div class="empty-crate-state text-center py-12 border border-dashed rounded-lg">
-      <p class="text-lg text-muted mb-4">No published listings available right now.</p>
-      <a href="/drop/new" class="btn btn-primary">+ Drop a Vinyl</a>
+    <div class="empty-state" style="padding: var(--space-12) var(--space-4); text-align: center; border: 2px dashed var(--color-border-subtle); border-radius: var(--radius-md);">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: var(--space-4); color: var(--color-ink-muted);" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <h3 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">No records match your search</h3>
+      <p style="color: var(--color-ink-muted); margin-bottom: var(--space-6);">Try adjusting your search terms, changing filters, or clearing your search.</p>
+      <a href="/browse" class="btn btn-primary">Clear Filters</a>
     </div>
   <% } %>
 </div>

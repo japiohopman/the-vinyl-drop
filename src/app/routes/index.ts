@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getHomePage } from '../controllers/homeController';
-import { getBrowsePage } from '../controllers/browseController';
+import { getBrowsePage, getSearchPage } from '../controllers/browseController';
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
 import { requireAuth } from '../middleware/auth';
 import { getSelectReleasePage } from '../controllers/listingController';
@@ -13,6 +13,7 @@ const router = Router();
 
 router.get('/', getHomePage);
 router.get('/browse', getBrowsePage);
+router.get('/search', getSearchPage);
 
 router.use('/auth', authRoutes);
 router.use('/listings', listingRoutes);

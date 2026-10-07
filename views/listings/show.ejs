@@ -1,0 +1,149 @@
+<div class="listing-detail-container" style="max-width: 1080px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
+  <nav class="breadcrumb-nav" aria-label="Breadcrumb" style="margin-bottom: var(--space-6);">
+    <a href="/browse" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: underline;">
+      ← Back to Browse
+    </a>
+  </nav>
+
+  <div class="listing-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-8); align-items: start;">
+    <!-- Left Column: Photo Gallery -->
+    <div class="listing-gallery-section">
+      <div class="primary-photo-wrapper" style="border: var(--border-thick); border-radius: var(--radius-md); overflow: hidden; background: var(--color-paper-muted); aspect-ratio: 1/1; position: relative;">
+        <% if (photos && photos.length > 0) { %>
+          <img
+            id="main-photo-img"
+            src="<%= photos[0].publicUrl %>"
+            alt="<%= photos[0].altText || `Album cover artwork for ${release.title} by ${release.artist}` %>"
+            style="width: 100%; height: 100%; object-fit: cover; display: block;"
+          />
+        <% } else { %>
+          <div class="no-photo-fallback" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--color-ink-muted);">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span style="font-family: var(--font-mono); font-size: var(--font-size-sm); margin-top: var(--space-2);">Vinyl Record</span>
+          </div>
+        <% } %>
+      </div>
+
+      <% if (photos && photos.length > 1) { %>
+        <div class="thumbnail-list" style="display: flex; gap: var(--space-3); margin-top: var(--space-4); overflow-x: auto; padding-bottom: var(--space-2);">
+          <% photos.forEach(function(photo, index) { %>
+            <button
+              type="button"
+              class="thumbnail-btn"
+              onclick="document.getElementById('main-photo-img').src='<%= photo.publicUrl %>';"
+              style="width: 64px; height: 64px; border: var(--border-thin, 1px solid var(--color-border)); border-radius: var(--radius-sm); overflow: hidden; padding: 0; cursor: pointer; flex-shrink: 0; background: var(--color-paper-muted);"
+            >
+              <img src="<%= photo.publicUrl %>" alt="Thumbnail <%= index + 1 %>" style="width: 100%; height: 100%; object-fit: cover;">
+            </button>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Right Column: Details & Actions -->
+    <div class="listing-info-section" style="display: flex; flex-direction: column; gap: var(--space-6);">
+      <!-- Title & Release Meta -->
+      <div class="release-header">
+        <h1 style="font-family: var(--font-display); font-size: var(--font-size-3xl); line-height: var(--line-height-tight); margin-bottom: var(--space-2);">
+          <%= release.title %>
+        </h1>
+        <p style="font-family: var(--font-display); font-size: var(--font-size-xl); color: var(--color-rust-accessible); margin-bottom: var(--space-3);">
+          <%= release.artist %>
+        </p>
+
+        <div style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); display: flex; flex-wrap: wrap; gap: var(--space-3);">
+          <% if (release.format) { %><span>Format: <strong><%= release.format %></strong></span><% } %>
+          <% if (release.releaseYear) { %><span>Year: <strong><%= release.releaseYear %></strong></span><% } %>
+          <% if (release.label) { %><span>Label: <strong><%= release.label %></strong></span><% } %>
+          <% if (release.catalogueNumber) { %><span>Cat#: <strong><%= release.catalogueNumber %></strong></span><% } %>
+          <% if (release.genre) { %><span>Genre: <strong><%= release.genre %></strong></span><% } %>
+        </div>
+      </div>
+
+      <!-- Price & Status Bar -->
+      <div class="price-status-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
+        <div>
+          <div style="font-family: var(--font-mono); font-size: var(--font-size-2xs); text-transform: uppercase; color: var(--color-ink-muted);">Listing Price</div>
+          <div style="font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-ink);">
+            <%= priceFormatted %>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: var(--space-3); align-items: center;">
+          <% if (listing.tradeAvailable) { %>
+            <span style="padding: var(--space-1) var(--space-3); font-family: var(--font-mono); font-size: var(--font-size-xs); background: var(--color-deep-green); color: var(--color-white); border-radius: var(--radius-sm); font-weight: 600;">
+              Trade Open
+            </span>
+          <% } %>
+          <span style="padding: var(--space-1) var(--space-3); font-family: var(--font-mono); font-size: var(--font-size-xs); text-transform: uppercase; background: var(--color-white); border: var(--border-thick); border-radius: var(--radius-sm); font-weight: 700;">
+            <%= listing.status %>
+          </span>
+        </div>
+      </div>
+
+      <!-- Condition Grades -->
+      <div class="condition-section">
+        <h3 style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-3);">Condition Grading</h3>
+        <%- include('../partials/condition-badge', { mediaCondition: physicalCopy.mediaCondition, sleeveCondition: physicalCopy.sleeveCondition, size: 'md' }) %>
+        <% if (physicalCopy.notes) { %>
+          <p style="margin-top: var(--space-3); font-size: var(--font-size-sm); color: var(--color-ink-muted); font-style: italic;">
+            Sleeve/media copy notes: "<%= physicalCopy.notes %>"
+          </p>
+        <% } %>
+      </div>
+
+      <!-- Description -->
+      <% if (listing.description) { %>
+        <div class="description-section">
+          <h3 style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-2);">Seller Description</h3>
+          <p style="line-height: var(--line-height-base); font-size: var(--font-size-base); white-space: pre-wrap;"><%= listing.description %></p>
+        </div>
+      <% } %>
+
+      <!-- Seller Profile Summary Card -->
+      <div class="seller-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-4);">
+        <div style="display: flex; align-items: center; gap: var(--space-4);">
+          <div style="width: 48px; height: 48px; border-radius: 50%; border: var(--border-thick); overflow: hidden; background: var(--color-paper-muted); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--font-size-lg); flex-shrink: 0;">
+            <% if (seller.avatarUrl) { %>
+              <img src="<%= seller.avatarUrl %>" alt="<%= seller.displayName || seller.username %>'s avatar" style="width: 100%; height: 100%; object-fit: cover;">
+            <% } else { %>
+              <span><%= (seller.displayName || seller.username).substring(0, 1).toUpperCase() %></span>
+            <% } %>
+          </div>
+
+          <div>
+            <div style="font-weight: 700; font-family: var(--font-display); font-size: var(--font-size-base);"><%= seller.displayName || seller.username %></div>
+            <div style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">@<%= seller.username %></div>
+            <% if (seller.location) { %>
+              <div style="font-size: var(--font-size-xs); color: var(--color-ink-muted); margin-top: 2px;">📍 <%= seller.location %></div>
+            <% } %>
+          </div>
+        </div>
+
+        <div>
+          <a href="/profiles/<%= encodeURIComponent(seller.username) %>" class="btn btn-outline btn-sm">
+            View Seller Profile
+          </a>
+        </div>
+      </div>
+
+      <% if (isSeller) { %>
+        <div class="seller-actions" style="padding: var(--space-3); border: 2px dashed var(--color-rust-accessible); border-radius: var(--radius-sm); background: var(--color-error-bg);">
+          <p style="font-family: var(--font-mono); font-size: var(--font-size-xs); margin-bottom: var(--space-2); font-weight: 600; color: var(--color-rust-accessible);">
+            You own this listing
+          </p>
+          <div style="display: flex; gap: var(--space-3);">
+            <a href="/listings/<%= listing.id %>/edit" class="btn btn-primary btn-sm">Edit Listing</a>
+            <a href="/listings/<%= listing.id %>/preview" class="btn btn-outline btn-sm">Preview Status</a>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Comment Thread Section -->
+  <%- include('../partials/comment-thread', { listing, seller, comments, currentUser, commentError: typeof commentError !== 'undefined' ? commentError : null, submittedContent: typeof submittedContent !== 'undefined' ? submittedContent : '' }) %>
+</div>
