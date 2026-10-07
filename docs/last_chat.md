@@ -959,9 +959,1020 @@ ik heb je weer nodig! kijk even laatste gesprek! Nog niets aan PR #36 aanpassen 
 
   task-191 has been launched in the background to run typecheck, lint, and build. I will wait for it to complete.
 
-● Bash(npx jest --maxWorkers=2) (ctrl+o to expand)
+next chat
 
-  task-195 has been launched in the background to run the full test suite. I will wait for it to complete.
+Ja. En hier zit volgens mij precies de correctie die The Vinyl Drop nodig heeft: we moeten stoppen met denken in “features bouwen” en gaan denken in “een werkende platen-marktplaats exploiteren”.
 
-Resume with -c (or command below):
-agy --conversation=c86d9c51-9d59-4406-9c21-e3b0be5905f8
+De kern is dus:
+
+The Vinyl Drop = community marketplace for records.
+Search, crates, profiles, activity, flyers, parties, album pops enz. zijn ondersteunende lagen die méér goede plaattransacties moeten veroorzaken.
+
+De huidige stack — Express/EJS/Drizzle/PostgreSQL — leent zich daar prima voor; ik zou hem niet nu opnieuw gaan uitvinden.
+
+1. Hosting: ik zou Netlify laten vallen
+
+Voor deze applicatie zou ik geen Netlify als primaire runtime kiezen. Netlify kan Express wel draaien via Functions, maar Netlify waarschuwt zelf dat Express daar als serverless function draait en dat het niet geschikt is voor background/scheduled work.
+
+Mijn voorkeur: Railway
+
+Voor een Nederlandse startup/marketplace vind ik Railway op dit moment eigenlijk aantrekkelijker dan Render:
+
+	Railway	Render	Netlify
+Express/EJS app	✅	✅	⚠️ serverless
+PostgreSQL	✅	✅	❌
+Amsterdam region	✅	❌	CDN, origin elders
+Workers/jobs	✅	✅	⚠️
+Simpel deployen	✅	✅	✅
+Past bij huidige architectuur	zeer goed	zeer goed	minder goed
+
+Railway heeft expliciet een Amsterdam-regio voor zowel applicaties als PostgreSQL.
+
+Render is absoluut een goede tweede keuze en heeft Frankfurt, workers en cron jobs.
+
+Mijn keuze: Railway Amsterdam voor app + database, tenzij we in de bestaande infrastructuur al een goede reden hebben om PostgreSQL elders te laten staan.
+
+Maar ik zou die beslissing als een eigen architecture issue vastleggen, niet stiekem tijdens een feature-PR doen.
+
+2. Betalen: Tikkie is leuk, maar níét voor de marketplace
+
+Hier heb ik iets concreets voor je uitgezocht.
+
+Tikkie heeft inderdaad een API waarmee je betaalverzoeken, refunds en notificaties kunt automatiseren.
+
+Maar ABN AMRO zegt ook expliciet:
+
+de Tikkie API mag niet voor Consumer-to-Consumer gebruik worden ingezet en je mag niet namens derden betaalverzoeken genereren.
+
+Dat maakt Tikkie juist ongeschikt voor onze kerncase:
+
+Jaap verkoopt een plaat → iemand anders koopt die plaat → The Vinyl Drop faciliteert de transactie.
+
+Daarom zou ik Tikkie niet als marketplace-betaalmechanisme kiezen.
+
+Mollie is hier veel interessanter
+
+Mollie Connect ondersteunt precies het marketplace-model:
+
+koper betaalt → platform ontvangt → bedrag wordt naar verkoper gerouteerd → platform kan commissie houden.
+
+Mollie ondersteunt bovendien delayed routing, waarbij geld pas later naar de verkoper wordt doorgestuurd. Dat is veel interessanter voor fysieke platen, omdat we daarmee bijvoorbeeld een leverings-/verzendmoment kunnen koppelen aan payout.
+
+Dus:
+
+Marketplace payment provider: Mollie Connect
+
+Tikkie: eventueel later voor eigen events, donaties of losse zakelijke flows.
+
+Dit is een belangrijke productbeslissing vóórdat Jules checkout-code gaat schrijven.
+
+3. E-mail: absoluut nodig
+
+Niet alleen voor marketing.
+
+We hebben minimaal:
+
+support@...
+
+en functioneel:
+
+account
+
+invite
+email verification
+password/account recovery
+
+marketplace
+
+order confirmation
+payment confirmation
+seller notification
+payout/refund notification
+
+community
+
+comment/reply
+eventueel activity notifications
+
+trust & safety
+
+report received
+moderation response
+complaint handling
+
+Ik zou voor de eerste versie Brevo kiezen. Vooral omdat dit een Nederlandse/EU-georiënteerde marketplace is. Brevo zegt dat de databases binnen de EU staan, met opslag in België en infrastructuur in Frankrijk/Duitsland, en ondersteunt zowel transactional email als marketing.
+
+Daarmee hebben we niet meteen drie verschillende diensten nodig.
+
+En ja: een zichtbaar support/contactkanaal hoort vanaf de testfase aanwezig te zijn. Bij een platform/marketplace zijn contact-, klacht- en moderatiestromen geen luxe. De DSA kent voor online platforms en marketplaces bovendien specifieke eisen rond contact, klachten en handelaarinformatie.
+
+4. Invites: geen simpel “register openzetten”
+
+Voor de eerste test zou ik dit als productmechanisme behandelen.
+
+Closed Alpha
+
+Alleen uitnodiging.
+
+Een invite:
+
+invite token
+→ 1 gebruiker
+→ 1 account
+→ expiration
+→ consumed_at
+→ invited_by
+
+En we kunnen later zien:
+
+Jaap
+ ├── invited Bas
+ ├── invited Sanne
+ └── invited Thomas
+
+Dat wordt later automatisch een referral/growth-mechanisme.
+
+De eerste invites zou ik via e-mail sturen. Niet automatisch iedereen toelaten.
+
+Closed Beta
+
+Dan kunnen we eventueel zeggen:
+
+“Invite someone who actually owns records.”
+
+Dat past veel beter bij de identiteit dan een generieke social signup.
+
+5. De testfase moet óók buiten de code getest worden
+
+Dit vind ik misschien wel het belangrijkste punt uit je bericht.
+
+We hebben niet alleen:
+
+unit tests → integration tests → Playwright → CI
+
+We hebben ook:
+
+mens → marketplace → transactie → probleem → oplossing
+
+Ik zou de testfase daarom uit vier lagen opbouwen.
+
+Alpha — “werkt het idee?”
+
+10–20 echte platenliefhebbers.
+
+Geen marketing. Geen openbare signup.
+
+Ze moeten echt:
+
+account aanmaken
+crate bouwen
+plaat vinden
+plaat toevoegen
+zoeken
+seller/profile bekijken
+interesse tonen / kopen
+elkaar feedback geven
+bugs melden
+
+Hier gaat het vooral om: waar loopt een echte platenverzamelaar vast?
+
+Closed Beta — “werkt de marketplace?”
+
+Grotere groep.
+
+Nu testen we:
+
+seller → listing → buyer → payment → shipping → payout
+
+met echte transacties.
+
+Market Pilot — “werkt dit als product?”
+
+Dan voegen we toe:
+
+fysieke events
+flyers
+record drops
+curated/random album pops
+referrals
+community activity
+Soft Launch
+
+Pas wanneer:
+
+iemand een plaat kan vinden, kopen, ontvangen en de verkoper correct betaald krijgt.
+
+Dat is onze echte launch gate.
+
+6. Activity moeten we juist níét als Instagram bouwen
+
+Hier zou ik streng zijn.
+
+The Vinyl Drop moet niet eindigen als:
+
+“Facebook maar dan met platen.”
+
+Activity moet marketplace-functionaliteit ondersteunen.
+
+Bijvoorbeeld:
+
+Jaap follows crate X
+
+→ “New 12" techno record added”
+
+Seller X drops 14 new records
+
+→ verschijnt in activity
+
+Favorite artist krijgt nieuwe release/listing
+
+→ activity
+
+Dat is nuttig.
+
+Flyers & feestjes
+
+Dat zou ik juist als een eigen Event/Agenda-laag behandelen.
+
+Bijvoorbeeld:
+
+THE VINYL DROP NIGHT
+Amsterdam
+21 November
+record swap / DJ set / seller tables
+
+Met eventueel een flyer image.
+
+Dat is veel sterker dan alles in één activity-feed gooien.
+
+Random album pops
+
+Deze vind ik juist leuk.
+
+Maar ik zou ze noemen:
+
+Album Pop / Record Pop
+
+Een kleine editorial/discovery-feature:
+
+“Random pick of the day”
+
+of
+
+“Three records worth digging into”
+
+Dat kan commercieel interessant worden zonder dat het onze marketplace overneemt.
+
+7. En er komt nog een belangrijke zakelijke laag bij: vertrouwen
+
+Omdat dit een marketplace wordt, moeten we vóór echte transacties nadenken over:
+
+Wie verkoopt hier eigenlijk?
+
+Dat is niet alleen een UX-vraag.
+
+DAC7 kan platformexploitanten verplichten verkopersgegevens te verzamelen, verifiëren en rapporteren aan de Belastingdienst.
+
+En bij een online marketplace gelden ook DSA-verplichtingen rond handelaartraceerbaarheid en informatie.
+
+Dat betekent niet dat we nu een enorm compliance-monster moeten bouwen.
+
+Maar seller identity moet vanaf het ontwerp serieus worden meegenomen.
+
+8. Ik zou de roadmap daarom flink anders opzetten
+
+Niet meer:
+
+Phase 5 = browse page
+Phase 6 = activity
+Phase 7 = messages
+
+Maar:
+
+Product Program 1 — Marketplace Foundation
+Issue A — Domain & documentation closeout
+
+Jullie huidige #39.
+
+Release → PhysicalCopy → Listing definitief documenteren.
+
+Issue B — Search & Discovery 5B
+
+De uitgebreide versie waar we het net over hadden:
+
+universal search
+releases
+artists
+users
+profiles
+crates
+autocomplete
+7"
+10"
+12"
+condition
+price
+trade
+seller filter
+ranking
+pagination
+Issue C — Record format taxonomy
+
+Geen "12" als tekst.
+
+Machine-readable:
+
+format_type = VINYL
+format_size = 12
+
+en later eventueel:
+
+format_variant = SINGLE
+format_speed = 33
+
+Dit moet een fundament zijn voor de marketplace.
+
+Issue D — Seller / Crate discovery
+
+Een gebruiker is niet slechts “een profielpagina”.
+
+Een seller heeft een crate.
+
+Dus:
+
+Jaap
+  ↓
+Jaap's Crate
+  ↓
+37 active records
+
+Dat is veel dichter bij het echte product.
+
+Product Program 2 — Marketplace Transactions
+Issue E — Marketplace order model
+
+Definieer:
+
+Listing
+→ Order
+→ Payment
+→ Fulfillment
+→ Delivery
+→ Payout
+
+Nog geen provider-code.
+
+Eerst de staatmachine.
+
+Issue F — Payment provider decision
+
+Mollie Connect als voorkeurskeuze.
+
+Definieer:
+
+seller onboarding
+buyer checkout
+commission
+payment success
+failed payment
+cancellation
+refund
+payout
+delayed routing
+Issue G — Seller onboarding / verification
+
+Wie mag verkopen?
+
+Individual seller vs professional trader.
+
+Welke gegevens verzamelen we?
+
+Hoe ziet een seller profile eruit?
+
+Issue H — Shipping & fulfillment
+
+Een plaat moet uiteindelijk gewoon bij iemand thuis komen.
+
+Definieer:
+
+shipping options
+seller dispatch
+tracking
+buyer confirmation
+lost package
+damaged record
+refund
+Issue I — Marketplace trust & disputes
+
+Wat gebeurt er bij:
+
+“De plaat was VG+, maar hij is VG-.”
+
+Dit hoort vóór launch geregeld te zijn.
+
+Product Program 3 — Trust & Safety
+Issue J — Reports & complaints
+
+Buttons zoals:
+
+Report listing
+Report seller
+Report user
+
+Met een echte backend queue.
+
+Issue K — Moderation model
+
+Wat is:
+
+spam
+counterfeit
+fraud
+abusive content
+prohibited item
+misleading grading
+Issue L — Legal & compliance contract
+
+Onderzoeken/documenteren:
+
+GDPR
+DSA
+DAC7
+seller terms
+buyer terms
+privacy
+cookies
+returns/cancellation waar van toepassing
+seller obligations
+
+Vooral belangrijk omdat het karakter van The Vinyl Drop uiteindelijk bepaalt of je vooral particuliere verkopers, professionele handelaren of beide faciliteert.
+
+Product Program 4 — Test & Operations
+Issue M — Staging environment
+
+Volledig aparte:
+
+local
+staging
+production
+
+met eigen database en payment sandbox.
+
+Issue N — Invite-only beta system
+
+Admin kan:
+
+invites genereren
+expiratie instellen
+invite intrekken
+zien wie wie uitnodigde
+beta users blokkeren
+Issue O — Transactional email
+
+Brevo-integratie.
+
+Templates voor:
+
+invite
+verification
+order
+payment
+seller notification
+refund
+support
+Issue P — Support & feedback
+
+Niet alleen:
+
+stuur een mailtje naar Jaap.
+
+Maar:
+
+Help / Feedback
+    ↓
+Bug / Idea / Complaint / Payment / Seller issue
+    ↓
+support queue
+
+E-mail blijft als fallback bestaan.
+
+Product Program 5 — Closed Alpha
+Issue Q — Alpha test protocol
+
+We schrijven letterlijk een testscript voor echte mensen.
+
+Bijvoorbeeld:
+
+Vind een 12" techno plaat onder €20.
+
+Zoek een specifieke artiest.
+
+Open een seller crate.
+
+Maak zelf een listing.
+
+Koop een plaat.
+
+Meld een probleem.
+
+Zoek daarna een andere plaat.
+
+Niet “test de browse page”.
+
+Test de taak.
+
+Dat is een enorm verschil.
+
+Issue R — Alpha feedback review
+
+Feedback categoriseren:
+
+BLOCKER
+CONFUSION
+FRICTION
+NICE TO HAVE
+IDEA
+
+En niet elk gebruikersidee direct als feature behandelen.
+
+Product Program 6 — Community Layer
+
+Pas hier zou ik echt activity gaan bouwen.
+
+Issue S — Following / saved crates
+Issue T — Marketplace Activity
+
+Alleen relevante gebeurtenissen.
+
+Issue U — Album Pop / editorial discovery
+
+Random records, curated picks, thematic digs.
+
+Issue V — Events & Flyers
+
+Record fairs, parties, swaps, DJ nights.
+
+Issue W — Event discovery
+
+Locatie / datum / flyer / link / eventueel RSVP.
+
+Product Program 7 — Closed Beta
+
+Nu pas:
+
+Issue X — Beta onboarding
+
+50–100 echte gebruikers als doelstelling, niet als harde technische eis.
+
+Issue Y — Real-money marketplace pilot
+
+Een beperkte set sellers.
+
+Issue Z — Marketplace metrics
+
+Ik zou vooral meten:
+
+buyer
+→ vindt iemand een plaat?
+
+seller
+→ krijgt iemand een plaat verkocht?
+
+marketplace
+→ ontstaat er daadwerkelijk een transactie?
+
+Niet:
+
+“Hoeveel pagina's heeft iemand bekeken?”
+
+Onze belangrijkste productmeting wordt uiteindelijk iets als:
+
+successful record transactions per active marketplace user
+
+en daarnaast:
+
+time-to-find wanted record
+
+Dat vertelt ons of The Vinyl Drop daadwerkelijk werkt.
+
+En dan pas: de echte publieke launch
+
+De volgorde wordt dan ongeveer:
+
+FOUNDATION
+   ↓
+SEARCH & DISCOVERY
+   ↓
+MARKETPLACE TRANSACTIONS
+   ↓
+TRUST / SAFETY / COMPLIANCE
+   ↓
+INTERNAL TESTING
+   ↓
+CLOSED ALPHA
+   ↓
+FIX / LEARN
+   ↓
+CLOSED BETA
+   ↓
+COMMUNITY / EVENTS / EDITORIAL
+   ↓
+REAL MARKET PILOT
+   ↓
+SOFT LAUNCH
+
+Dat vind ik veel sterker dan onze huidige lineaire “Phase 5 → Phase 6 → Phase 7”-opzet.
+
+En vooral: community komt niet vóór de marketplace. Community moet de marketplace sterker maken.
+
+Dus de kernvraag bij iedere nieuwe feature wordt:
+
+Helpt dit mensen betere platen vinden, betere crates bouwen, betere verkopers ontdekken of meer echte record-transacties tot stand brengen?
+
+Een flyer van een Amsterdamse vinyl party kan daar uiteindelijk gewoon onderdeel van zijn. Een random album pop ook. Activity ook. Maar een generieke social feed niet.
+
+Voor de providerkeuzes zou ik voorlopig vastleggen: Railway Amsterdam voor de runtime/database, Brevo voor e-mail, Mollie Connect voor marketplace payments, GitHub Actions + Playwright/Vitest voor technische testautomatisering, en een invite-only alpha/beta als echte producttest. Railway biedt PostgreSQL in Amsterdam; Render blijft een goede fallback met Frankfurt, workers en cron.
+
+De volgende stap zou ik daarom niet “maak #42” noemen, maar eerst een nieuwe Phase/Launch Architecture Issue maken die deze hele productvolgorde vastlegt. Daarna kunnen we de daadwerkelijke execution issues eronder hangen zonder opnieuw in het code-hokje te vallen.
+
+mee een, wel denk ik dat we fase 5 even goed moeten af sluiten en dan da volgende fases fast zetten. anders zitten we met een onafgerond fase. wil jij wel kijken of fase 5 nog helemaal bij onze werkflow past en we inderdaad niks zijn vergeten? dan gaan we verder met waar we gebleven waren.
+
+Ja. Ik heb Phase 5 nu vanuit workflow + product + huidige code + open issues opnieuw bekeken. Mijn conclusie: Phase 5 is inhoudelijk een goede fase, maar we moeten hem netjes afsluiten voordat we doorgaan. We hoeven hem niet opnieuw te ontwerpen.
+
+Wel kwam er één nieuwe harde blocker naar boven die we eerst moeten oplossen.
+
+Waar we nu daadwerkelijk staan
+
+Live op GitHub staat PR #36 nog open. main staat nog op c5856876..., en #36 staat op c3ee0ab7...; GitHub geeft de PR momenteel mergeable: false / dirty.
+
+Nog belangrijker: de laatste Jules-commit ná mijn vorige PASS-review heeft de migratiehistorie opnieuw verkeerd aangepast.
+
+Die commit:
+
+herschrijft drizzle/0000_grey_living_tribunal.sql;
+verwijdert drizzle/0001_add_physical_copies.sql;
+verwijdert de 0001 snapshot;
+maakt daarmee de reparatie uit #38 weer ongedaan.
+
+Dat is absoluut niet acceptabel. De eerder toegepaste 0000 mag nooit opnieuw worden herschreven.
+
+Ik heb daarom PR #36 op NOT READY gezet en een concrete vervolg-instructie geplaatst. Een formele GitHub REQUEST_CHANGES kan ik niet op je eigen PR indienen, maar de top-level review/instructie staat er nu wel.
+
+Dus: nog niet mergen.
+
+Past Phase 5 zelf bij onze workflow?
+
+Ja. De scheiding is eigenlijk goed:
+
+Phase Issue
+    ↓
+#13 execution contract
+    ↓
+Jules branch
+    ↓
+PR #36
+    ↓
+CI + Safety Gate
+    ↓
+ChatGPT review
+    ↓
+human merge
+
+Dat sluit goed aan op onze regels:
+
+Issue = autorisatie
+PR = uitvoering/evidence
+ChatGPT = review
+Jaap = final merge
+
+De dispatcher is hier ook netjes fail-closed. Hij kijkt naar ready-state, actieve labels, open PR collisions en dependencies. #39/#40/#41 worden daarom nu niet per ongeluk automatisch opgepakt.
+
+Er is wel één workflow-verbeterpunt: #13 gebruikt nog een oudere Phase-Issue structuur. De huidige .github/ISSUE_TEMPLATE/phase.md is strakker en heeft expliciete dispatch metadata. Dat is geen reden om #13 opnieuw te openen; we moeten de workflow vanaf de volgende fase volgens het nieuwe contract voeren.
+
+Wat Phase 5 daadwerkelijk afdekt
+
+De oorspronkelijke Phase 5-scope is vrijwel compleet.
+
+✅ Discovery core
+
+Homepage feed
+Browse
+PostgreSQL search
+Filters
+Pagination
+Listing detail
+Seller profile
+
+✅ Marketplace-context
+
+Release ≠ physical copy ≠ listing
+Seller ownership
+Published visibility
+Private/unpublished visibility
+Seller identity
+
+✅ Community binnen de listing
+
+Comments
+Authenticated posting
+CSRF
+Seller identity
+Comment visibility
+
+Dat was oorspronkelijk bewust onderdeel van Phase 5. Het is dus juist dat we comments niet nogmaals in Phase 6 gaan bouwen.
+
+✅ Technische veiligheid
+
+Error propagation
+Authorization boundaries
+Database-backed queries
+Tests
+Lint
+Typecheck
+Build
+Safety Gate
+
+Dat deel is architectonisch goed.
+
+Wat we níét vergeten moeten zijn voordat Phase 5 dichtgaat
+
+Hier zit de echte checklist.
+
+1. PR #36 moet eerst schoon naar main
+
+Dit is nu de enige echte implementation blocker.
+
+De migratiehistorie moet exact terug naar:
+
+0000 = legacy schema
+0001 = PhysicalCopy forward migration
+0001 snapshot = aanwezig
+journal = correct
+
+Geen “slimme” samenvoeging.
+
+Daarna volledige verificatie opnieuw.
+
+2. #39 is de echte Phase 5 closeout
+
+Dit issue moeten we uitvoeren nadat #36 daadwerkelijk op main staat.
+
+Dat is niet zomaar documentatie-opruimwerk. Het corrigeert de architecturale waarheid van het project:
+
+Release
+   ↓
+PhysicalCopy
+   ↓
+Listing
+
+en corrigeert onder andere:
+
+/listing/:id → /listings/:id
+
+en haalt /activity uit de huidige geïmplementeerde routes zolang Phase 6 dat nog niet heeft gebouwd.
+
+Ook moet ROADMAP netjes zeggen dat:
+
+comments in Phase 5 zijn geleverd, niet opnieuw in Phase 6.
+
+Dus #39 is wat mij betreft onderdeel van het afsluiten van Phase 5, niet een willekeurige later-doc issue.
+
+En #40?
+
+Hier zou ik juist een wijziging in onze oorspronkelijke aanpak maken.
+
+Ik zou #40 niet meer als losse “Phase 5 follow-up” uitvoeren.
+
+De onderdelen zijn wel terecht:
+
+condition semantics;
+media versus sleeve;
+trade-only sorting;
+malformed query parameters;
+comment limits;
+seller pagination.
+
+Maar ze horen logisch bij de bredere Search & Discovery 5B die we net hebben bedacht.
+
+Dus:
+
+Phase 5
+  ├── #13 Discovery foundation
+  └── #39 Phase closeout
+
+Phase 5B
+  └── Search & Discovery
+       ├── #40 semantics/hardening
+       ├── universal search
+       ├── autocomplete
+       ├── artists
+       ├── releases
+       ├── users
+       ├── crates
+       ├── exact 7"/10"/12"
+       └── richer filters
+
+Daarmee voorkomen we dat we nu een klein “fix issue” uitvoeren en daarna nog eens hetzelfde domein opnieuw moeten openbreken.
+
+Eén andere losse draad: #14
+
+Issue #14 noemt zichzelf nu:
+
+Phase 4/5 — Metadata identification and enrichment
+
+Dat is inmiddels te vaag.
+
+Het issue zelf is goed ontworpen, maar functioneel is het:
+
+metadata enrichment / release identification
+
+en geen noodzakelijke Phase 5 Discovery-blocker.
+
+Ik zou hem dus bij de fase-opschoning herclassificeren naar een toekomstige enrichment-capability.
+
+Anders blijven we straks met zo'n half-open “Phase 4/5”-issue zitten en krijgen we precies de fasevervuiling waar jij nu vanaf wilt.
+
+Wat ik als officiële Phase 5 exit zie
+
+Ik zou deze fase pas groen verklaren wanneer:
+
+#36
+  ↓
+migration regression fixed
+  ↓
+CI green
+  ↓
+Safety Gate green
+  ↓
+human merge to main
+  ↓
+#13 close
+  ↓
+#39 dispatched
+  ↓
+docs/domain/routes aligned
+  ↓
+#39 close
+  ↓
+PHASE 5 CLOSED
+
+Daarna:
+
+MERGE TO MAIN FIRST — THEN CREATE NEW BRANCH.
+
+En dan zetten we de volgende fase pas klaar.
+
+Belangrijk: wat we juist níét moeten doen
+
+We moeten Phase 5 nu niet uitbreiden met:
+
+payments;
+Mollie;
+e-mail;
+invites;
+Railway;
+activity;
+events;
+flyers;
+parties;
+deployment;
+beta testing.
+
+Dat zijn allemaal echte onderwerpen, maar ze horen bij de volgende productarchitectuur, niet bij de afronding van Discovery.
+
+En hetzelfde geldt voor de 7"/12", user-autocomplete en crate discovery: niet terug #13 in duwen.
+
+Mijn oordeel
+
+Phase 5 is conceptueel goed.
+De implementation scope van #13 is correct.
+De workflowstructuur is correct.
+De fase heeft geen fundamentele ontbrekende kernfunctie waardoor we hem moeten herstarten.
+
+Wat nu nog moet gebeuren:
+
+1. #36 migratiefout herstellen.
+2. #36 mergen.
+3. #13 sluiten.
+4. #39 uitvoeren als echte Phase 5 closeout.
+5. #14 herclassificeren zodat hij niet aan twee fases blijft hangen.
+6. #40 meenemen in de nieuwe 5B Search & Discovery-structuur.
+
+Daarna staat Phase 5 daadwerkelijk netjes op slot en kunnen we de volgende fases één voor één als goede productcontracten neerzetten, in plaats van alweer meteen code te laten schrijven.
+
+dan is de vraag hoe staat de docs erbij? niet goed ik heb hier niks aan gedaan en voor 6 dus een pre 6 wil ik de docs weer picobello hebben.
+
+Ja. En je gevoel klopt: de docs zijn nu nog niet goed genoeg om Phase 6 op te starten.
+
+Ik heb ze allemaal opnieuw tegen main, de actuele workflow en de Phase 5-implementatie gehouden. Het probleem is groter dan alleen een paar verouderde routes.
+
+Wat er nu fout/achterhaald is
+
+DOMAIN_MODEL.md
+De documentatie zegt bovenaan netjes dat Release, PhysicalCopy en Listing verschillende concepten zijn, maar beschrijft daarna Listing nog alsof release_id, media condition en sleeve condition direct op Listing staan. Dat is intern tegenstrijdig.
+
+De waarheid moet overal worden:
+
+Release → PhysicalCopy → Listing
+
+DATA_ARCHITECTURE.md
+Zelfde probleem. PhysicalCopy ontbreekt als volwaardige persistence-entiteit en de index-/relationshipbeschrijving loopt achter.
+
+PAGE_MAP.md
+Verouderde /listing/:id, terwijl de implementatie /listings/:id gebruikt. /activity staat alsof hij bestaat, terwijl dat Phase 6 is. De view-tree is ook nog deels een geplande tree in plaats van de daadwerkelijke structuur.
+
+ROADMAP.md
+Hier zit de grootste conceptuele fout. Phase 6 noemt comments nog als deliverable terwijl comments al in Phase 5 zitten. Daarnaast ontbreekt een nette plek voor onze toekomstige Phase 5B Search & Discovery. De roadmap moet duidelijk een product/architectuurkaart zijn en niet gaan doen alsof hij de uitvoeringsqueue is.
+
+PRODUCT_VISION.md
+Die zegt op belangrijke punten nog dat community belangrijker is dan marketplace-mechanics. Dat is inmiddels de verkeerde producthiërarchie. Onze kern is:
+
+community marketplace for records
+
+Community ondersteunt de marketplace; community is niet het hoofdproduct.
+
+UX_UI.md
+De huidige tekst beschrijft nog een vrij algemene discovery/site-architectuur. De nieuwe kern moet duidelijker worden: zoeken → crate ontdekken → record bekijken → seller vertrouwen → marketplace-transactie. Seller profiles moeten ook meer als crate/discovery surface worden gezien dan als een sociaal profiel.
+
+DECISIONS.md
+ADR-004 is verouderd: daar staat nog impliciet dat de physical-copy-state bij Listing hoort. Die ADR moet naar de daadwerkelijke PhysicalCopy → Listing-scheiding.
+
+AGENTIC_WORKFLOW.md
+Deze is grotendeels goed, maar bevat nog een toekomstplan om een contextbestand aan te maken terwijl CHATGPT.md al bestaat en expliciet read-only is. Ook moeten de werkelijk aanwezige workflows en de exacte Safety Gate-contracten erin staan.
+
+SECURITY_PRIVACY.md
+Fundament is goed, maar voor een echte marketplace moeten we vóór Phase 6/launch ook expliciet de toekomstige klachten-, moderatie-, seller identity/compliance- en transactionele e-mailgrenzen vastleggen. Niet implementeren, wel documenteren.
+
+En er ontbreekt eigenlijk nog één document:
+
+PRELAUNCH_OPERATIONS.md
+
+Daarin horen de zaken die we net buiten het codehokje hebben besproken:
+
+local → staging → production
+closed alpha → closed beta
+invites
+support/klachten
+transactionele e-mail
+hosting/runtime
+Supabase/Postgres/Auth/Storage
+payment provider
+payout-model
+shipping/fulfillment
+moderation
+backups/observability
+launch gates
+marketplace KPI's
+
+Belangrijk: daar gaan we nog geen Railway/Mollie/Brevo als definitieve waarheid opschrijven. Kandidaten worden als kandidaten gedocumenteerd totdat we een echte architecture/product decision hebben genomen.
+
+Ik heb #39 daarom aangepast
+
+Issue #39 is nu een echte:
+
+Phase 5 closeout — pre-Phase-6 documentation and contract alignment
+
+Hij is uitgebreid tot een volledige repository-brede docs-audit, inclusief:
+
+productvisie;
+domain model;
+persistence;
+routes;
+roadmap;
+UX;
+security/privacy;
+agentic workflow;
+issue strategy;
+pre-launch operations.
+
+Ook staat expliciet vast dat:
+
+#13 eerst naar main moet voordat #39 mag dispatchen.
+
+Dat vind ik belangrijk. We gaan dus niet de docs op basis van een nog-niet-gemergde Phase 5-branch “waarheidsgetrouw” maken.
+
+De volgorde staat nu goed
+#36
+Phase 5 implementation
+        ↓
+migration regression fix
+        ↓
+HUMAN MERGE TO MAIN
+        ↓
+#13 sluiten
+        ↓
+#39 dispatch
+        ↓
+alle docs volledig alignen
+        ↓
+#39 sluiten
+        ↓
+PHASE 5 OFFICIEEL GESLOTEN
+        ↓
+pre-Phase-6 product/architecture decisions
+        ↓
+Phase 6 contract
+
+Dus we zijn nog niet bij Phase 6. Eerst moet de documentatie weer één betrouwbare waarheid worden.
+
+En dat is nu veel beter afgebakend: ik heb #39 klaargezet als het echte pre-6 documentatiestation, in plaats van alleen een kleine route/domain cleanup.
