@@ -362,6 +362,27 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.status).toBe(400);
       expect(res.text).toContain('Comment cannot be empty');
     });
+
+    it('should return 404 Not Found when authenticated non-seller attempts to post comment on an unpublished/draft listing', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserBob },
+        error: null,
+      });
+
+      (commentService.addComment as jest.Mock).mockRejectedValue(
+        new NotFoundError('Listing not found')
+      );
+
+      const app = createApp();
+      const res = await request(app)
+        .post(`/listings/${mockDraftListing.id}/comments`)
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=bob-token'])
+        .send({ content: 'Is this draft listing available?' });
+
+      expect(res.status).toBe(404);
+      expect(res.text).toContain('404 - Page Not Found');
+    });
   });
 
   describe('Public Seller Profile View (GET /profiles/:username & GET /profile/:username)', () => {
