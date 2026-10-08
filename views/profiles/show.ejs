@@ -1,4 +1,10 @@
 <div class="profile-page" style="max-width: 1080px; margin: var(--space-8) auto; padding: 0 var(--space-4);">
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <div class="alert alert-error" style="padding: var(--space-4); margin-bottom: var(--space-6); background: #fee2e2; border: 2px solid #ef4444; border-radius: var(--radius-sm); color: #991b1b; font-family: var(--font-body);">
+      <%= errorMessage %>
+    </div>
+  <% } %>
+
   <div class="profile-header-card" style="padding: var(--space-6); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card); margin-bottom: var(--space-8);">
     <div style="display: flex; gap: var(--space-6); align-items: flex-start; flex-wrap: wrap;">
       <div class="profile-avatar" style="width: 96px; height: 96px; border-radius: 50%; border: var(--border-thick); overflow: hidden; background-color: var(--color-paper-muted); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 2rem;">
@@ -43,22 +49,45 @@
 
   <!-- Seller's Published Record Drops -->
   <% const sellerListings = (typeof listings !== 'undefined' && listings) ? listings : ((typeof crateListings !== 'undefined' && crateListings) ? crateListings : []); %>
+  <% const pageInfo = (typeof pagination !== 'undefined' && pagination) ? pagination : { totalCount: sellerListings.length, page: 1, limit: 12, totalPages: 1 }; %>
   <section class="seller-listings-section">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); border-bottom: var(--border-thick); padding-bottom: var(--space-2);">
       <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin: 0; display: flex; align-items: center; gap: var(--space-2);">
         📦 <%= isOwner ? 'My Crate (Active Listings)' : (profile.displayName || profile.username) + "'s Crate" %>
       </h2>
       <span style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
-        <%= sellerListings.length %> <%= sellerListings.length === 1 ? 'record' : 'records' %> for sale
+        <%= pageInfo.totalCount %> <%= pageInfo.totalCount === 1 ? 'record' : 'records' %> for sale
       </span>
     </div>
 
     <% if (sellerListings && sellerListings.length > 0) { %>
-      <div class="listing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-6);">
+      <div class="listing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-8);">
         <% sellerListings.forEach(function(item) { %>
           <%- include('../partials/listing-card', { listing: item }) %>
         <% }); %>
       </div>
+
+      <% if (pageInfo.totalPages > 1) { %>
+        <nav class="pagination-nav" aria-label="Seller crate pagination" style="display: flex; justify-content: center; align-items: center; gap: var(--space-4); margin-top: var(--space-8);">
+          <% const profilePath = `/profiles/${encodeURIComponent(profile.username)}`; %>
+
+          <% if (pageInfo.page > 1) { %>
+            <a href="<%= profilePath %>?page=<%= pageInfo.page - 1 %>" class="btn btn-outline btn-sm">
+              ← Previous
+            </a>
+          <% } %>
+
+          <span style="font-family: var(--font-mono); font-size: var(--font-size-sm);">
+            Page <%= pageInfo.page %> of <%= pageInfo.totalPages %>
+          </span>
+
+          <% if (pageInfo.page < pageInfo.totalPages) { %>
+            <a href="<%= profilePath %>?page=<%= pageInfo.page + 1 %>" class="btn btn-outline btn-sm">
+              Next →
+            </a>
+          <% } %>
+        </nav>
+      <% } %>
     <% } else { %>
       <div class="empty-state" style="padding: var(--space-8); text-align: center; border: 2px dashed var(--color-border-subtle); border-radius: var(--radius-md);">
         <p style="color: var(--color-ink-muted);">

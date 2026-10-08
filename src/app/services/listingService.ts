@@ -217,13 +217,29 @@ export async function searchBrowseListings(
 
 export async function getSellerPublishedListings(
   sellerUsername: string,
+  options: { page?: number; limit?: number } = {},
   dbOverride?: DbInstance
-): Promise<ListingCardViewModel[]> {
+): Promise<{
+  items: ListingCardViewModel[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> {
+  const page = options.page !== undefined ? Math.max(1, options.page) : 1;
+  const limit = options.limit !== undefined ? Math.max(1, Math.min(100, options.limit)) : 12;
+
   const result = await searchListings(
-    { status: 'published', sellerUsername, sort: 'newest', page: 1, limit: 100 },
+    { status: 'published', sellerUsername, sort: 'newest', page, limit },
     dbOverride
   );
-  return result.records.map(recordToListingCardViewModel);
+  return {
+    items: result.records.map(recordToListingCardViewModel),
+    totalCount: result.totalCount,
+    page: result.page,
+    limit: result.limit,
+    totalPages: result.totalPages,
+  };
 }
 
 export async function createListing(

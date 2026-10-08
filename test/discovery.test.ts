@@ -388,7 +388,13 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
   describe('Public Seller Profile View (GET /profiles/:username & GET /profile/:username)', () => {
     it('should render public seller profile with active published drops', async () => {
       (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
-      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue([mockListingCard]);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
 
       const app = createApp();
       const res = await request(app).get('/profiles/alice_records');
@@ -402,7 +408,13 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
 
     it('should render seller profile empty state when seller has 0 active drops', async () => {
       (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileBob);
-      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue([]);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+        items: [],
+        totalCount: 0,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
 
       const app = createApp();
       const res = await request(app).get('/profile/bob_grooves');
@@ -410,6 +422,107 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.status).toBe(200);
       expect(res.text).toContain('Bob Grooves');
       expect(res.text).toContain('@bob_grooves has no active record drops available right now.');
+    });
+
+    it('should handle pagination for seller profile listings (12 items per page)', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 15,
+        page: 2,
+        limit: 12,
+        totalPages: 2,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/profiles/alice_records?page=2');
+
+      expect(res.status).toBe(200);
+      expect(listingService.getSellerPublishedListings).toHaveBeenCalledWith('alice_records', { page: 2, limit: 12 });
+      expect(res.text).toContain('Page 2 of 2');
+    });
+
+    it('should return 400 Bad Request when malformed page parameter is provided to seller profile', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+
+      const app = createApp();
+      const res = await request(app).get('/profiles/alice_records?page=invalid123');
+
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Invalid page parameter provided.');
+    });
+  });
+
+  describe('Strict Query Parameter Validation (minPrice, maxPrice, page)', () => {
+    it('should return 400 Bad Request when minPrice is malformed e.g. 12abc or negative', async () => {
+      const app = createApp();
+      const res1 = await request(app).get('/browse?minPrice=12abc');
+      expect(res1.status).toBe(400);
+      expect(res1.text).toContain('Invalid search filter or page parameters provided.');
+
+      const res2 = await request(app).get('/browse?minPrice=-10');
+      expect(res2.status).toBe(400);
+    });
+
+    it('should return 400 Bad Request when maxPrice is malformed e.g. 50euro or negative', async () => {
+      const app = createApp();
+      const res = await request(app).get('/browse?maxPrice=50euro');
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Invalid search filter or page parameters provided.');
+    });
+
+    it('should return 400 Bad Request when page is malformed e.g. 0, -1, 12abc, or float', async () => {
+      const app = createApp();
+      const res1 = await request(app).get('/browse?page=0');
+      expect(res1.status).toBe(400);
+
+      const res2 = await request(app).get('/browse?page=12abc');
+      expect(res2.status).toBe(400);
+
+      const res3 = await request(app).get('/browse?page=1.5');
+      expect(res3.status).toBe(400);
+    });
+  });
+
+  describe('Comment Retrieval Bound Direct Unit Verification', () => {
+    it('should bound comment retrieval to maximum 50 items and sort chronologically', async () => {
+      const mockComments = Array.from({ length: 60 }).map((_, idx) => ({
+        id: `comment-${idx}`,
+        listingId: mockPublishedListing.id,
+        authorId: mockUserBob.id,
+        content: `Comment ${idx}`,
+        createdAt: new Date(Date.now() + idx * 1000),
+        updatedAt: new Date(Date.now() + idx * 1000),
+        author: {
+          id: mockProfileBob.id,
+          username: mockProfileBob.username,
+          displayName: mockProfileBob.displayName,
+          avatarUrl: mockProfileBob.avatarUrl,
+        },
+      }));
+
+      const findCommentsByListingIdReal = jest.requireActual('../src/app/repositories/commentRepository').findCommentsByListingId;
+
+      const mockDbInstance = {
+        select: jest.fn().mockReturnThis(),
+        from: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockImplementation((limitVal: number) => {
+          // Simulate repository query returning top `limitVal` items ordered desc
+          const recent = [...mockComments].reverse().slice(0, limitVal);
+          return Promise.resolve(recent.map(c => ({
+            comment: c,
+            author: c.author,
+          })));
+        }),
+      };
+
+      const result = await findCommentsByListingIdReal(mockPublishedListing.id, { limit: 50 }, mockDbInstance as any);
+      expect(result.length).toBe(50);
+      // Verify chronological order (ASC by createdAt)
+      expect(new Date(result[0].createdAt).getTime()).toBeLessThan(new Date(result[49].createdAt).getTime());
     });
   });
 
