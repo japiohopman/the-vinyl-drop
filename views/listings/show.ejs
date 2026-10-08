@@ -72,7 +72,7 @@
           </div>
         </div>
 
-        <div style="display: flex; gap: var(--space-3); align-items: center;">
+        <div style="display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
           <% if (listing.tradeAvailable) { %>
             <span style="padding: var(--space-1) var(--space-3); font-family: var(--font-mono); font-size: var(--font-size-xs); background: var(--color-deep-green); color: var(--color-white); border-radius: var(--radius-sm); font-weight: 600;">
               Trade Open
@@ -81,6 +81,22 @@
           <span style="padding: var(--space-1) var(--space-3); font-family: var(--font-mono); font-size: var(--font-size-xs); text-transform: uppercase; background: var(--color-white); border: var(--border-thick); border-radius: var(--radius-sm); font-weight: 700;">
             <%= listing.status %>
           </span>
+
+          <% if (currentUser && listing.status === 'published') { %>
+            <% if (typeof isFavorited !== 'undefined' && isFavorited) { %>
+              <form action="/listings/<%= listing.id %>/unfavorite" method="POST" style="margin: 0; display: inline;">
+                <button type="submit" class="btn btn-outline btn-sm" aria-label="Remove from favorites">
+                  ❤️ Saved
+                </button>
+              </form>
+            <% } else { %>
+              <form action="/listings/<%= listing.id %>/favorite" method="POST" style="margin: 0; display: inline;">
+                <button type="submit" class="btn btn-primary btn-sm" aria-label="Save to favorites">
+                  🤍 Favorite
+                </button>
+              </form>
+            <% } %>
+          <% } %>
         </div>
       </div>
 

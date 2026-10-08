@@ -11,20 +11,20 @@
   --color-paper: #F3EFE7;
   --color-ink: #151515;
   --color-white: #FFFDF8;
-  --color-rust: #C94B2C; /* Established Phase 2A brand token */
-  --color-rust-accessible: #B83A1B; /* WCAG 2.1 AA 4.5:1 compliant text contrast token */
+  --color-rust: #f60f4b; /* Established 90s pink / infrared brand token */
+  --color-rust-accessible: #d6003b; /* WCAG 2.1 AA compliant dark infrared text contrast token */
   --color-deep-green: #30463D;
 
   /* Functional & Contrast Colors */
   --color-ink-muted: #4A4A4A;
   --color-border: #151515;
   --color-border-subtle: #D8D2C5;
-  --color-focus: #B83A1B;
+  --color-focus: #f60f4b;
   --color-surface-hover: #EBE5D9;
-  --color-rust-hover: #A83A20;
+  --color-rust-hover: #d6003b;
   --color-green-hover: #23342D;
-  --color-error-bg: #FDF2F0;
-  --color-error-border: #B83A1B;
+  --color-error-bg: #FDF0F3;
+  --color-error-border: #f60f4b;
   --color-success-bg: #E8F0EC;
   --color-success-border: #30463D;
 

@@ -11,7 +11,16 @@ export const db = queryClient
   ? drizzle(queryClient, { schema })
   : (null as unknown as ReturnType<typeof drizzle<typeof schema>>);
 
+let overrideDb: unknown = null;
+
+export function setOverrideDb(customDb: unknown): void {
+  overrideDb = customDb;
+}
+
 export function getDb(dbInstance = db) {
+  if (overrideDb) {
+    return overrideDb as typeof db;
+  }
   if (!dbInstance) {
     throw new Error('Database connection not initialized. DATABASE_URL environment variable is missing.');
   }
