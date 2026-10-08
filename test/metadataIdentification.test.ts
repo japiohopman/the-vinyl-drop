@@ -188,7 +188,7 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
   });
 
   describe('MusicBrainz Metadata Provider Adapter', () => {
-    it('should send production contact User-Agent header or process.env.MUSICBRAINZ_USER_AGENT', async () => {
+    it('should send production contact User-Agent header and map all response fields correctly', async () => {
       let capturedHeaders: Record<string, string> = {};
 
       const mockFetch = jest.fn().mockImplementation((url: string, init?: RequestInit) => {
@@ -229,28 +229,45 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
       const c = candidates[0];
       expect(c.id).toBe('musicbrainz:a1b2c3d4-e5f6-7890-abcd-ef1234567890');
       expect(c.providerName).toBe('musicbrainz');
+      expect(c.externalId).toBe('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
       expect(c.artist).toBe('Radiohead');
       expect(c.title).toBe('Kid A');
+      expect(c.label).toBe('Parlophone');
+      expect(c.catalogueNumber).toBe('LPNDKIDA1');
+      expect(c.releaseYear).toBe(2000);
+      expect(c.country).toBe('GB');
+      expect(c.format).toBe('10" Vinyl');
+      expect(c.barcode).toBe('0724352775313');
+      expect(c.sourceUrl).toBe('https://musicbrainz.org/release/a1b2c3d4-e5f6-7890-abcd-ef1234567890');
+      expect(c.provenance.provider).toBe('musicbrainz');
+      expect(c.provenance.attribution).toContain('MusicBrainz');
     });
 
-    it('should enforce cross-instance throttling across separate MusicBrainzMetadataProvider instances', async () => {
-      const mockFetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ releases: [] }),
+    it('should enforce concurrency-safe cross-instance throttling across concurrent MusicBrainzMetadataProvider instances', async () => {
+      const fetchTimestamps: number[] = [];
+
+      const mockFetch = jest.fn().mockImplementation(() => {
+        fetchTimestamps.push(Date.now());
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ releases: [] }),
+        });
       });
       global.fetch = mockFetch;
 
       const provider1 = new MusicBrainzMetadataProvider({ minIntervalMs: 50 });
       const provider2 = new MusicBrainzMetadataProvider({ minIntervalMs: 50 });
 
-      const start = Date.now();
+      // Start both concurrent searches simultaneously before awaiting either
+      const searchPromise1 = provider1.searchCandidates({ title: 'Query Concurrent 1' });
+      const searchPromise2 = provider2.searchCandidates({ title: 'Query Concurrent 2' });
 
-      await provider1.searchCandidates({ title: 'Query 1' });
-      await provider2.searchCandidates({ title: 'Query 2' });
+      await Promise.all([searchPromise1, searchPromise2]);
 
-      const duration = Date.now() - start;
-      expect(duration).toBeGreaterThanOrEqual(40);
       expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(fetchTimestamps).toHaveLength(2);
+      const timeDiff = fetchTimestamps[1] - fetchTimestamps[0];
+      expect(timeDiff).toBeGreaterThanOrEqual(40);
     });
 
     it('should handle MusicBrainz error response safely', async () => {

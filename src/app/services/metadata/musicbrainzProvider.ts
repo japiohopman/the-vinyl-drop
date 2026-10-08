@@ -4,6 +4,7 @@ export class MusicBrainzMetadataProvider implements MetadataProvider {
   readonly name = 'musicbrainz';
 
   private static globalLastRequestTime = 0;
+  private static rateLimitMutex: Promise<void> = Promise.resolve();
 
   private readonly baseUrl = 'https://musicbrainz.org/ws/2/release/';
   private readonly userAgent: string;
@@ -20,16 +21,29 @@ export class MusicBrainzMetadataProvider implements MetadataProvider {
   }
 
   /**
-   * Enforce cross-instance rate limiting to comply with MusicBrainz <= 1 req/sec policy
+   * Enforce concurrency-safe cross-instance rate limiting to comply with MusicBrainz <= 1 req/sec policy.
+   * Uses a static serialized promise queue to prevent concurrent race conditions.
    */
   private async enforceRateLimit(): Promise<void> {
-    const now = Date.now();
-    const elapsed = now - MusicBrainzMetadataProvider.globalLastRequestTime;
-    if (elapsed < this.minIntervalMs) {
-      const waitMs = this.minIntervalMs - elapsed;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    const previousMutex = MusicBrainzMetadataProvider.rateLimitMutex;
+    let resolveMutex: () => void = () => {};
+
+    MusicBrainzMetadataProvider.rateLimitMutex = new Promise<void>((resolve) => {
+      resolveMutex = resolve;
+    });
+
+    try {
+      await previousMutex;
+      const now = Date.now();
+      const elapsed = now - MusicBrainzMetadataProvider.globalLastRequestTime;
+      if (elapsed < this.minIntervalMs) {
+        const waitMs = this.minIntervalMs - elapsed;
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+      }
+      MusicBrainzMetadataProvider.globalLastRequestTime = Date.now();
+    } finally {
+      resolveMutex();
     }
-    MusicBrainzMetadataProvider.globalLastRequestTime = Date.now();
   }
 
   async searchCandidates(query: IdentificationQuery): Promise<CandidateRelease[]> {
