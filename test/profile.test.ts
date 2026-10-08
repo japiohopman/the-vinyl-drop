@@ -195,6 +195,40 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       );
     });
 
+    it('POST /profile/edit with whitespace-only websiteUrl should normalize websiteUrl to null and update successfully', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+      const updateSpy = jest.spyOn(profileRepository, 'updateProfile').mockImplementation(async (id: string, data: any) => ({
+        ...mockProfileAlice,
+        ...data,
+      }));
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/profile/edit')
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=alice-token'])
+        .send({
+          username: 'alice_records',
+          displayName: 'Alice Cooper',
+          websiteUrl: '   ',
+        });
+
+      expect(res.status).toBe(302);
+      expect(updateSpy).toHaveBeenCalledWith(
+        mockUserAlice.id,
+        expect.objectContaining({
+          websiteUrl: null,
+        }),
+        undefined
+      );
+    });
+
     it('POST /profile/edit should reject invalid websiteUrl schemes (javascript:, data:, file:) with 400 Bad Request', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: mockUserAlice },

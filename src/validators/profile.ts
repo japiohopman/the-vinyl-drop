@@ -1,23 +1,28 @@
 import { z } from 'zod';
 import { usernameSchema } from './auth';
 
-const httpUrlSchema = z.string().superRefine((val, ctx) => {
-  if (!val || val.trim() === '') return;
-  try {
-    const url = new URL(val);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+const httpUrlSchema = z
+  .string()
+  .transform((val) => val.trim())
+  .superRefine((val, ctx) => {
+    if (!val) return;
+    try {
+      const url = new URL(val);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'External URL must begin with http:// or https://',
+        });
+      }
+    } catch {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'External URL must begin with http:// or https://',
+        message: 'External URL must be a valid HTTP or HTTPS web address',
       });
     }
-  } catch {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'External URL must be a valid HTTP or HTTPS web address',
-    });
-  }
-}).optional().or(z.literal(''));
+  })
+  .optional()
+  .or(z.literal(''));
 
 export const profileUpdateSchema = z.object({
   username: usernameSchema,
