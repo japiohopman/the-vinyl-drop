@@ -27,8 +27,6 @@ router.use('/releases', releaseRoutes);
 // Narrow route compatibility for the + DROP product navigation contract
 router.get('/drop/new', requireAuth, getSelectReleasePage);
 
-router.use('/', profileRoutes);
-
 router.get('/design-system', getDesignSystemPage);
 router.post('/design-system/demo', postDesignSystemDemo);
 
@@ -39,5 +37,7 @@ router.get('/health', (req: Request, res: Response) => {
     uptime: process.uptime(),
   });
 });
+
+router.use('/', profileRoutes);
 
 export default router;

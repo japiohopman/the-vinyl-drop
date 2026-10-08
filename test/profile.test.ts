@@ -106,6 +106,14 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       expect(res.text).toContain('target="_blank"');
       expect(res.text).toContain('rel="noopener noreferrer"');
     });
+
+    it('GET /design-system should resolve design system page without triggering profile username capture collision', async () => {
+      const app = createApp();
+      const res = await request(app).get('/design-system');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Design System');
+    });
   });
 
   describe('Authenticated Profile Access & Ownership Enforcement', () => {
