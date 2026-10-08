@@ -1,0 +1,92 @@
+<div class="activity-container" style="max-width: 800px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
+  <header class="activity-header" style="margin-bottom: var(--space-6); border-bottom: var(--border-thick); padding-bottom: var(--space-4);">
+    <h1 style="font-family: var(--font-display); font-size: var(--font-size-3xl); margin-bottom: var(--space-2); color: var(--color-ink);">
+      COMMUNITY ACTIVITY
+    </h1>
+    <p style="font-family: var(--font-body); font-size: var(--font-size-base); color: var(--color-ink-muted);">
+      Recent drops, comments, and saved records across the local record shop community.
+    </p>
+  </header>
+
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-error" role="alert" style="padding: var(--space-4); margin-bottom: var(--space-6); background: var(--color-error-bg); border: var(--border-thick); border-color: var(--color-rust-accessible); border-radius: var(--radius-sm); color: var(--color-rust-accessible);">
+      <strong style="font-family: var(--font-display);">Activity Unavailable:</strong> <%= error %>
+    </div>
+  <% } %>
+
+  <% if (events && events.length > 0) { %>
+    <ul class="activity-feed-list" aria-label="Community activity stream" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-4);">
+      <% events.forEach(function(item) { %>
+        <li class="activity-card" style="padding: var(--space-4); background: var(--color-paper-muted); border: var(--border-thick); border-radius: var(--radius-sm); display: flex; gap: var(--space-4); align-items: flex-start; position: relative;">
+          <!-- Event Icon / Badge -->
+          <div class="activity-icon-badge" style="width: 44px; height: 44px; border-radius: 50%; border: var(--border-thick); background: var(--color-white); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem;">
+            <% if (item.eventType === 'listing.published') { %>
+              <span title="New Drop Published" aria-hidden="true">🏷️</span>
+            <% } else if (item.eventType === 'comment.created') { %>
+              <span title="New Comment" aria-hidden="true">💬</span>
+            <% } else if (item.eventType === 'favorite.created') { %>
+              <span title="Saved Record" aria-hidden="true">❤️</span>
+            <% } %>
+          </div>
+
+          <!-- Event Content Details -->
+          <div class="activity-card-body" style="flex: 1; min-width: 0;">
+            <div class="activity-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-1);">
+              <span class="activity-actor" style="font-family: var(--font-mono); font-size: var(--font-size-xs); font-weight: 700; color: var(--color-ink);">
+                <%= item.eventDescription %>
+              </span>
+              <span class="activity-time" style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
+                <%= item.timeAgo %>
+              </span>
+            </div>
+
+            <div class="activity-release-info" style="margin-top: var(--space-2);">
+              <a href="<%= item.listingUrl %>" style="text-decoration: none; color: inherit; display: inline-block;">
+                <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin: 0 0 2px 0; color: var(--color-ink);">
+                  <%= item.releaseTitle %>
+                </h2>
+                <div style="font-family: var(--font-display); font-size: var(--font-size-sm); color: var(--color-rust-accessible);">
+                  <%= item.releaseArtist %>
+                </div>
+              </a>
+            </div>
+
+            <% if (item.eventType === 'comment.created' && item.commentContent) { %>
+              <blockquote style="margin: var(--space-3) 0 0 0; padding: var(--space-2) var(--space-3); background: var(--color-white); border-left: 3px solid var(--color-ink); font-style: italic; font-size: var(--font-size-sm); color: var(--color-ink); border-radius: var(--radius-sm);">
+                "<%= item.commentContent %>"
+              </blockquote>
+            <% } %>
+
+            <div class="activity-card-footer" style="margin-top: var(--space-3); display: flex; gap: var(--space-3); align-items: center;">
+              <% if (item.priceFormatted) { %>
+                <span style="font-family: var(--font-mono); font-size: var(--font-size-xs); font-weight: 700; background: var(--color-white); border: var(--border-thin, 1px solid var(--color-border)); padding: 2px 8px; border-radius: var(--radius-sm);">
+                  <%= item.priceFormatted %>
+                </span>
+              <% } %>
+
+              <% if (item.isPrivate) { %>
+                <span class="private-badge" style="font-family: var(--font-mono); font-size: var(--font-size-2xs); text-transform: uppercase; padding: 2px 6px; background: var(--color-paper-muted); border: 1px dashed var(--color-ink-muted); border-radius: var(--radius-sm); color: var(--color-ink-muted);">
+                  🔒 Private to you
+                </span>
+              <% } %>
+            </div>
+          </div>
+        </li>
+      <% }); %>
+    </ul>
+  <% } else if (!error) { %>
+    <!-- Explicit Empty State -->
+    <div class="activity-empty-state" style="padding: var(--space-12) var(--space-6); text-align: center; background: var(--color-paper-muted); border: var(--border-thick); border-radius: var(--radius-md);">
+      <div style="font-size: 3rem; margin-bottom: var(--space-4);" aria-hidden="true">📻</div>
+      <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-2); color: var(--color-ink);">
+        No Recent Activity
+      </h2>
+      <p style="font-family: var(--font-body); font-size: var(--font-size-base); color: var(--color-ink-muted); max-width: 480px; margin: 0 auto var(--space-6);">
+        When physical vinyl drops are published, community members leave comments, or records are saved to favorites, activity will appear here.
+      </p>
+      <a href="/browse" class="btn btn-primary">
+        Browse Vinyl Drops
+      </a>
+    </div>
+  <% } %>
+</div>

@@ -8,6 +8,8 @@ import {
 import { findListingById } from '../repositories/listingRepository';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
 import { Comment } from '../../db/schema/comments';
+import { recordCommentCreatedEvent } from './activityService';
+import { emitNotificationEvent } from './notificationHooks';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -53,7 +55,7 @@ export async function addComment(
     throw new ValidationError(`Invalid comment: ${msg}`);
   }
 
-  return createCommentInRepo(
+  const comment = await createCommentInRepo(
     {
       listingId,
       authorId,
@@ -61,4 +63,19 @@ export async function addComment(
     },
     dbOverride
   );
+
+  await recordCommentCreatedEvent(authorId, listingId, comment.id, dbOverride);
+
+  if (listing.sellerId !== authorId) {
+    await emitNotificationEvent({
+      type: 'comment.created',
+      actorId: authorId,
+      recipientId: listing.sellerId,
+      listingId,
+      commentId: comment.id,
+      createdAt: new Date(),
+    });
+  }
+
+  return comment;
 }

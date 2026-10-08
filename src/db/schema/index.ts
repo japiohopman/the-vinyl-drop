@@ -1,5 +1,7 @@
+export * from './activityEvents';
 export * from './comments';
 export * from './enums';
+export * from './favorites';
 export * from './listingPhotos';
 export * from './listings';
 export * from './physicalCopies';

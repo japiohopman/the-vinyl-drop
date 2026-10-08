@@ -14,6 +14,7 @@ import {
   archiveListing,
 } from '../services/listingService';
 import { getListingComments, addComment } from '../services/commentService';
+import { isListingFavorited } from '../services/favoriteService';
 import { formatPrice } from '../view-models/listingCardViewModel';
 import { FormViewModel } from '../view-models/formViewModel';
 import { parsePriceEurToCents } from '../../validators/listing';
@@ -437,6 +438,11 @@ export async function getListingDetailPage(req: Request, res: Response, next: Ne
     const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
     const priceFormatted = formatPrice(details.listing.price, isTradeOnly);
 
+    let isFavorited = false;
+    if (requestingUserId) {
+      isFavorited = await isListingFavorited(requestingUserId, listingId);
+    }
+
     renderWithLayout(
       res,
       'listings/show',
@@ -451,6 +457,7 @@ export async function getListingDetailPage(req: Request, res: Response, next: Ne
         comments,
         currentUser: req.user || null,
         isSeller: requestingUserId === details.listing.sellerId,
+        isFavorited,
         commentError: (req.query.commentError as string) || null,
       },
       next

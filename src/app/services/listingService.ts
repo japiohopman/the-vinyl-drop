@@ -52,6 +52,7 @@ import {
 } from './storageService';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
 import { buildListingCardViewModel, ListingCardViewModel } from '../view-models/listingCardViewModel';
+import { recordListingPublishedEvent } from './activityService';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -605,6 +606,8 @@ export async function publishListing(
   if (!updated) {
     throw new Error('Failed to publish listing');
   }
+
+  await recordListingPublishedEvent(requestingUserId, listingId, dbOverride);
 
   return updated;
 }

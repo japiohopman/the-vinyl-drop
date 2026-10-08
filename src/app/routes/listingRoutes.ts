@@ -18,6 +18,7 @@ import {
   postPublishListing,
   postArchiveListing,
 } from '../controllers/listingController';
+import { postFavoriteListing, postUnfavoriteListing } from '../controllers/favoriteController';
 
 const router = Router();
 
@@ -32,6 +33,10 @@ router.get('/:id', getListingDetailPage);
 
 // Comment Thread Operations
 router.post('/:id/comments', requireAuth, validateSameOrigin, postCreateComment);
+
+// Favorite Operations
+router.post('/:id/favorite', requireAuth, validateSameOrigin, postFavoriteListing);
+router.post('/:id/unfavorite', requireAuth, validateSameOrigin, postUnfavoriteListing);
 
 // Preview (public or seller)
 router.get('/:id/preview', requireAuth, getPreviewListingPage);
