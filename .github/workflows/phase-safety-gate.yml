@@ -63,20 +63,21 @@ jobs:
 
             let prBody = pr.body || '';
 
-            // If PR body from payload lacks contract section, attempt fallback to latest commit message or live PR body
-            if (!prBody.includes('## Phase / Governing Issue')) {
-              try {
-                const commits = await github.rest.pulls.listCommits({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: pr.number
-                });
-                const lastCommit = commits.data[commits.data.length - 1];
-                if (lastCommit && lastCommit.commit && lastCommit.commit.message && lastCommit.commit.message.includes('## Phase / Governing Issue')) {
-                  const commitMsg = lastCommit.commit.message;
-                  const contractIndex = commitMsg.indexOf('## Phase / Governing Issue');
-                  if (contractIndex !== -1) {
-                    prBody = commitMsg.slice(contractIndex);
+            // Attempt auto-sync from latest commit message if commit contains full PR contract
+            try {
+              const commits = await github.rest.pulls.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number
+              });
+              const lastCommit = commits.data[commits.data.length - 1];
+              if (lastCommit && lastCommit.commit && lastCommit.commit.message && lastCommit.commit.message.includes('## Phase / Governing Issue')) {
+                const commitMsg = lastCommit.commit.message;
+                const contractIndex = commitMsg.indexOf('## Phase / Governing Issue');
+                if (contractIndex !== -1) {
+                  const commitContract = commitMsg.slice(contractIndex);
+                  if (!prBody.includes('## Phase / Governing Issue') || commitContract.includes('READY FOR HUMAN REVIEW')) {
+                    prBody = commitContract;
                     await github.rest.pulls.update({
                       owner: context.repo.owner,
                       repo: context.repo.repo,
@@ -85,9 +86,9 @@ jobs:
                     });
                   }
                 }
-              } catch (err) {
-                console.warn('Could not auto-sync PR body from commit message:', err.message);
               }
+            } catch (err) {
+              console.warn('Could not auto-sync PR body from commit message:', err.message);
             }
 
             // Strip HTML comments
