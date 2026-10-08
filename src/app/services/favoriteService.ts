@@ -29,23 +29,25 @@ export async function addFavorite(
 
   const favorite = await addFavoriteInRepo(userId, listingId, dbOverride);
 
-  await createActivityEvent(
-    {
-      eventType: 'favorite.created',
-      actorId: userId,
-      listingId,
-    },
-    dbOverride
-  );
+  if (favorite) {
+    await createActivityEvent(
+      {
+        eventType: 'favorite.created',
+        actorId: userId,
+        listingId,
+      },
+      dbOverride
+    );
 
-  if (listing.sellerId !== userId) {
-    await emitNotificationEvent({
-      type: 'favorite.created',
-      actorId: userId,
-      recipientId: listing.sellerId,
-      listingId,
-      createdAt: new Date(),
-    });
+    if (listing.sellerId !== userId) {
+      await emitNotificationEvent({
+        type: 'favorite.created',
+        actorId: userId,
+        recipientId: listing.sellerId,
+        listingId,
+        createdAt: new Date(),
+      });
+    }
   }
 
   return favorite;

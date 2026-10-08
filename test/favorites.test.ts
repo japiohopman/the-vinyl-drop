@@ -18,6 +18,12 @@ import {
   isListingFavorited,
 } from '../src/app/services/favoriteService';
 import { addFavorite as addFavoriteInRepo, getFavoriteCount } from '../src/app/repositories/favoriteRepository';
+import { getRecentActivityEvents } from '../src/app/repositories/activityRepository';
+import {
+  clearNotificationListeners,
+  onNotification,
+  NotificationEvent,
+} from '../src/app/services/notificationHooks';
 import { postFavoriteListing, postUnfavoriteListing } from '../src/app/controllers/favoriteController';
 import { AuthorizationError, NotFoundError } from '../src/app/services/errors';
 import { profiles } from '../src/db/schema/profiles';
@@ -130,6 +136,39 @@ describe('Favorites / Saved Listings Contract (Issue #41)', () => {
     expect(duplicate).toBeNull();
 
     expect(await getFavoriteCount(publishedListingId, testDb)).toBe(1);
+
+    await removeFavorite(buyerId, publishedListingId, testDb);
+  });
+
+  test('regression test: calling addFavorite() twice via service creates exactly one favorite, one activity event, and one notification', async () => {
+    clearNotificationListeners();
+    const notifications: NotificationEvent[] = [];
+    onNotification((evt) => { notifications.push(evt); });
+
+    await removeFavorite(buyerId, publishedListingId, testDb);
+
+    // Call 1: First favorite
+    const firstFav = await addFavorite(buyerId, publishedListingId, testDb);
+    expect(firstFav).not.toBeNull();
+
+    // Call 2: Duplicate favorite call via service layer
+    const secondFav = await addFavorite(buyerId, publishedListingId, testDb);
+    expect(secondFav).toBeNull();
+
+    // Assert exactly 1 favorite row in DB
+    expect(await getFavoriteCount(publishedListingId, testDb)).toBe(1);
+
+    // Assert exactly 1 activity event created
+    const activityEvents = await getRecentActivityEvents({ requestingUserId: buyerId, limit: 50 }, testDb);
+    const favActivityEvents = activityEvents.filter(
+      (e) => e.eventType === 'favorite.created' && e.listingId === publishedListingId
+    );
+    expect(favActivityEvents).toHaveLength(1);
+
+    // Assert exactly 1 notification emitted
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0].type).toBe('favorite.created');
+    expect(notifications[0].actorId).toBe(buyerId);
 
     await removeFavorite(buyerId, publishedListingId, testDb);
   });
