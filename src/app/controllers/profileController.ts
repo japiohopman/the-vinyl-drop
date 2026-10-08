@@ -67,7 +67,7 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
     }
 
     const isOwner = Boolean(req.user && req.user.id === profile.id);
-    const listingsResult = await getSellerPublishedListings(profile.username, { page, limit: 12 });
+    const listingsResult = await getSellerPublishedListings(profile.username, { page });
 
     renderWithLayout(res, 'profiles/show', {
       title: `${profile.displayName || profile.username} (@${profile.username}) — The Vinyl Drop`,

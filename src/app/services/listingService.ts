@@ -217,7 +217,7 @@ export async function searchBrowseListings(
 
 export async function getSellerPublishedListings(
   sellerUsername: string,
-  options: { page?: number; limit?: number } = {},
+  options: { page?: number } = {},
   dbOverride?: DbInstance
 ): Promise<{
   items: ListingCardViewModel[];
@@ -227,7 +227,7 @@ export async function getSellerPublishedListings(
   totalPages: number;
 }> {
   const page = options.page !== undefined ? Math.max(1, options.page) : 1;
-  const limit = options.limit !== undefined ? Math.max(1, Math.min(100, options.limit)) : 12;
+  const limit = 12; // Enforce strict 12 listings per page grid contract
 
   const result = await searchListings(
     { status: 'published', sellerUsername, sort: 'newest', page, limit },
