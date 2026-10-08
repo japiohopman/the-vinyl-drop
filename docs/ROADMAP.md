@@ -1,160 +1,140 @@
 # Product Roadmap
 
-This document describes dependency order and intended phases.
+This document describes product phase history, dependency structure, and future boundaries.
 
-**It is not an execution queue.**
+**It is a truthful architectural phase map, not an execution queue.**
 
-Implementation work is created as GitHub Issues and dispatched only from explicit Issue contracts.
+Implementation work is authorized exclusively through explicit GitHub Issue contracts.
 
 ## Phase 0 — Product and architecture foundation
 
-Deliver:
-- product vision;
-- domain model;
-- data architecture;
-- technical architecture;
-- UX/UI direction;
-- security baseline;
-- agentic workflow specification.
+Deliverables:
+- Product vision (`docs/PRODUCT_VISION.md`);
+- Domain model (`docs/DOMAIN_MODEL.md`);
+- Data architecture (`docs/DATA_ARCHITECTURE.md`);
+- Technical architecture (`docs/TECHNICAL_ARCHITECTURE.md`);
+- UX/UI direction (`docs/UX_UI.md`);
+- Security baseline (`docs/SECURITY_PRIVACY.md`);
+- Agentic workflow contract (`docs/AGENTIC_WORKFLOW.md`).
 
-Status: complete — merged to main.
+Status: **COMPLETED** (merged to `main`).
 
 ## Phase 1 — Repository and workflow foundation
 
-Deliver:
-- Node/TypeScript project;
-- lint/test/build commands;
-- EJS application shell;
-- GitHub Issue templates;
-- PR template;
-- specialist agent definitions;
-- Jules selector/dispatcher;
-- CI;
-- phase safety gate;
-- review relay;
-- stale-session cleanup;
-- project context contract.
+Deliverables:
+- Node.js / Express / TypeScript application foundation;
+- Centralized ESLint, TypeScript typecheck, Jest test, and build scripts;
+- EJS application layout shell and partials;
+- GitHub Actions workflow foundation (`ci.yml`, `phase-safety-gate.yml`, `jules-issue-dispatcher.yml`, `jules-session-cleanup.yml`, `chatgpt-review-relay.yml`);
+- Specialist agent definitions and PR contract safety gate validation scripts.
 
-Implementation sequence:
-- #15 — Repository foundation and minimal application shell
-- #4 — Full Phase 1 workflow/agentic foundation, after the smaller repository foundation is stable
-
-Dependency: Phase 0.
+Governing Issues: `#15`, `#4`.
+Status: **COMPLETED** (merged to `main`).
 
 ## Phase 2 — Design system and application shell
 
-Deliver:
-- tokens;
-- typography;
-- responsive layout;
-- header;
-- mobile navigation;
-- forms;
-- listing card;
-- reusable EJS partials;
-- accessibility baseline.
+Deliverables:
+- Design tokens and CSS custom properties (`public/css/style.css`);
+- Capriola / Space Grotesk / DM Sans / IBM Plex Mono typography strategy;
+- Responsive application header, mobile navigation, and footer partials;
+- Accessible UI primitives (listing cards, condition badges, form controls, flash alerts);
+- Automated accessibility verification testing (`npm run test:a11y`).
 
-Planned implementation Issues:
-- #6 — Design tokens and responsive application shell
-- #7 — Navigation and brand header
-- #8 — Reusable forms, listing card and accessibility baseline
-
-Dependency: Phase 1.
+Governing Issues: `#6`, `#7`, `#8`.
+Status: **COMPLETED** (merged to `main`).
 
 ## Phase 3 — Database, authentication and profiles
 
-Deliver:
-- Supabase project integration;
-- Drizzle schema and migrations;
-- authentication;
-- profile creation/editing;
-- protected routes;
-- ownership authorization.
+Deliverables:
+- Supabase PostgreSQL integration with Drizzle ORM and Drizzle Kit migrations;
+- Supabase Auth integration with Express cookie-backed PKCE storage (`src/lib/supabase.ts`);
+- Profiles table (`profiles.id` matching `auth.users.id` 1:1) and user registration/login/logout flows;
+- Public profile display (`/profiles/:username`) and authenticated profile editing (`/profile/edit`);
+- Server-side ownership authorization.
 
-Planned implementation Issues:
-- #9 — Supabase, PostgreSQL and Drizzle data foundation
-- #10 — Authentication, profiles and ownership authorization
+Governing Issues: `#9`, `#10`.
+Status: **COMPLETED** (merged to `main`).
 
-Dependency: Phase 1.
+## Phase 4 — Releases, physical copies and listings
 
-## Phase 4 — Releases and listings
+Deliverables:
+- Canonical domain model separation: `Release -> PhysicalCopy -> Listing`;
+- Goldmine condition grading vocabulary and Zod validation;
+- Minor currency unit (cents) pricing model and trade-only listing support;
+- Listing lifecycle state machine (`draft`, `published`, `reserved`, `sold`, `traded`, `archived`) with partial unique index enforcing single active listing per physical copy;
+- Multipart image upload pipeline via `@fastify/busboy` with server-side Sharp WebP conversion, 2048px downscaling, and EXIF stripping;
+- Multi-step sell flow (`/drop/new`, `/listings/create`, `/listings/:id/photos`, `/listings/:id/preview`).
 
-Deliver:
-- release records;
-- listing lifecycle;
-- condition;
-- price;
-- descriptions;
-- photos;
-- publish/edit/archive;
-- seller ownership checks.
+Governing Issues: `#11`, `#12`.
+Status: **COMPLETED** (merged to `main`).
 
-Planned implementation Issues:
-- #11 — Release, physical copy and listing domain model
-- #12 — Listing creation, editing and photo pipeline
+## Phase 5 — Core Discovery, Search & Listing Detail
 
-Future enrichment contract:
-- #14 — Metadata identification and enrichment
+Deliverables:
+- Homepage discovery feed (`/`);
+- Browse interface (`/browse`) with genre, condition, price range, and trade filters;
+- Search results (`/search`) matching keyword queries across release metadata and listing descriptions;
+- Listing detail pages (`/listings/:id`) displaying release details, physical copy condition, photo viewer, seller summary, and public comment threads;
+- Public comment thread posting (`/listings/:id/comments`) with seller identification;
+- Public seller profiles displaying active listings grid.
 
-Dependencies: Phases 2 and 3.
+Governing Issue: `#13`.
+Status: **COMPLETED** (merged to `main`).
 
-## Phase 5 — Discovery
+## Phase 5 Closeout — Documentation and Contract Alignment (Current Phase)
 
-Deliver:
-- homepage feed;
-- browse;
-- search;
-- filters;
-- listing detail;
-- seller profile views.
+Deliverables:
+- Truthful alignment of product, domain, persistence, route, page, roadmap, workflow, security, and operational documentation with actual Phase 5 merged codebase state;
+- Pre-launch operational requirements specification (`docs/PRELAUNCH_OPERATIONS.md`);
+- Elimination of stale route and implementation references across all docs.
 
-Planned implementation Issue:
-- #13 — Browse, search, listing detail and seller profile views
+Governing Issue: `#39`.
+Status: **IN PROGRESS** (current active branch).
 
-Dependency: Phase 4.
+---
 
-## Phase 6 — Community
+## Future Phase Boundaries
 
-Deliver:
-- comments;
-- favorites;
-- activity;
-- basic notification hooks.
+### Phase 5B — Search & Discovery Hardening (Future)
 
-Dependency: Phase 5.
+Planned scope:
+- Performance optimizations for discovery and search queries;
+- PostgreSQL full-text search / trigram indexing tuning;
+- Saved searches and filter persistence;
+- Search result pagination / infinite scroll loading.
 
-## Phase 7 — Trading and private communication
+### Metadata Enrichment & Identification (Future)
 
-Deliver:
-- wanted lists;
-- trade requests;
-- conversations;
-- messages;
-- trade lifecycle.
+Planned scope:
+- Enhanced external metadata lookup and enrichment (Issue `#14`);
+- Release barcode scanner / matrix number identification assistance;
+- Additional catalog metadata fields without breaking canonical release structure.
 
-Dependency: Phase 6.
+### Phase 6 — Community & Social Engagement (Future)
 
-## Phase 8 — Moderation and production hardening
+Planned scope:
+- Member favorites and saved listings;
+- Public seller wantlists;
+- Community activity feed route (`/activity`);
+- Seller trust and community reputation signals;
+- Notification hooks (in-app alerts for listing updates and comment replies).
 
-Deliver:
-- reports;
-- moderation tools;
-- rate limits;
-- image hardening;
-- observability;
-- backup/recovery runbook;
-- deployment hardening.
+*Note: Listing comments and public profiles are already fully implemented as part of Phase 5 Core Discovery.*
 
-Dependency: feature maturity.
+### Phase 7 — Trading & Private Communication (Future)
 
-## Later possibilities
+Planned scope:
+- Structured trade proposal workflow;
+- Private buyer/seller messaging threads (`/messages`);
+- Direct offer negotiation;
+- Trade lifecycle completion.
 
-Potential future work:
-- external metadata lookup;
-- collection management;
-- local groups;
-- reputation signals;
-- import/export;
-- mobile PWA improvements.
+### Phase 8 — Moderation & Production Hardening (Future)
 
-These should be evaluated based on actual user need rather than assumed MVP scope.
+Planned scope:
+- Content reporting mechanisms for listings, comments, and profiles;
+- Administrative moderation tools;
+- API rate limiting and upload throttling;
+- Automated image abuse and payload inspection hardening;
+- Disaster recovery, backup procedures, and uptime observability;
+- Production deployment hardening and security audit gate.

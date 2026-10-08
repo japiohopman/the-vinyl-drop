@@ -6,28 +6,26 @@ The visual direction is:
 
 **90s record shop + crate digging + local music community.**
 
-It should not look like:
+It explicitly does not look like:
 - a generic SaaS dashboard;
-- a glossy ecommerce template;
+- a glossy e-commerce template;
 - Spotify;
 - eBay;
 - a social-media clone.
 
-The content itself should provide the visual character.
+The record cover photography and structured release metadata provide the primary visual character.
 
 ## Brand
 
-Working name:
+Brand name:
 
 **THE VINYL DROP**
 
-The word "Drop" supports the community language of publishing new records and discovering fresh listings.
+The word "Drop" supports the community language of publishing new record listings and discovering fresh additions.
 
-Possible supporting line:
+Brand taglines / cues:
 
 **Buy. Trade. Dig.**
-
-This is a brand direction, not a hard implementation requirement yet.
 
 ## Visual language
 
@@ -36,196 +34,135 @@ Principles:
 - tactile;
 - high contrast;
 - restrained;
-- catalogue-oriented;
+- catalog-oriented;
 - image-led.
 
 Avoid:
-- excessive rounded cards;
-- gradients;
-- decorative shadows everywhere;
-- oversized SaaS-style hero sections;
+- rounded card Overuse;
+- heavy gradients;
+- decorative shadows;
+- oversized SaaS hero banners;
 - unnecessary pill-shaped controls.
 
-Borders, typography, record photography and spacing should do most of the visual work.
+Borders, structured typography, record photography, and precise spacing establish visual hierarchy. Design tokens and custom CSS live centrally in `public/css/style.css`.
 
-## Initial palette direction
+## Color palette tokens
 
-These are starting tokens, not immutable final colors:
-- Paper: #F3EFE7
-- Ink: #151515
-- White: #FFFDF8
-- Rust accent: #C94B2C
-- Deep green: #30463D
+Custom properties defined in `public/css/style.css`:
+- Paper background: `#F3EFE7`
+- Ink text/borders: `#151515`
+- White surface: `#FFFDF8`
+- Rust accent: `#C94B2C`
+- Deep green accent: `#30463D`
 
-The implementation phase should turn them into CSS custom properties and verify contrast.
+Color palette tokens are verified against automated accessibility contrast rules for text readability.
 
-## Typography direction
+## Typography strategy
 
-Suggested roles:
-- Display/headings: Space Grotesk or comparable geometric sans.
-- Body: system sans or DM Sans.
-- Metadata/catalogue values: IBM Plex Mono or another readable monospace.
+Typography stack defined in system styles:
+- **Brand Wordmark:** `Capriola` (used exclusively for "THE VINYL DROP" logo mark).
+- **Display / Headings:** `Space Grotesk` geometric sans.
+- **Body / Interface:** `DM Sans` sans-serif.
+- **Metadata / Catalog Values:** `IBM Plex Mono` monospace for catalogue numbers, release years, prices, and condition grades.
 
-Typography choices must prioritize readability and available web delivery over brand novelty.
+Typography choices prioritize legibility, fast web font delivery, and catalog structure.
 
 ## Responsive strategy
 
-Mobile is the primary design target.
+Mobile is the primary design and implementation target.
 
-Minimum design checkpoints:
-- narrow phone around 360–390px;
-- larger phone around 430px;
-- tablet around 768px;
-- desktop around 1280px.
+Tested viewport boundaries:
+- narrow phone (~360–390px);
+- standard phone (~430px);
+- tablet (~768px);
+- desktop (~1280px+).
 
-The UI should not rely on hover for essential functionality.
+Essential functionality relies on touch and click interactions rather than hover states.
 
-## Primary navigation
+## Primary navigation structure
 
-Mobile concept:
+Implemented application navigation (`views/partials/nav.ejs` and `views/partials/header.ejs`):
 
-HOME | BROWSE | + DROP | ACTIVITY | YOU
+**HOME (`/`) | BROWSE (`/browse`) | + DROP (`/drop/new`) | PROFILE (`/profile` or `/auth/login`)**
 
-The exact labels may change during implementation, but the information architecture should preserve:
-- discovery;
-- browsing;
-- primary listing action;
-- community activity;
-- personal area.
+*Note on future design notes:* Early UI concept sketches mentioned an `ACTIVITY` navigation tab. The `/activity` route is **not implemented** in current code and represents a future community roadmap concept.
 
-Desktop should expand the same information architecture rather than create a second product.
+Desktop layout expands the same information architecture rather than creating a separate desktop view tree.
 
-## Home
+## Home view (`/`)
 
-The home page is a discovery surface, not a marketing landing page.
+The home page is a discovery surface featuring recent record drops and search access.
 
-Likely blocks:
-- newest drops;
-- nearby/community listings;
-- for trade;
-- genre highlights;
-- seller/community activity later.
+Key sections:
+- header brand mark and primary navigation;
+- search bar for rapid keyword queries;
+- recent drops listing card grid;
+- empty state feedback when no published listings exist.
 
-The listing feed is the hero content.
+## Browse view (`/browse`) & Search view (`/search`)
 
-## Browse
+Filter and search interfaces designed for one-handed phone use.
 
-Search and filtering must work comfortably with one hand.
+Filters:
+- keyword search (artist, title, label, catalogue number, description);
+- genre;
+- media / sleeve condition grade;
+- price range (min/max in Euros);
+- trade availability flag.
 
-Core filters:
-- artist;
-- title;
-- label;
-- year;
-- price;
-- condition;
-- sale/trade;
-- location when supported.
+Listing results display clear metadata, price or trade badge, condition tags, and seller location.
 
-Results should expose enough metadata to distinguish similar pressings.
+## Listing detail view (`/listings/:id`)
 
-## Listing detail
+Prioritizes listing information in logical hierarchy:
+1. listing photography and image viewer;
+2. artist and release title;
+3. price formatted in Euros (e.g. `€34.95`) or `FOR TRADE` status;
+4. Goldmine condition badges (Media condition and Sleeve condition);
+5. structured release metadata (label, catalogue number, year, country, format, genre);
+6. seller profile card and location;
+7. seller's physical copy description;
+8. authenticated public comment thread for buyer-seller inquiries.
 
-The listing page prioritizes:
-1. photos;
-2. artist/title;
-3. price/trade status;
-4. condition;
-5. release metadata;
-6. seller;
-7. description;
-8. comments.
+## Sell flow (`/drop/new` -> `/listings/create` -> `/listings/:id/photos` -> `/listings/:id/preview`)
 
-The actual physical copy must remain visually and semantically distinct from generic release metadata.
+Mobile-first multi-step workflow:
+1. **Find or create release:** Search existing releases or import/enter canonical release metadata (`/drop/new`).
+2. **Describe physical copy:** Enter media condition, sleeve condition, price/trade intent, and notes (`/listings/create`).
+3. **Upload photos:** Stream upload up to 5 photos with server-side validation and Sharp processing (`/listings/:id/photos`).
+4. **Preview & publish:** Review draft listing before transitioning to published status (`/listings/:id/preview`).
 
-## Sell flow
+Form fields preserve user input on validation errors using structured Zod error view models (`FormViewModel`).
 
-Mobile-first four-step flow:
-1. Find release
-2. Describe your copy
-3. Add photos
-4. Preview and publish
+## Public profile view (`/profiles/:username`)
 
-The form should preserve entered information across validation errors.
+Presents a seller's marketplace footprint:
+- display name, username, location, bio, and avatar;
+- active published listings grid;
+- edit profile trigger (visible strictly when viewed by the profile owner).
 
-A final preview is required before publication.
+Does not expose email, auth provider IDs, or internal user keys.
 
-## Profile
+## Comments component (`views/partials/comment-thread.ejs`)
 
-A profile should feel like a crate profile, not a social-feed profile.
+Public comment threads attached to listings support pre-sale inquiries:
+- requires authenticated user;
+- chronological listing of comments;
+- highlights comments posted by the listing seller;
+- sanitized plain text rendering.
 
-Show:
-- name/username;
-- coarse location;
-- short bio;
-- current listings;
-- future wanted list;
-- later community/trade signals.
+Private messaging is not supported via comments.
 
-Do not expose:
-- email address;
-- private address;
-- authentication data.
+## Accessibility standards
 
-## Listing cards
+Automated accessibility checks run against WCAG 2.1 AA rule sets (`npm run test:a11y` checking `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` rulesets):
+- semantic HTML sectioning and landmarks (`header`, `nav`, `main`, `footer`);
+- accessible form labeling and `aria-describedby` error references;
+- visible focus rings across all interactive controls;
+- sufficient color contrast for text readability;
+- descriptive alt text on record photography;
+- keyboard tab navigation throughout form and listing flows.
 
-A listing card should typically show:
-- cover image;
-- artist;
-- title;
-- price or TRADE;
-- condition;
-- seller location/name at the appropriate context level.
+## Scope boundary reminder
 
-Do not cram every metadata field into the card.
-
-## Comments
-
-Comments should be:
-- authenticated;
-- readable;
-- chronologically predictable;
-- visually secondary to the listing itself.
-
-Seller identity should remain clear.
-
-## Empty states
-
-Empty states should explain what happened and provide a useful next action.
-
-Examples:
-- no search results;
-- no current listings;
-- no comments;
-- no photos yet.
-
-## Accessibility
-
-Requirements:
-- semantic HTML;
-- proper form labels;
-- keyboard navigation;
-- visible focus;
-- sufficient color contrast;
-- meaningful alt text for listing photography;
-- no critical information communicated only by color.
-
-## Motion
-
-Use little motion.
-
-Acceptable:
-- image/lightbox transition;
-- focus feedback;
-- small success/error state transitions.
-
-Avoid:
-- decorative animation;
-- autoplay video;
-- large parallax effects.
-
-## House style rule
-
-When a visual change is not requested by the Issue, do not invent a new visual pattern.
-
-The UI specialist must preserve the established token/component language once it exists.
+Payment widgets, checkout flows, shipping calculators, and private chat interfaces are **not part of the UI** and are not implemented.

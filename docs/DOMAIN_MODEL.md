@@ -1,218 +1,203 @@
 # Domain Model
 
-## Core distinction
+## Core domain hierarchy
 
-The most important domain distinction is:
+The core domain model enforces a strict, explicit three-tier separation:
 
-**Release metadata != physical copy != listing.**
+**`Release -> PhysicalCopy -> Listing`**
 
-A release describes a musical release.
+1. **`Release`**: Represents canonical music release metadata (artist, album title, record label, catalogue number, release year, country, format, barcode, genre, external metadata references). Independent of any user or physical record.
+2. **`PhysicalCopy`**: Represents an individual physical vinyl record owned by a user (`ownerId`). Holds media condition grade, sleeve condition grade, and copy-specific notes.
+3. **`Listing`**: Represents a seller's active marketplace offer for a specific physical copy. Holds price (integer minor units / cents), currency, trade availability flag, offer description, and lifecycle status (`draft`, `published`, `reserved`, `sold`, `traded`, `archived`).
 
-A physical copy is a particular owned copy of that release.
+### Why `PhysicalCopy` exists between `Release` and `Listing`
 
-A listing is the owner's current offer of that physical copy.
-
-For MVP these concerns can be represented efficiently with the release and listing entities, but the conceptual boundary must remain explicit.
+A seller owns a physical record item regardless of whether it is currently listed on the marketplace. By separating `PhysicalCopy` from `Listing`:
+- Condition grading (media and sleeve) belongs to the physical item itself.
+- Historical ownership and collection tracking can exist without duplicating release metadata.
+- A single physical copy cannot have concurrent active listings. This invariant is enforced at the database level by a partial unique index (`listings_active_physical_copy_idx`) on `physical_copy_id` where `status IN ('published', 'reserved')`.
 
 ## Entities
 
 ### Profile
 
-Represents the public-facing community identity of an authenticated user.
+Represents the public community identity of an authenticated user.
 
-Core fields:
-- user identity reference;
-- username;
-- display name;
-- avatar;
-- bio;
-- coarse location;
-- created/updated timestamps.
-
-Rules:
-- public profile must never expose private authentication data;
-- location is intentionally coarse;
-- username uniqueness is enforced at the database boundary.
+- **Primary Key:** `id` (UUID), matching Supabase Auth `auth.users.id` 1:1.
+- **Fields:**
+  - `username` (text, required, unique, lowercased validation);
+  - `displayName` (text, optional);
+  - `avatarUrl` (text, optional);
+  - `bio` (text, optional);
+  - `location` (text, optional, e.g., "Amsterdam Oost");
+  - `createdAt`, `updatedAt` (timestamps).
+- **Rules:**
+  - Public profile never exposes email, auth keys, or private session tokens.
+  - Location is intentionally coarse for privacy.
+  - Username uniqueness is enforced at the database boundary.
 
 ### Release
 
-Represents canonical metadata for a music release.
+Represents canonical metadata for a musical release.
 
-Core fields:
-- id;
-- artist;
-- title;
-- label;
-- catalogue number;
-- release year;
-- country;
-- format;
-- barcode when known;
-- genre classification;
-- optional external metadata references.
+- **Primary Key:** `id` (UUID, default random).
+- **Fields:**
+  - `artist` (text, required);
+  - `title` (text, required);
+  - `label` (text, optional);
+  - `catalogueNumber` (text, optional);
+  - `releaseYear` (integer, optional);
+  - `country` (text, optional);
+  - `format` (text, optional);
+  - `barcode` (text, optional);
+  - `genre` (text, optional);
+  - `coverArtUrl` (text, optional);
+  - `externalSource` (text, optional external metadata provider, e.g. `'discogs'`);
+  - `externalId` (text, optional external release ID);
+  - `lastImportedAt` (timestamp with time zone, optional);
+  - `createdAt`, `updatedAt` (timestamps).
+- **Rules:**
+  - Independent of seller ownership or listing state.
+  - External IDs and cover art URLs are enrichment references, not canonical authorities.
 
-Rules:
-- release metadata is independent of seller ownership;
-- missing optional metadata is allowed;
-- external metadata IDs are references, not canonical authority.
+### PhysicalCopy
+
+Represents a specific physical record item owned by a profile.
+
+- **Primary Key:** `id` (UUID, default random).
+- **Foreign Keys:**
+  - `releaseId` -> `releases.id` (required, CASCADE deletion);
+  - `ownerId` -> `profiles.id` (required, CASCADE deletion).
+- **Fields:**
+  - `mediaCondition` (enum, required);
+  - `sleeveCondition` (enum, required);
+  - `notes` (text, optional);
+  - `createdAt`, `updatedAt` (timestamps).
+- **Rules:**
+  - Media and sleeve conditions must use the controlled condition grade vocabulary.
+  - Owned by a specific user profile (`ownerId`).
 
 ### Listing
 
-Represents an offer for a seller's physical copy.
+Represents an active or historical marketplace offer for a physical copy.
 
-Core fields:
-- id;
-- release_id;
-- seller_id;
-- price in integer minor units;
-- currency;
-- media condition;
-- sleeve condition;
-- trade availability;
-- description;
-- status;
-- timestamps.
+- **Primary Key:** `id` (UUID, default random).
+- **Foreign Keys:**
+  - `physicalCopyId` -> `physical_copies.id` (required, CASCADE deletion);
+  - `sellerId` -> `profiles.id` (required, CASCADE deletion).
+- **Fields:**
+  - `price` (integer, optional minor units / cents; `null` for trade-only offers);
+  - `currency` (text, default `'EUR'`);
+  - `tradeAvailable` (boolean, default `false`);
+  - `description` (text, optional seller notes);
+  - `status` (enum, default `'draft'`);
+  - `createdAt`, `updatedAt` (timestamps).
+- **Rules:**
+  - Seller (`sellerId`) must own the referenced physical copy (`physicalCopyId`).
+  - Price check constraint enforces `"price" IS NULL OR "price" >= 0`.
+  - Non-draft creation requires valid price or `tradeAvailable = true`.
+  - Terminal statuses (`sold`, `traded`, `archived`) are immutable.
 
-Listing status should be explicit, for example:
-- draft;
-- published;
-- reserved;
-- sold;
-- traded;
-- archived.
+### ListingPhoto
 
-Rules:
-- seller owns the listing;
-- only the seller can edit or change availability;
-- sold/traded listings remain historically meaningful and should not be hard-deleted by normal UI flows;
-- a listing cannot exist without a release reference.
+Represents an image asset associated with a listing.
 
-### Listing Photo
-
-Represents one image associated with a listing.
-
-Core fields:
-- id;
-- listing_id;
-- storage path;
-- display order;
-- alternative text;
-- timestamps.
-
-Rules:
-- images live in object storage, not as binary blobs inside PostgreSQL;
-- ordering belongs to the listing-photo relationship;
-- deleting/reordering photos must preserve deterministic display order.
-
-Recommended photo intent:
-1. front/cover;
-2. back;
-3. record;
-4. label;
-5. damage/detail.
-
-The UI should not require every slot.
+- **Primary Key:** `id` (UUID, default random).
+- **Foreign Key:** `listingId` -> `listings.id` (required, CASCADE deletion).
+- **Fields:**
+  - `storagePath` (text, relative Supabase Storage key in `listing-photos` bucket);
+  - `displayOrder` (integer, 0-indexed ordering);
+  - `altText` (text, optional accessibility description);
+  - `createdAt`, `updatedAt` (timestamps).
+- **Rules:**
+  - Maximum 5 photos per listing.
+  - Reordering and photo deletion preserve sequential 0-indexed `displayOrder`.
+  - Actual image binaries are processed server-side via Sharp (converted to optimized WebP, scaled to 2048px max, EXIF metadata stripped) and stored in object storage.
 
 ### Comment
 
-Represents a community comment attached to a listing.
+Represents a public community comment on a listing.
 
-Rules:
-- authenticated user required;
-- author identity is stored separately from text;
-- comments are not anonymous;
-- comment deletion/moderation must be policy-driven;
-- seller replies are normal comments with author identity, not a special duplicated data model.
+- **Primary Key:** `id` (UUID, default random).
+- **Foreign Keys:**
+  - `listingId` -> `listings.id` (required, CASCADE deletion);
+  - `authorId` -> `profiles.id` (required, CASCADE deletion).
+- **Fields:**
+  - `content` (text, required);
+  - `createdAt`, `updatedAt` (timestamps).
+- **Rules:**
+  - Requires authenticated author (`authorId`).
+  - Comments are public and chronologically ordered on the listing detail page.
+  - Seller comments are visually distinguished in UI (`authorId === listing.sellerId`).
 
-### Favorite
+## Entity relationships
 
-Future entity for saved listings.
-
-Not required for MVP, but the listing ID and user ID relationship should remain easy to add.
-
-### Trade Request
-
-Future entity connecting one user's offered item to another user's requested listing.
-
-Do not model trade state using free-form comments.
-
-### Conversation / Message
-
-Future communication domain.
-
-Private messages must not be represented as listing comments.
-
-## Relationships
-
-Profile
-  └── owns many Listings
+```
+Profile (auth.users 1:1)
+  ├── owns many PhysicalCopies
+  ├── owns many Listings (via physical copies)
+  └── authors many Comments
 
 Release
-  └── has many Listings
+  └── referenced by many PhysicalCopies
+
+PhysicalCopy
+  ├── belongs to one Release
+  ├── belongs to one owner Profile
+  └── referenced by many Listings (at most 1 active listing via partial index)
 
 Listing
-  ├── belongs to one Release
-  ├── belongs to one seller Profile
-  ├── has many Listing Photos
+  ├── references one PhysicalCopy
+  ├── references one seller Profile
+  ├── has many ListingPhotos (0 to 5)
   └── has many Comments
+```
 
-Comment
-  └── belongs to one Profile and one Listing
+## Listing lifecycle state machine
 
-## Ownership boundaries
+Valid status transitions validated strictly in `src/domain/listingLifecycle.ts`:
 
-- Auth identity is owned by the authentication provider.
-- Public profile data is owned by the application's profile tables.
-- Release metadata is owned by the application database.
-- Physical-copy offer state is owned by the listing owner through application commands.
-- Images are owned by the application through storage paths and database references.
-- UI components never become domain owners.
+- `draft` -> `published`, `archived`
+- `published` -> `reserved`, `sold`, `traded`, `archived`
+- `reserved` -> `published`, `sold`, `traded`, `archived`
+- `sold` -> *(terminal state)*
+- `traded` -> *(terminal state)*
+- `archived` -> *(terminal state)*
 
-## Lifecycle
+Rules:
+- A listing must pass validation before transitioning to `published` (must have valid price or trade availability, media/sleeve condition, and at least one uploaded photo).
+- Terminal statuses (`sold`, `traded`, `archived`) cannot transition to any other status and reject updates.
 
-### Listing
+## Money representation
 
-draft -> published -> reserved -> sold/traded -> archived
-
-Some paths may skip states, but publication and terminal availability must remain explicit.
-
-### Release
-
-A release is catalog data and normally has no status lifecycle tied to any individual listing.
-
-### Comment
-
-Comment creation is append-oriented. Moderation or soft deletion may remove it from public display without erasing audit-relevant information prematurely.
-
-## Currency
-
-Money is stored as integer minor units.
+Monetary amounts (prices) are stored strictly as **integer minor currency units (cents)** in PostgreSQL.
 
 Example:
+- `€34.95` -> stored as `3495`
+- `€120.00` -> stored as `12000`
+- `Trade Only` -> stored as `null` with `tradeAvailable = true`
 
-€34.95 -> 3495
+Floating-point numbers are never used for prices in database or service layers. Currency conversion/formatting is performed exclusively at the presentation boundary (`ListingCardViewModel`).
 
-Never use floating-point numbers for stored prices.
+## Controlled vocabularies
 
-## Condition
+### Condition grade vocabulary (Goldmine standard)
 
-The MVP uses a controlled vocabulary derived from common record-grading practice.
+Validated via Zod schema (`src/validators/condition.ts`) and Postgres enum (`conditionGradeEnum`):
 
-Initial supported values should be validated centrally rather than free-typed.
+| Code | Grade | Description |
+| --- | --- | --- |
+| `M` | Mint | Unplayed, perfect condition in original factory seal |
+| `NM` | Near Mint | Near perfect with no visible surface marks or defects |
+| `VG+` | Very Good Plus | Minimal signs of wear; light scuffs that do not affect playback |
+| `VG` | Very Good | Visible surface scuffs or light scratches; mild surface noise |
+| `VG-` | Very Good Minus | Noticeable wear, surface marks, and audible crackle without skips |
+| `G+` | Good Plus | Significant wear and background noise; plays through without jumping |
+| `G` | Good | Heavy wear and continuous crackle; plays through without skipping |
+| `F` | Fair | Deep scratches, potential skipping or significant surface noise |
+| `P` | Poor | Severe damage; unplayable or cracked media |
 
-Candidate vocabulary:
+### Listing status vocabulary
 
-M, NM, VG+, VG, VG-, G+, G, F, P
-
-The implementation phase must confirm the final allowed values and their user-facing descriptions before migration creation.
-
-## Domain anti-patterns
-
-Avoid:
-- duplicating release metadata into every listing;
-- storing prices as floating point;
-- putting photos directly into database rows;
-- using comments as the trade system;
-- storing authorization rules in EJS templates;
-- inventing duplicate profile/user systems;
-- hard-deleting sold history from normal UI actions.
+Validated via Postgres enum (`listingStatusEnum`):
+`draft`, `published`, `reserved`, `sold`, `traded`, `archived`.
