@@ -1,5 +1,6 @@
 import { getDb } from '../../../db';
 import { Release } from '../../../db/schema/releases';
+import { ValidationError } from '../errors';
 import { createRelease } from '../releaseService';
 import { DiscogsMetadataProvider } from './discogsProvider';
 import { MusicBrainzMetadataProvider } from './musicbrainzProvider';
@@ -122,7 +123,11 @@ export class MetadataIdentificationService {
    */
   async identifyCandidates(queryInput: IdentificationQuery): Promise<CandidateRelease[]> {
     const parseResult = identificationQuerySchema.safeParse(queryInput);
-    const query = parseResult.success ? parseResult.data : queryInput;
+    if (!parseResult.success) {
+      const issueMsg = parseResult.error.issues.map((i) => i.message).join('; ');
+      throw new ValidationError(`Invalid identification query: ${issueMsg}`);
+    }
+    const query = parseResult.data;
 
     const results = await Promise.allSettled(
       this.providers.map((provider) => provider.searchCandidates(query))
@@ -183,7 +188,7 @@ export class MetadataIdentificationService {
         catalogueNumber: candidate.catalogueNumber || undefined,
         releaseYear: candidate.releaseYear,
         country: candidate.country || undefined,
-        format: candidate.format || 'LP',
+        format: candidate.format || undefined,
         barcode: candidate.barcode || undefined,
         genre: candidate.genre || undefined,
         coverArtUrl: candidate.coverArtUrl || undefined,

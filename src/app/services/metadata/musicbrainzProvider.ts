@@ -3,30 +3,33 @@ import { CandidateRelease, IdentificationQuery, MetadataProvider } from './types
 export class MusicBrainzMetadataProvider implements MetadataProvider {
   readonly name = 'musicbrainz';
 
+  private static globalLastRequestTime = 0;
+
   private readonly baseUrl = 'https://musicbrainz.org/ws/2/release/';
   private readonly userAgent: string;
   private readonly minIntervalMs: number;
   private readonly timeoutMs: number;
-  private lastRequestTime = 0;
 
   constructor(options?: { userAgent?: string; minIntervalMs?: number; timeoutMs?: number }) {
     this.userAgent =
-      options?.userAgent ?? 'TheVinylDrop/1.0.0 ( contact@thevinyldrop.local )';
+      options?.userAgent ??
+      process.env.MUSICBRAINZ_USER_AGENT ??
+      'TheVinylDrop/1.0.0 ( https://github.com/japiohopman/the-vinyl-drop )';
     this.minIntervalMs = options?.minIntervalMs ?? 1000;
     this.timeoutMs = options?.timeoutMs ?? 5000;
   }
 
   /**
-   * Enforce rate limiting to comply with MusicBrainz <= 1 req/sec policy
+   * Enforce cross-instance rate limiting to comply with MusicBrainz <= 1 req/sec policy
    */
   private async enforceRateLimit(): Promise<void> {
     const now = Date.now();
-    const elapsed = now - this.lastRequestTime;
+    const elapsed = now - MusicBrainzMetadataProvider.globalLastRequestTime;
     if (elapsed < this.minIntervalMs) {
       const waitMs = this.minIntervalMs - elapsed;
       await new Promise((resolve) => setTimeout(resolve, waitMs));
     }
-    this.lastRequestTime = Date.now();
+    MusicBrainzMetadataProvider.globalLastRequestTime = Date.now();
   }
 
   async searchCandidates(query: IdentificationQuery): Promise<CandidateRelease[]> {
@@ -123,7 +126,7 @@ export class MusicBrainzMetadataProvider implements MetadataProvider {
             }
           }
 
-          const formatName = item.media?.[0]?.format || 'Vinyl';
+          const formatName = item.media?.[0]?.format || undefined;
           const externalId = item.id;
           const sourceUrl = `https://musicbrainz.org/release/${externalId}`;
 

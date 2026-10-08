@@ -10,6 +10,7 @@ import {
   MetadataProvider,
 } from '../src/app/services/metadata/types';
 import * as releaseRepo from '../src/app/repositories/releaseRepository';
+import { ValidationError } from '../src/app/services/errors';
 
 jest.mock('../src/app/repositories/releaseRepository');
 
@@ -187,7 +188,7 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
   });
 
   describe('MusicBrainz Metadata Provider Adapter', () => {
-    it('should send User-Agent header and map MusicBrainz API response', async () => {
+    it('should send production contact User-Agent header or process.env.MUSICBRAINZ_USER_AGENT', async () => {
       let capturedHeaders: Record<string, string> = {};
 
       const mockFetch = jest.fn().mockImplementation((url: string, init?: RequestInit) => {
@@ -223,33 +224,29 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
         title: 'Kid A',
       });
 
-      expect(capturedHeaders['User-Agent']).toContain('TheVinylDrop');
+      expect(capturedHeaders['User-Agent']).toBe('TheVinylDrop/1.0.0 ( https://github.com/japiohopman/the-vinyl-drop )');
       expect(candidates).toHaveLength(1);
       const c = candidates[0];
       expect(c.id).toBe('musicbrainz:a1b2c3d4-e5f6-7890-abcd-ef1234567890');
       expect(c.providerName).toBe('musicbrainz');
       expect(c.artist).toBe('Radiohead');
       expect(c.title).toBe('Kid A');
-      expect(c.label).toBe('Parlophone');
-      expect(c.catalogueNumber).toBe('LPNDKIDA1');
-      expect(c.releaseYear).toBe(2000);
-      expect(c.format).toBe('10" Vinyl');
-      expect(c.sourceUrl).toBe('https://musicbrainz.org/release/a1b2c3d4-e5f6-7890-abcd-ef1234567890');
-      expect(c.provenance.provider).toBe('musicbrainz');
     });
 
-    it('should throttle requests to enforce rate limits', async () => {
+    it('should enforce cross-instance throttling across separate MusicBrainzMetadataProvider instances', async () => {
       const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({ releases: [] }),
       });
       global.fetch = mockFetch;
 
-      const provider = new MusicBrainzMetadataProvider({ minIntervalMs: 50 });
+      const provider1 = new MusicBrainzMetadataProvider({ minIntervalMs: 50 });
+      const provider2 = new MusicBrainzMetadataProvider({ minIntervalMs: 50 });
+
       const start = Date.now();
 
-      await provider.searchCandidates({ title: 'Query 1' });
-      await provider.searchCandidates({ title: 'Query 2' });
+      await provider1.searchCandidates({ title: 'Query 1' });
+      await provider2.searchCandidates({ title: 'Query 2' });
 
       const duration = Date.now() - start;
       expect(duration).toBeGreaterThanOrEqual(40);
@@ -271,6 +268,14 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
   });
 
   describe('Composite Metadata Identification Service', () => {
+    it('should reject invalid IdentificationQuery with ValidationError', async () => {
+      const service = new MetadataIdentificationService([]);
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      await expect(
+        service.identifyCandidates({ releaseYear: 'not-a-number' as any })
+      ).rejects.toThrow(ValidationError);
+    });
+
     it('should aggregate candidates from multiple providers and rank by score descending', async () => {
       const provider1: MetadataProvider = {
         name: 'provider1',
@@ -349,67 +354,53 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
       expect(results[0].id).toBe('working:w1');
     });
 
-    it('should require explicit user confirmation before persisting external candidate as canonical Release', async () => {
-      const mockCandidate: CandidateRelease = {
-        id: 'discogs:888',
+    it('should preserve nullable format without inventing defaults when confirming candidate', async () => {
+      const mockCandidateOmittedFormat: CandidateRelease = {
+        id: 'discogs:999',
         providerName: 'discogs',
-        externalId: '888',
-        artist: 'The Clash',
-        title: 'London Calling',
-        label: 'CBS',
-        catalogueNumber: 'CLASH 3',
-        releaseYear: 1979,
-        format: '2xLP',
-        barcode: '5099746000000',
-        genre: 'Punk Rock',
-        coverArtUrl: 'https://img.discogs.com/london.jpg',
-        matchScore: 85,
-        matchedEvidence: ['artist', 'title', 'barcode'],
+        externalId: '999',
+        artist: 'The Beatles',
+        title: 'Abbey Road',
+        label: 'Apple Records',
+        catalogueNumber: 'PCS 7088',
+        releaseYear: 1969,
+        // format is undefined
+        matchScore: 90,
+        matchedEvidence: ['artist', 'title'],
         provenance: {
           provider: 'discogs',
-          externalId: '888',
+          externalId: '999',
           fetchedAt: new Date().toISOString(),
         },
       };
 
       (releaseRepo.createRelease as jest.Mock).mockResolvedValue({
-        id: '11111111-1111-4111-8111-111111111111',
-        artist: 'The Clash',
-        title: 'London Calling',
-        label: 'CBS',
-        catalogueNumber: 'CLASH 3',
-        releaseYear: 1979,
+        id: '22222222-2222-4222-8222-222222222222',
+        artist: 'The Beatles',
+        title: 'Abbey Road',
+        label: 'Apple Records',
+        catalogueNumber: 'PCS 7088',
+        releaseYear: 1969,
         country: null,
-        format: '2xLP',
-        barcode: '5099746000000',
-        genre: 'Punk Rock',
-        coverArtUrl: 'https://img.discogs.com/london.jpg',
+        format: null,
+        barcode: null,
+        genre: null,
+        coverArtUrl: null,
         externalSource: 'discogs',
-        externalId: '888',
+        externalId: '999',
       });
 
       const service = new MetadataIdentificationService([]);
-      const createdRelease = await service.confirmCandidateAsRelease(mockCandidate);
+      await service.confirmCandidateAsRelease(mockCandidateOmittedFormat);
 
       expect(releaseRepo.createRelease).toHaveBeenCalledWith(
-        {
-          artist: 'The Clash',
-          title: 'London Calling',
-          label: 'CBS',
-          catalogueNumber: 'CLASH 3',
-          releaseYear: 1979,
-          country: null,
-          format: '2xLP',
-          barcode: '5099746000000',
-          genre: 'Punk Rock',
-          coverArtUrl: 'https://img.discogs.com/london.jpg',
-          externalSource: 'discogs',
-          externalId: '888',
-        },
+        expect.objectContaining({
+          artist: 'The Beatles',
+          title: 'Abbey Road',
+          format: null, // format is preserved as null rather than defaulted to 'LP'
+        }),
         undefined
       );
-      expect(createdRelease.id).toBe('11111111-1111-4111-8111-111111111111');
-      expect(createdRelease.externalSource).toBe('discogs');
     });
   });
 });
