@@ -1,4 +1,10 @@
 <div class="browse-page-container" style="max-width: 1140px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <div class="alert alert-error" style="padding: var(--space-4); margin-bottom: var(--space-6); background: #fee2e2; border: 2px solid #ef4444; border-radius: var(--radius-sm); color: #991b1b; font-family: var(--font-body);">
+      <%= errorMessage %>
+    </div>
+  <% } %>
+
   <div class="browse-header" style="margin-bottom: var(--space-6);">
     <h1 style="font-family: var(--font-display); font-size: var(--font-size-3xl); margin-bottom: var(--space-2);">
       <%= filters.q ? `Search: "${filters.q}"` : 'Browse Vinyl Record Drops' %>

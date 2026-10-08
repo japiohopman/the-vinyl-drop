@@ -2,6 +2,7 @@
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { setSupabaseClient } from '../src/lib/supabase';
+import { execSync } from 'child_process';
 import * as listingService from '../src/app/services/listingService';
 import * as commentService from '../src/app/services/commentService';
 import * as profileRepository from '../src/app/repositories/profileRepository';
@@ -388,7 +389,13 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
   describe('Public Seller Profile View (GET /profiles/:username & GET /profile/:username)', () => {
     it('should render public seller profile with active published drops', async () => {
       (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
-      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue([mockListingCard]);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
 
       const app = createApp();
       const res = await request(app).get('/profiles/alice_records');
@@ -402,7 +409,13 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
 
     it('should render seller profile empty state when seller has 0 active drops', async () => {
       (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileBob);
-      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue([]);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+        items: [],
+        totalCount: 0,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
 
       const app = createApp();
       const res = await request(app).get('/profile/bob_grooves');
@@ -410,6 +423,85 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.status).toBe(200);
       expect(res.text).toContain('Bob Grooves');
       expect(res.text).toContain('@bob_grooves has no active record drops available right now.');
+    });
+
+    it('should handle pagination for seller profile listings (12 items per page)', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 15,
+        page: 2,
+        limit: 12,
+        totalPages: 2,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/profiles/alice_records?page=2');
+
+      expect(res.status).toBe(200);
+      expect(listingService.getSellerPublishedListings).toHaveBeenCalledWith('alice_records', { page: 2 });
+      expect(res.text).toContain('Page 2 of 2');
+    });
+
+    it('should return 400 Bad Request when malformed page parameter is provided to seller profile', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+
+      const app = createApp();
+      const res = await request(app).get('/profiles/alice_records?page=invalid123');
+
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Invalid page parameter provided.');
+    });
+  });
+
+  describe('Strict Query Parameter Validation (minPrice, maxPrice, page)', () => {
+    it('should return 400 Bad Request when minPrice is malformed e.g. 12abc or negative', async () => {
+      const app = createApp();
+      const res1 = await request(app).get('/browse?minPrice=12abc');
+      expect(res1.status).toBe(400);
+      expect(res1.text).toContain('Invalid search filter or page parameters provided.');
+
+      const res2 = await request(app).get('/browse?minPrice=-10');
+      expect(res2.status).toBe(400);
+    });
+
+    it('should return 400 Bad Request when maxPrice is malformed e.g. 50euro or negative', async () => {
+      const app = createApp();
+      const res = await request(app).get('/browse?maxPrice=50euro');
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Invalid search filter or page parameters provided.');
+    });
+
+    it('should return 400 Bad Request when page is malformed e.g. 0, -1, 12abc, or float', async () => {
+      const app = createApp();
+      const res1 = await request(app).get('/browse?page=0');
+      expect(res1.status).toBe(400);
+
+      const res2 = await request(app).get('/browse?page=12abc');
+      expect(res2.status).toBe(400);
+
+      const res3 = await request(app).get('/browse?page=1.5');
+      expect(res3.status).toBe(400);
+    });
+  });
+
+  describe('Implementation Layer Verification via Executed Suite Script', () => {
+    it('should verify discovery semantics via standalone verification script', () => {
+      const output = execSync('npx tsx scripts/verify-discovery-semantics.ts', {
+        encoding: 'utf8',
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/test',
+          SUPABASE_URL: 'https://example.supabase.co',
+          SUPABASE_ANON_KEY: 'anon-key',
+        },
+      });
+
+      expect(output).toContain('Repository condition filter OR matching verified');
+      expect(output).toContain('Repository price_asc and price_desc NULL trade-only sorting verified');
+      expect(output).toContain('Seller profile listing service 12-item pagination contract verified');
+      expect(output).toContain('Comment repository 50-item retrieval bound and chronological order verified');
     });
   });
 

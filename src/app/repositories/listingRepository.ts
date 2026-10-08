@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, SQL, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { ConditionGrade, ListingStatus } from '../../db/schema/enums';
 import { Listing, NewListing, listings } from '../../db/schema/listings';
@@ -190,23 +190,31 @@ export async function searchListings(
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   // Sorting
-  let orderBy: SQL;
+  let orderBy: SQL[];
   switch (params.sort) {
     case 'price_asc':
-      orderBy = asc(listings.price);
+      orderBy = [
+        sql`CASE WHEN ${listings.price} IS NULL THEN 1 ELSE 0 END ASC`,
+        asc(listings.price),
+        desc(listings.createdAt),
+      ];
       break;
     case 'price_desc':
-      orderBy = desc(listings.price);
+      orderBy = [
+        sql`CASE WHEN ${listings.price} IS NULL THEN 1 ELSE 0 END ASC`,
+        desc(listings.price),
+        desc(listings.createdAt),
+      ];
       break;
     case 'title_asc':
-      orderBy = asc(releases.title);
+      orderBy = [asc(releases.title), desc(listings.createdAt)];
       break;
     case 'artist_asc':
-      orderBy = asc(releases.artist);
+      orderBy = [asc(releases.artist), desc(listings.createdAt)];
       break;
     case 'newest':
     default:
-      orderBy = desc(listings.createdAt);
+      orderBy = [desc(listings.createdAt)];
       break;
   }
 
@@ -248,7 +256,7 @@ export async function searchListings(
     .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
     .innerJoin(profiles, eq(listings.sellerId, profiles.id))
     .where(whereClause)
-    .orderBy(orderBy)
+    .orderBy(...orderBy)
     .limit(limit)
     .offset(offset);
 

@@ -27,7 +27,7 @@ export async function getListingComments(
     throw new AuthorizationError('You do not have access to comments on this listing');
   }
 
-  return findCommentsByListingId(listingId, dbOverride);
+  return findCommentsByListingId(listingId, { limit: 50 }, dbOverride);
 }
 
 export async function addComment(

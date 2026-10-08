@@ -1,4 +1,4 @@
-import { eq, asc } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { comments, Comment, NewComment } from '../../db/schema/comments';
 import { profiles, Profile } from '../../db/schema/profiles';
@@ -11,10 +11,13 @@ export interface CommentWithAuthor extends Comment {
 
 export async function findCommentsByListingId(
   listingId: string,
+  options: { limit?: number } = {},
   dbOverride?: DbInstance
 ): Promise<CommentWithAuthor[]> {
   const db = dbOverride || getDb();
+  const limit = options.limit !== undefined ? Math.min(Math.max(1, options.limit), 50) : 50;
 
+  // Retrieve the N most recent comments (ordered DESC by createdAt)
   const rows = await db
     .select({
       comment: comments,
@@ -28,12 +31,16 @@ export async function findCommentsByListingId(
     .from(comments)
     .innerJoin(profiles, eq(comments.authorId, profiles.id))
     .where(eq(comments.listingId, listingId))
-    .orderBy(asc(comments.createdAt));
+    .orderBy(desc(comments.createdAt))
+    .limit(limit);
 
-  return rows.map((row) => ({
+  // Map and reorder chronologically (ASC) for display
+  const items = rows.map((row) => ({
     ...row.comment,
     author: row.author,
   }));
+
+  return items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 }
 
 export async function createComment(

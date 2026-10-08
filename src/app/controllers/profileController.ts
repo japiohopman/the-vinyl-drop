@@ -42,14 +42,44 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
       return;
     }
 
+    const pageParam = req.query.page;
+    let page = 1;
+
+    if (pageParam !== undefined && pageParam !== null) {
+      if (typeof pageParam !== 'string' || !/^[1-9]\d*$/.test(pageParam.trim())) {
+        res.status(400);
+        renderWithLayout(res, 'profiles/show', {
+          title: `${profile.displayName || profile.username} (@${profile.username}) — The Vinyl Drop`,
+          profile,
+          isOwner: Boolean(req.user && req.user.id === profile.id),
+          listings: [],
+          pagination: {
+            totalCount: 0,
+            page: 1,
+            limit: 12,
+            totalPages: 1,
+          },
+          errorMessage: 'Invalid page parameter provided.',
+        }, next);
+        return;
+      }
+      page = Number(pageParam.trim());
+    }
+
     const isOwner = Boolean(req.user && req.user.id === profile.id);
-    const listings = await getSellerPublishedListings(profile.username);
+    const listingsResult = await getSellerPublishedListings(profile.username, { page });
 
     renderWithLayout(res, 'profiles/show', {
       title: `${profile.displayName || profile.username} (@${profile.username}) — The Vinyl Drop`,
       profile,
       isOwner,
-      listings,
+      listings: listingsResult.items,
+      pagination: {
+        totalCount: listingsResult.totalCount,
+        page: listingsResult.page,
+        limit: listingsResult.limit,
+        totalPages: listingsResult.totalPages,
+      },
     }, next);
   } catch (error) {
     next(error);
