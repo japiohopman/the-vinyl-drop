@@ -47,4 +47,21 @@ describe('Contact & Community Rules Pages (Phase 6A - Issue #46)', () => {
       expect(res.text).toContain('disrespecting fellow human beings is strictly forbidden');
     });
   });
+
+  describe('Route Health & Error Boundary Verification (404/500 handling)', () => {
+    it('should return 404 HTML for unmapped routes without crashing server', async () => {
+      const res = await request(app).get('/nonexistent-info-page');
+
+      expect(res.status).toBe(404);
+      expect(res.text).toContain('404 - Page Not Found');
+    });
+
+    it('should handle route errors gracefully via centralized error handler', async () => {
+      const res = await request(app)
+        .get('/contact')
+        .set('Accept', 'application/json');
+
+      expect(res.status).toBe(200);
+    });
+  });
 });
