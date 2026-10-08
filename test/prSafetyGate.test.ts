@@ -69,27 +69,37 @@ describe('PR Contract Parsing and Safety Gate Validation', () => {
       expect(result.errors).toEqual([]);
     });
 
-    it('should accept NOT READY status', () => {
-      const body = VALID_PR_BODY.replace('READY FOR HUMAN REVIEW', 'NOT READY');
-      const result = validatePrContract(body);
+    it('should accept NOT READY status even when Definition of Done items are unchecked', () => {
+      const bodyNotReadyUnchecked = VALID_PR_BODY
+        .replace('READY FOR HUMAN REVIEW', 'NOT READY')
+        .replace(
+          '- [x] Scope remains strictly within governing Issue',
+          '- [ ] Scope remains strictly within governing Issue'
+        )
+        .replace(
+          '- [x] All Issue acceptance criteria satisfied',
+          '- [ ] All Issue acceptance criteria satisfied'
+        );
+      const result = validatePrContract(bodyNotReadyUnchecked);
       expect(result.valid).toBe(true);
       expect(result.status).toBe('NOT READY');
+      expect(result.errors).toEqual([]);
     });
 
-    it('should fail when PR body is empty or null', () => {
+    it('should fail when PR body is empty or null regardless of commit messages', () => {
       expect(validatePrContract(null).valid).toBe(false);
       expect(validatePrContract('').valid).toBe(false);
       expect(validatePrContract('   ').valid).toBe(false);
     });
 
-    it('should fail when required sections are missing', () => {
+    it('should fail when required sections are missing in PR body', () => {
       const bodyMissingGoal = VALID_PR_BODY.replace('## Goal', '## Purpose');
       const result = validatePrContract(bodyMissingGoal);
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Missing required section: "## Goal"');
     });
 
-    it('should fail when Definition of Done required items are missing or unchecked', () => {
+    it('should fail when status is READY FOR HUMAN REVIEW and Definition of Done items are unchecked', () => {
       const bodyUncheckedDod = VALID_PR_BODY.replace(
         '- [x] Scope remains strictly within governing Issue',
         '- [ ] Scope remains strictly within governing Issue'

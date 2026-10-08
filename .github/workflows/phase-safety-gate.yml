@@ -63,33 +63,6 @@ jobs:
 
             let prBody = pr.body || '';
 
-            // If PR body from payload lacks contract section, attempt fallback to latest commit message or live PR body
-            if (!prBody.includes('## Phase / Governing Issue')) {
-              try {
-                const commits = await github.rest.pulls.listCommits({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: pr.number
-                });
-                const lastCommit = commits.data[commits.data.length - 1];
-                if (lastCommit && lastCommit.commit && lastCommit.commit.message && lastCommit.commit.message.includes('## Phase / Governing Issue')) {
-                  const commitMsg = lastCommit.commit.message;
-                  const contractIndex = commitMsg.indexOf('## Phase / Governing Issue');
-                  if (contractIndex !== -1) {
-                    prBody = commitMsg.slice(contractIndex);
-                    await github.rest.pulls.update({
-                      owner: context.repo.owner,
-                      repo: context.repo.repo,
-                      pull_number: pr.number,
-                      body: prBody
-                    });
-                  }
-                }
-              } catch (err) {
-                console.warn('Could not auto-sync PR body from commit message:', err.message);
-              }
-            }
-
             // Strip HTML comments
             prBody = prBody.replace(/<!--[\s\S]*?-->/g, '');
 
@@ -106,32 +79,7 @@ jobs:
               }
             }
 
-            // 3. Check Definition of Done checklist items
-            const dodHeaderIndex = prBody.search(/^##\s+Definition of Done/m);
-            if (dodHeaderIndex !== -1) {
-              const afterDod = prBody.slice(dodHeaderIndex);
-              const nextSectionIndex = afterDod.slice(1).search(/^(##\s+|---)/m);
-              const dodSectionText = nextSectionIndex !== -1 ? afterDod.slice(0, nextSectionIndex + 1) : afterDod;
-
-              for (const item of requiredDodItems) {
-                const itemRegex = new RegExp(`-\\s*\\[[xX]\\]\\s*${item.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}`, 'm');
-                if (!itemRegex.test(dodSectionText)) {
-                  errors.push(`Definition of Done missing required checked item: "${item}"`);
-                }
-              }
-            }
-
-            // 4. Check governing issue reference
-            const refsMatch = prBody.match(/Refs\s+#(\d+)/i);
-            let issueNumber = null;
-
-            if (!refsMatch) {
-              errors.push('Missing or malformed governing issue reference (expected format: "Refs #<number>").');
-            } else {
-              issueNumber = parseInt(refsMatch[1], 10);
-            }
-
-            // 5. Check status section
+            // 3. Check status section
             let status = null;
             const statusHeaderIndex = prBody.search(/###\s+Status/i);
 
@@ -153,6 +101,33 @@ jobs:
               if (!status) {
                 errors.push('Missing or invalid status under "### Status". Must be "NOT READY" or "READY FOR HUMAN REVIEW".');
               }
+            }
+
+            // 4. Check Definition of Done checklist items (only required when status is READY FOR HUMAN REVIEW)
+            if (status === 'READY FOR HUMAN REVIEW') {
+              const dodHeaderIndex = prBody.search(/^##\s+Definition of Done/m);
+              if (dodHeaderIndex !== -1) {
+                const afterDod = prBody.slice(dodHeaderIndex);
+                const nextSectionIndex = afterDod.slice(1).search(/^(##\s+|---)/m);
+                const dodSectionText = nextSectionIndex !== -1 ? afterDod.slice(0, nextSectionIndex + 1) : afterDod;
+
+                for (const item of requiredDodItems) {
+                  const itemRegex = new RegExp(`-\\s*\\[[xX]\\]\\s*${item.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}`, 'm');
+                  if (!itemRegex.test(dodSectionText)) {
+                    errors.push(`Definition of Done missing required checked item: "${item}"`);
+                  }
+                }
+              }
+            }
+
+            // 5. Check governing issue reference
+            const refsMatch = prBody.match(/Refs\s+#(\d+)/i);
+            let issueNumber = null;
+
+            if (!refsMatch) {
+              errors.push('Missing or malformed governing issue reference (expected format: "Refs #<number>").');
+            } else {
+              issueNumber = parseInt(refsMatch[1], 10);
             }
 
             // 6. Validate governing issue exists and is open via GitHub REST API

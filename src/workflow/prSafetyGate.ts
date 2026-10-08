@@ -59,40 +59,7 @@ export function validatePrContract(prBody: string | null | undefined): PrContrac
     }
   }
 
-  // 2. Validate Definition of Done checklist items
-  const dodHeaderIndex = cleanedBody.search(/^##\s+Definition of Done/m);
-  if (dodHeaderIndex !== -1) {
-    const afterDod = cleanedBody.slice(dodHeaderIndex);
-    // Get text up to next level-2 heading or horizontal rule or end
-    const nextSectionIndex = afterDod.slice(1).search(/^(##\s+|---)/m);
-    const dodSectionText = nextSectionIndex !== -1 ? afterDod.slice(0, nextSectionIndex + 1) : afterDod;
-
-    for (const item of REQUIRED_DOD_ITEMS) {
-      // Check for checked box "- [x] ... <item>" or "- [X] ... <item>"
-      const itemPattern = new RegExp(`-\\s*\\[[xX]\\]\\s*${escapeRegExp(item)}`, 'm');
-      if (!itemPattern.test(dodSectionText)) {
-        errors.push(`Definition of Done missing required checked item: "${item}"`);
-      }
-    }
-  }
-
-  // 3. Extract and validate governing issue reference
-  // Pattern looking for: Refs #<digits>
-  const refsMatch = cleanedBody.match(/Refs\s+#(\d+)/i);
-  let issueNumber: number | undefined;
-
-  if (!refsMatch) {
-    errors.push('Missing or malformed governing issue reference (expected format: "Refs #<number>").');
-  } else {
-    const parsed = parseInt(refsMatch[1], 10);
-    if (isNaN(parsed) || parsed <= 0) {
-      errors.push(`Invalid governing issue number: "${refsMatch[1]}"`);
-    } else {
-      issueNumber = parsed;
-    }
-  }
-
-  // 4. Extract and validate Status section
+  // 2. Extract and validate Status section
   let status: 'NOT READY' | 'READY FOR HUMAN REVIEW' | undefined;
   const statusHeaderIndex = cleanedBody.search(/###\s+Status/i);
 
@@ -115,6 +82,42 @@ export function validatePrContract(prBody: string | null | undefined): PrContrac
       errors.push(
         'Missing or invalid status under "### Status". Must be "NOT READY" or "READY FOR HUMAN REVIEW".'
       );
+    }
+  }
+
+  // 3. Validate Definition of Done checklist items
+  // Only enforce checked DoD items when status is 'READY FOR HUMAN REVIEW'
+  if (status === 'READY FOR HUMAN REVIEW') {
+    const dodHeaderIndex = cleanedBody.search(/^##\s+Definition of Done/m);
+    if (dodHeaderIndex !== -1) {
+      const afterDod = cleanedBody.slice(dodHeaderIndex);
+      // Get text up to next level-2 heading or horizontal rule or end
+      const nextSectionIndex = afterDod.slice(1).search(/^(##\s+|---)/m);
+      const dodSectionText = nextSectionIndex !== -1 ? afterDod.slice(0, nextSectionIndex + 1) : afterDod;
+
+      for (const item of REQUIRED_DOD_ITEMS) {
+        // Check for checked box "- [x] ... <item>" or "- [X] ... <item>"
+        const itemPattern = new RegExp(`-\\s*\\[[xX]\\]\\s*${escapeRegExp(item)}`, 'm');
+        if (!itemPattern.test(dodSectionText)) {
+          errors.push(`Definition of Done missing required checked item: "${item}"`);
+        }
+      }
+    }
+  }
+
+  // 4. Extract and validate governing issue reference
+  // Pattern looking for: Refs #<digits>
+  const refsMatch = cleanedBody.match(/Refs\s+#(\d+)/i);
+  let issueNumber: number | undefined;
+
+  if (!refsMatch) {
+    errors.push('Missing or malformed governing issue reference (expected format: "Refs #<number>").');
+  } else {
+    const parsed = parseInt(refsMatch[1], 10);
+    if (isNaN(parsed) || parsed <= 0) {
+      errors.push(`Invalid governing issue number: "${refsMatch[1]}"`);
+    } else {
+      issueNumber = parsed;
     }
   }
 

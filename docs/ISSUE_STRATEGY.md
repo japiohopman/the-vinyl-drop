@@ -53,7 +53,8 @@ Required contents:
 - current architectural state;
 - proposed modification;
 - data integrity / migration impact;
-- verification strategy.
+- target database verification boundary (explicitly stating whether target database access/credentials are expected);
+- verification strategy (distinguishing isolated PGlite migration tests from target database migration execution).
 
 ## Dispatch readiness requirements
 
