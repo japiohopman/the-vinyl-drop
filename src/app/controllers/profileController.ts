@@ -110,6 +110,7 @@ export async function getEditProfilePage(req: Request, res: Response, next: Next
         bio: profile.bio || '',
         location: profile.location || '',
         avatarUrl: profile.avatarUrl || '',
+        websiteUrl: profile.websiteUrl || '',
       },
       fieldErrors: {},
       generalErrors: [],
@@ -150,6 +151,7 @@ export async function postEditProfile(req: Request, res: Response, next: NextFun
         bio: req.body.bio || '',
         location: req.body.location || '',
         avatarUrl: req.body.avatarUrl || '',
+        websiteUrl: req.body.websiteUrl || '',
       });
 
       res.status(400);
@@ -173,6 +175,7 @@ export async function postEditProfile(req: Request, res: Response, next: NextFun
           bio: req.body.bio || '',
           location: req.body.location || '',
           avatarUrl: req.body.avatarUrl || '',
+          websiteUrl: req.body.websiteUrl || '',
         },
         fieldErrors: {},
         generalErrors: [errMessage],

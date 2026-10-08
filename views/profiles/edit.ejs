@@ -50,6 +50,16 @@
         error: form.fieldErrors.avatarUrl
       }) %>
 
+      <%- include('../partials/form-input', {
+        type: 'url',
+        name: 'websiteUrl',
+        label: 'External Website / DJ / Profile URL',
+        value: form.values.websiteUrl,
+        placeholder: 'https://example.com or https://linktr.ee/myprofile',
+        error: form.fieldErrors.websiteUrl,
+        helpText: 'Optional link to your personal site, DJ page, company page, or Linktree.'
+      }) %>
+
       <%- include('../partials/form-textarea', {
         name: 'bio',
         label: 'Bio',

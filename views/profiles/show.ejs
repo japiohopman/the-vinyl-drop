@@ -36,6 +36,12 @@
           </p>
         <% } %>
 
+        <% if (profile.websiteUrl) { %>
+          <p style="margin-top: var(--space-2); font-size: var(--font-size-sm); color: var(--color-ink-muted); display: flex; align-items: center; gap: var(--space-1);">
+            🔗 <a href="<%= profile.websiteUrl %>" target="_blank" rel="noopener noreferrer" style="color: var(--color-rust-accessible); text-decoration: underline;"><%= profile.websiteUrl %></a>
+          </p>
+        <% } %>
+
         <% if (profile.bio) { %>
           <p style="margin-top: var(--space-4); line-height: 1.5; font-size: var(--font-size-md);"><%= profile.bio %></p>
         <% } %>

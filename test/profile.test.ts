@@ -22,6 +22,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
     username: 'alice_records',
     displayName: 'Alice Cooper',
     avatarUrl: 'https://example.com/alice.jpg',
+    websiteUrl: null,
     bio: 'Jazz & Funk vinyl collector.',
     location: 'Berlin, DE',
     createdAt: new Date('2025-01-01'),
@@ -88,6 +89,22 @@ describe('Profile Foundation & Server-Side Ownership', () => {
 
       expect(res.status).toBe(404);
       expect(res.text).toContain('404 - Page Not Found');
+    });
+
+    it('GET /profiles/:username should render external website URL safely when present', async () => {
+      const profileWithWebsite: Profile = {
+        ...mockProfileAlice,
+        websiteUrl: 'https://djalice.example.com',
+      };
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(profileWithWebsite);
+
+      const app = createApp();
+      const res = await request(app).get('/profiles/alice_records');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('https://djalice.example.com');
+      expect(res.text).toContain('target="_blank"');
+      expect(res.text).toContain('rel="noopener noreferrer"');
     });
   });
 
@@ -160,6 +177,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
           bio: 'Updated bio details.',
           location: 'Amsterdam, NL',
           avatarUrl: '',
+          websiteUrl: 'https://linktr.ee/alice_records',
         });
 
       expect(res.status).toBe(302);
@@ -171,9 +189,36 @@ describe('Profile Foundation & Server-Side Ownership', () => {
           displayName: 'Alice C.',
           bio: 'Updated bio details.',
           location: 'Amsterdam, NL',
+          websiteUrl: 'https://linktr.ee/alice_records',
         }),
         undefined
       );
+    });
+
+    it('POST /profile/edit should reject invalid websiteUrl schemes (javascript:, data:, file:) with 400 Bad Request', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+
+      const app = createApp();
+
+      for (const badUrl of ['javascript:alert(1)', 'data:text/html,hack', 'file:///etc/passwd', 'ftp://example.com', 'not-a-url']) {
+        const res = await request(app)
+          .post('/profile/edit')
+          .set('Origin', 'http://localhost:3000')
+          .set('Cookie', ['sb-access-token=alice-token'])
+          .send({
+            username: 'alice_records',
+            displayName: 'Alice Cooper',
+            websiteUrl: badUrl,
+          });
+
+        expect(res.status).toBe(400);
+        expect(res.text).toContain('External URL');
+      }
     });
 
     it('updateProfile service should throw AuthorizationError when requestingUserId does not match targetUserId', async () => {

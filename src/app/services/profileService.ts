@@ -59,6 +59,7 @@ export async function updateProfile(
       bio: input.bio || null,
       location: input.location || null,
       avatarUrl: input.avatarUrl || null,
+      websiteUrl: input.websiteUrl || null,
     },
     dbOverride
   );

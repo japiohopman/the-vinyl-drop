@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getHomePage } from '../controllers/homeController';
 import { getBrowsePage, getSearchPage } from '../controllers/browseController';
 import { getActivityPage } from '../controllers/activityController';
+import { getContactPage, getCommunityRulesPage } from '../controllers/infoController';
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
 import { requireAuth } from '../middleware/auth';
 import { getSelectReleasePage } from '../controllers/listingController';
@@ -16,6 +17,8 @@ router.get('/', getHomePage);
 router.get('/browse', getBrowsePage);
 router.get('/search', getSearchPage);
 router.get('/activity', getActivityPage);
+router.get('/contact', getContactPage);
+router.get('/community-rules', getCommunityRulesPage);
 
 router.use('/auth', authRoutes);
 router.use('/listings', listingRoutes);
