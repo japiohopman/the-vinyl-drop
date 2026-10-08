@@ -103,8 +103,13 @@ jobs:
               }
             }
 
-            // 4. Check Definition of Done checklist items (only required when status is READY FOR HUMAN REVIEW)
-            if (status === 'READY FOR HUMAN REVIEW') {
+            // 4. Check status-dependent requirements
+            if (status === 'NOT READY') {
+              const blockerPattern = /^###\s+Blockers\s*\/\s*External\s+dependencies/m;
+              if (!blockerPattern.test(prBody)) {
+                errors.push('Missing required blocker section ("### Blockers / External dependencies") when status is "NOT READY".');
+              }
+            } else if (status === 'READY FOR HUMAN REVIEW') {
               const dodHeaderIndex = prBody.search(/^##\s+Definition of Done/m);
               if (dodHeaderIndex !== -1) {
                 const afterDod = prBody.slice(dodHeaderIndex);

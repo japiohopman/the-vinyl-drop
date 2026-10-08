@@ -85,9 +85,15 @@ export function validatePrContract(prBody: string | null | undefined): PrContrac
     }
   }
 
-  // 3. Validate Definition of Done checklist items
-  // Only enforce checked DoD items when status is 'READY FOR HUMAN REVIEW'
-  if (status === 'READY FOR HUMAN REVIEW') {
+  // 3. Validate status-dependent requirements
+  if (status === 'NOT READY') {
+    const blockerPattern = /^###\s+Blockers\s*\/\s*External\s+dependencies/m;
+    if (!blockerPattern.test(cleanedBody)) {
+      errors.push(
+        'Missing required blocker section ("### Blockers / External dependencies") when status is "NOT READY".'
+      );
+    }
+  } else if (status === 'READY FOR HUMAN REVIEW') {
     const dodHeaderIndex = cleanedBody.search(/^##\s+Definition of Done/m);
     if (dodHeaderIndex !== -1) {
       const afterDod = cleanedBody.slice(dodHeaderIndex);
