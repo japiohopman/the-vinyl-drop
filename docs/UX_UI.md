@@ -55,7 +55,7 @@ Custom properties defined in `public/css/style.css`:
 - Rust accent: `#C94B2C`
 - Deep green accent: `#30463D`
 
-All color combinations satisfy WCAG contrast requirements for text readability.
+Color palette tokens are verified against automated accessibility contrast rules for text readability.
 
 ## Typography strategy
 
@@ -155,7 +155,7 @@ Private messaging is not supported via comments.
 
 ## Accessibility standards
 
-Automated accessibility checks pass against WCAG 2.1 AA (`npm run test:a11y` checking `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` rules):
+Automated accessibility checks run against WCAG 2.1 AA rule sets (`npm run test:a11y` checking `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` rulesets):
 - semantic HTML sectioning and landmarks (`header`, `nav`, `main`, `footer`);
 - accessible form labeling and `aria-describedby` error references;
 - visible focus rings across all interactive controls;

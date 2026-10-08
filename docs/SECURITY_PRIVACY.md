@@ -15,7 +15,7 @@ Security boundaries are enforced at the application middleware, service authoriz
 
 ## Implemented authentication architecture
 
-Authentication is powered by **Supabase Auth** using Express cookie-backed PKCE session management (`src/lib/supabase.ts` and `src/app/middleware/sessionMiddleware.ts`).
+Authentication is powered by **Supabase Auth** using Express cookie-backed PKCE session management (`src/lib/supabase.ts` and `src/app/middleware/auth.ts`).
 
 - User passwords and OAuth credentials are managed entirely by Supabase Auth; custom application code never handles raw passwords.
 - Authenticated session tokens (`sb-access-token` and `sb-refresh-token`) are stored in HTTP cookies and validated on incoming requests.
@@ -65,7 +65,7 @@ Listing photo uploads pass through a multi-stage security pipeline:
 ## Implemented privacy boundaries
 
 **Public Data (Accessible without authentication):**
-- Profile `username`, `displayName`, `avatarUrl`, `bio`, and `coarseLocation`;
+- Profile `username`, `displayName`, `avatarUrl`, `bio`, and `location` (intentionally coarse, e.g. "Amsterdam Oost");
 - Published record listings, release metadata, condition grades, prices, and photos;
 - Public listing comments and author display names.
 

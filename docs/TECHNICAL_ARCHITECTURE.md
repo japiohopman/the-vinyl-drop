@@ -17,7 +17,7 @@
 | Multipart Uploads | `@fastify/busboy` | Streaming file upload parser (`multipartUploadHandler` in `src/app/middleware/upload.ts`) |
 | Image Processing | Sharp (v0.35) | Server-side WebP conversion, 2048px downscaling, EXIF stripping |
 | Testing | Jest (v29) & Supertest (v7) | Unit and integration testing |
-| Accessibility Testing | `@axe-core/playwright` / Playwright | Automated WCAG 2.1 AA checks (`npm run test:a11y`) |
+| Accessibility Testing | `@axe-core/playwright` / Playwright | Automated accessibility checks run against WCAG 2.1 AA rule sets (`npm run test:a11y`) |
 | Styling & Tokens | Vanilla CSS | Tokens & utilities in `public/css/style.css` |
 
 ## Application layers and responsibilities
@@ -53,7 +53,7 @@ HTTP Request
 src/
   app/
     controllers/        # Route controllers (home, browse, listing, profile, auth, release)
-    middleware/         # auth.ts, csrf.ts, upload.ts, sessionMiddleware.ts, and errorHandler.ts
+    middleware/         # auth.ts, csrf.ts, upload.ts, and errorHandler.ts
     routes/             # Express router definitions (auth, listing, profile, release, index)
     utils/              # EJS layout renderer helper (`renderWithLayout`)
   db/
@@ -98,4 +98,4 @@ drizzle/                # Generated SQL migration scripts managed by Drizzle Kit
 - **Unit Tests:** Pure validators (`condition`, `listingStatus`, `release`), lifecycle state machine rules (`listingLifecycle.ts`), and monetary price converters (`parsePriceEurToCents`).
 - **Integration Tests:** Endpoint HTTP integration tests (`Supertest`), Supabase Auth cookie session flows, profile updates, listing lifecycle transitions, and comment posting.
 - **Database Migration Testing:** Isolated in-memory PostgreSQL engine (`@electric-sql/pglite` via `scripts/verify-migration.ts`) tests fresh migration execution and forward upgrade data preservation without external database dependencies.
-- **Accessibility Testing:** Automated Playwright axe-core audits (`scripts/test-accessibility.ts` / `npm run test:a11y`) verify WCAG 2.1 AA compliance (checking `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` rule sets).
+- **Accessibility Testing:** Automated accessibility checks run against WCAG 2.1 AA rule sets (`scripts/test-accessibility.ts` / `npm run test:a11y` checking `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` rulesets).
