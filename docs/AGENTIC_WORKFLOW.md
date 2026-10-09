@@ -39,15 +39,19 @@ The repository operates five live GitHub Actions workflows (`.github/workflows/`
 Runs on pull requests and pushes to `main`.
 - `npm run lint` (ESLint TypeScript checks)
 - `npm run typecheck` (tsc compilation check)
-- `npm test` (Jest test suite & `@electric-sql/pglite` isolated PostgreSQL database migration verification)
+- `npm test` (Jest test suite including isolated `@electric-sql/pglite` database migration tests)
 - `npm run build` (TypeScript production compilation)
+
+> **Note on CI Database Execution:** CI executes unit and integration tests (including isolated migration fixture tests via `npm test`), but CI does NOT directly invoke `npm run db:verify` or apply migrations to a target PostgreSQL/Supabase database. PGlite tests prove SQL syntax and schema definition validity in an isolated in-memory engine, but do NOT prove a remote/target database has been migrated.
 
 ### 2. Phase Safety Gate (`phase-safety-gate.yml`)
 
 Enforces PR quality and contract completeness before human review.
 - Executes `src/workflow/runSafetyGate.ts` / `src/workflow/prSafetyGate.ts`.
-- Validates that the PR body contains required exact markdown headings (`## Phase / Governing Issue`, `## Goal`, `## Scope completed`, `## Architecture`, `## Data integrity`, `## Verification`, `## Security`, `## Documentation`, `## Definition of Done`).
+- Validates that the actual PR body contains required exact markdown headings (`## Phase / Governing Issue`, `## Goal`, `## Scope completed`, `## Architecture`, `## Data integrity`, `## Verification`, `## Security`, `## Documentation`, `## Definition of Done`).
 - Checks that the referenced governing GitHub Issue exists, is open, and is not a pull request.
+- Validates status semantics: `NOT READY` is a contract-valid state where Definition of Done items may remain unchecked; `READY FOR HUMAN REVIEW` requires all Definition of Done items to be checked (`- [x]`).
+- Evaluates the PR body strictly without falling back to or auto-copying commit messages.
 
 ### 3. Jules Issue Dispatcher (`jules-issue-dispatcher.yml`)
 
@@ -104,7 +108,40 @@ Docs modified or created.
 - [x] Scope remains strictly within governing Issue
 ```
 
-PR status remains **NOT READY** until all checks pass and verification is complete, after which it becomes **READY FOR HUMAN REVIEW**.
+PR status remains **NOT READY** until all checks pass and verification is complete, after which it becomes **READY FOR HUMAN REVIEW**. When work is blocked on environment boundaries or missing external capabilities, setting status to **NOT READY** keeps the PR contract valid while handoff details are documented under `### Blockers / External dependencies`.
+
+## Environment Verification Contract
+
+The workflow explicitly distinguishes four verification stages:
+1. **Source implementation complete:** Code, types, and unit/integration tests written.
+2. **Isolated migration/schema validation:** Migration SQL generated and tested against an isolated engine (`@electric-sql/pglite` via `npm test` or `npm run db:verify`).
+3. **Target database migration applied:** Migration SQL executed against the actual target PostgreSQL/Supabase database (`DATABASE_URL`).
+4. **Target runtime smoke test passed:** Application routes and behavior verified against the target database environment.
+
+> **Crucial Rule:** A migration file or PGlite test run must NEVER be represented as proof that a remote or target database is migrated. For schema-changing issues, the Issue contract must explicitly state whether target-database access/credentials are expected to be available to the agent.
+
+## Agent Escalation & Blocker Handoff Protocol
+
+When implementation or verification encounters an environment boundary, missing credential, external service limitation, or browser testing requirement that prevents full completion:
+- **No Masking:** Never guess, mask, or downgrade acceptance criteria, nor edit unrelated code or prose to fake completion.
+- **Truthful Status:** Set PR status to `NOT READY`.
+- **Structured Handoff:** Record a `### Blockers / External dependencies` section in the PR body containing:
+  1. **Attempted / Command:** Command or test executed.
+  2. **Error / Missing Capability:** Exact error message or environmental boundary encountered.
+  3. **Affected Criterion:** Specific acceptance criterion blocked.
+  4. **Environmental Boundary:** Credential, database, API, or infrastructure boundary.
+  5. **Concrete Human Action Required:** Exact step required from human engineer.
+  6. **Independently Verified:** In-scope work that was successfully tested and verified.
+- **Scope Boundary:** Resume only independently verifiable in-scope work; do not claim blocked criteria are satisfied.
+- **Transition Gate:** Changing status to `READY FOR HUMAN REVIEW` requires every blocker to be resolved or the governing Issue explicitly re-scoped by a human engineer.
+
+## Runtime Verification Matrix
+
+For externally verifiable routes and runtime behavior, Issues and PRs utilize a standard matrix format:
+
+| Route | Expected Status | Required Auth State | Data / Env Prerequisite | Automated Test Coverage | Human Smoke-Test Requirement |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/browse` | 200 OK | Public | Published listings in target DB | Unit/integration test in `test/discovery.test.ts` | Required if target DB schema updated |
 
 ## Specialist agent roles
 

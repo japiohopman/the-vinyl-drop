@@ -27,6 +27,26 @@ Welcome to **The Vinyl Drop** repository. This document provides core instructio
      - `.github/agents/marketplace.md`
      - `.github/agents/verification.md`
 
+5. **Environment & External Dependency Boundaries**
+   - Do not assume access to target databases, credentials, production-like services, browser environments, external APIs, or deployment infrastructure.
+   - Isolated migration/schema validation (`npm run db:verify` or `npm test`) verifies SQL syntax and forward upgrade logic against an isolated in-memory engine (`@electric-sql/pglite`), but does NOT prove that a configured Supabase or target PostgreSQL database has been migrated.
+
+6. **Failure & Escalation Protocol**
+   - When implementation or verification hits an environmental boundary, missing capability, or external dependency that prevents satisfying an acceptance criterion, **never guess, mask, or downgrade acceptance criteria**, nor edit unrelated code or prose to fake a green result.
+   - When blocked, set PR status to `NOT READY`.
+   - Add a structured handoff section `### Blockers / External dependencies` to the PR body with the following required fields:
+     - **Attempted / Command:** Exact command or test executed
+     - **Error / Missing Capability:** Exact error output or missing environmental capability
+     - **Affected Criterion:** Specific acceptance criterion blocked
+     - **Environmental Boundary:** Target database credentials, external API key, deployment infra, etc.
+     - **Concrete Human Action Required:** Exact step required from the human engineer
+     - **Independently Verified:** In-scope work that was successfully completed and verified
+   - Changing status to `READY FOR HUMAN REVIEW` requires every blocker to be resolved or the governing Issue explicitly re-scoped by a human engineer.
+
+7. **PR Contract Integrity & Evidence Standards**
+   - The Phase Safety Gate evaluates the actual PR body strictly. Commit messages are not substitutes for required PR-body contract sections.
+   - An agent completion message is not evidence of completion; evidence must come strictly from source code, passing test suites, environment verification, and PR contract state.
+
 ---
 
 ## 2. Architecture & Technical Invariants

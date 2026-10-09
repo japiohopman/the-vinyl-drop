@@ -39,6 +39,7 @@ assignees: ''
 ## Security & Data Impact
 
 <!-- Detail security, privacy, auth, or data integrity implications of the defect or fix (or state N/A if none) -->
+<!-- For schema-changing fixes, state whether target database credentials/access are expected to be available to the agent -->
 
 ## Specialist & Handoff Information
 
@@ -53,3 +54,12 @@ assignees: ''
 - [ ] `npm run typecheck`
 - [ ] `npm test`
 - [ ] `npm run build`
+
+### Runtime Verification Matrix
+
+<!-- Standard matrix for externally verifiable routes and runtime behavior -->
+<!--
+| Route | Expected Status | Required Auth State | Data / Env Prerequisite | Automated Test Coverage | Human Smoke-Test Requirement |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| | | | | | |
+-->

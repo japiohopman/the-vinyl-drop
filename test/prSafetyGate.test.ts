@@ -69,27 +69,61 @@ describe('PR Contract Parsing and Safety Gate Validation', () => {
       expect(result.errors).toEqual([]);
     });
 
-    it('should accept NOT READY status', () => {
-      const body = VALID_PR_BODY.replace('READY FOR HUMAN REVIEW', 'NOT READY');
-      const result = validatePrContract(body);
-      expect(result.valid).toBe(true);
-      expect(result.status).toBe('NOT READY');
+    it('should require ### Blockers / External dependencies section when status is NOT READY', () => {
+      const bodyNotReadyNoBlocker = VALID_PR_BODY.replace(
+        'READY FOR HUMAN REVIEW',
+        'NOT READY'
+      );
+      const result = validatePrContract(bodyNotReadyNoBlocker);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain(
+        'Missing required blocker section ("### Blockers / External dependencies") when status is "NOT READY".'
+      );
     });
 
-    it('should fail when PR body is empty or null', () => {
+    it('should accept NOT READY status when ### Blockers / External dependencies is present even with unchecked DoD items', () => {
+      const bodyNotReadyWithBlocker = VALID_PR_BODY
+        .replace('READY FOR HUMAN REVIEW', 'NOT READY')
+        .replace(
+          '## Scope completed',
+          '## Scope completed\n\n### Blockers / External dependencies\n\n- **Attempted:** Migration\n- **Error:** Missing target DB'
+        )
+        .replace(
+          '- [x] Scope remains strictly within governing Issue',
+          '- [ ] Scope remains strictly within governing Issue'
+        )
+        .replace(
+          '- [x] All Issue acceptance criteria satisfied',
+          '- [ ] All Issue acceptance criteria satisfied'
+        );
+      const result = validatePrContract(bodyNotReadyWithBlocker);
+      expect(result.valid).toBe(true);
+      expect(result.status).toBe('NOT READY');
+      expect(result.errors).toEqual([]);
+    });
+
+    it('should evaluate PR body strictly and fail when PR body lacks contract sections regardless of commit metadata', () => {
+      const incompletePrBody = `## Phase / Governing Issue\nRefs #20\n## Goal\nTest\n### Status\nREADY FOR HUMAN REVIEW`;
+      const result = validatePrContract(incompletePrBody);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Missing required section: "## Definition of Done"');
+      expect(result.errors).toContain('Missing required section: "## Scope completed"');
+    });
+
+    it('should fail when PR body is empty or null regardless of commit messages', () => {
       expect(validatePrContract(null).valid).toBe(false);
       expect(validatePrContract('').valid).toBe(false);
       expect(validatePrContract('   ').valid).toBe(false);
     });
 
-    it('should fail when required sections are missing', () => {
+    it('should fail when required sections are missing in PR body', () => {
       const bodyMissingGoal = VALID_PR_BODY.replace('## Goal', '## Purpose');
       const result = validatePrContract(bodyMissingGoal);
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Missing required section: "## Goal"');
     });
 
-    it('should fail when Definition of Done required items are missing or unchecked', () => {
+    it('should fail when status is READY FOR HUMAN REVIEW and Definition of Done items are unchecked', () => {
       const bodyUncheckedDod = VALID_PR_BODY.replace(
         '- [x] Scope remains strictly within governing Issue',
         '- [ ] Scope remains strictly within governing Issue'

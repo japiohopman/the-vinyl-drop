@@ -11,6 +11,18 @@ Refs #<issue_number>
 <!-- List completed acceptance items and explicitly state unrelated work was not added -->
 - [ ]
 
+### Blockers / External dependencies
+
+<!-- Complete ONLY if status is NOT READY and work is blocked by external/environment boundaries -->
+<!--
+- **Attempted / Command:**
+- **Error / Missing Capability:**
+- **Affected Criterion:**
+- **Environmental Boundary:**
+- **Concrete Human Action Required:**
+- **Independently Verified:**
+-->
+
 ## Architecture
 
 <!-- State relevant invariants and boundaries -->
@@ -26,6 +38,15 @@ Refs #<issue_number>
 - [ ] `npm run typecheck`
 - [ ] `npm test`
 - [ ] `npm run build`
+
+### Runtime Verification Matrix
+
+<!-- Fill for externally verifiable routes or schema/runtime behavior -->
+<!--
+| Route | Expected Status | Required Auth State | Data / Env Prerequisite | Automated Test Coverage | Human Smoke-Test Requirement |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| | | | | | |
+-->
 
 ## Security
 
@@ -47,6 +68,7 @@ Refs #<issue_number>
 
 ### Status
 
+<!-- Set to 'NOT READY' while in progress or blocked; set to 'READY FOR HUMAN REVIEW' when all criteria & DoD items are complete -->
 <!-- NOT READY | READY FOR HUMAN REVIEW -->
 
 ### Required changes
