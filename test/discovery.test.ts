@@ -294,6 +294,32 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(icoBuffer[3]).toBe(0);
     });
 
+    it('should resolve all static favicon, touch icon, PWA icon, and webmanifest URLs with 200 OK', async () => {
+      const app = createApp();
+
+      const resIco = await request(app).get('/favicon.ico');
+      expect(resIco.status).toBe(200);
+
+      const res16 = await request(app).get('/favicon-16x16.png');
+      expect(res16.status).toBe(200);
+
+      const res32 = await request(app).get('/favicon-32x32.png');
+      expect(res32.status).toBe(200);
+
+      const resTouch = await request(app).get('/apple-touch-icon.png');
+      expect(resTouch.status).toBe(200);
+
+      const res192 = await request(app).get('/android-chrome-192x192.png');
+      expect(res192.status).toBe(200);
+
+      const res512 = await request(app).get('/android-chrome-512x512.png');
+      expect(res512.status).toBe(200);
+
+      const resManifest = await request(app).get('/site.webmanifest');
+      expect(resManifest.status).toBe(200);
+      expect(resManifest.text).toContain('The Vinyl Drop');
+    });
+
     it('should default to grid view on GET /browse and render grid presentation button active', async () => {
       (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
         items: [mockListingCard],
