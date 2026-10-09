@@ -8,13 +8,13 @@
   <div class="listing-detail-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-8); align-items: start;">
     <!-- Left Column: Photo Gallery -->
     <div class="listing-gallery-section">
-      <div class="primary-photo-wrapper" style="border: var(--border-thick); border-radius: var(--radius-md); overflow: hidden; background: var(--color-paper-muted); aspect-ratio: 1/1; position: relative;">
+      <div class="primary-photo-wrapper" style="border: var(--border-thick); border-radius: var(--radius-md); overflow: hidden; background: var(--color-paper-muted); aspect-ratio: 1/1; position: relative; display: flex; align-items: center; justify-content: center;">
         <% if (photos && photos.length > 0) { %>
           <img
             id="main-photo-img"
             src="<%= photos[0].publicUrl %>"
             alt="<%= photos[0].altText || `Album cover artwork for ${release.title} by ${release.artist}` %>"
-            style="width: 100%; height: 100%; object-fit: cover; display: block;"
+            style="width: 100%; height: 100%; object-fit: contain; display: block;"
           />
         <% } else { %>
           <div class="no-photo-fallback" style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--color-ink-muted);">
@@ -34,9 +34,9 @@
               type="button"
               class="thumbnail-btn"
               onclick="document.getElementById('main-photo-img').src='<%= photo.publicUrl %>';"
-              style="width: 64px; height: 64px; border: var(--border-thin, 1px solid var(--color-border)); border-radius: var(--radius-sm); overflow: hidden; padding: 0; cursor: pointer; flex-shrink: 0; background: var(--color-paper-muted);"
+              style="width: 64px; height: 64px; border: var(--border-thin, 1px solid var(--color-border)); border-radius: var(--radius-sm); overflow: hidden; padding: 0; cursor: pointer; flex-shrink: 0; background: var(--color-paper-muted); aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;"
             >
-              <img src="<%= photo.publicUrl %>" alt="Thumbnail <%= index + 1 %>" style="width: 100%; height: 100%; object-fit: cover;">
+              <img src="<%= photo.publicUrl %>" alt="Thumbnail <%= index + 1 %>" style="width: 100%; height: 100%; object-fit: contain;">
             </button>
           <% }); %>
         </div>
@@ -161,5 +161,5 @@
   </div>
 
   <!-- Comment Thread Section -->
-  <%- include('../partials/comment-thread', { listing, seller, comments, currentUser, commentError: typeof commentError !== 'undefined' ? commentError : null, submittedContent: typeof submittedContent !== 'undefined' ? submittedContent : '' }) %>
+  <%- include('../partials/comment-thread', { listing, release, photos, seller, comments, currentUser, commentError: typeof commentError !== 'undefined' ? commentError : null, submittedContent: typeof submittedContent !== 'undefined' ? submittedContent : '' }) %>
 </div>

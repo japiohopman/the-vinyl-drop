@@ -256,6 +256,90 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     });
   });
 
+  describe('Phase 6B — Product Polish UI Enhancements', () => {
+    it('should render mobile menu toggle with accessible ARIA attributes', async () => {
+      (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([]);
+
+      const app = createApp();
+      const res = await request(app).get('/');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('id="nav-toggle-btn"');
+      expect(res.text).toContain('aria-expanded="false"');
+      expect(res.text).toContain('aria-controls="primary-nav-list"');
+      expect(res.text).toContain('aria-label="Toggle navigation menu"');
+    });
+
+    it('should default to grid view on GET /browse and render grid presentation button active', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/browse');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="listing-grid"');
+      expect(res.text).toContain('aria-label="Grid view"');
+      expect(res.text).toContain('aria-pressed="true"');
+    });
+
+    it('should render list view presentation on GET /browse?view=list and preserve query filters', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/browse?q=Coltrane&genre=Jazz&view=list');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="listing-list"');
+      expect(res.text).toContain('listing-card-list-mode');
+      expect(res.text).toContain('aria-label="List view"');
+      expect(res.text).toContain('aria-pressed="true"');
+      expect(res.text).toContain('q=Coltrane');
+    });
+
+    it('should safely fall back to grid view when invalid view parameter is provided', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/browse?view=invalid_mode');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="listing-grid"');
+      expect(res.text).toContain('aria-pressed="true"');
+    });
+
+    it('should render compact record context banner in comment thread on listing detail page', async () => {
+      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
+      (commentService.getListingComments as jest.Mock).mockResolvedValue([mockComment]);
+
+      const app = createApp();
+      const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="comment-thread-context"');
+      expect(res.text).toContain('Discussing drop');
+      expect(res.text).toContain('Blue Train');
+      expect(res.text).toContain('John Coltrane');
+    });
+  });
+
   describe('Listing Detail View & Authorization Boundaries (GET /listings/:id)', () => {
     it('should render public listing detail page for published listings', async () => {
       (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);

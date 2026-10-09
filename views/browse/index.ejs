@@ -1,9 +1,12 @@
 <div class="browse-page-container" style="max-width: 1140px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
   <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
-    <div class="alert alert-error" style="padding: var(--space-4); margin-bottom: var(--space-6); background: #fee2e2; border: 2px solid #ef4444; border-radius: var(--radius-sm); color: #991b1b; font-family: var(--font-body);">
+    <div class="alert alert-error" style="padding: var(--space-4); margin-bottom: var(--space-6); background: var(--color-error-bg); border: var(--border-thick) var(--color-error-border); border-radius: var(--radius-sm); color: var(--color-error-border); font-family: var(--font-body);">
       <%= errorMessage %>
     </div>
   <% } %>
+
+  <% const currentView = (filters && filters.view === 'list') ? 'list' : 'grid'; %>
+  <% const queryBaseParams = `q=${encodeURIComponent(filters.q || '')}&genre=${encodeURIComponent(filters.genre || '')}&condition=${encodeURIComponent(filters.condition || '')}&minPrice=${encodeURIComponent(filters.minPrice || '')}&maxPrice=${encodeURIComponent(filters.maxPrice || '')}&sort=${encodeURIComponent(filters.sort || 'newest')}`; %>
 
   <div class="browse-header" style="margin-bottom: var(--space-6);">
     <h1 style="font-family: var(--font-display); font-size: var(--font-size-3xl); margin-bottom: var(--space-2);">
@@ -16,6 +19,8 @@
 
   <!-- Search & Filter Form -->
   <form action="/browse" method="GET" class="filter-form" style="margin-bottom: var(--space-8); padding: var(--space-6); background: var(--color-paper-muted); border: var(--border-thick); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-4);">
+    <input type="hidden" name="view" value="<%= currentView %>">
+
     <div style="display: flex; gap: var(--space-4); flex-wrap: wrap;">
       <div style="flex: 2; min-width: 240px;">
         <label for="search-q" style="display: block; font-family: var(--font-display); font-size: var(--font-size-xs); text-transform: uppercase; margin-bottom: var(--space-1);">Search Keyword</label>
@@ -108,34 +113,76 @@
       <div style="display: flex; gap: var(--space-3); align-items: center;">
         <button type="submit" class="btn btn-primary">Apply Filters</button>
         <% if (filters.q || filters.genre || filters.condition || filters.minPrice || filters.maxPrice || filters.sort !== 'newest') { %>
-          <a href="/browse" class="btn btn-outline btn-sm">Clear</a>
+          <a href="/browse?view=<%= currentView %>" class="btn btn-outline btn-sm">Clear</a>
         <% } %>
       </div>
     </div>
   </form>
 
-  <!-- Results Count -->
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
+  <!-- Results Count & View Switcher -->
+  <div class="browse-controls-bar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6); flex-wrap: wrap; gap: var(--space-4);">
     <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
       Showing <strong><%= listings.length %></strong> of <strong><%= pagination.totalCount %></strong> drops
     </p>
+
+    <!-- View Mode Switcher -->
+    <div class="view-mode-toggle" role="group" aria-label="Browse presentation mode" style="display: flex; gap: var(--space-1); border: var(--border-thick); border-radius: var(--radius-sm); padding: 2px; background: var(--color-white);">
+      <a
+        href="/browse?<%= queryBaseParams %>&page=<%= pagination.page %>&view=grid"
+        class="view-toggle-btn <%= currentView === 'grid' ? 'active' : '' %>"
+        aria-pressed="<%= currentView === 'grid' %>"
+        aria-label="Grid view"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span>Grid</span>
+      </a>
+      <a
+        href="/browse?<%= queryBaseParams %>&page=<%= pagination.page %>&view=list"
+        class="view-toggle-btn <%= currentView === 'list' ? 'active' : '' %>"
+        aria-pressed="<%= currentView === 'list' %>"
+        aria-label="List view"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <span>List</span>
+      </a>
+    </div>
   </div>
 
-  <!-- Listings Grid or Empty State -->
+  <!-- Listings Grid/List or Empty State -->
   <% if (listings && listings.length > 0) { %>
-    <div class="listing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-8);">
-      <% listings.forEach(function(item) { %>
-        <%- include('../partials/listing-card', { listing: item }) %>
-      <% }); %>
-    </div>
+    <% if (currentView === 'list') { %>
+      <div class="listing-list" style="display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-8);">
+        <% listings.forEach(function(item) { %>
+          <%- include('../partials/listing-card', { listing: item, mode: 'list' }) %>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <div class="listing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-8);">
+        <% listings.forEach(function(item) { %>
+          <%- include('../partials/listing-card', { listing: item, mode: 'grid' }) %>
+        <% }); %>
+      </div>
+    <% } %>
 
     <!-- Pagination Controls -->
     <% if (pagination.totalPages > 1) { %>
       <nav class="pagination-nav" aria-label="Browse pagination" style="display: flex; justify-content: center; align-items: center; gap: var(--space-4); margin-top: var(--space-8);">
-        <% const queryBase = `q=${encodeURIComponent(filters.q || '')}&genre=${encodeURIComponent(filters.genre || '')}&condition=${encodeURIComponent(filters.condition || '')}&minPrice=${encodeURIComponent(filters.minPrice || '')}&maxPrice=${encodeURIComponent(filters.maxPrice || '')}&sort=${encodeURIComponent(filters.sort || 'newest')}`; %>
+        <% const queryWithView = `${queryBaseParams}&view=${currentView}`; %>
 
         <% if (pagination.page > 1) { %>
-          <a href="/browse?<%= queryBase %>&page=<%= pagination.page - 1 %>" class="btn btn-outline btn-sm">
+          <a href="/browse?<%= queryWithView %>&page=<%= pagination.page - 1 %>" class="btn btn-outline btn-sm">
             ← Previous
           </a>
         <% } %>
@@ -145,7 +192,7 @@
         </span>
 
         <% if (pagination.page < pagination.totalPages) { %>
-          <a href="/browse?<%= queryBase %>&page=<%= pagination.page + 1 %>" class="btn btn-outline btn-sm">
+          <a href="/browse?<%= queryWithView %>&page=<%= pagination.page + 1 %>" class="btn btn-outline btn-sm">
             Next →
           </a>
         <% } %>
@@ -159,7 +206,7 @@
       </svg>
       <h3 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">No records match your search</h3>
       <p style="color: var(--color-ink-muted); margin-bottom: var(--space-6);">Try adjusting your search terms, changing filters, or clearing your search.</p>
-      <a href="/browse" class="btn btn-primary">Clear Filters</a>
+      <a href="/browse?view=<%= currentView %>" class="btn btn-primary">Clear Filters</a>
     </div>
   <% } %>
 </div>

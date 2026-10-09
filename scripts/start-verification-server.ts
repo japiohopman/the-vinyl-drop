@@ -22,6 +22,7 @@ async function main() {
     '0001_add_physical_copies.sql',
     '0002_add_release_cover_art.sql',
     '0003_brainy_scarlet_witch.sql',
+    '0004_mighty_spacker_dave.sql',
   ];
 
   for (const file of migrationFiles) {
