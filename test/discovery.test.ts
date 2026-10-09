@@ -257,17 +257,41 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
   });
 
   describe('Phase 6B — Product Polish UI Enhancements', () => {
-    it('should render mobile menu toggle with accessible ARIA attributes', async () => {
+    it('should render mobile menu toggle and icon/manifest links in HTML <head>', async () => {
       (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([]);
 
       const app = createApp();
       const res = await request(app).get('/');
 
       expect(res.status).toBe(200);
+      expect(res.text).toContain('<link rel="icon" type="image/x-icon" href="/favicon.ico">');
+      expect(res.text).toContain('<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">');
+      expect(res.text).toContain('<link rel="manifest" href="/site.webmanifest">');
+
+      // Verify icon links are inside <head> before <body>
+      const headEnd = res.text.indexOf('</head>');
+      const bodyStart = res.text.indexOf('<body>');
+      const faviconIndex = res.text.indexOf('/favicon.ico');
+      expect(headEnd).toBeGreaterThan(-1);
+      expect(faviconIndex).toBeLessThan(headEnd);
+      expect(faviconIndex).toBeLessThan(bodyStart);
+
       expect(res.text).toContain('id="nav-toggle-btn"');
       expect(res.text).toContain('aria-expanded="false"');
       expect(res.text).toContain('aria-controls="primary-nav-list"');
       expect(res.text).toContain('aria-label="Toggle navigation menu"');
+    });
+
+    it('should verify favicon.ico has valid ICO binary magic header bytes', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const icoBuffer = fs.readFileSync(path.join(process.cwd(), 'public/favicon.ico'));
+
+      // Magic header: 0x00 0x00 0x01 0x00
+      expect(icoBuffer[0]).toBe(0);
+      expect(icoBuffer[1]).toBe(0);
+      expect(icoBuffer[2]).toBe(1);
+      expect(icoBuffer[3]).toBe(0);
     });
 
     it('should default to grid view on GET /browse and render grid presentation button active', async () => {
