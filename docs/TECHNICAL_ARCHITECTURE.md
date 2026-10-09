@@ -19,6 +19,7 @@
 | Testing | Jest (v29) & Supertest (v7) | Unit and integration testing |
 | Accessibility Testing | `@axe-core/playwright` / Playwright | Automated accessibility checks run against WCAG 2.1 AA rule sets (`npm run test:a11y`) |
 | Styling & Tokens | Vanilla CSS | Tokens & utilities in `public/css/style.css` |
+| Hosting & Deployment | Render (Web Service) | Defined via `render.yaml`; see [STAGING_BETA_DEPLOYMENT.md](./STAGING_BETA_DEPLOYMENT.md) |
 
 ## Application layers and responsibilities
 

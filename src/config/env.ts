@@ -6,7 +6,7 @@ dotenv.config();
 export const envSchema = z
   .object({
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
-    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    NODE_ENV: z.enum(['development', 'staging', 'production', 'test']).default('development'),
     DATABASE_URL: z.string().optional(),
     DATABASE_DIRECT_URL: z.string().optional(),
     SUPABASE_URL: z.string().optional(),
@@ -15,7 +15,10 @@ export const envSchema = z
     ALLOWED_REDIRECT_URLS: z.string().optional().default('http://localhost:3000'),
   })
   .superRefine((data, ctx) => {
-    const isRuntime = data.NODE_ENV === 'development' || data.NODE_ENV === 'production';
+    const isRuntime =
+      data.NODE_ENV === 'development' ||
+      data.NODE_ENV === 'staging' ||
+      data.NODE_ENV === 'production';
 
     if (isRuntime) {
       if (!data.DATABASE_URL || data.DATABASE_URL.trim() === '') {
