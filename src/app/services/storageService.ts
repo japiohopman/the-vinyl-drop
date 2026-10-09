@@ -65,6 +65,10 @@ export async function deleteListingPhotoFromStorage(storagePath: string): Promis
  * Generates public or signed URL for a photo's storage path.
  */
 export function getPhotoPublicUrl(storagePath: string): string {
+  if (storagePath.startsWith('/') || storagePath.startsWith('assets/')) {
+    return storagePath.startsWith('/') ? storagePath : `/${storagePath}`;
+  }
+
   if (config.NODE_ENV === 'test' && inMemoryStorage.has(storagePath)) {
     return `/mock-storage/${storagePath}`;
   }

@@ -4,7 +4,23 @@
   const userProfile = typeof currentProfile !== 'undefined' ? currentProfile : null;
 %>
 <nav class="site-nav" aria-label="Primary Navigation">
-  <ul class="nav-list">
+  <button
+    type="button"
+    class="nav-toggle"
+    id="nav-toggle-btn"
+    aria-expanded="false"
+    aria-controls="primary-nav-list"
+    aria-label="Toggle navigation menu"
+  >
+    <span class="nav-toggle-icon" aria-hidden="true">
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+      <span class="hamburger-line"></span>
+    </span>
+    <span class="nav-toggle-text">MENU</span>
+  </button>
+
+  <ul id="primary-nav-list" class="nav-list">
     <li class="nav-item">
       <a href="/" class="nav-link<%= activePath === '/' ? ' active' : '' %>"<%- activePath === '/' ? ' aria-current="page"' : '' %>>HOME</a>
     </li>
@@ -23,7 +39,7 @@
     <% if (user) { %>
       <li class="nav-item">
         <form action="/auth/logout" method="POST" class="inline-form" style="display: inline;">
-          <button type="submit" class="nav-link nav-link-button" style="background: none; border: none; font: inherit; cursor: pointer; padding: 0;">LOGOUT</button>
+          <button type="submit" class="nav-link nav-link-button" style="background: none; border: none; font: inherit; cursor: pointer;">LOGOUT</button>
         </form>
       </li>
     <% } else { %>
@@ -33,3 +49,29 @@
     <% } %>
   </ul>
 </nav>
+
+<script>
+  (function() {
+    var toggle = document.getElementById('nav-toggle-btn');
+    var menu = document.getElementById('primary-nav-list');
+    if (!toggle || !menu) return;
+
+    toggle.addEventListener('click', function() {
+      var expanded = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!expanded));
+      if (!expanded) {
+        menu.classList.add('is-open');
+      } else {
+        menu.classList.remove('is-open');
+      }
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+        toggle.setAttribute('aria-expanded', 'false');
+        menu.classList.remove('is-open');
+        toggle.focus();
+      }
+    });
+  })();
+</script>

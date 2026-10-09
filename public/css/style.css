@@ -338,58 +338,118 @@ code, kbd, samp, pre {
   color: var(--color-white);
 }
 
+/* Mobile menu toggle button (hidden on desktop) */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background-color: var(--color-white);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-ink);
+  cursor: pointer;
+  box-shadow: var(--shadow-tactile);
+}
+
+.nav-toggle:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.nav-toggle-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 16px;
+  height: 12px;
+}
+
+.hamburger-line {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background-color: var(--color-ink);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-toggle[aria-expanded="true"] .hamburger-line:nth-child(1) {
+  transform: translateY(5px) rotate(45deg);
+}
+.nav-toggle[aria-expanded="true"] .hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+.nav-toggle[aria-expanded="true"] .hamburger-line:nth-child(3) {
+  transform: translateY(-5px) rotate(-45deg);
+}
+
 /* Mobile sticky navigation adaptation */
 @media (max-width: 767px) {
-  .site-header {
-    border-bottom: var(--border-thick);
-  }
-
-  .header-container {
-    height: auto;
-    flex-direction: column;
-    align-items: stretch;
-    padding-top: var(--space-2);
-    padding-bottom: var(--space-2);
-    gap: var(--space-2);
-  }
-
-  .brand-logo {
-    justify-content: center;
+  .nav-toggle {
+    display: inline-flex;
   }
 
   .site-nav {
-    width: 100%;
-    justify-content: center;
-    border-top: var(--border-thin);
-    padding-top: var(--space-2);
+    position: relative;
   }
 
   .nav-list {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: auto;
+    width: 220px;
+    margin-top: var(--space-2);
+    padding: var(--space-3);
+    background-color: var(--color-white);
+    border: var(--border-thick);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-tactile);
+    z-index: 200;
+    gap: var(--space-2);
+  }
+
+  .nav-list.is-open {
+    display: flex;
+  }
+
+  .nav-item {
     width: 100%;
-    justify-content: space-between;
-    gap: var(--space-1);
   }
 
   .nav-link {
-    font-size: var(--font-size-2xs);
-    padding: var(--space-1) var(--space-1);
-  }
-}
-
-@media (min-width: 430px) and (max-width: 767px) {
-  .nav-link {
-    font-size: var(--font-size-xs);
-    padding: var(--space-1) var(--space-2);
+    width: 100%;
+    justify-content: flex-start;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-sm);
   }
 }
 
 @media (min-width: 768px) {
+  .nav-toggle {
+    display: none !important;
+  }
+
   .site-nav {
     border-top: none;
     padding-top: 0;
   }
 
   .nav-list {
+    display: flex !important;
+    flex-direction: row;
+    position: static;
+    width: auto;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
     gap: var(--space-2);
   }
 
@@ -728,32 +788,37 @@ select.form-control {
   position: relative;
   aspect-ratio: 1 / 1; /* Standard square vinyl sleeve ratio */
   width: 100%;
-  background-color: var(--color-ink);
+  background-color: var(--color-paper-muted, #EBE5D9);
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .listing-card-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
-  transition: transform 0.3s ease;
+  transition: transform 0.2s ease;
 }
 
 .listing-card:hover .listing-card-image {
-  transform: scale(1.03);
+  /* Artwork preserved without scale transform to prevent hover edge clipping */
+  transform: none;
 }
 
 /* Artwork Fallback Placeholder */
-.listing-card-fallback {
+.listing-card-fallback,
+.listing-card-image-fallback {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-deep-green);
-  color: var(--color-paper);
+  background-color: var(--color-paper-muted, #EBE5D9);
+  color: var(--color-ink-muted);
   padding: var(--space-4);
   text-align: center;
 }
@@ -835,6 +900,93 @@ select.form-control {
   font-family: var(--font-mono);
   font-size: var(--font-size-3xs);
   color: var(--color-ink-muted);
+}
+
+/* View switcher button styles */
+.view-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-ink-muted);
+  text-decoration: none;
+  border-radius: var(--radius-xs);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.view-toggle-btn:hover {
+  color: var(--color-ink);
+  background-color: var(--color-surface-hover);
+  text-decoration: none;
+}
+
+.view-toggle-btn.active {
+  background-color: var(--color-ink);
+  color: var(--color-white);
+}
+
+/* Listing card list-mode compact row presentation */
+.listing-card-list-mode {
+  flex-direction: row;
+  align-items: center;
+  height: auto;
+  min-height: 110px;
+}
+
+.listing-card-list-mode .listing-card-media {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  margin: var(--space-2);
+  border-radius: var(--radius-xs);
+}
+
+.listing-card-list-mode .listing-card-body {
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-2);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.listing-card-list-mode .listing-card-header {
+  flex: 2;
+  min-width: 180px;
+}
+
+.listing-card-list-mode .listing-card-meta {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.listing-card-list-mode .listing-card-footer {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  min-width: 110px;
+}
+
+@media (max-width: 600px) {
+  .listing-card-list-mode .listing-card-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  .listing-card-list-mode .listing-card-footer {
+    align-items: flex-start;
+  }
 }
 
 /* --------------------------------------------------------------------------

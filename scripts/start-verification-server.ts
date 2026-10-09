@@ -7,6 +7,7 @@ import { profiles } from '../src/db/schema/profiles';
 import { releases } from '../src/db/schema/releases';
 import { physicalCopies } from '../src/db/schema/physicalCopies';
 import { listings } from '../src/db/schema/listings';
+import { listingPhotos } from '../src/db/schema/listingPhotos';
 import { comments } from '../src/db/schema/comments';
 import { recordListingPublishedEvent, recordCommentCreatedEvent } from '../src/app/services/activityService';
 import { createApp } from '../src/app';
@@ -22,6 +23,7 @@ async function main() {
     '0001_add_physical_copies.sql',
     '0002_add_release_cover_art.sql',
     '0003_brainy_scarlet_witch.sql',
+    '0004_mighty_spacker_dave.sql',
   ];
 
   for (const file of migrationFiles) {
@@ -67,6 +69,14 @@ async function main() {
     currency: 'EUR',
     status: 'published',
   }).returning();
+
+  await db.insert(listingPhotos).values({
+    listingId: listing.id,
+    storagePath: 'assets/test-cover.webp',
+    publicUrl: '/assets/test-cover.webp',
+    displayOrder: 0,
+    altText: 'Album cover artwork for A Love Supreme by John Coltrane',
+  });
 
   await recordListingPublishedEvent(sellerId, listing.id, db as unknown as ReturnType<typeof import('../src/db').getDb>);
 

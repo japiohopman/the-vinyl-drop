@@ -1,6 +1,7 @@
 <%
   /*
     listing-card.ejs - Reusable listing card shell component
+    Supports 'grid' (default) and 'list' layout modes.
   */
   const item = typeof listing === 'object' && listing !== null ? listing : {};
   const listingId = item.id || 'demo';
@@ -17,9 +18,10 @@
   const sellerUsername = item.sellerUsername || 'community_member';
   const sellerLocation = item.sellerLocation || 'Local Drop';
   const targetUrl = item.url || `/listings/${listingId}`;
+  const viewMode = typeof mode === 'string' && mode === 'list' ? 'list' : 'grid';
 %>
 
-<article class="listing-card" data-listing-id="<%= listingId %>">
+<article class="listing-card <%= viewMode === 'list' ? 'listing-card-list-mode' : '' %>" data-listing-id="<%= listingId %>">
   <div class="listing-card-media">
     <a href="<%= targetUrl %>" class="listing-card-image-link" tabindex="-1" aria-hidden="true">
       <% if (imageUrl) { %>
@@ -49,9 +51,11 @@
       <% } %>
     </a>
 
-    <div class="listing-card-badge-container">
-      <%- include('./condition-badge', { mediaCondition, sleeveCondition, size: 'sm' }) %>
-    </div>
+    <% if (viewMode !== 'list') { %>
+      <div class="listing-card-badge-container">
+        <%- include('./condition-badge', { mediaCondition, sleeveCondition, size: 'sm' }) %>
+      </div>
+    <% } %>
   </div>
 
   <div class="listing-card-body">
@@ -66,6 +70,11 @@
       <span class="listing-card-format-year">
         <%= format %><% if (releaseYear) { %> • <%= releaseYear %><% } %>
       </span>
+      <% if (viewMode === 'list') { %>
+        <div class="listing-card-list-condition" style="margin-top: var(--space-1);">
+          <%- include('./condition-badge', { mediaCondition, sleeveCondition, size: 'sm' }) %>
+        </div>
+      <% } %>
       <div class="listing-card-price-badge <%= isTrade ? 'price-trade' : '' %>">
         <%= priceFormatted %>
       </div>

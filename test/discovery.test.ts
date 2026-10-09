@@ -112,7 +112,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     isTrade: true,
     mediaCondition: 'VG+',
     sleeveCondition: 'VG',
-    imageUrl: 'https://example.com/photo.webp',
+    imageUrl: '/assets/test-cover.webp',
     imageAlt: 'Album cover artwork for Blue Train by John Coltrane',
     sellerUsername: mockProfileAlice.username,
     sellerLocation: mockProfileAlice.location,
@@ -128,10 +128,10 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       {
         id: 'photo-1',
         listingId: mockPublishedListing.id,
-        storagePath: 'photos/photo-1.webp',
-        publicUrl: 'https://example.com/photo-1.webp',
+        storagePath: 'assets/test-cover.webp',
+        publicUrl: '/assets/test-cover.webp',
         displayOrder: 0,
-        altText: 'Album cover artwork',
+        altText: 'Album cover artwork for Blue Train by John Coltrane',
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -253,6 +253,140 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
 
       expect(res.status).toBe(200);
       expect(res.text).toContain('Blue Train');
+    });
+  });
+
+  describe('Phase 6B — Product Polish UI Enhancements', () => {
+    it('should render mobile menu toggle and icon/manifest links in HTML <head>', async () => {
+      (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([]);
+
+      const app = createApp();
+      const res = await request(app).get('/');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('<link rel="icon" type="image/x-icon" href="/favicon.ico">');
+      expect(res.text).toContain('<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">');
+      expect(res.text).toContain('<link rel="manifest" href="/site.webmanifest">');
+
+      // Verify icon links are inside <head> before <body>
+      const headEnd = res.text.indexOf('</head>');
+      const bodyStart = res.text.indexOf('<body>');
+      const faviconIndex = res.text.indexOf('/favicon.ico');
+      expect(headEnd).toBeGreaterThan(-1);
+      expect(faviconIndex).toBeLessThan(headEnd);
+      expect(faviconIndex).toBeLessThan(bodyStart);
+
+      expect(res.text).toContain('id="nav-toggle-btn"');
+      expect(res.text).toContain('aria-expanded="false"');
+      expect(res.text).toContain('aria-controls="primary-nav-list"');
+      expect(res.text).toContain('aria-label="Toggle navigation menu"');
+    });
+
+    it('should verify favicon.ico has valid ICO binary magic header bytes', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const icoBuffer = fs.readFileSync(path.join(process.cwd(), 'public/favicon.ico'));
+
+      // Magic header: 0x00 0x00 0x01 0x00
+      expect(icoBuffer[0]).toBe(0);
+      expect(icoBuffer[1]).toBe(0);
+      expect(icoBuffer[2]).toBe(1);
+      expect(icoBuffer[3]).toBe(0);
+    });
+
+    it('should resolve all static favicon, touch icon, PWA icon, and webmanifest URLs with 200 OK', async () => {
+      const app = createApp();
+
+      const resIco = await request(app).get('/favicon.ico');
+      expect(resIco.status).toBe(200);
+
+      const res16 = await request(app).get('/favicon-16x16.png');
+      expect(res16.status).toBe(200);
+
+      const res32 = await request(app).get('/favicon-32x32.png');
+      expect(res32.status).toBe(200);
+
+      const resTouch = await request(app).get('/apple-touch-icon.png');
+      expect(resTouch.status).toBe(200);
+
+      const res192 = await request(app).get('/android-chrome-192x192.png');
+      expect(res192.status).toBe(200);
+
+      const res512 = await request(app).get('/android-chrome-512x512.png');
+      expect(res512.status).toBe(200);
+
+      const resManifest = await request(app).get('/site.webmanifest');
+      expect(resManifest.status).toBe(200);
+      expect(resManifest.text).toContain('The Vinyl Drop');
+    });
+
+    it('should default to grid view on GET /browse and render grid presentation button active', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/browse');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="listing-grid"');
+      expect(res.text).toContain('aria-label="Grid view"');
+      expect(res.text).toContain('aria-current="page"');
+    });
+
+    it('should render list view presentation on GET /browse?view=list and preserve query filters', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/browse?q=Coltrane&genre=Jazz&view=list');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="listing-list"');
+      expect(res.text).toContain('listing-card-list-mode');
+      expect(res.text).toContain('aria-label="List view"');
+      expect(res.text).toContain('aria-current="page"');
+      expect(res.text).toContain('q=Coltrane');
+    });
+
+    it('should safely fall back to grid view when invalid view parameter is provided', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/browse?view=invalid_mode');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="listing-grid"');
+      expect(res.text).toContain('aria-current="page"');
+    });
+
+    it('should render compact record context banner in comment thread on listing detail page', async () => {
+      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
+      (commentService.getListingComments as jest.Mock).mockResolvedValue([mockComment]);
+
+      const app = createApp();
+      const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="comment-thread-context"');
+      expect(res.text).toContain('Discussing drop');
+      expect(res.text).toContain('Blue Train');
+      expect(res.text).toContain('John Coltrane');
     });
   });
 

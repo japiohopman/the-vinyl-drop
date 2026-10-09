@@ -50,6 +50,9 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
     const maxPrice = parseEuroQueryParamToCentsStrict(req.query.maxPrice);
     const page = parsePageQueryParamStrict(req.query.page);
 
+    const viewInput = typeof req.query.view === 'string' ? req.query.view.trim().toLowerCase() : 'grid';
+    const view = viewInput === 'list' ? 'list' : 'grid';
+
     if (minPrice === null || maxPrice === null || page === null) {
       res.status(400);
       renderWithLayout(
@@ -65,6 +68,7 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
             minPrice: minPriceEurStr,
             maxPrice: maxPriceEurStr,
             sort: 'newest',
+            view,
           },
           pagination: {
             totalCount: 0,
@@ -109,6 +113,7 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
           minPrice: minPriceEurStr,
           maxPrice: maxPriceEurStr,
           sort,
+          view,
         },
         pagination: {
           totalCount: results.totalCount,

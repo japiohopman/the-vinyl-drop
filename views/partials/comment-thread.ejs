@@ -1,4 +1,25 @@
 <section id="comments" class="comment-thread-section" style="margin-top: var(--space-12); padding-top: var(--space-8); border-top: var(--border-thick);">
+  <% if (typeof release !== 'undefined' && release) { %>
+    <div class="comment-thread-context" style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); padding: var(--space-3); background: var(--color-paper-muted); border: var(--border-thin); border-radius: var(--radius-sm);">
+      <div style="width: 48px; height: 48px; flex-shrink: 0; background: var(--color-white); border: var(--border-thin); border-radius: var(--radius-xs); overflow: hidden; display: flex; align-items: center; justify-content: center; aspect-ratio: 1/1;">
+        <% if (typeof photos !== 'undefined' && photos && photos.length > 0) { %>
+          <img src="<%= photos[0].publicUrl %>" alt="" style="width: 100%; height: 100%; object-fit: contain;">
+        <% } else { %>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="color: var(--color-ink-muted);">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        <% } %>
+      </div>
+      <div>
+        <div style="font-family: var(--font-mono); font-size: var(--font-size-3xs); text-transform: uppercase; color: var(--color-ink-muted);">Discussing drop</div>
+        <div style="font-family: var(--font-display); font-size: var(--font-size-sm); font-weight: 700; color: var(--color-ink); line-height: 1.2;">
+          <%= release.title %> <span style="font-weight: 400; color: var(--color-rust-accessible);">— <%= release.artist %></span>
+        </div>
+      </div>
+    </div>
+  <% } %>
+
   <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-6);">
     Community Discussion (<%= typeof comments !== 'undefined' && comments ? comments.length : 0 %>)
   </h2>
