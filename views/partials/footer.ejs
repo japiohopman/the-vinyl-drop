@@ -1,8 +1,12 @@
 <footer class="site-footer">
-  <div class="container footer-container">
+  <div class="container footer-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
     <div>
       <span class="footer-tagline">THE VINYL DROP</span> — Local community record marketplace.
     </div>
+    <nav class="footer-links" aria-label="Footer links" style="display: flex; gap: var(--space-4); font-size: var(--font-size-sm); font-family: var(--font-mono);">
+      <a href="/contact" style="color: var(--color-ink-muted); text-decoration: underline;">Contact</a>
+      <a href="/community-rules" style="color: var(--color-ink-muted); text-decoration: underline;">Community Rules</a>
+    </nav>
     <div>
       &copy; <%= new Date().getFullYear() %> The Vinyl Drop. Buy. Trade. Dig.
     </div>

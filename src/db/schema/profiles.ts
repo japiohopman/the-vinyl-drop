@@ -9,6 +9,7 @@ export const profiles = pgTable('profiles', {
   username: text('username').notNull().unique(),
   displayName: text('display_name'),
   avatarUrl: text('avatar_url'),
+  websiteUrl: text('website_url'),
   bio: text('bio'),
   location: text('location'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

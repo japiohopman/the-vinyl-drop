@@ -51,6 +51,8 @@ export async function updateProfile(
     }
   }
 
+  const normalizedWebsiteUrl = input.websiteUrl && input.websiteUrl.trim() !== '' ? input.websiteUrl.trim() : null;
+
   const updated = await updateProfileInRepo(
     targetUserId,
     {
@@ -59,6 +61,7 @@ export async function updateProfile(
       bio: input.bio || null,
       location: input.location || null,
       avatarUrl: input.avatarUrl || null,
+      websiteUrl: normalizedWebsiteUrl,
     },
     dbOverride
   );
