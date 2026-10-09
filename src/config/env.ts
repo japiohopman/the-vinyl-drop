@@ -11,7 +11,7 @@ export const envSchema = z
     DATABASE_DIRECT_URL: z.string().optional(),
     SUPABASE_URL: z.string().optional(),
     SUPABASE_ANON_KEY: z.string().optional(),
-    APP_BASE_URL: z.string().optional().default('http://localhost:3000'),
+    APP_BASE_URL: z.string().optional(),
     ALLOWED_REDIRECT_URLS: z.string().optional().default('http://localhost:3000'),
   })
   .superRefine((data, ctx) => {
@@ -63,11 +63,11 @@ export const envSchema = z
               message: 'APP_BASE_URL must use http:// or https:// scheme.',
             });
           }
-          if (data.NODE_ENV === 'production' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) {
+          if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ['APP_BASE_URL'],
-              message: 'APP_BASE_URL cannot be localhost in production mode.',
+              message: `APP_BASE_URL cannot be localhost in ${data.NODE_ENV} mode.`,
             });
           }
         } catch {
@@ -81,7 +81,9 @@ export const envSchema = z
     }
   });
 
-export type Env = z.infer<typeof envSchema>;
+export type Env = Omit<z.infer<typeof envSchema>, 'APP_BASE_URL'> & {
+  APP_BASE_URL: string;
+};
 
 export function validateEnv(envInput: Record<string, unknown> = process.env): Env {
   const result = envSchema.safeParse(envInput);
@@ -91,8 +93,15 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
     throw new Error('Invalid environment configuration');
   }
 
+  const defaultAppBaseUrl =
+    result.data.APP_BASE_URL ||
+    (result.data.NODE_ENV === 'development' || result.data.NODE_ENV === 'test'
+      ? 'http://localhost:3000'
+      : '');
+
   return {
     ...result.data,
+    APP_BASE_URL: defaultAppBaseUrl,
     SUPABASE_URL: result.data.SUPABASE_URL || 'https://example.supabase.co',
     SUPABASE_ANON_KEY: result.data.SUPABASE_ANON_KEY || 'mock-anon-key',
   };

@@ -35,6 +35,15 @@ describe('Staging Seed Script Safety & Idempotency', () => {
         })
       ).rejects.toThrow(/Explicit staging confirmation required/i);
     });
+
+    it('should refuse execution when DATABASE_URL targets production even if NODE_ENV is staging or development', async () => {
+      await expect(
+        seedStaging({
+          envOverride: { NODE_ENV: 'staging' },
+          dbUrlOverride: 'postgresql://postgres:pass@production-db.supabase.co:5432/postgres',
+        })
+      ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
+    });
   });
 
   describe('Database Idempotency', () => {
@@ -91,7 +100,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       expect(releasesFirst.length).toBe(5);
       expect(physicalCopiesFirst.length).toBe(4);
       expect(listingsFirst.length).toBe(4);
-      expect(photosFirst.length).toBe(4);
+      expect(photosFirst.length).toBe(0); // Un-uploaded photos omitted from seed
       expect(commentsFirst.length).toBe(4);
       expect(eventsFirst.length).toBe(8); // 4 published + 4 commented
 

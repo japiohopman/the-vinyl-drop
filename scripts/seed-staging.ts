@@ -3,7 +3,6 @@ import { profiles } from '../src/db/schema/profiles';
 import { releases } from '../src/db/schema/releases';
 import { physicalCopies } from '../src/db/schema/physicalCopies';
 import { listings } from '../src/db/schema/listings';
-import { listingPhotos } from '../src/db/schema/listingPhotos';
 import { comments } from '../src/db/schema/comments';
 import { activityEvents } from '../src/db/schema/activityEvents';
 import { config } from '../src/config/env';
@@ -12,6 +11,7 @@ import { and, eq } from 'drizzle-orm';
 export interface SeedStagingOptions {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dbOverride?: any;
+  dbUrlOverride?: string;
   envOverride?: Record<string, string>;
 }
 
@@ -19,27 +19,45 @@ export interface SeedStagingOptions {
  * Seed script for Staging/Beta Environment.
  * Populates an isolated Supabase/PostgreSQL staging database with
  * deterministic test profiles, canonical releases, physical copies,
- * published listings, photos, and comment threads.
+ * published listings, and comment threads.
  *
  * Safety Rules:
- * 1. UNCONDITIONALLY refuses NODE_ENV=production. No bypass allowed.
- * 2. Requires NODE_ENV=staging or NODE_ENV=development or ALLOW_STAGING_SEED=true.
- * 3. Idempotent: uses fixed UUIDs and existing-record checks to prevent duplicate rows.
- * 4. Executes inside a database transaction to ensure atomicity.
+ * 1. UNCONDITIONALLY refuses NODE_ENV=production.
+ * 2. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names.
+ * 3. Requires NODE_ENV=staging or NODE_ENV=development or ALLOW_STAGING_SEED=true.
+ * 4. Idempotent: uses fixed UUIDs and existing-record checks to prevent duplicate rows.
+ * 5. Executes inside a database transaction to ensure atomicity.
  */
 export async function seedStaging(options: SeedStagingOptions = {}) {
   const currentEnv = options.envOverride?.NODE_ENV || process.env.NODE_ENV || config.NODE_ENV;
   const allowStagingSeed =
     options.envOverride?.ALLOW_STAGING_SEED || process.env.ALLOW_STAGING_SEED;
+  const targetDbUrl =
+    options.dbUrlOverride ||
+    options.envOverride?.DATABASE_URL ||
+    process.env.DATABASE_URL ||
+    config.DATABASE_URL ||
+    '';
 
-  // Rule 1: Unconditional production refusal
+  // Rule 1: Unconditional production mode refusal
   if (currentEnv === 'production') {
     throw new Error(
       'CRITICAL SAFETY ERROR: Staging seed script is UNCONDITIONALLY REFUSED in production mode.'
     );
   }
 
-  // Rule 2: Explicit staging/dev target confirmation
+  // Rule 2: Unconditional production database target refusal
+  const isProductionDbTarget =
+    Boolean(targetDbUrl) &&
+    /prod|production|vinyldrop-prod/i.test(targetDbUrl);
+
+  if (isProductionDbTarget) {
+    throw new Error(
+      'CRITICAL SAFETY ERROR: Staging seed script is UNCONDITIONALLY REFUSED against production database target.'
+    );
+  }
+
+  // Rule 3: Explicit staging/dev target confirmation
   const isAllowedTarget =
     currentEnv === 'staging' || currentEnv === 'development' || allowStagingSeed === 'true';
 
@@ -58,7 +76,10 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
   const collectorId = '33333333-3333-4333-8333-333333333333';
 
   // Perform all seed insertions inside a single transaction where transaction support is available
-  const runTransaction = typeof db.transaction === 'function' ? db.transaction.bind(db) : async (cb: (tx: typeof db) => Promise<void>) => cb(db);
+  const runTransaction =
+    typeof db.transaction === 'function'
+      ? db.transaction.bind(db)
+      : async (cb: (tx: typeof db) => Promise<void>) => cb(db);
 
   await runTransaction(async (tx: typeof db) => {
     // 1. Seed Profiles
@@ -67,7 +88,6 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         id: sellerId,
         username: 'amsterdam_grooves',
         displayName: 'Amsterdam Grooves',
-        email: 'seller.beta@vinyldrop.local',
         bio: 'Crate digger & physical vinyl collector based in De Pijp, Amsterdam.',
         location: 'Amsterdam, NL',
         websiteUrl: 'https://vinyldrop.local/profiles/amsterdam_grooves',
@@ -76,7 +96,6 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         id: buyerId,
         username: 'spin_doctor',
         displayName: 'Spin Doctor',
-        email: 'buyer.beta@vinyldrop.local',
         bio: 'Jazz & Electronic record enthusiast looking for clean original pressings.',
         location: 'Amsterdam Noord, NL',
         websiteUrl: null,
@@ -85,7 +104,6 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         id: collectorId,
         username: 'wax_collector',
         displayName: 'Wax Collector',
-        email: 'collector.beta@vinyldrop.local',
         bio: 'Rare soul, funk, and afrobeat vinyl curator.',
         location: 'Oost, Amsterdam',
         websiteUrl: null,
@@ -170,7 +188,6 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
       {
         copyId: 'b1111111-1111-4111-8111-111111111111',
         listingId: 'c1111111-1111-4111-8111-111111111111',
-        photoId: 'd1111111-1111-4111-8111-111111111111',
         commentId: 'e1111111-1111-4111-8111-111111111111',
         releaseId: 'a1111111-1111-4111-8111-111111111111',
         ownerId: sellerId,
@@ -179,14 +196,12 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         notes: 'Crisp audio, slight corner wear on outer sleeve.',
         price: 3850, // €38.50
         description: 'Classic modal jazz landmark. Clean pressing, play-tested on Technics SL-1200.',
-        photoKey: 'staging/kind-of-blue.webp',
         commentContent: 'Is this pressing Japanese or US reissue?',
         commentAuthorId: buyerId,
       },
       {
         copyId: 'b2222222-2222-4222-8222-222222222222',
         listingId: 'c2222222-2222-4222-8222-222222222222',
-        photoId: 'd2222222-2222-4222-8222-222222222222',
         commentId: 'e2222222-2222-4222-8222-222222222222',
         releaseId: 'a2222222-2222-4222-8222-222222222222',
         ownerId: sellerId,
@@ -195,14 +210,12 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         notes: 'Includes original lyric insert.',
         price: 2800, // €28.00
         description: 'Original 1977 US pressing with textured jacket and insert. Plays great.',
-        photoKey: 'staging/rumours.webp',
         commentContent: 'Are there any audible pops on Side 2?',
         commentAuthorId: collectorId,
       },
       {
         copyId: 'b3333333-3333-4333-8333-333333333333',
         listingId: 'c3333333-3333-4333-8333-333333333333',
-        photoId: 'd3333333-3333-4333-8333-333333333333',
         commentId: 'e3333333-3333-4333-8333-333333333333',
         releaseId: 'a3333333-3333-4333-8333-333333333333',
         ownerId: sellerId,
@@ -211,14 +224,12 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         notes: 'Sealed inside original poly sleeve.',
         price: 4500, // €45.00
         description: 'Gatefold 180g double LP. Flawless copy.',
-        photoKey: 'staging/ram.webp',
         commentContent: 'Can meet up at Central Station for pickup.',
         commentAuthorId: buyerId,
       },
       {
         copyId: 'b4444444-4444-4444-8444-444444444444',
         listingId: 'c4444444-4444-4444-8444-444444444444',
-        photoId: 'd4444444-4444-4444-8444-444444444444',
         commentId: 'e4444444-4444-4444-8444-444444444444',
         releaseId: 'a4444444-4444-4444-8444-444444444444',
         ownerId: collectorId,
@@ -227,7 +238,6 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         notes: 'Minor seam split on top jacket.',
         price: null, // Trade only
         description: 'Looking to trade for Blue Note or Impulse! jazz titles in VG+ or better.',
-        photoKey: 'staging/back-to-black.webp',
         commentContent: 'Would you be interested in a Coltrane trade?',
         commentAuthorId: sellerId,
       },
@@ -267,22 +277,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         });
       }
 
-      // 3c. Photo (No publicUrl property, matching schema)
-      const existingPhoto = await tx
-        .select()
-        .from(listingPhotos)
-        .where(eq(listingPhotos.id, item.photoId));
-      if (existingPhoto.length === 0) {
-        await tx.insert(listingPhotos).values({
-          id: item.photoId,
-          listingId: item.listingId,
-          storagePath: item.photoKey,
-          displayOrder: 0,
-          altText: `Vinyl cover photo for item #${item.listingId}`,
-        });
-      }
-
-      // 3d. Published Activity Event
+      // 3c. Published Activity Event
       const existingPubEvent = await tx
         .select()
         .from(activityEvents)
@@ -301,7 +296,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         });
       }
 
-      // 3e. Comment
+      // 3d. Comment
       const existingComment = await tx
         .select()
         .from(comments)
@@ -315,7 +310,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         });
       }
 
-      // 3f. Comment Activity Event
+      // 3e. Comment Activity Event
       const existingCmtEvent = await tx
         .select()
         .from(activityEvents)
@@ -345,7 +340,7 @@ async function main() {
   try {
     await seedStaging();
     console.log('=== Staging Seed Completed Successfully! ===');
-    console.log('Pre-seeded staging test profiles:');
+    console.log('Pre-seeded staging test profile fixtures:');
     console.log('  1. Seller:    seller.beta@vinyldrop.local (@amsterdam_grooves)');
     console.log('  2. Buyer:     buyer.beta@vinyldrop.local (@spin_doctor)');
     console.log('  3. Collector: collector.beta@vinyldrop.local (@wax_collector)');

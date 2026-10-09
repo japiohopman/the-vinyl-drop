@@ -19,7 +19,7 @@ To ensure production integrity and prevent accidental data contamination, enviro
 ### Security Invariants
 - **No Shared Persistence:** Staging and Production MUST use separate, completely isolated Supabase projects (database, auth, and object storage).
 - **No Production Secrets:** Production credentials, API keys, and service tokens MUST NEVER be present in local environments or staging deployment configs.
-- **Environment Variable Boundary:** All environment parameters are validated strictly at startup via `src/config/env.ts`. `APP_BASE_URL` is strictly required in staging and production modes and must not fall back to localhost in production.
+- **Environment Variable Boundary:** All environment parameters are validated strictly at startup via `src/config/env.ts`. `APP_BASE_URL` is strictly required in staging and production modes and must not fall back to localhost.
 
 ---
 
@@ -29,11 +29,11 @@ The application is built on a server-rendered Node.js / Express / EJS runtime (`
 
 ### Sourced Provider Comparison Matrix
 
-| Provider | Express / EJS Runtime Compatibility | Free Tier Allocation & Pricing Model | Execution Time & Timeout Limits | Storage & Health Check | Documentation Source |
+| Provider | Express / EJS Runtime Compatibility | Free Tier Allocation & Pricing Model (Current 2026) | Execution Time & Timeout Limits | Storage & Health Check | Documentation Source |
 | --- | --- | --- | --- | --- | --- |
 | **Render** *(Recommended)* | **Native Node Web Service:** Direct execution (`node dist/server.js`). Zero code changes or serverless wrappers required. | **Free Web Service:** 512MB RAM, 0.1 CPU, 750 free instance hours/month. Inactivity sleep after 15m; ~50s cold start delay. | Standard HTTP request timeout (no strict 10s function limit). | Ephemeral disk; Native HTTP `/health` check polling; Free automatic TLS/SSL. | [Render Free Docs](https://render.com/docs/free) & [Blueprint Spec](https://render.com/docs/blueprint-spec) |
-| **Netlify** | **Serverless Adapter Required:** Requires `@netlify/functions` or `serverless-http` wrapper and custom EJS view path bundling. | **Starter Tier:** 100GB bandwidth, 125k function invocations/month. | **60-second synchronous limit:** Configurable max duration up to 60s for synchronous functions. | Ephemeral read-only Lambda disk; Static CDN SSL; No native Express process health check. | [Netlify Functions Config](https://docs.netlify.com/build/functions/configuration/) |
-| **Vercel** | **Serverless Function Adapter:** Requires `api/index.ts` handler and custom `includeFiles` configuration in `vercel.json` for EJS templates. | **Hobby Tier:** 100GB bandwidth, 100k invocations/month. | **60s / 300s Limit:** Up to 60s without Fluid Compute, or up to 300s with Fluid Compute enabled. | Ephemeral read-only Lambda disk; Automatic SSL; No native Express process health check. | [Vercel Functions Limits](https://vercel.com/docs/functions/limitations) |
+| **Netlify** | **Serverless Adapter Required:** Requires `@netlify/functions` or `serverless-http` wrapper and custom EJS view path bundling. | **Personal/Free Tier:** Credit-based pricing model ($0/mo with $7/mo credit allowance; legacy starter plan 100GB/125k invocations noted). | **60-second synchronous limit:** Configurable max duration up to 60s for synchronous functions. | Ephemeral read-only Lambda disk; Static CDN SSL; No native Express process health check. | [Netlify Pricing](https://www.netlify.com/pricing/) & [Functions Billing](https://docs.netlify.com/build/functions/usage-and-billing/) |
+| **Vercel** | **Serverless Function Adapter:** Requires `api/index.ts` handler and custom `includeFiles` configuration in `vercel.json` for EJS templates. | **Hobby Tier:** Personal/non-commercial use; 100GB bandwidth (legacy no-Fluid-Compute table 100k invocations noted). | **60s / 300s Limit:** Up to 60s without Fluid Compute, or up to 300s with Fluid Compute enabled. | Ephemeral read-only Lambda disk; Automatic SSL; No native Express process health check. | [Vercel Plans](https://vercel.com/docs/plans) & [Legacy Pricing](https://vercel.com/docs/functions/usage-and-pricing/legacy-pricing) |
 | **Railway** | **Native Container / Node:** Direct process execution from repository or Dockerfile. | **Free Trial / Credit Plan:** $1/month credit allowance or $5 trial credits; usage-based micro-billing thereafter. | Standard HTTP request timeout. | Ephemeral container disk (optional volumes); Native HTTP `/health` polling. | [Railway Pricing Plans](https://docs.railway.com/pricing/plans) & [Free Trial](https://docs.railway.com/pricing/free-trial) |
 | **Fly.io** | **Native Container / MicroVM:** Direct process execution via `fly.toml` / Dockerfile. | **Pay-as-you-go:** Micro VMs with initial trial credit allowances. | Standard HTTP request timeout. | Persistent volume support; Native health checks. | [Fly.io Pricing](https://fly.io/docs/about/pricing/) |
 
@@ -44,16 +44,17 @@ The application is built on a server-rendered Node.js / Express / EJS runtime (`
 
 ---
 
-## 3. Supabase Staging Isolation & Object Storage
+## 3. Supabase Staging Isolation & OAuth Redirects
 
 Staging infrastructure utilizes a dedicated, standalone Supabase project:
 
 1. **PostgreSQL Database:**
    - Isolated database instance running Drizzle SQL migrations (`npm run db:migrate`).
    - Database connection pooler (Session pooler) configured for Express ORM queries.
-2. **Supabase Auth:**
+2. **Supabase Auth & OAuth Redirect Whitelist:**
    - Isolated Auth user directory (`auth.users`).
-   - Redirect URL whitelist configured in Supabase Dashboard:
+   - `ALLOWED_REDIRECT_URLS` is validated server-side in `src/validators/auth.ts` (`isAllowedRedirectUrl`) to verify post-login/callback targets.
+   - Redirect URL whitelist configured in Supabase Dashboard (Auth -> URL Configuration):
      - `https://the-vinyl-drop-staging.onrender.com/auth/callback`
      - `http://localhost:3000/auth/callback` (for local dev testing)
 3. **Supabase Storage (`listing-photos` bucket):**
@@ -73,7 +74,7 @@ A reproducible, idempotent seed command populates the isolated staging environme
 npm run db:seed:staging
 ```
 
-### Pre-Seeded Beta Test Accounts & Provisioning Procedure
+### Pre-Seeded Beta Profile Fixtures & Provisioning Procedure
 The seed script inserts database profile fixtures with deterministic UUIDs:
 
 | Role | Email | Username | Display Name | Fixed Profile UUID | Location |
@@ -83,15 +84,15 @@ The seed script inserts database profile fixtures with deterministic UUIDs:
 | **Collector** | `collector.beta@vinyldrop.local` | `@wax_collector` | Wax Collector | `33333333-3333-4333-8333-333333333333` | Oost, Amsterdam |
 
 *Note on Supabase Auth Provisioning:*
-To make test profiles login-ready in a live staging environment, corresponding Supabase Auth users must be provisioned in the staging Supabase project using either:
-1. **Supabase Admin Dashboard:** Invite or create user with matching email (`seller.beta@vinyldrop.local`) and copy the generated user UUID into the `profiles.id` table, or:
-2. **Supabase Admin API Script:** Execute `supabase.auth.admin.createUser({ email, password, user_metadata, id })` using the staging `SUPABASE_SERVICE_ROLE_KEY` in a secure server-only administrative task.
+Database profile rows alone do not create matching Supabase Auth login accounts. To enable password authentication for test accounts in a live staging environment:
+1. **Supabase Admin Dashboard:** Create Auth user with matching email (`seller.beta@vinyldrop.local`) and copy the generated user UUID into the `profiles.id` table, or:
+2. **Supabase Admin API Script:** Execute `supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { username } })` using the staging `SUPABASE_SERVICE_ROLE_KEY` in a secure server-only administrative task, updating `profiles.id` to match.
 *Security Requirement:* The Supabase service-role key MUST NEVER be committed to repository code or exposed in client builds.
 
 ### Pre-Seeded Dataset & Storage Fixtures
 - **5 Canonical Catalog Releases:** Miles Davis (*Kind of Blue*), Fleetwood Mac (*Rumours*), Daft Punk (*Random Access Memories*), Amy Winehouse (*Back to Black*), John Coltrane (*A Love Supreme*).
-- **Marketplace Listings:** 4 published listings featuring Goldmine media/sleeve grades (`NM/VG+`, `M/NM`, `VG+/VG`), minor unit integer prices (e.g. €38.50 = `3850`), trade-only listing (`price = null`), photo references, and sample buyer/seller comment threads.
-- **Storage Photo Paths:** Photo entries reference `staging/kind-of-blue.webp`, `staging/rumours.webp`, etc. For full image rendering in live staging, sample image files should be uploaded to the staging `listing-photos` Supabase Storage bucket.
+- **Marketplace Listings:** 4 published listings featuring Goldmine media/sleeve grades (`NM/VG+`, `M/NM`, `VG+/VG`), minor unit integer prices (e.g. €38.50 = `3850`), trade-only listing (`price = null`), and sample buyer/seller comment threads.
+- **Photo Asset Handling:** Seed records omit un-uploaded photo rows so the application does not attempt to render non-existent storage objects. Listing photo assets are uploaded dynamically via the application upload workflow (`POST /listings/new`).
 
 ---
 
@@ -112,4 +113,4 @@ To make test profiles login-ready in a live staging environment, corresponding S
 
 ## 6. Handoff to Product Specialist
 
-For invite-only beta onboarding (#48), hand off the verified staging target URL (`https://the-vinyl-drop-staging.onrender.com`) along with the pre-seeded test account matrix (`seller.beta@vinyldrop.local` / `buyer.beta@vinyldrop.local`).
+For invite-only beta onboarding (#48), hand off the staging target URL (`https://the-vinyl-drop-staging.onrender.com`) along with the pre-seeded test account matrix (`seller.beta@vinyldrop.local` / `buyer.beta@vinyldrop.local`) upon completion of live deployment verification.

@@ -53,12 +53,25 @@ describe('Environment Validation', () => {
     expect(env.DATABASE_URL).toBe('postgresql://postgres:postgres@localhost:5432/test');
   });
 
-  it('should reject staging mode when DATABASE_URL is missing', () => {
+  it('should reject staging mode when DATABASE_URL is missing or APP_BASE_URL is missing', () => {
     expect(() =>
       validateEnv({
         NODE_ENV: 'staging',
         SUPABASE_URL: 'https://staging-project.supabase.co',
         SUPABASE_ANON_KEY: 'some-staging-key',
+      })
+    ).toThrow('Invalid environment configuration');
+    expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
+  it('should reject staging mode when APP_BASE_URL is set to localhost', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'staging',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+        SUPABASE_URL: 'https://staging-project.supabase.co',
+        SUPABASE_ANON_KEY: 'some-staging-key',
+        APP_BASE_URL: 'http://localhost:3000',
       })
     ).toThrow('Invalid environment configuration');
     expect(consoleErrorSpy).toHaveBeenCalled();
