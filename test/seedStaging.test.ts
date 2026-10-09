@@ -40,9 +40,18 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       await expect(
         seedStaging({
           envOverride: { NODE_ENV: 'staging' },
-          dbUrlOverride: 'postgresql://postgres:pass@production-db.supabase.co:5432/postgres',
+          dbUrlOverride: 'postgresql://postgres:pass@vinyldrop-prod.supabase.co:5432/postgres',
         })
       ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
+    });
+
+    it('should refuse execution against an unconfirmed opaque external database URL when ALLOW_STAGING_SEED is not true', async () => {
+      await expect(
+        seedStaging({
+          envOverride: { NODE_ENV: 'development', ALLOW_STAGING_SEED: 'false' },
+          dbUrlOverride: 'postgresql://user:pass@db.internal.cloud:5432/postgres',
+        })
+      ).rejects.toThrow(/Refusing to seed unconfirmed external database target/i);
     });
   });
 
@@ -98,6 +107,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
 
       expect(profilesFirst.length).toBe(3);
       expect(releasesFirst.length).toBe(5);
+      expect(releasesFirst[0].catalogueNumber).toBe('CS 8163'); // Regression check for catalogueNumber property persistence
       expect(physicalCopiesFirst.length).toBe(4);
       expect(listingsFirst.length).toBe(4);
       expect(photosFirst.length).toBe(0); // Un-uploaded photos omitted from seed

@@ -24,7 +24,7 @@ export interface SeedStagingOptions {
  * Safety Rules:
  * 1. UNCONDITIONALLY refuses NODE_ENV=production.
  * 2. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names.
- * 3. Requires NODE_ENV=staging or NODE_ENV=development or ALLOW_STAGING_SEED=true.
+ * 3. Refuses external/opaque database target URLs unless explicitly confirmed via NODE_ENV=staging or ALLOW_STAGING_SEED=true.
  * 4. Idempotent: uses fixed UUIDs and existing-record checks to prevent duplicate rows.
  * 5. Executes inside a database transaction to ensure atomicity.
  */
@@ -57,7 +57,21 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 3: Explicit staging/dev target confirmation
+  // Rule 3: Fail closed for external/opaque database target URLs without explicit confirmation
+  const isLocalTarget =
+    !targetDbUrl ||
+    /localhost|127\.0\.0\.1|pglite/i.test(targetDbUrl);
+
+  const isConfirmedStaging =
+    currentEnv === 'staging' || allowStagingSeed === 'true';
+
+  if (!isLocalTarget && !isConfirmedStaging) {
+    throw new Error(
+      'CRITICAL SAFETY ERROR: Refusing to seed unconfirmed external database target without explicit confirmation (NODE_ENV=staging or ALLOW_STAGING_SEED=true).'
+    );
+  }
+
+  // Rule 4: Explicit target confirmation check
   const isAllowedTarget =
     currentEnv === 'staging' || currentEnv === 'development' || allowStagingSeed === 'true';
 
@@ -117,14 +131,14 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
       }
     }
 
-    // 2. Seed Releases
+    // 2. Seed Releases (using correct catalogueNumber column name matching schema)
     const testReleases = [
       {
         id: 'a1111111-1111-4111-8111-111111111111',
         title: 'Kind of Blue',
         artist: 'Miles Davis',
         label: 'Columbia',
-        catalogNumber: 'CS 8163',
+        catalogueNumber: 'CS 8163',
         releaseYear: 1959,
         format: 'LP, Album, Reissue',
         genre: 'Jazz',
@@ -135,7 +149,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         title: 'Rumours',
         artist: 'Fleetwood Mac',
         label: 'Warner Bros. Records',
-        catalogNumber: 'BSK 3010',
+        catalogueNumber: 'BSK 3010',
         releaseYear: 1977,
         format: 'LP, Album',
         genre: 'Rock',
@@ -146,7 +160,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         title: 'Random Access Memories',
         artist: 'Daft Punk',
         label: 'Columbia',
-        catalogNumber: '88883743781',
+        catalogueNumber: '88883743781',
         releaseYear: 2013,
         format: '2xLP, Album',
         genre: 'Electronic',
@@ -157,7 +171,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         title: 'Back to Black',
         artist: 'Amy Winehouse',
         label: 'Island Records',
-        catalogNumber: '1713041',
+        catalogueNumber: '1713041',
         releaseYear: 2006,
         format: 'LP, Album',
         genre: 'Funk / Soul',
@@ -168,7 +182,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         title: 'A Love Supreme',
         artist: 'John Coltrane',
         label: 'Impulse!',
-        catalogNumber: 'AS-77',
+        catalogueNumber: 'AS-77',
         releaseYear: 1965,
         format: 'LP, Album',
         genre: 'Jazz',
