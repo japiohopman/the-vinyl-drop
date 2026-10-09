@@ -804,7 +804,8 @@ select.form-control {
 }
 
 .listing-card:hover .listing-card-image {
-  transform: scale(1.02);
+  /* Artwork preserved without scale transform to prevent hover edge clipping */
+  transform: none;
 }
 
 /* Artwork Fallback Placeholder */

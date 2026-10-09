@@ -285,7 +285,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.status).toBe(200);
       expect(res.text).toContain('class="listing-grid"');
       expect(res.text).toContain('aria-label="Grid view"');
-      expect(res.text).toContain('aria-pressed="true"');
+      expect(res.text).toContain('aria-current="page"');
     });
 
     it('should render list view presentation on GET /browse?view=list and preserve query filters', async () => {
@@ -304,7 +304,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('class="listing-list"');
       expect(res.text).toContain('listing-card-list-mode');
       expect(res.text).toContain('aria-label="List view"');
-      expect(res.text).toContain('aria-pressed="true"');
+      expect(res.text).toContain('aria-current="page"');
       expect(res.text).toContain('q=Coltrane');
     });
 
@@ -322,7 +322,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
 
       expect(res.status).toBe(200);
       expect(res.text).toContain('class="listing-grid"');
-      expect(res.text).toContain('aria-pressed="true"');
+      expect(res.text).toContain('aria-current="page"');
     });
 
     it('should render compact record context banner in comment thread on listing detail page', async () => {

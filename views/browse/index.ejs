@@ -130,7 +130,7 @@
       <a
         href="/browse?<%= queryBaseParams %>&page=<%= pagination.page %>&view=grid"
         class="view-toggle-btn <%= currentView === 'grid' ? 'active' : '' %>"
-        aria-pressed="<%= currentView === 'grid' %>"
+        <%- currentView === 'grid' ? 'aria-current="page"' : '' %>
         aria-label="Grid view"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -144,7 +144,7 @@
       <a
         href="/browse?<%= queryBaseParams %>&page=<%= pagination.page %>&view=list"
         class="view-toggle-btn <%= currentView === 'list' ? 'active' : '' %>"
-        aria-pressed="<%= currentView === 'list' %>"
+        <%- currentView === 'list' ? 'aria-current="page"' : '' %>
         aria-label="List view"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
