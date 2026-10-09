@@ -45,6 +45,40 @@ export const envSchema = z
         });
       }
     }
+
+    if (data.NODE_ENV === 'staging' || data.NODE_ENV === 'production') {
+      if (!data.APP_BASE_URL || data.APP_BASE_URL.trim() === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['APP_BASE_URL'],
+          message: 'APP_BASE_URL environment variable is required in staging and production modes.',
+        });
+      } else {
+        try {
+          const parsed = new URL(data.APP_BASE_URL);
+          if (!['http:', 'https:'].includes(parsed.protocol)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['APP_BASE_URL'],
+              message: 'APP_BASE_URL must use http:// or https:// scheme.',
+            });
+          }
+          if (data.NODE_ENV === 'production' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['APP_BASE_URL'],
+              message: 'APP_BASE_URL cannot be localhost in production mode.',
+            });
+          }
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['APP_BASE_URL'],
+            message: 'APP_BASE_URL must be a valid absolute URL.',
+          });
+        }
+      }
+    }
   });
 
 export type Env = z.infer<typeof envSchema>;
