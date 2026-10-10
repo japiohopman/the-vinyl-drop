@@ -8,7 +8,7 @@ import { listings } from '../src/db/schema/listings';
 import { comments } from '../src/db/schema/comments';
 import { activityEvents } from '../src/db/schema/activityEvents';
 import { config } from '../src/config/env';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 import * as schema from '../src/db/schema';
 
 export interface SeedStagingOptions {
@@ -16,6 +16,26 @@ export interface SeedStagingOptions {
   dbOverride?: any;
   dbUrlOverride?: string;
   envOverride?: Record<string, string>;
+  accountIds?: {
+    sellerId?: string;
+    buyerId?: string;
+    collectorId?: string;
+  };
+}
+
+/**
+ * Helper to parse the hostname portion from a PostgreSQL connection URL.
+ */
+export function extractDbHostname(dbUrl: string): string {
+  if (!dbUrl) return '';
+  try {
+    const hasScheme = /^[a-z0-9+-.]+:\/\//i.test(dbUrl);
+    const normalized = hasScheme ? dbUrl : `postgresql://${dbUrl}`;
+    const parsed = new URL(normalized);
+    return (parsed.hostname || '').toLowerCase();
+  } catch {
+    return dbUrl.toLowerCase();
+  }
 }
 
 /**
@@ -27,10 +47,11 @@ export interface SeedStagingOptions {
  * Safety Rules:
  * 1. UNCONDITIONALLY refuses NODE_ENV=production.
  * 2. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names.
- * 3. Requires explicit staging target URL patterns (/staging|vinyldrop-staging/i) or local dev engines.
- * 4. Ensures the database client is created from the EXACT target URL validated by the safety checks.
- * 5. Idempotent: uses fixed UUIDs and existing-record checks to prevent duplicate rows.
- * 6. Executes inside a database transaction to ensure atomicity.
+ * 3. Enforces parsed hostname safety checks BEFORE evaluating dbOverride.
+ * 4. Refuses external/unknown database target URLs unless the parsed HOSTNAME explicitly contains "staging" or "vinyldrop-staging".
+ * 5. Ensures the database client is created from the EXACT target URL validated by the safety checks.
+ * 6. Idempotent: uses fixed or configurable UUIDs and existing-record checks to prevent duplicate rows.
+ * 7. Executes inside a database transaction to ensure atomicity.
  */
 export async function seedStaging(options: SeedStagingOptions = {}) {
   const currentEnv = options.envOverride?.NODE_ENV || process.env.NODE_ENV || config.NODE_ENV;
@@ -43,6 +64,8 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     config.DATABASE_URL ||
     '';
 
+  const parsedHost = extractDbHostname(targetDbUrl);
+
   // Rule 1: Unconditional production mode refusal
   if (currentEnv === 'production') {
     throw new Error(
@@ -50,10 +73,10 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 2: Unconditional production database target refusal
+  // Rule 2: Unconditional production database target refusal (checked against host and full URL)
   const isProductionDbTarget =
-    Boolean(targetDbUrl) &&
-    /prod|production|vinyldrop-prod/i.test(targetDbUrl);
+    Boolean(parsedHost && /prod|production|vinyldrop-prod/i.test(parsedHost)) ||
+    Boolean(targetDbUrl && /prod|production|vinyldrop-prod/i.test(targetDbUrl));
 
   if (isProductionDbTarget) {
     throw new Error(
@@ -61,17 +84,18 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 3: Fail closed for external/unknown database target URLs. Must match explicit staging patterns.
-  const isLocalTarget =
-    !targetDbUrl ||
-    /localhost|127\.0\.0\.1|pglite/i.test(targetDbUrl);
+  // Rule 3: Fail closed for external/unknown database target hosts.
+  // The HOSTNAME (not username/password/path) must explicitly contain "staging" or "vinyldrop-staging".
+  const isLocalHost =
+    !parsedHost ||
+    ['localhost', '127.0.0.1', 'pglite'].includes(parsedHost);
 
-  const isExplicitStagingTarget =
-    /staging|vinyldrop-staging/i.test(targetDbUrl);
+  const isExplicitStagingHost =
+    parsedHost.includes('staging') || parsedHost.includes('vinyldrop-staging');
 
-  if (!isLocalTarget && !isExplicitStagingTarget) {
+  if (!isLocalHost && !isExplicitStagingHost) {
     throw new Error(
-      'CRITICAL SAFETY ERROR: Refusing to seed external database target without explicit staging host identifier (must contain "staging" or "vinyldrop-staging").'
+      `CRITICAL SAFETY ERROR: Refusing to seed external database target host "${parsedHost}". Hostname MUST explicitly contain "staging" or "vinyldrop-staging" (e.g. vinyldrop-staging.supabase.co).`
     );
   }
 
@@ -100,10 +124,24 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
   }
 
   try {
-    // Test accounts definitions (matching fixed profile UUIDs)
-    const sellerId = '11111111-1111-4111-8111-111111111111';
-    const buyerId = '22222222-2222-4222-8222-222222222222';
-    const collectorId = '33333333-3333-4333-8333-333333333333';
+    // Configurable or deterministic Auth account IDs for profiles and foreign-key child rows
+    const sellerId =
+      options.accountIds?.sellerId ||
+      options.envOverride?.STAGING_SELLER_ID ||
+      process.env.STAGING_SELLER_ID ||
+      '11111111-1111-4111-8111-111111111111';
+
+    const buyerId =
+      options.accountIds?.buyerId ||
+      options.envOverride?.STAGING_BUYER_ID ||
+      process.env.STAGING_BUYER_ID ||
+      '22222222-2222-4222-8222-222222222222';
+
+    const collectorId =
+      options.accountIds?.collectorId ||
+      options.envOverride?.STAGING_COLLECTOR_ID ||
+      process.env.STAGING_COLLECTOR_ID ||
+      '33333333-3333-4333-8333-333333333333';
 
     // Perform all seed insertions inside a single transaction where transaction support is available
     const runTransaction =
@@ -141,7 +179,10 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
       ];
 
       for (const profile of testProfiles) {
-        const existing = await tx.select().from(profiles).where(eq(profiles.id, profile.id));
+      const existing = await tx
+        .select()
+        .from(profiles)
+        .where(or(eq(profiles.id, profile.id), eq(profiles.username, profile.username)));
         if (existing.length === 0) {
           await tx.insert(profiles).values(profile);
         }

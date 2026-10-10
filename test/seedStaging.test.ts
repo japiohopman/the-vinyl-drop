@@ -2,7 +2,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import * as fs from 'fs';
 import * as path from 'path';
-import { seedStaging } from '../scripts/seed-staging';
+import { seedStaging, extractDbHostname } from '../scripts/seed-staging';
 import { profiles } from '../src/db/schema/profiles';
 import { releases } from '../src/db/schema/releases';
 import { physicalCopies } from '../src/db/schema/physicalCopies';
@@ -11,11 +11,19 @@ import { listingPhotos } from '../src/db/schema/listingPhotos';
 import { comments } from '../src/db/schema/comments';
 import { activityEvents } from '../src/db/schema/activityEvents';
 import * as schema from '../src/db/schema';
+import { eq } from 'drizzle-orm';
 
 describe('Staging Seed Script Safety & Idempotency', () => {
+  describe('Hostname Extraction Unit Tests', () => {
+    it('should correctly extract hostname from connection URLs regardless of password or query params', () => {
+      expect(extractDbHostname('postgresql://user:stagingpass@prod-db.supabase.co:5432/postgres')).toBe('prod-db.supabase.co');
+      expect(extractDbHostname('postgresql://user:pass@vinyldrop-staging.supabase.co:5432/postgres?ssl=true')).toBe('vinyldrop-staging.supabase.co');
+      expect(extractDbHostname('http://localhost:3000')).toBe('localhost');
+    });
+  });
+
   describe('Safety Guards', () => {
     it('should unconditionally refuse production mode even if extra flags are supplied', async () => {
-      // Simulate argv containing --force
       const originalArgv = process.argv;
       process.argv = [...originalArgv, '--force'];
 
@@ -45,13 +53,22 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
     });
 
-    it('should refuse execution against an unknown external host even when NODE_ENV=staging or ALLOW_STAGING_SEED=true', async () => {
+    it('should refuse execution when password contains "staging" but hostname is a production DB', async () => {
+      await expect(
+        seedStaging({
+          envOverride: { NODE_ENV: 'staging' },
+          dbUrlOverride: 'postgresql://user:stagingpass@vinyldrop-prod.supabase.co:5432/postgres',
+        })
+      ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
+    });
+
+    it('should refuse execution against an unknown external host even when ALLOW_STAGING_SEED=true is set', async () => {
       await expect(
         seedStaging({
           envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true' },
           dbUrlOverride: 'postgresql://user:pass@db.some-external-host.com:5432/postgres',
         })
-      ).rejects.toThrow(/Refusing to seed external database target without explicit staging host identifier/i);
+      ).rejects.toThrow(/Refusing to seed external database target host/i);
     });
 
     it('should enforce URL target safety checks even when dbOverride is supplied', async () => {
@@ -65,7 +82,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
     });
   });
 
-  describe('Database Idempotency', () => {
+  describe('Database Idempotency & Configurable Account IDs', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let db: any;
     let pglite: PGlite;
@@ -101,7 +118,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       await pglite.close();
     });
 
-    it('should seed data on first run and remain strictly idempotent on second run', async () => {
+    it('should seed data with default profile UUIDs on first run and remain strictly idempotent on second run', async () => {
       const envOverride = { NODE_ENV: 'staging' };
 
       // First Seed Run
@@ -142,6 +159,60 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       expect(photosSecond.length).toBe(photosFirst.length);
       expect(commentsSecond.length).toBe(commentsFirst.length);
       expect(eventsSecond.length).toBe(eventsFirst.length);
+    });
+
+    it('should support pre-provisioned Auth user IDs via accountIds option', async () => {
+      const customDbPglite = new PGlite();
+      await customDbPglite.waitReady;
+      const customDb = drizzle(customDbPglite, { schema });
+
+      const migrationFiles = [
+        '0000_grey_living_tribunal.sql',
+        '0001_add_physical_copies.sql',
+        '0002_add_release_cover_art.sql',
+        '0003_brainy_scarlet_witch.sql',
+        '0004_mighty_spacker_dave.sql',
+      ];
+
+      for (const file of migrationFiles) {
+        const sqlContent = fs.readFileSync(path.join(__dirname, '../drizzle', file), 'utf8');
+        const statements = sqlContent
+          .split('--> statement-breakpoint')
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        for (const statement of statements) {
+          await customDbPglite.exec(statement);
+        }
+      }
+
+      const customSellerId = '77777777-7777-4777-8777-777777777777';
+      const customBuyerId = '88888888-8888-4888-8888-888888888888';
+      const customCollectorId = '99999999-9999-4999-8999-999999999999';
+
+      await seedStaging({
+        dbOverride: customDb,
+        envOverride: { NODE_ENV: 'staging' },
+        accountIds: {
+          sellerId: customSellerId,
+          buyerId: customBuyerId,
+          collectorId: customCollectorId,
+        },
+      });
+
+      const customSellerProfile = await customDb
+        .select()
+        .from(profiles)
+        .where(eq(profiles.id, customSellerId));
+      expect(customSellerProfile.length).toBe(1);
+
+      const customSellerListings = await customDb
+        .select()
+        .from(listings)
+        .where(eq(listings.sellerId, customSellerId));
+      expect(customSellerListings.length).toBeGreaterThan(0);
+
+      await customDbPglite.close();
     });
   });
 });
