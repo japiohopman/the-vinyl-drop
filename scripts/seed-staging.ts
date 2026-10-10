@@ -75,7 +75,7 @@ export function extractSupabaseProjectRef(dbUrl: string): string | null {
     if (parsed.hostname.toLowerCase().endsWith('.pooler.supabase.com')) {
       if (parsed.username && parsed.username.includes('.')) {
         const userParts = parsed.username.split('.');
-        if (userParts.length >= 2) {
+        if (userParts.length === 2 && userParts[0].trim() && userParts[1].trim()) {
           return userParts[1].toLowerCase();
         }
       }

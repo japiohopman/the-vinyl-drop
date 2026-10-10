@@ -41,6 +41,10 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       ).toBe('vinyldrop-staging');
 
       expect(
+        extractSupabaseProjectRef('postgresql://postgres.vinyldrop-staging.unexpected:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres')
+      ).toBeNull();
+
+      expect(
         extractSupabaseProjectRef('postgresql://user:pass@localhost:5432/test')
       ).toBeNull();
 
@@ -154,6 +158,20 @@ describe('Staging Seed Script Safety & Idempotency', () => {
           dbUrlOverride: 'postgresql://postgres.vinyldrop-staging:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unlisted external host "aws-0-eu-central-1.pooler.supabase.com". Expected exact configured staging host "db.vinyldrop-staging.supabase.co"/i);
+    });
+
+    it('should refuse pooler target if username contains extra dot components', async () => {
+      await expect(
+        seedStaging({
+          envOverride: {
+            NODE_ENV: 'staging',
+            ALLOW_STAGING_SEED: 'true',
+            STAGING_DB_HOST: 'aws-0-eu-central-1.pooler.supabase.com',
+            STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
+          },
+          dbUrlOverride: 'postgresql://postgres.vinyldrop-staging.unexpected:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
+        })
+      ).rejects.toThrow(/Refusing to seed pooler target. Project reference in connection URL \("unknown"\) does not match configured staging project reference "vinyldrop-staging"/i);
     });
 
     it('should successfully pass safety checks for fully configured matching direct and pooler targets', async () => {
