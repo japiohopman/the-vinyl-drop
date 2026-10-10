@@ -18,11 +18,17 @@ describe('Staging Seed Script Safety & Idempotency', () => {
     it('should correctly extract hostname from connection URLs regardless of password or query params', () => {
       expect(extractDbHostname('postgresql://user:stagingpass@prod-db.supabase.co:5432/postgres')).toBe('prod-db.supabase.co');
       expect(extractDbHostname('postgresql://user:pass@vinyldrop-staging.supabase.co:5432/postgres?ssl=true')).toBe('vinyldrop-staging.supabase.co');
-      expect(extractDbHostname('http://localhost:3000')).toBe('localhost');
+      expect(extractDbHostname('postgres://user:pass@vinyldrop-staging.supabase.co:5432/postgres')).toBe('vinyldrop-staging.supabase.co');
+    });
+
+    it('should reject invalid or missing protocol schemes in database connection URLs', () => {
+      expect(() => extractDbHostname('http://localhost:3000')).toThrow(/Invalid database URL protocol scheme "http"/i);
+      expect(() => extractDbHostname('https://vinyldrop-staging.supabase.co')).toThrow(/Invalid database URL protocol scheme "https"/i);
+      expect(() => extractDbHostname('invalid_url_without_host')).toThrow(/Missing protocol scheme in database URL/i);
     });
 
     it('should fail closed for malformed or missing hostname URLs', () => {
-      expect(() => extractDbHostname('invalid_url_without_host')).toThrow(/Invalid or malformed database URL/i);
+      expect(() => extractDbHostname('postgresql:///postgres')).toThrow(/Invalid or malformed database URL/i);
     });
 
     it('should extract Supabase project reference from direct and Session Pooler connection URLs', () => {
@@ -58,9 +64,74 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       await expect(
         seedStaging({
           envOverride: { NODE_ENV: 'unknown_env', ALLOW_STAGING_SEED: 'false' },
-          dbUrlOverride: 'http://localhost:3000',
+          dbUrlOverride: 'postgresql://localhost:5432/postgres',
         })
       ).rejects.toThrow(/Explicit staging confirmation required/i);
+    });
+
+    it('should fail closed when database URL is missing and dbOverride is not provided even in test mode', async () => {
+      await expect(
+        seedStaging({
+          envOverride: { NODE_ENV: 'test' },
+          dbUrlOverride: '',
+        })
+      ).rejects.toThrow(/Missing or unconfigured DATABASE_URL/i);
+    });
+
+    it('should refuse matching project-ref username on an unapproved external host URL', async () => {
+      await expect(
+        seedStaging({
+          envOverride: {
+            NODE_ENV: 'staging',
+            ALLOW_STAGING_SEED: 'true',
+            STAGING_DB_HOST: 'vinyldrop-staging.supabase.co',
+            STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
+          },
+          dbUrlOverride: 'postgresql://postgres.vinyldrop-staging:pass@attacker.invalid:5432/postgres',
+        })
+      ).rejects.toThrow(/Refusing to seed unlisted external host "attacker.invalid"/i);
+    });
+
+    it('should successfully pass safety checks for fully configured matching direct and pooler targets', async () => {
+      // Minimal mock db that implements tx/query boundaries for seed execution
+      const dummyDb = {
+        transaction: async (cb: any) => cb({
+          select: () => ({
+            from: () => ({
+              where: () => Promise.resolve([]),
+            }),
+          }),
+          insert: () => ({
+            values: () => Promise.resolve(),
+          }),
+        }),
+      };
+
+      await expect(
+        seedStaging({
+          dbOverride: dummyDb,
+          envOverride: {
+            NODE_ENV: 'test',
+            ALLOW_STAGING_SEED: 'true',
+            STAGING_DB_HOST: 'vinyldrop-staging.supabase.co',
+            STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
+          },
+          dbUrlOverride: 'postgresql://postgres:pass@vinyldrop-staging.supabase.co:5432/postgres',
+        })
+      ).resolves.not.toThrow();
+
+      await expect(
+        seedStaging({
+          dbOverride: dummyDb,
+          envOverride: {
+            NODE_ENV: 'test',
+            ALLOW_STAGING_SEED: 'true',
+            STAGING_DB_HOST: 'vinyldrop-staging.supabase.co',
+            STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
+          },
+          dbUrlOverride: 'postgresql://postgres.vinyldrop-staging:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
+        })
+      ).resolves.not.toThrow();
     });
 
     it('should refuse execution when DATABASE_URL targets production even if NODE_ENV is staging or development', async () => {
@@ -93,7 +164,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
     it('should refuse execution against Session Pooler with wrong or mismatched project reference', async () => {
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
           dbUrlOverride: 'postgresql://postgres.other-project:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
         })
       ).rejects.toThrow(/Project reference in connection URL \("other-project"\) does not match configured staging project reference "vinyldrop-staging"/i);
@@ -102,14 +173,14 @@ describe('Staging Seed Script Safety & Idempotency', () => {
     it('should refuse execution against an unlisted lookalike host (e.g. staging.example.invalid or vinyldrop-staging.attacker.invalid)', async () => {
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co' },
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
           dbUrlOverride: 'postgresql://user:pass@staging.example.invalid:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unlisted external host/i);
 
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co' },
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
           dbUrlOverride: 'postgresql://user:pass@vinyldrop-staging.attacker.invalid:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unlisted external host/i);
@@ -217,6 +288,52 @@ describe('Staging Seed Script Safety & Idempotency', () => {
           },
         })
       ).rejects.toThrow(/already exists with ID.*conflicts with requested ID/i);
+    });
+
+    it('should reject seeding conflicting usernames when profile ID already exists with a different username', async () => {
+      // Insert a profile where ID matches sellerId but username is different
+      const customDbPglite = new PGlite();
+      await customDbPglite.waitReady;
+      const customDb = drizzle(customDbPglite, { schema });
+
+      const migrationFiles = [
+        '0000_grey_living_tribunal.sql',
+        '0001_add_physical_copies.sql',
+        '0002_add_release_cover_art.sql',
+        '0003_brainy_scarlet_witch.sql',
+        '0004_mighty_spacker_dave.sql',
+      ];
+
+      for (const file of migrationFiles) {
+        const sqlContent = fs.readFileSync(path.join(__dirname, '../drizzle', file), 'utf8');
+        const statements = sqlContent
+          .split('--> statement-breakpoint')
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        for (const statement of statements) {
+          await customDbPglite.exec(statement);
+        }
+      }
+
+      const existingSellerId = '11111111-1111-4111-8111-111111111111';
+      await customDb.insert(profiles).values({
+        id: existingSellerId,
+        username: 'existing_different_username',
+        displayName: 'Different User',
+      });
+
+      await expect(
+        seedStaging({
+          dbOverride: customDb,
+          envOverride: { NODE_ENV: 'test' },
+          accountIds: {
+            sellerId: existingSellerId,
+          },
+        })
+      ).rejects.toThrow(/already exists with username @existing_different_username, which conflicts with requested username @amsterdam_grooves/i);
+
+      await customDbPglite.close();
     });
 
     it('should support pre-provisioned Auth user IDs via accountIds option on a clean database', async () => {

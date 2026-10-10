@@ -23,7 +23,7 @@ services:
       - key: STAGING_DB_HOST
         sync: false
       - key: STAGING_DB_PROJECT_REF
-        value: vinyldrop-staging
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_DIRECT_URL

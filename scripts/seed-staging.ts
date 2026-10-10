@@ -29,15 +29,25 @@ export interface SeedStagingOptions {
  */
 export function extractDbHostname(dbUrl: string): string {
   if (!dbUrl || dbUrl.trim() === '') return '';
-  const normalized = /^[a-z0-9+-.]+:\/\//i.test(dbUrl) ? dbUrl : `postgresql://${dbUrl}`;
+  const match = dbUrl.trim().match(/^([a-z0-9+-.]+):\/\//i);
+  if (!match) {
+    throw new Error(`CRITICAL SAFETY ERROR: Missing protocol scheme in database URL "${dbUrl}".`);
+  }
+  const scheme = match[1].toLowerCase();
+  if (scheme !== 'postgres' && scheme !== 'postgresql') {
+    throw new Error(`CRITICAL SAFETY ERROR: Invalid database URL protocol scheme "${scheme}". Only "postgres://" and "postgresql://" are permitted.`);
+  }
   try {
-    const parsed = new URL(normalized);
+    const parsed = new URL(dbUrl.trim());
     const host = (parsed.hostname || '').toLowerCase();
     if (!host || (!['localhost', '127.0.0.1', 'pglite'].includes(host) && !host.includes('.'))) {
       throw new Error('Invalid host');
     }
     return host;
-  } catch {
+  } catch (err: any) {
+    if (err.message && err.message.startsWith('CRITICAL SAFETY ERROR')) {
+      throw err;
+    }
     throw new Error(`CRITICAL SAFETY ERROR: Invalid or malformed database URL "${dbUrl}".`);
   }
 }
@@ -101,7 +111,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
   const stagingDbHost = (
     options.envOverride?.STAGING_DB_HOST ||
     process.env.STAGING_DB_HOST ||
-    'vinyldrop-staging.supabase.co'
+    ''
   )
     .toLowerCase()
     .trim();
@@ -109,7 +119,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
   const stagingProjectRef = (
     options.envOverride?.STAGING_DB_PROJECT_REF ||
     process.env.STAGING_DB_PROJECT_REF ||
-    'vinyldrop-staging'
+    ''
   )
     .toLowerCase()
     .trim();
@@ -135,8 +145,8 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 3: Fail closed for missing/unconfigured DATABASE_URL outside test execution
-  if (!targetDbUrl && currentEnv !== 'test' && !options.dbOverride) {
+  // Rule 3: Fail closed for missing/unconfigured DATABASE_URL whenever dbOverride is not provided
+  if (!targetDbUrl && !options.dbOverride) {
     throw new Error(
       'CRITICAL SAFETY ERROR: Missing or unconfigured DATABASE_URL. Target database URL must be explicitly provided.'
     );
@@ -166,6 +176,12 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
   const isPoolerHost = parsedHost.endsWith('.pooler.supabase.com') || parsedHost.includes('pooler.supabase.');
 
   if (!isLocalHost) {
+    if (!stagingDbHost || !stagingProjectRef) {
+      throw new Error(
+        'CRITICAL SAFETY ERROR: STAGING_DB_HOST and STAGING_DB_PROJECT_REF environment variables must be explicitly set to allow seeding non-local database targets.'
+      );
+    }
+
     if (isPoolerHost) {
       if (!urlProjectRef || urlProjectRef !== stagingProjectRef) {
         throw new Error(
@@ -174,9 +190,14 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
       }
     } else {
       const isExactStagingHost = Boolean(parsedHost) && parsedHost === stagingDbHost;
-      if (!isExactStagingHost && urlProjectRef !== stagingProjectRef) {
+      if (!isExactStagingHost) {
         throw new Error(
           `CRITICAL SAFETY ERROR: Refusing to seed unlisted external host "${parsedHost}". Expected exact configured staging host "${stagingDbHost}".`
+        );
+      }
+      if (urlProjectRef && urlProjectRef !== stagingProjectRef) {
+        throw new Error(
+          `CRITICAL SAFETY ERROR: Refusing to seed target host. Project reference in connection URL ("${urlProjectRef}") does not match configured staging project reference "${stagingProjectRef}".`
         );
       }
     }
