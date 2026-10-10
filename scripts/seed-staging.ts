@@ -49,12 +49,12 @@ export function extractDbHostname(dbUrl: string): string {
  * published listings, and comment threads.
  *
  * Safety Rules:
- * 1. UNCONDITIONALLY refuses NODE_ENV=production.
- * 2. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names.
- * 3. Enforces parsed hostname allowlist checks BEFORE evaluating dbOverride.
- * 4. Strictly forbids dbOverride when targeting external database connections.
- * 5. Refuses external/unknown database target URLs unless the parsed HOSTNAME EXACTLY matches configured STAGING_DB_HOST.
- * 6. Detects profile account ID conflicts and fails closed.
+ * 1. Restricts dbOverride strictly to test execution (NODE_ENV=test).
+ * 2. UNCONDITIONALLY refuses NODE_ENV=production.
+ * 3. Fails closed for missing/unconfigured DATABASE_URL outside test execution.
+ * 4. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names.
+ * 5. Refuses external/unknown database target URLs unless the parsed HOSTNAME EXACTLY matches explicitly configured STAGING_DB_HOST.
+ * 6. Detects profile account ID & username collisions bi-directionally and fails closed.
  * 7. Idempotent: uses fixed or configurable UUIDs and existing-record checks to prevent duplicate rows.
  * 8. Executes inside a database transaction to ensure atomicity.
  */
@@ -65,7 +65,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
   const stagingDbHost = (
     options.envOverride?.STAGING_DB_HOST ||
     process.env.STAGING_DB_HOST ||
-    'vinyldrop-staging.supabase.co'
+    ''
   )
     .toLowerCase()
     .trim();
@@ -77,19 +77,33 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     config.DATABASE_URL ||
     '';
 
-  let parsedHost = '';
-  if (targetDbUrl) {
-    parsedHost = extractDbHostname(targetDbUrl);
+  // Rule 1: Restrict custom dbOverride strictly to test execution
+  if (options.dbOverride && currentEnv !== 'test') {
+    throw new Error(
+      'CRITICAL SAFETY ERROR: Custom dbOverride is strictly forbidden outside of test execution (NODE_ENV=test).'
+    );
   }
 
-  // Rule 1: Unconditional production mode refusal
+  // Rule 2: Unconditional production mode refusal
   if (currentEnv === 'production') {
     throw new Error(
       'CRITICAL SAFETY ERROR: Staging seed script is UNCONDITIONALLY REFUSED in production mode.'
     );
   }
 
-  // Rule 2: Unconditional production database target refusal (checked against parsed host and full URL)
+  // Rule 3: Fail closed for missing/unconfigured DATABASE_URL outside test execution
+  if (!targetDbUrl && currentEnv !== 'test' && !options.dbOverride) {
+    throw new Error(
+      'CRITICAL SAFETY ERROR: Missing or unconfigured DATABASE_URL. Target database URL must be explicitly provided.'
+    );
+  }
+
+  let parsedHost = '';
+  if (targetDbUrl) {
+    parsedHost = extractDbHostname(targetDbUrl);
+  }
+
+  // Rule 4: Unconditional production database target refusal (checked against parsed host and full URL)
   const isProductionDbTarget =
     Boolean(parsedHost && /prod|production|vinyldrop-prod/i.test(parsedHost)) ||
     Boolean(targetDbUrl && /prod|production|vinyldrop-prod/i.test(targetDbUrl));
@@ -100,12 +114,17 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 3: Fail closed for external/unknown database target hosts using EXACT Host Allowlist Match
+  // Rule 5: Fail closed for external/unknown database target hosts using EXACT Host Allowlist Match
   const isLocalHost = !parsedHost || ['localhost', '127.0.0.1', 'pglite'].includes(parsedHost);
-  const isExactStagingHost = Boolean(parsedHost) && parsedHost === stagingDbHost;
 
   if (!isLocalHost) {
-    if (!isExactStagingHost) {
+    if (!stagingDbHost) {
+      throw new Error(
+        'CRITICAL SAFETY ERROR: STAGING_DB_HOST environment variable must be explicitly configured when targeting external staging databases.'
+      );
+    }
+
+    if (parsedHost !== stagingDbHost) {
       throw new Error(
         `CRITICAL SAFETY ERROR: Refusing to seed unlisted external host "${parsedHost}". Expected exact configured staging host "${stagingDbHost}".`
       );
@@ -116,18 +135,11 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         'CRITICAL SAFETY ERROR: Refusing to seed external database target without explicit staging confirmation (NODE_ENV=staging or ALLOW_STAGING_SEED=true).'
       );
     }
-
-    // Rule 4: Forbid custom dbOverride when targeting external databases
-    if (options.dbOverride) {
-      throw new Error(
-        'CRITICAL SAFETY ERROR: Custom dbOverride is strictly forbidden when targeting external database connections.'
-      );
-    }
   }
 
-  // Rule 5: Explicit target confirmation check
+  // Rule 6: Explicit target confirmation check
   const isAllowedTarget =
-    currentEnv === 'staging' || currentEnv === 'development' || allowStagingSeed === 'true';
+    currentEnv === 'staging' || currentEnv === 'development' || currentEnv === 'test' || allowStagingSeed === 'true';
 
   if (!isAllowedTarget) {
     throw new Error(
@@ -135,7 +147,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 6: Ensure database client matches the verified target URL
+  // Rule 7: Ensure database client matches the verified target URL
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let db: any;
   let sqlClient: ReturnType<typeof postgres> | null = null;
@@ -176,7 +188,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         : async (cb: (tx: typeof db) => Promise<void>) => cb(db);
 
     await runTransaction(async (tx: typeof db) => {
-      // 1. Seed Profiles with Account ID Conflict Detection
+      // 1. Seed Profiles with Bi-directional Account ID & Username Collision Detection
       const testProfiles = [
         {
           id: sellerId,
@@ -214,6 +226,12 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
           .select()
           .from(profiles)
           .where(eq(profiles.username, profile.username));
+
+        if (existingById.length > 0 && existingById[0].username !== profile.username) {
+          throw new Error(
+            `CRITICAL SEED ERROR: Profile ID ${profile.id} already exists with username @${existingById[0].username}, which conflicts with requested username @${profile.username}.`
+          );
+        }
 
         if (existingByUsername.length > 0 && existingByUsername[0].id !== profile.id) {
           throw new Error(

@@ -44,14 +44,34 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       await expect(
         seedStaging({
           envOverride: { NODE_ENV: 'unknown_env', ALLOW_STAGING_SEED: 'false' },
+          dbUrlOverride: 'http://localhost:3000',
         })
       ).rejects.toThrow(/Explicit staging confirmation required/i);
+    });
+
+    it('should fail closed when DATABASE_URL is missing outside NODE_ENV=test', async () => {
+      await expect(
+        seedStaging({
+          envOverride: { NODE_ENV: 'staging', DATABASE_URL: '' },
+          dbUrlOverride: '',
+        })
+      ).rejects.toThrow(/Missing or unconfigured DATABASE_URL/i);
+    });
+
+    it('should strictly forbid custom dbOverride outside NODE_ENV=test', async () => {
+      await expect(
+        seedStaging({
+          dbOverride: {},
+          envOverride: { NODE_ENV: 'staging' },
+          dbUrlOverride: 'http://localhost:3000',
+        })
+      ).rejects.toThrow(/Custom dbOverride is strictly forbidden outside of test execution/i);
     });
 
     it('should refuse execution when DATABASE_URL targets production even if NODE_ENV is staging or development', async () => {
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging' },
+          envOverride: { NODE_ENV: 'staging', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co' },
           dbUrlOverride: 'postgresql://postgres:pass@vinyldrop-prod.supabase.co:5432/postgres',
         })
       ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
@@ -60,7 +80,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
     it('should refuse execution when password contains "staging" but hostname is a production DB', async () => {
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging' },
+          envOverride: { NODE_ENV: 'staging', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co' },
           dbUrlOverride: 'postgresql://user:stagingpass@vinyldrop-prod.supabase.co:5432/postgres',
         })
       ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
@@ -69,27 +89,17 @@ describe('Staging Seed Script Safety & Idempotency', () => {
     it('should refuse execution against an unlisted lookalike host (e.g. staging.example.invalid or vinyldrop-staging.attacker.invalid)', async () => {
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true' },
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co' },
           dbUrlOverride: 'postgresql://user:pass@staging.example.invalid:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unlisted external host/i);
 
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true' },
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co' },
           dbUrlOverride: 'postgresql://user:pass@vinyldrop-staging.attacker.invalid:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unlisted external host/i);
-    });
-
-    it('should strictly forbid dbOverride when an external database URL is supplied', async () => {
-      await expect(
-        seedStaging({
-          dbOverride: {},
-          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true' },
-          dbUrlOverride: 'postgresql://user:pass@vinyldrop-staging.supabase.co:5432/postgres',
-        })
-      ).rejects.toThrow(/Custom dbOverride is strictly forbidden when targeting external database connections/i);
     });
   });
 
@@ -130,7 +140,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
     });
 
     it('should seed data with default profile UUIDs on first run and remain strictly idempotent on second run', async () => {
-      const envOverride = { NODE_ENV: 'staging' };
+      const envOverride = { NODE_ENV: 'test' };
 
       // First Seed Run
       await seedStaging({ dbOverride: db, envOverride });
@@ -178,7 +188,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       await expect(
         seedStaging({
           dbOverride: db,
-          envOverride: { NODE_ENV: 'staging' },
+          envOverride: { NODE_ENV: 'test' },
           accountIds: {
             sellerId: customSellerId,
           },
@@ -217,7 +227,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
 
       await seedStaging({
         dbOverride: customDb,
-        envOverride: { NODE_ENV: 'staging' },
+        envOverride: { NODE_ENV: 'test' },
         accountIds: {
           sellerId: customSellerId,
           buyerId: customBuyerId,
