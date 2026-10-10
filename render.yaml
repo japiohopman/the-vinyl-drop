@@ -20,6 +20,8 @@ services:
         value: https://the-vinyl-drop-staging.onrender.com
       - key: ALLOWED_REDIRECT_URLS
         value: https://the-vinyl-drop-staging.onrender.com
+      - key: STAGING_DB_HOST
+        value: vinyldrop-staging.supabase.co
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_DIRECT_URL

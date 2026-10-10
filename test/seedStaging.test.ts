@@ -66,11 +66,18 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
     });
 
-    it('should refuse execution against an unlisted lookalike host (e.g. staging.example.invalid)', async () => {
+    it('should refuse execution against an unlisted lookalike host (e.g. staging.example.invalid or vinyldrop-staging.attacker.invalid)', async () => {
       await expect(
         seedStaging({
           envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true' },
           dbUrlOverride: 'postgresql://user:pass@staging.example.invalid:5432/postgres',
+        })
+      ).rejects.toThrow(/Refusing to seed unlisted external host/i);
+
+      await expect(
+        seedStaging({
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true' },
+          dbUrlOverride: 'postgresql://user:pass@vinyldrop-staging.attacker.invalid:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unlisted external host/i);
     });

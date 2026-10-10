@@ -53,7 +53,7 @@ export function extractDbHostname(dbUrl: string): string {
  * 2. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names.
  * 3. Enforces parsed hostname allowlist checks BEFORE evaluating dbOverride.
  * 4. Strictly forbids dbOverride when targeting external database connections.
- * 5. Refuses external/unknown database target URLs unless the parsed HOSTNAME explicitly matches configured staging host identity.
+ * 5. Refuses external/unknown database target URLs unless the parsed HOSTNAME EXACTLY matches configured STAGING_DB_HOST.
  * 6. Detects profile account ID conflicts and fails closed.
  * 7. Idempotent: uses fixed or configurable UUIDs and existing-record checks to prevent duplicate rows.
  * 8. Executes inside a database transaction to ensure atomicity.
@@ -62,10 +62,13 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
   const currentEnv = options.envOverride?.NODE_ENV || process.env.NODE_ENV || config.NODE_ENV;
   const allowStagingSeed =
     options.envOverride?.ALLOW_STAGING_SEED || process.env.ALLOW_STAGING_SEED;
-  const stagingDbHost =
+  const stagingDbHost = (
     options.envOverride?.STAGING_DB_HOST ||
     process.env.STAGING_DB_HOST ||
-    'vinyldrop-staging.supabase.co';
+    'vinyldrop-staging.supabase.co'
+  )
+    .toLowerCase()
+    .trim();
 
   const targetDbUrl =
     options.dbUrlOverride ||
@@ -97,20 +100,14 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 3: Fail closed for external/unknown database target hosts using strict hostname allowlist
-  const isLocalHost =
-    !parsedHost || ['localhost', '127.0.0.1', 'pglite'].includes(parsedHost);
-
-  const isAllowedStagingHost =
-    Boolean(parsedHost) &&
-    (parsedHost === stagingDbHost.toLowerCase() ||
-      parsedHost === 'vinyldrop-staging.supabase.co' ||
-      parsedHost.startsWith('vinyldrop-staging.'));
+  // Rule 3: Fail closed for external/unknown database target hosts using EXACT Host Allowlist Match
+  const isLocalHost = !parsedHost || ['localhost', '127.0.0.1', 'pglite'].includes(parsedHost);
+  const isExactStagingHost = Boolean(parsedHost) && parsedHost === stagingDbHost;
 
   if (!isLocalHost) {
-    if (!isAllowedStagingHost) {
+    if (!isExactStagingHost) {
       throw new Error(
-        `CRITICAL SAFETY ERROR: Refusing to seed unlisted external host "${parsedHost}". Expected configured staging host "${stagingDbHost}".`
+        `CRITICAL SAFETY ERROR: Refusing to seed unlisted external host "${parsedHost}". Expected exact configured staging host "${stagingDbHost}".`
       );
     }
 
