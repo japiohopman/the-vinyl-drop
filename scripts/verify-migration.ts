@@ -1,9 +1,11 @@
 import { PGlite } from '@electric-sql/pglite';
+import { drizzle } from 'drizzle-orm/pglite';
+import { migrate } from 'drizzle-orm/pglite/migrator';
 import fs from 'fs';
 import path from 'path';
 
 export async function verifyMigrations(): Promise<void> {
-  console.log('🔄 Verifying database migrations against isolated in-memory PostgreSQL engine...');
+  console.log('🔄 Verifying database migrations via Drizzle migrator against isolated in-memory PostgreSQL engine...');
 
   const pg = new PGlite();
 
@@ -46,12 +48,21 @@ export async function verifyMigrations(): Promise<void> {
     if (!journalTags.includes(sqlFile)) {
       throw new Error(`SQL migration file '${sqlFile}' is not registered in drizzle/meta/_journal.json`);
     }
+    console.log(`  Applying migration file: ${sqlFile}`);
   }
 
-  for (const sqlFile of sqlFiles) {
-    console.log(`  Applying migration file: ${sqlFile}`);
-    const sql = fs.readFileSync(path.join(drizzleDir, sqlFile), 'utf8');
-    await pg.exec(sql);
+  // Run migrations using Drizzle's official migrator
+  const db = drizzle(pg);
+  await migrate(db, { migrationsFolder: drizzleDir });
+
+  // Verify migration history table recorded all migration entries
+  const migrationHistory = await pg.query<{ id: number; hash: string; created_at: number }>(
+    `SELECT * FROM drizzle.__drizzle_migrations ORDER BY id;`
+  );
+  if (migrationHistory.rows.length !== journal.entries.length) {
+    throw new Error(
+      `Drizzle migration history recorded ${migrationHistory.rows.length} entries, expected ${journal.entries.length}`
+    );
   }
 
   // 1. Verify expected public tables (all 8 public tables)
@@ -178,7 +189,7 @@ export async function verifyMigrations(): Promise<void> {
   }
 
   console.log(
-    `✅ Fresh migration verification successful! Verified 8 tables with RLS enabled, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly.`
+    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} recorded migration entries, 8 tables with RLS enabled, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
   );
 }
 

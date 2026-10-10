@@ -1,9 +1,16 @@
 import { PGlite } from '@electric-sql/pglite';
-import fs from 'fs';
+import { drizzle } from 'drizzle-orm/pglite';
+import { migrate } from 'drizzle-orm/pglite/migrator';
 import path from 'path';
 
 interface IdRow {
   id: string;
+}
+
+interface ListingRow {
+  id: string;
+  physical_copy_id: string;
+  seller_id: string;
 }
 
 describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)', () => {
@@ -37,17 +44,10 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
       $$ LANGUAGE plpgsql STABLE;
     `);
 
-    // 1. Apply all database migrations in order
+    // 1. Apply all database migrations via Drizzle migrator
     const drizzleDir = path.join(process.cwd(), 'drizzle');
-    const sqlFiles = fs
-      .readdirSync(drizzleDir)
-      .filter((file) => file.endsWith('.sql'))
-      .sort();
-
-    for (const sqlFile of sqlFiles) {
-      const sql = fs.readFileSync(path.join(drizzleDir, sqlFile), 'utf8');
-      await pg.exec(sql);
-    }
+    const db = drizzle(pg);
+    await migrate(db, { migrationsFolder: drizzleDir });
 
     // 2. Seed initial baseline records as superuser / database owner (bypassing RLS)
     await pg.exec(`
@@ -195,6 +195,28 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
       await expect(
         pg.query(`INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${forgedListingId}', '${copyAId}', '${userB}', 'published');`)
       ).rejects.toThrow();
+    });
+
+    it('should prevent User B from updating their listing to reassign physical_copy_id to User A physical copy', async () => {
+      const userBListingId = '96666666-6666-4666-8666-666666666666';
+
+      // 1. User B creates a listing for their own physical copy (copyBId)
+      await pg.query(
+        `INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${userBListingId}', '${copyBId}', '${userB}', 'published');`
+      );
+
+      // 2. User B attempts to update physical_copy_id to User A's physical copy (copyAId)
+      await expect(
+        pg.query(`UPDATE listings SET physical_copy_id = '${copyAId}' WHERE id = '${userBListingId}';`)
+      ).rejects.toThrow();
+
+      // 3. Verify physical_copy_id remains copyBId
+      const listingRes = await pg.query<ListingRow>(
+        `SELECT id, physical_copy_id, seller_id FROM listings WHERE id = '${userBListingId}';`
+      );
+      expect(listingRes.rows.length).toBe(1);
+      expect(listingRes.rows[0].physical_copy_id).toBe(copyBId);
+      expect(listingRes.rows[0].seller_id).toBe(userB);
     });
 
     it('should prevent User B from forging activity events via Data API', async () => {
