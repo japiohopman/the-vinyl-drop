@@ -63,14 +63,11 @@ export function extractSupabaseProjectRef(dbUrl: string): string | null {
   try {
     const parsed = new URL(normalized);
 
-    // 1. Check direct connection hostname: db.[project-ref].supabase.co or [project-ref].supabase.co
+    // 1. Check direct connection hostname strictly matching: db.[project-ref].supabase.co
     if (parsed.hostname.toLowerCase().endsWith('.supabase.co')) {
       const parts = parsed.hostname.toLowerCase().split('.');
-      if (parts.length >= 3 && parts[0] === 'db') {
+      if (parts.length === 4 && parts[0] === 'db' && parts[2] === 'supabase' && parts[3] === 'co') {
         return parts[1];
-      }
-      if (parts.length >= 3) {
-        return parts[0];
       }
     }
 

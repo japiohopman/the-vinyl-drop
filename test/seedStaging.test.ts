@@ -31,7 +31,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       expect(() => extractDbHostname('postgresql:///postgres')).toThrow(/Invalid or malformed database URL/i);
     });
 
-    it('should extract Supabase project reference from direct and Session Pooler connection URLs', () => {
+    it('should extract Supabase project reference strictly from db.[project-ref].supabase.co and Session Pooler connection URLs', () => {
       expect(
         extractSupabaseProjectRef('postgresql://postgres:pass@db.vinyldrop-staging.supabase.co:5432/postgres')
       ).toBe('vinyldrop-staging');
@@ -42,6 +42,14 @@ describe('Staging Seed Script Safety & Idempotency', () => {
 
       expect(
         extractSupabaseProjectRef('postgresql://user:pass@localhost:5432/test')
+      ).toBeNull();
+
+      expect(
+        extractSupabaseProjectRef('postgresql://postgres:pass@vinyldrop-staging.supabase.co:5432/postgres')
+      ).toBeNull();
+
+      expect(
+        extractSupabaseProjectRef('postgresql://postgres:pass@app.vinyldrop-staging.supabase.co:5432/postgres')
       ).toBeNull();
     });
   });
@@ -141,10 +149,10 @@ describe('Staging Seed Script Safety & Idempotency', () => {
           envOverride: {
             NODE_ENV: 'test',
             ALLOW_STAGING_SEED: 'true',
-            STAGING_DB_HOST: 'vinyldrop-staging.supabase.co',
+            STAGING_DB_HOST: 'db.vinyldrop-staging.supabase.co',
             STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
           },
-          dbUrlOverride: 'postgresql://postgres:pass@vinyldrop-staging.supabase.co:5432/postgres',
+          dbUrlOverride: 'postgresql://postgres:pass@db.vinyldrop-staging.supabase.co:5432/postgres',
         })
       ).resolves.not.toThrow();
 
