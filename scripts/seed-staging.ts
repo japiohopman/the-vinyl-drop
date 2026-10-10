@@ -173,12 +173,19 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
 
   // Rule 5: Fail closed for external/unknown database target hosts using EXACT Host/Project Allowlist Match
   const isLocalHost = !parsedHost || ['localhost', '127.0.0.1', 'pglite'].includes(parsedHost);
-  const isPoolerHost = parsedHost.endsWith('.pooler.supabase.com') || parsedHost.includes('pooler.supabase.');
+  const isPoolerHost = parsedHost.endsWith('.pooler.supabase.com');
 
   if (!isLocalHost) {
     if (!stagingDbHost || !stagingProjectRef) {
       throw new Error(
         'CRITICAL SAFETY ERROR: STAGING_DB_HOST and STAGING_DB_PROJECT_REF environment variables must be explicitly set to allow seeding non-local database targets.'
+      );
+    }
+
+    // Require EXACT hostname match against STAGING_DB_HOST for ALL non-local targets
+    if (parsedHost !== stagingDbHost) {
+      throw new Error(
+        `CRITICAL SAFETY ERROR: Refusing to seed unlisted external host "${parsedHost}". Expected exact configured staging host "${stagingDbHost}".`
       );
     }
 
@@ -189,12 +196,6 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         );
       }
     } else {
-      const isExactStagingHost = Boolean(parsedHost) && parsedHost === stagingDbHost;
-      if (!isExactStagingHost) {
-        throw new Error(
-          `CRITICAL SAFETY ERROR: Refusing to seed unlisted external host "${parsedHost}". Expected exact configured staging host "${stagingDbHost}".`
-        );
-      }
       if (urlProjectRef && urlProjectRef !== stagingProjectRef) {
         throw new Error(
           `CRITICAL SAFETY ERROR: Refusing to seed target host. Project reference in connection URL ("${urlProjectRef}") does not match configured staging project reference "${stagingProjectRef}".`

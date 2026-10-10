@@ -20,7 +20,7 @@ To ensure production integrity and prevent accidental data contamination, enviro
 - **No Shared Persistence:** Staging and Production MUST use separate, completely isolated Supabase projects (database, auth, and object storage).
 - **No Production Secrets:** Production credentials, API keys, and service tokens MUST NEVER be present in local environments or staging deployment configs.
 - **Environment Variable Boundary:** All environment parameters are validated strictly at startup via `src/config/env.ts`. `APP_BASE_URL` and `ALLOWED_REDIRECT_URLS` are strictly required in staging and production modes and must not fall back to localhost.
-- **Project Identity Verification:** Staging database seeding verifies project identity via `STAGING_DB_HOST` and `STAGING_DB_PROJECT_REF` (e.g. `vinyldrop-staging`), validating both direct hostnames (`db.vinyldrop-staging.supabase.co`) and Session Pooler usernames (`postgres.vinyldrop-staging` on shared `pooler.supabase.com` hosts).
+- **Project Identity Verification:** Staging database seeding strictly verifies project identity via `STAGING_DB_HOST` and `STAGING_DB_PROJECT_REF`. For direct connection hosts (`db.[project-ref].supabase.co`), `STAGING_DB_HOST` must match the exact database hostname and `STAGING_DB_PROJECT_REF` must match the project reference. For Supabase Session Pooler connections (`*.pooler.supabase.com`), `STAGING_DB_HOST` must match the exact pooler hostname (e.g. `aws-0-eu-central-1.pooler.supabase.com`) and `STAGING_DB_PROJECT_REF` must match the connection username project reference (`postgres.[project-ref]`).
 
 ---
 
@@ -104,7 +104,7 @@ Database profile rows alone do not populate Supabase Auth password credentials. 
 
 - [ ] **1. Isolated Database Migration:** Run `npm run db:migrate` against the staging `DATABASE_URL` to verify all PostgreSQL tables, enums, foreign keys, and indexes are created cleanly.
 - [ ] **2. Staging Seed Data:** Execute `npm run db:seed:staging` to populate test accounts, catalog releases, listings, and comment threads.
-- [ ] **3. Environment Variable Audit:** Verify that `NODE_ENV=staging`, `APP_BASE_URL`, `ALLOWED_REDIRECT_URLS`, `DATABASE_URL`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` are populated in the Render Dashboard.
+- [ ] **3. Environment Variable Audit:** Verify that `NODE_ENV=staging`, `APP_BASE_URL`, `ALLOWED_REDIRECT_URLS`, `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STAGING_DB_HOST`, and `STAGING_DB_PROJECT_REF` are populated in the Render Dashboard. Note: For Session Pooler connections, `STAGING_DB_HOST` must match the exact pooler hostname (e.g. `aws-0-eu-central-1.pooler.supabase.com`) and `STAGING_DB_PROJECT_REF` must match the connection username project reference.
 - [ ] **4. Health Check Endpoint:** Confirm that `GET https://the-vinyl-drop-staging.onrender.com/health` returns `200 OK` with status `ok` and valid JSON timestamp.
 - [ ] **5. HTTPS & Certificate Verification:** Confirm browser renders valid TLS certificate with HTTPS connection lock.
 - [ ] **6. Authentication & Callback Flow:** Test login, registration, and logout using test accounts. Verify callback redirect returns safely to `APP_BASE_URL`.

@@ -92,6 +92,34 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       ).rejects.toThrow(/Refusing to seed unlisted external host "attacker.invalid"/i);
     });
 
+    it('should refuse spoofed pooler host containing "pooler.supabase." substring', async () => {
+      await expect(
+        seedStaging({
+          envOverride: {
+            NODE_ENV: 'staging',
+            ALLOW_STAGING_SEED: 'true',
+            STAGING_DB_HOST: 'aws-0-eu-central-1.pooler.supabase.com',
+            STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
+          },
+          dbUrlOverride: 'postgresql://postgres.vinyldrop-staging:pass@aws-0-eu-central-1.pooler.supabase.attacker.invalid:5432/postgres',
+        })
+      ).rejects.toThrow(/Refusing to seed unlisted external host "aws-0-eu-central-1.pooler.supabase.attacker.invalid"/i);
+    });
+
+    it('should refuse pooler target if connection URL hostname differs from configured STAGING_DB_HOST', async () => {
+      await expect(
+        seedStaging({
+          envOverride: {
+            NODE_ENV: 'staging',
+            ALLOW_STAGING_SEED: 'true',
+            STAGING_DB_HOST: 'vinyldrop-staging.supabase.co',
+            STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
+          },
+          dbUrlOverride: 'postgresql://postgres.vinyldrop-staging:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
+        })
+      ).rejects.toThrow(/Refusing to seed unlisted external host "aws-0-eu-central-1.pooler.supabase.com". Expected exact configured staging host "vinyldrop-staging.supabase.co"/i);
+    });
+
     it('should successfully pass safety checks for fully configured matching direct and pooler targets', async () => {
       // Minimal mock db that implements tx/query boundaries for seed execution
       const dummyDb = {
@@ -126,7 +154,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
           envOverride: {
             NODE_ENV: 'test',
             ALLOW_STAGING_SEED: 'true',
-            STAGING_DB_HOST: 'vinyldrop-staging.supabase.co',
+            STAGING_DB_HOST: 'aws-0-eu-central-1.pooler.supabase.com',
             STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
           },
           dbUrlOverride: 'postgresql://postgres.vinyldrop-staging:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
@@ -164,7 +192,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
     it('should refuse execution against Session Pooler with wrong or mismatched project reference', async () => {
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'aws-0-eu-central-1.pooler.supabase.com', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
           dbUrlOverride: 'postgresql://postgres.other-project:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
         })
       ).rejects.toThrow(/Project reference in connection URL \("other-project"\) does not match configured staging project reference "vinyldrop-staging"/i);
