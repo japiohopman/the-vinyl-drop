@@ -6,11 +6,32 @@ export async function verifyMigrations(): Promise<void> {
   console.log('🔄 Verifying database migrations against isolated in-memory PostgreSQL engine...');
 
   const pg = new PGlite();
+
+  // Bootstrap auth schema and auth.uid() stub for local/PGlite migration verification
+  await pg.exec(`
+    CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+    BEGIN
+      RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      RETURN NULL;
+    END;
+    $$ LANGUAGE plpgsql STABLE;
+  `);
+
   const drizzleDir = path.join(process.cwd(), 'drizzle');
 
   if (!fs.existsSync(drizzleDir)) {
     throw new Error(`Drizzle migration directory not found at ${drizzleDir}`);
   }
+
+  // 0. Verify Drizzle journal consistency
+  const journalPath = path.join(drizzleDir, 'meta', '_journal.json');
+  if (!fs.existsSync(journalPath)) {
+    throw new Error(`Drizzle journal file missing at ${journalPath}`);
+  }
+  const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8'));
+  const journalTags = journal.entries.map((e: { tag: string }) => `${e.tag}.sql`);
 
   const sqlFiles = fs
     .readdirSync(drizzleDir)
@@ -22,17 +43,32 @@ export async function verifyMigrations(): Promise<void> {
   }
 
   for (const sqlFile of sqlFiles) {
+    if (!journalTags.includes(sqlFile)) {
+      throw new Error(`SQL migration file '${sqlFile}' is not registered in drizzle/meta/_journal.json`);
+    }
+  }
+
+  for (const sqlFile of sqlFiles) {
     console.log(`  Applying migration file: ${sqlFile}`);
     const sql = fs.readFileSync(path.join(drizzleDir, sqlFile), 'utf8');
     await pg.exec(sql);
   }
 
-  // 1. Verify expected public tables
+  // 1. Verify expected public tables (all 8 public tables)
   const tablesRes = await pg.query<{ table_name: string }>(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;`
   );
   const tableNames = tablesRes.rows.map((r) => r.table_name);
-  const expectedTables = ['comments', 'listing_photos', 'listings', 'physical_copies', 'profiles', 'releases'];
+  const expectedTables = [
+    'activity_events',
+    'comments',
+    'favorites',
+    'listing_photos',
+    'listings',
+    'physical_copies',
+    'profiles',
+    'releases',
+  ];
   for (const expectedTable of expectedTables) {
     if (!tableNames.includes(expectedTable)) {
       throw new Error(`Missing expected table '${expectedTable}' after migration execution`);
@@ -64,6 +100,11 @@ export async function verifyMigrations(): Promise<void> {
     'physical_copies_owner_id_profiles_id_fk',
     'listings_physical_copy_id_physical_copies_id_fk',
     'listings_seller_id_profiles_id_fk',
+    'activity_events_actor_id_profiles_id_fk',
+    'activity_events_listing_id_listings_id_fk',
+    'activity_events_comment_id_comments_id_fk',
+    'favorites_user_id_profiles_id_fk',
+    'favorites_listing_id_listings_id_fk',
   ];
   for (const expectedFk of expectedFks) {
     if (!fkNames.includes(expectedFk)) {
@@ -104,6 +145,13 @@ export async function verifyMigrations(): Promise<void> {
     'releases_label_idx',
     'releases_cat_num_idx',
     'releases_year_idx',
+    'activity_events_actor_idx',
+    'activity_events_listing_idx',
+    'activity_events_type_idx',
+    'activity_events_created_at_idx',
+    'favorites_user_listing_idx',
+    'favorites_user_idx',
+    'favorites_listing_idx',
   ];
   for (const expectedIndex of expectedIndexes) {
     if (!indexNames.includes(expectedIndex)) {
@@ -111,8 +159,26 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
+  // 6. Verify Row Level Security (RLS) is enabled on all 8 public tables
+  const rlsRes = await pg.query<{ relname: string; relrowsecurity: boolean }>(
+    `SELECT c.relname, c.relrowsecurity
+     FROM pg_class c
+     JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relkind = 'r'
+     ORDER BY c.relname;`
+  );
+  const rlsMap = new Map(rlsRes.rows.map((r) => [r.relname, r.relrowsecurity]));
+  for (const expectedTable of expectedTables) {
+    if (!rlsMap.has(expectedTable)) {
+      throw new Error(`Missing expected table '${expectedTable}' in RLS check`);
+    }
+    if (!rlsMap.get(expectedTable)) {
+      throw new Error(`Row Level Security (RLS) is NOT enabled on table '${expectedTable}'`);
+    }
+  }
+
   console.log(
-    `✅ Fresh migration verification successful! Verified 6 tables, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly.`
+    `✅ Fresh migration verification successful! Verified 8 tables with RLS enabled, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly.`
   );
 }
 
@@ -120,6 +186,19 @@ export async function verifyMigrationUpgrade(): Promise<void> {
   console.log('🔄 Verifying migration upgrade path from legacy 0000 schema to 0001 canonical schema...');
 
   const pg = new PGlite();
+
+  // Bootstrap auth schema and auth.uid() stub
+  await pg.exec(`
+    CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+    BEGIN
+      RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      RETURN NULL;
+    END;
+    $$ LANGUAGE plpgsql STABLE;
+  `);
+
   const drizzleDir = path.join(process.cwd(), 'drizzle');
 
   // 1. Apply legacy 0000 migration

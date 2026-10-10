@@ -11,6 +11,19 @@ async function main() {
   console.log('🔄 Running discovery semantics verification against isolated PGlite engine...');
 
   const pglite = new PGlite();
+
+  // Bootstrap auth schema and auth.uid() stub for PGlite execution
+  await pglite.exec(`
+    CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+    BEGIN
+      RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      RETURN NULL;
+    END;
+    $$ LANGUAGE plpgsql STABLE;
+  `);
+
   const db = drizzle(pglite, { schema });
 
   const drizzleDir = path.join(process.cwd(), 'drizzle');

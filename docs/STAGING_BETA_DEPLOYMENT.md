@@ -1,6 +1,6 @@
 # Staging & Beta Infrastructure Strategy
 
-This document specifies the environment taxonomy, hosting provider evaluation, isolated Supabase configuration, seeding instructions, and minimum pre-launch deployment checklist for **The Vinyl Drop**.
+This document specifies the environment taxonomy, hosting provider evaluation, isolated Supabase configuration, security prerequisites (Row Level Security & least-privilege privileges), seeding instructions, human verification runbooks, and minimum pre-launch deployment checklist for **The Vinyl Drop**.
 
 *Verification Date: October 2026*
 
@@ -45,13 +45,13 @@ The application is built on a server-rendered Node.js / Express / EJS runtime (`
 
 ---
 
-## 3. Supabase Staging Isolation & OAuth Redirects
+## 3. Supabase Staging Isolation, OAuth Redirects & Row Level Security
 
 Staging infrastructure utilizes a dedicated, standalone Supabase project:
 
 1. **PostgreSQL Database:**
    - Isolated database instance running Drizzle SQL migrations (`npm run db:migrate`).
-   - Database connection pooler (Session pooler) configured for Express ORM queries.
+   - Database connection pooler (Session pooler) configured for Express ORM queries (`DATABASE_URL`).
 2. **Supabase Auth & OAuth Redirect Whitelist:**
    - Isolated Auth user directory (`auth.users`).
    - `ALLOWED_REDIRECT_URLS` is validated server-side in `src/validators/auth.ts` (`isAllowedRedirectUrl`) to verify post-login/callback targets. In `render.yaml`, `ALLOWED_REDIRECT_URLS` is set to `https://the-vinyl-drop-staging.onrender.com`.
@@ -62,6 +62,80 @@ Staging infrastructure utilizes a dedicated, standalone Supabase project:
    - Dedicated `listing-photos` bucket created in staging Supabase project.
    - Public read permissions enabled for serving album artwork WebP photos.
    - Server-side streaming via `@fastify/busboy` and `sharp` processes uploaded images directly to Supabase Storage, keeping media completely off the local filesystem.
+
+### 3.1 Least-Privilege Data API Access Matrix
+
+The application's backend server uses Express/EJS and Drizzle ORM connecting via direct PostgreSQL / Session Pooler connection (`DATABASE_URL`), operating as table superuser/owner (bypassing RLS). Because Supabase exposes PostgreSQL public schema tables through the PostgREST Data API (accessible via `SUPABASE_ANON_KEY` or client JWTs), **Row Level Security (RLS) and explicit role privileges are enforced** on all eight public tables via `drizzle/0005_enforce_least_privilege_rls.sql`:
+
+| Table Name | SELECT Access Policy | INSERT Access Policy | UPDATE Access Policy | DELETE Access Policy | Granted Roles |
+| --- | --- | --- | --- | --- | --- |
+| **`profiles`** | **Public:** `true` (Anyone can view profiles) | **Owner:** `auth.uid() = id` | **Owner:** `auth.uid() = id` | **Owner:** `auth.uid() = id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
+| **`releases`** | **Public:** `true` (Catalogue is public) | **Denied for Data API:** Server-managed only | **Denied for Data API:** Server-managed only | **Denied:** Default deny | `anon` (SELECT), `authenticated` (SELECT) |
+| **`physical_copies`** | **Public / Owner:** `owner_id = auth.uid() OR EXISTS (SELECT 1 FROM listings WHERE physical_copy_id = physical_copies.id AND status = 'published')` | **Owner:** `auth.uid() = owner_id` | **Owner:** `auth.uid() = owner_id` | **Owner:** `auth.uid() = owner_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
+| **`listings`** | **Public / Seller:** `status = 'published' OR seller_id = auth.uid()` | **Seller & Copy Owner:** `auth.uid() = seller_id AND EXISTS (SELECT 1 FROM physical_copies WHERE id = listings.physical_copy_id AND owner_id = auth.uid())` | **Seller & Copy Owner:** `auth.uid() = seller_id AND EXISTS (SELECT 1 FROM physical_copies WHERE id = listings.physical_copy_id AND owner_id = auth.uid())` | **Seller:** `auth.uid() = seller_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
+| **`listing_photos`** | **Public / Seller:** Attached listing is published or owned by `auth.uid()` | **Seller:** `auth.uid()` matches attached listing's `seller_id` | **Seller:** `auth.uid()` matches attached listing's `seller_id` | **Seller:** `auth.uid()` matches attached listing's `seller_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
+| **`comments`** | **Public / Seller:** Attached listing is published or owned by `auth.uid()` | **Author:** `auth.uid() = author_id` on readable/published listing | **Author:** `auth.uid() = author_id` on readable/published listing | **Author:** `auth.uid() = author_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
+| **`activity_events`** | **Public / Actor:** `event_type IN ('listing.published', 'comment.created') OR (event_type = 'favorite.created' AND actor_id = auth.uid())` | **Denied for Data API:** Server-managed only | **Denied:** Default deny | **Denied for Data API:** Server-managed only | `anon` (SELECT), `authenticated` (SELECT) |
+| **`favorites`** | **Owner Only:** `user_id = auth.uid()` (Strictly private) | **Owner:** `auth.uid() = user_id` on published listing | **Denied:** Default deny | **Owner:** `auth.uid() = user_id` | `authenticated` (SELECT, INSERT, DELETE); `anon` has NO grants |
+
+### 3.2 Storage Object Access Assumptions
+- **Storage Bucket:** Persistent media objects are stored in the Supabase Storage `listing-photos` bucket.
+- **Public Cover Art Reads:** Public HTTP GET reads for album artwork are enabled on the `listing-photos` bucket via Supabase Storage public access policies.
+- **Write Operations:** File uploads (`POST /listings/new`) are handled server-side via `@fastify/busboy` and `sharp` image processing using server credentials, ensuring direct storage writes are authenticated and sanitized.
+
+### 3.3 Human Runbook: Staging RLS Migration Application & Live Data API Verification
+
+*Notice: This runbook is a human-only operational guide. Do NOT execute live database migrations, dashboard policy edits, or database resets from automated CI sessions.*
+
+#### Step 1 — Review and Apply SQL Migration to Reserved Staging Project
+1. Obtain the staging database connection string (`DATABASE_URL`) from staging environment configuration.
+2. Execute the version-controlled Drizzle migration against the staging PostgreSQL database:
+   ```bash
+   DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:migrate
+   ```
+3. Run database verification script to confirm all 8 tables have RLS enabled:
+   ```bash
+   DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:verify
+   ```
+
+#### Step 2 — Verify PostgREST / Supabase Data API Security Boundaries via CURL
+Run the following curl verification commands against the staging Supabase Data API endpoint (`https://[STAGING_REF].supabase.co/rest/v1/`):
+
+1. **Anonymous Read Check (Public Tables Allowed, Favorites Denied):**
+   ```bash
+   # Should return 200 OK with public listings
+   curl -i -X GET "https://[STAGING_REF].supabase.co/rest/v1/listings?select=id,status" \
+     -H "apikey: [SUPABASE_ANON_KEY]"
+
+   # Should return 401 Unauthorized or 403 Forbidden (anon table grant revoked on favorites)
+   curl -i -X GET "https://[STAGING_REF].supabase.co/rest/v1/favorites" \
+     -H "apikey: [SUPABASE_ANON_KEY]"
+   ```
+
+2. **Anonymous Write Check (MUST BE DENIED):**
+   ```bash
+   # Should return 401 Unauthorized or 403 Forbidden
+   curl -i -X POST "https://[STAGING_REF].supabase.co/rest/v1/profiles" \
+     -H "apikey: [SUPABASE_ANON_KEY]" \
+     -H "Content-Type: application/json" \
+     -d '{"id":"00000000-0000-0000-0000-000000000000","username":"attacker"}'
+   ```
+
+3. **Authenticated Cross-User Tampering Check (MUST BE DENIED BY RLS):**
+   ```bash
+   # Attempting to modify User A's profile as User B (using User B JWT)
+   curl -i -X PATCH "https://[STAGING_REF].supabase.co/rest/v1/profiles?id=eq.[USER_A_UUID]" \
+     -H "apikey: [SUPABASE_ANON_KEY]" \
+     -H "Authorization: Bearer [USER_B_JWT]" \
+     -H "Content-Type: application/json" \
+     -d '{"display_name":"Hacked Name"}'
+   # Should affect 0 rows (204 No Content with 0 affected rows or 403 Forbidden)
+   ```
+
+#### Step 3 — Safety Recovery Procedure
+If an issue occurs during migration application on staging:
+1. Re-run `npm run db:migrate` or connect via `psql` to check `pg_stat_activity` if connection pooling locks occur.
+2. If policies need adjustment, prepare a new version-controlled Drizzle migration SQL file in `drizzle/` (e.g. `0006_*.sql`). Do NOT perform ad-hoc edits in the Supabase Dashboard.
 
 ---
 
@@ -102,14 +176,15 @@ Database profile rows alone do not populate Supabase Auth password credentials. 
 
 *Notice: The following checklist represents the manual pre-launch verification gates to be performed against deployed live staging resources before inviting external beta testers (#48).*
 
-- [ ] **1. Isolated Database Migration:** Run `npm run db:migrate` against the staging `DATABASE_URL` to verify all PostgreSQL tables, enums, foreign keys, and indexes are created cleanly.
-- [ ] **2. Staging Seed Data:** Execute `npm run db:seed:staging` to populate test accounts, catalog releases, listings, and comment threads.
-- [ ] **3. Environment Variable Audit:** Verify that `NODE_ENV=staging`, `APP_BASE_URL`, `ALLOWED_REDIRECT_URLS`, `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STAGING_DB_HOST`, and `STAGING_DB_PROJECT_REF` are populated in the Render Dashboard. Note: For Session Pooler connections, `STAGING_DB_HOST` must match the exact pooler hostname (e.g. `aws-0-eu-central-1.pooler.supabase.com`) and `STAGING_DB_PROJECT_REF` must match the connection username project reference.
-- [ ] **4. Health Check Endpoint:** Confirm that `GET https://the-vinyl-drop-staging.onrender.com/health` returns `200 OK` with status `ok` and valid JSON timestamp.
-- [ ] **5. HTTPS & Certificate Verification:** Confirm browser renders valid TLS certificate with HTTPS connection lock.
-- [ ] **6. Authentication & Callback Flow:** Test login, registration, and logout using test accounts. Verify callback redirect returns safely to `APP_BASE_URL`.
-- [ ] **7. Storage Access & Media Upload:** Verify that album cover images load properly from Supabase Storage and test uploading a new listing photo via `/listings/new`.
-- [ ] **8. CSRF & Same-Origin Boundary:** Verify state-changing form posts (`POST /listings/new`, `POST /profile/edit`) pass same-origin verification without 403 errors.
+- [ ] **1. Isolated Database Migration & RLS Enforcement:** Run `npm run db:migrate` against staging `DATABASE_URL` to apply all migrations including `0005_enforce_least_privilege_rls.sql`. Run `npm run db:verify` to confirm RLS is enabled on all 8 public tables.
+- [ ] **2. Data API Least-Privilege Verification:** Perform CURL checks against Supabase Data API (`/rest/v1/`) as `anon` and `authenticated` user to confirm direct anonymous writes are rejected and private favorites are inaccessible across users.
+- [ ] **3. Staging Seed Data:** Execute `npm run db:seed:staging` to populate test accounts, catalog releases, listings, and comment threads.
+- [ ] **4. Environment Variable Audit:** Verify that `NODE_ENV=staging`, `APP_BASE_URL`, `ALLOWED_REDIRECT_URLS`, `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STAGING_DB_HOST`, and `STAGING_DB_PROJECT_REF` are populated in the Render Dashboard.
+- [ ] **5. Health Check Endpoint:** Confirm that `GET https://the-vinyl-drop-staging.onrender.com/health` returns `200 OK` with status `ok` and valid JSON timestamp.
+- [ ] **6. HTTPS & Certificate Verification:** Confirm browser renders valid TLS certificate with HTTPS connection lock.
+- [ ] **7. Authentication & Callback Flow:** Test login, registration, and logout using test accounts. Verify callback redirect returns safely to `APP_BASE_URL`.
+- [ ] **8. Storage Access & Media Upload:** Verify album cover images load properly from Supabase Storage and test uploading a new listing photo via `/listings/new`.
+- [ ] **9. CSRF & Same-Origin Boundary:** Verify state-changing form posts (`POST /listings/new`, `POST /profile/edit`) pass same-origin verification without 403 errors.
 
 ---
 
