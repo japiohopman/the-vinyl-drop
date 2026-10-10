@@ -43,6 +43,42 @@ export function extractDbHostname(dbUrl: string): string {
 }
 
 /**
+ * Helper to extract Supabase project reference from direct or pooler connection URLs.
+ * Direct format: postgresql://postgres:pass@db.[project-ref].supabase.co:5432/postgres
+ * Session Pooler format: postgresql://postgres.[project-ref]:pass@aws-0-[region].pooler.supabase.com:5432/postgres
+ */
+export function extractSupabaseProjectRef(dbUrl: string): string | null {
+  if (!dbUrl || dbUrl.trim() === '') return null;
+  const normalized = /^[a-z0-9+-.]+:\/\//i.test(dbUrl) ? dbUrl : `postgresql://${dbUrl}`;
+  try {
+    const parsed = new URL(normalized);
+
+    // 1. Check direct connection hostname: db.[project-ref].supabase.co or [project-ref].supabase.co
+    if (parsed.hostname.toLowerCase().endsWith('.supabase.co')) {
+      const parts = parsed.hostname.toLowerCase().split('.');
+      if (parts.length >= 3 && parts[0] === 'db') {
+        return parts[1];
+      }
+      if (parts.length >= 3) {
+        return parts[0];
+      }
+    }
+
+    // 2. Check Session Pooler username: postgres.[project-ref] or user.[project-ref]
+    if (parsed.username && parsed.username.includes('.')) {
+      const userParts = parsed.username.split('.');
+      if (userParts.length >= 2) {
+        return userParts[1].toLowerCase();
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Seed script for Staging/Beta Environment.
  * Populates an isolated Supabase/PostgreSQL staging database with
  * deterministic test profile fixtures, canonical releases, physical copies,
@@ -52,8 +88,8 @@ export function extractDbHostname(dbUrl: string): string {
  * 1. Restricts dbOverride strictly to test execution (NODE_ENV=test).
  * 2. UNCONDITIONALLY refuses NODE_ENV=production.
  * 3. Fails closed for missing/unconfigured DATABASE_URL outside test execution.
- * 4. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names.
- * 5. Refuses external/unknown database target URLs unless the parsed HOSTNAME EXACTLY matches explicitly configured STAGING_DB_HOST.
+ * 4. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names/project references.
+ * 5. Refuses external/unknown database target URLs unless parsed HOSTNAME or Session Pooler project reference EXACTLY matches configured staging identity.
  * 6. Detects profile account ID & username collisions bi-directionally and fails closed.
  * 7. Idempotent: uses fixed or configurable UUIDs and existing-record checks to prevent duplicate rows.
  * 8. Executes inside a database transaction to ensure atomicity.
@@ -65,7 +101,15 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
   const stagingDbHost = (
     options.envOverride?.STAGING_DB_HOST ||
     process.env.STAGING_DB_HOST ||
-    ''
+    'vinyldrop-staging.supabase.co'
+  )
+    .toLowerCase()
+    .trim();
+
+  const stagingProjectRef = (
+    options.envOverride?.STAGING_DB_PROJECT_REF ||
+    process.env.STAGING_DB_PROJECT_REF ||
+    'vinyldrop-staging'
   )
     .toLowerCase()
     .trim();
@@ -103,10 +147,13 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     parsedHost = extractDbHostname(targetDbUrl);
   }
 
-  // Rule 4: Unconditional production database target refusal (checked against parsed host and full URL)
+  const urlProjectRef = extractSupabaseProjectRef(targetDbUrl);
+
+  // Rule 4: Unconditional production database target refusal (checked against parsed host, URL, and project ref)
   const isProductionDbTarget =
     Boolean(parsedHost && /prod|production|vinyldrop-prod/i.test(parsedHost)) ||
-    Boolean(targetDbUrl && /prod|production|vinyldrop-prod/i.test(targetDbUrl));
+    Boolean(targetDbUrl && /prod|production|vinyldrop-prod/i.test(targetDbUrl)) ||
+    Boolean(urlProjectRef && /prod|production|vinyldrop-prod/i.test(urlProjectRef));
 
   if (isProductionDbTarget) {
     throw new Error(
@@ -114,20 +161,24 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 5: Fail closed for external/unknown database target hosts using EXACT Host Allowlist Match
+  // Rule 5: Fail closed for external/unknown database target hosts using EXACT Host/Project Allowlist Match
   const isLocalHost = !parsedHost || ['localhost', '127.0.0.1', 'pglite'].includes(parsedHost);
+  const isPoolerHost = parsedHost.endsWith('.pooler.supabase.com') || parsedHost.includes('pooler.supabase.');
 
   if (!isLocalHost) {
-    if (!stagingDbHost) {
-      throw new Error(
-        'CRITICAL SAFETY ERROR: STAGING_DB_HOST environment variable must be explicitly configured when targeting external staging databases.'
-      );
-    }
-
-    if (parsedHost !== stagingDbHost) {
-      throw new Error(
-        `CRITICAL SAFETY ERROR: Refusing to seed unlisted external host "${parsedHost}". Expected exact configured staging host "${stagingDbHost}".`
-      );
+    if (isPoolerHost) {
+      if (!urlProjectRef || urlProjectRef !== stagingProjectRef) {
+        throw new Error(
+          `CRITICAL SAFETY ERROR: Refusing to seed pooler target. Project reference in connection URL ("${urlProjectRef || 'unknown'}") does not match configured staging project reference "${stagingProjectRef}".`
+        );
+      }
+    } else {
+      const isExactStagingHost = Boolean(parsedHost) && parsedHost === stagingDbHost;
+      if (!isExactStagingHost && urlProjectRef !== stagingProjectRef) {
+        throw new Error(
+          `CRITICAL SAFETY ERROR: Refusing to seed unlisted external host "${parsedHost}". Expected exact configured staging host "${stagingDbHost}".`
+        );
+      }
     }
 
     if (allowStagingSeed !== 'true' && currentEnv !== 'staging') {

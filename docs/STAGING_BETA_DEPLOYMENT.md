@@ -20,6 +20,7 @@ To ensure production integrity and prevent accidental data contamination, enviro
 - **No Shared Persistence:** Staging and Production MUST use separate, completely isolated Supabase projects (database, auth, and object storage).
 - **No Production Secrets:** Production credentials, API keys, and service tokens MUST NEVER be present in local environments or staging deployment configs.
 - **Environment Variable Boundary:** All environment parameters are validated strictly at startup via `src/config/env.ts`. `APP_BASE_URL` and `ALLOWED_REDIRECT_URLS` are strictly required in staging and production modes and must not fall back to localhost.
+- **Project Identity Verification:** Staging database seeding verifies project identity via `STAGING_DB_HOST` and `STAGING_DB_PROJECT_REF` (e.g. `vinyldrop-staging`), validating both direct hostnames (`db.vinyldrop-staging.supabase.co`) and Session Pooler usernames (`postgres.vinyldrop-staging` on shared `pooler.supabase.com` hosts).
 
 ---
 

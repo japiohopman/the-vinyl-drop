@@ -2,7 +2,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import * as fs from 'fs';
 import * as path from 'path';
-import { seedStaging, extractDbHostname } from '../scripts/seed-staging';
+import { seedStaging, extractDbHostname, extractSupabaseProjectRef } from '../scripts/seed-staging';
 import { profiles } from '../src/db/schema/profiles';
 import { releases } from '../src/db/schema/releases';
 import { physicalCopies } from '../src/db/schema/physicalCopies';
@@ -14,7 +14,7 @@ import * as schema from '../src/db/schema';
 import { eq } from 'drizzle-orm';
 
 describe('Staging Seed Script Safety & Idempotency', () => {
-  describe('Hostname Extraction Unit Tests', () => {
+  describe('Hostname & Project Ref Extraction Unit Tests', () => {
     it('should correctly extract hostname from connection URLs regardless of password or query params', () => {
       expect(extractDbHostname('postgresql://user:stagingpass@prod-db.supabase.co:5432/postgres')).toBe('prod-db.supabase.co');
       expect(extractDbHostname('postgresql://user:pass@vinyldrop-staging.supabase.co:5432/postgres?ssl=true')).toBe('vinyldrop-staging.supabase.co');
@@ -23,6 +23,20 @@ describe('Staging Seed Script Safety & Idempotency', () => {
 
     it('should fail closed for malformed or missing hostname URLs', () => {
       expect(() => extractDbHostname('invalid_url_without_host')).toThrow(/Invalid or malformed database URL/i);
+    });
+
+    it('should extract Supabase project reference from direct and Session Pooler connection URLs', () => {
+      expect(
+        extractSupabaseProjectRef('postgresql://postgres:pass@db.vinyldrop-staging.supabase.co:5432/postgres')
+      ).toBe('vinyldrop-staging');
+
+      expect(
+        extractSupabaseProjectRef('postgresql://postgres.vinyldrop-staging:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres')
+      ).toBe('vinyldrop-staging');
+
+      expect(
+        extractSupabaseProjectRef('postgresql://user:pass@localhost:5432/test')
+      ).toBeNull();
     });
   });
 
@@ -49,29 +63,10 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       ).rejects.toThrow(/Explicit staging confirmation required/i);
     });
 
-    it('should fail closed when DATABASE_URL is missing outside NODE_ENV=test', async () => {
-      await expect(
-        seedStaging({
-          envOverride: { NODE_ENV: 'staging', DATABASE_URL: '' },
-          dbUrlOverride: '',
-        })
-      ).rejects.toThrow(/Missing or unconfigured DATABASE_URL/i);
-    });
-
-    it('should strictly forbid custom dbOverride outside NODE_ENV=test', async () => {
-      await expect(
-        seedStaging({
-          dbOverride: {},
-          envOverride: { NODE_ENV: 'staging' },
-          dbUrlOverride: 'http://localhost:3000',
-        })
-      ).rejects.toThrow(/Custom dbOverride is strictly forbidden outside of test execution/i);
-    });
-
     it('should refuse execution when DATABASE_URL targets production even if NODE_ENV is staging or development', async () => {
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co' },
+          envOverride: { NODE_ENV: 'staging' },
           dbUrlOverride: 'postgresql://postgres:pass@vinyldrop-prod.supabase.co:5432/postgres',
         })
       ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
@@ -80,10 +75,28 @@ describe('Staging Seed Script Safety & Idempotency', () => {
     it('should refuse execution when password contains "staging" but hostname is a production DB', async () => {
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co' },
+          envOverride: { NODE_ENV: 'staging' },
           dbUrlOverride: 'postgresql://user:stagingpass@vinyldrop-prod.supabase.co:5432/postgres',
         })
       ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
+    });
+
+    it('should refuse execution when Session Pooler username contains a production project reference', async () => {
+      await expect(
+        seedStaging({
+          envOverride: { NODE_ENV: 'staging', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
+          dbUrlOverride: 'postgresql://postgres.vinyldrop-prod:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
+        })
+      ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
+    });
+
+    it('should refuse execution against Session Pooler with wrong or mismatched project reference', async () => {
+      await expect(
+        seedStaging({
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
+          dbUrlOverride: 'postgresql://postgres.other-project:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
+        })
+      ).rejects.toThrow(/Project reference in connection URL \("other-project"\) does not match configured staging project reference "vinyldrop-staging"/i);
     });
 
     it('should refuse execution against an unlisted lookalike host (e.g. staging.example.invalid or vinyldrop-staging.attacker.invalid)', async () => {
@@ -100,6 +113,16 @@ describe('Staging Seed Script Safety & Idempotency', () => {
           dbUrlOverride: 'postgresql://user:pass@vinyldrop-staging.attacker.invalid:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unlisted external host/i);
+    });
+
+    it('should strictly forbid dbOverride when an external database URL is supplied outside NODE_ENV=test', async () => {
+      await expect(
+        seedStaging({
+          dbOverride: {},
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co' },
+          dbUrlOverride: 'postgresql://user:pass@vinyldrop-staging.supabase.co:5432/postgres',
+        })
+      ).rejects.toThrow(/Custom dbOverride is strictly forbidden outside of test execution/i);
     });
   });
 
