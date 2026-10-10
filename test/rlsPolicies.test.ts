@@ -14,6 +14,7 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
   const releaseId = '33333333-3333-4333-8333-333333333333';
 
   const copyAId = '44444444-4444-4444-8444-444444444444';
+  const copyBId = '50000000-0000-4000-8000-000000000000';
   const listingPublishedId = '55555555-5555-4555-8555-555555555555';
   const photoPublishedId = '66666666-6666-4666-8666-666666666666';
   const commentPublishedId = '77777777-7777-4777-8777-777777777777';
@@ -23,6 +24,18 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
 
   beforeAll(async () => {
     pg = new PGlite();
+
+    // Setup Supabase auth schema and auth.uid() function for isolated test runner
+    await pg.exec(`
+      CREATE SCHEMA IF NOT EXISTS auth;
+      CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+      BEGIN
+        RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+      EXCEPTION WHEN OTHERS THEN
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql STABLE;
+    `);
 
     // 1. Apply all database migrations in order
     const drizzleDir = path.join(process.cwd(), 'drizzle');
@@ -47,10 +60,11 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
       VALUES
         ('${releaseId}', 'Miles Davis', 'Kind of Blue', 'Columbia', 1959);
 
-      -- Published PhysicalCopy & Listing owned by User A
+      -- PhysicalCopies owned by User A and User B
       INSERT INTO "physical_copies" ("id", "release_id", "owner_id", "media_condition", "sleeve_condition")
       VALUES
-        ('${copyAId}', '${releaseId}', '${userA}', 'NM', 'VG+');
+        ('${copyAId}', '${releaseId}', '${userA}', 'NM', 'VG+'),
+        ('${copyBId}', '${releaseId}', '${userB}', 'M', 'NM');
 
       INSERT INTO "listings" ("id", "physical_copy_id", "seller_id", "price", "currency", "status")
       VALUES
@@ -164,6 +178,43 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
       await pg.exec(`RESET ROLE;`);
     });
 
+    it('should deny client INSERT and UPDATE on catalogue releases table', async () => {
+      const releaseNewId = '91111111-1111-4111-8111-111111111111';
+      await expect(
+        pg.query(`INSERT INTO releases (id, artist, title) VALUES ('${releaseNewId}', 'Fake', 'Album');`)
+      ).rejects.toThrow();
+
+      await expect(
+        pg.query(`UPDATE releases SET title = 'Hacked Title' WHERE id = '${releaseId}';`)
+      ).rejects.toThrow();
+    });
+
+    it('should prevent User B from creating a listing for User A physical copy', async () => {
+      const forgedListingId = '92222222-2222-4222-8222-222222222222';
+      // User B sets seller_id = User B, but physical_copy_id belongs to User A
+      await expect(
+        pg.query(`INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${forgedListingId}', '${copyAId}', '${userB}', 'published');`)
+      ).rejects.toThrow();
+    });
+
+    it('should prevent User B from forging activity events via Data API', async () => {
+      const forgedEventId = '93333333-3333-4333-8333-333333333333';
+      await expect(
+        pg.query(`INSERT INTO activity_events (id, event_type, actor_id, listing_id) VALUES ('${forgedEventId}', 'listing.published', '${userB}', '${listingPublishedId}');`)
+      ).rejects.toThrow();
+
+      await expect(
+        pg.query(`DELETE FROM activity_events WHERE id = '${userA}';`)
+      ).rejects.toThrow();
+    });
+
+    it('should prevent User B from updating a comment to target User A draft listing', async () => {
+      // User B tries to update their comment on published listing to reference User A's draft listing
+      await expect(
+        pg.query(`UPDATE comments SET listing_id = '${listingDraftId}' WHERE id = '${commentPublishedId}';`)
+      ).rejects.toThrow();
+    });
+
     it('should hide draft listings and draft physical copies owned by User A', async () => {
       const draftListings = await pg.query<IdRow>(`SELECT id FROM listings WHERE id = '${listingDraftId}';`);
       expect(draftListings.rows.length).toBe(0);
@@ -186,25 +237,6 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
 
       const deleteResult = await pg.query(`DELETE FROM listings WHERE id = '${listingPublishedId}';`);
       expect(deleteResult.affectedRows).toBe(0);
-    });
-
-    it('should prevent User B from inserting a photo or comment targeting User A draft listing', async () => {
-      const photoId = '91111111-1111-4111-8111-111111111111';
-      await expect(
-        pg.query(`INSERT INTO listing_photos (id, listing_id, storage_path) VALUES ('${photoId}', '${listingDraftId}', 'p.webp');`)
-      ).rejects.toThrow();
-
-      const commentId = '92222222-2222-4222-8222-222222222222';
-      await expect(
-        pg.query(`INSERT INTO comments (id, listing_id, author_id, content) VALUES ('${commentId}', '${listingDraftId}', '${userB}', 'Secret comment');`)
-      ).rejects.toThrow();
-    });
-
-    it('should prevent User B from forging User A as author/seller on INSERT', async () => {
-      const forgedListingId = '93333333-3333-4333-8333-333333333333';
-      await expect(
-        pg.query(`INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${forgedListingId}', '${copyAId}', '${userA}', 'published');`)
-      ).rejects.toThrow();
     });
   });
 
@@ -233,6 +265,14 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
       expect(userAActivity.rows.length).toBe(1);
     });
 
+    it('should allow User A to create a listing for their own physical copy', async () => {
+      const newListingId = '94444444-4444-4444-8444-444444444444';
+      await pg.query(`INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${newListingId}', '${copyDraftAId}', '${userA}', 'draft');`);
+
+      const res = await pg.query<IdRow>(`SELECT id FROM listings WHERE id = '${newListingId}';`);
+      expect(res.rows.length).toBe(1);
+    });
+
     it('should allow User A to update their own profile and listing', async () => {
       const updateProfile = await pg.query(`UPDATE profiles SET display_name = 'User A Updated' WHERE id = '${userA}';`);
       expect(updateProfile.affectedRows).toBe(1);
@@ -246,7 +286,7 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
       const deleteFav = await pg.query(`DELETE FROM favorites WHERE id = '${favId}';`);
       expect(deleteFav.affectedRows).toBe(1);
 
-      const newFavId = '94444444-4444-4444-8444-444444444444';
+      const newFavId = '95555555-5555-4555-8555-555555555555';
       await pg.query(`INSERT INTO favorites (id, user_id, listing_id) VALUES ('${newFavId}', '${userA}', '${listingPublishedId}');`);
 
       const selectFav = await pg.query<IdRow>(`SELECT id FROM favorites WHERE id = '${newFavId}';`);

@@ -6,11 +6,32 @@ export async function verifyMigrations(): Promise<void> {
   console.log('🔄 Verifying database migrations against isolated in-memory PostgreSQL engine...');
 
   const pg = new PGlite();
+
+  // Bootstrap auth schema and auth.uid() stub for local/PGlite migration verification
+  await pg.exec(`
+    CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+    BEGIN
+      RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      RETURN NULL;
+    END;
+    $$ LANGUAGE plpgsql STABLE;
+  `);
+
   const drizzleDir = path.join(process.cwd(), 'drizzle');
 
   if (!fs.existsSync(drizzleDir)) {
     throw new Error(`Drizzle migration directory not found at ${drizzleDir}`);
   }
+
+  // 0. Verify Drizzle journal consistency
+  const journalPath = path.join(drizzleDir, 'meta', '_journal.json');
+  if (!fs.existsSync(journalPath)) {
+    throw new Error(`Drizzle journal file missing at ${journalPath}`);
+  }
+  const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8'));
+  const journalTags = journal.entries.map((e: { tag: string }) => `${e.tag}.sql`);
 
   const sqlFiles = fs
     .readdirSync(drizzleDir)
@@ -19,6 +40,12 @@ export async function verifyMigrations(): Promise<void> {
 
   if (sqlFiles.length === 0) {
     throw new Error('No SQL migration files found in drizzle directory');
+  }
+
+  for (const sqlFile of sqlFiles) {
+    if (!journalTags.includes(sqlFile)) {
+      throw new Error(`SQL migration file '${sqlFile}' is not registered in drizzle/meta/_journal.json`);
+    }
   }
 
   for (const sqlFile of sqlFiles) {
@@ -159,6 +186,19 @@ export async function verifyMigrationUpgrade(): Promise<void> {
   console.log('🔄 Verifying migration upgrade path from legacy 0000 schema to 0001 canonical schema...');
 
   const pg = new PGlite();
+
+  // Bootstrap auth schema and auth.uid() stub
+  await pg.exec(`
+    CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+    BEGIN
+      RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      RETURN NULL;
+    END;
+    $$ LANGUAGE plpgsql STABLE;
+  `);
+
   const drizzleDir = path.join(process.cwd(), 'drizzle');
 
   // 1. Apply legacy 0000 migration
