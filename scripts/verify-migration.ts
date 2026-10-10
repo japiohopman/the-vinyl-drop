@@ -27,12 +27,21 @@ export async function verifyMigrations(): Promise<void> {
     await pg.exec(sql);
   }
 
-  // 1. Verify expected public tables
+  // 1. Verify expected public tables (all 8 public tables)
   const tablesRes = await pg.query<{ table_name: string }>(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;`
   );
   const tableNames = tablesRes.rows.map((r) => r.table_name);
-  const expectedTables = ['comments', 'listing_photos', 'listings', 'physical_copies', 'profiles', 'releases'];
+  const expectedTables = [
+    'activity_events',
+    'comments',
+    'favorites',
+    'listing_photos',
+    'listings',
+    'physical_copies',
+    'profiles',
+    'releases',
+  ];
   for (const expectedTable of expectedTables) {
     if (!tableNames.includes(expectedTable)) {
       throw new Error(`Missing expected table '${expectedTable}' after migration execution`);
@@ -64,6 +73,11 @@ export async function verifyMigrations(): Promise<void> {
     'physical_copies_owner_id_profiles_id_fk',
     'listings_physical_copy_id_physical_copies_id_fk',
     'listings_seller_id_profiles_id_fk',
+    'activity_events_actor_id_profiles_id_fk',
+    'activity_events_listing_id_listings_id_fk',
+    'activity_events_comment_id_comments_id_fk',
+    'favorites_user_id_profiles_id_fk',
+    'favorites_listing_id_listings_id_fk',
   ];
   for (const expectedFk of expectedFks) {
     if (!fkNames.includes(expectedFk)) {
@@ -104,6 +118,13 @@ export async function verifyMigrations(): Promise<void> {
     'releases_label_idx',
     'releases_cat_num_idx',
     'releases_year_idx',
+    'activity_events_actor_idx',
+    'activity_events_listing_idx',
+    'activity_events_type_idx',
+    'activity_events_created_at_idx',
+    'favorites_user_listing_idx',
+    'favorites_user_idx',
+    'favorites_listing_idx',
   ];
   for (const expectedIndex of expectedIndexes) {
     if (!indexNames.includes(expectedIndex)) {
@@ -111,8 +132,26 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
+  // 6. Verify Row Level Security (RLS) is enabled on all 8 public tables
+  const rlsRes = await pg.query<{ relname: string; relrowsecurity: boolean }>(
+    `SELECT c.relname, c.relrowsecurity
+     FROM pg_class c
+     JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relkind = 'r'
+     ORDER BY c.relname;`
+  );
+  const rlsMap = new Map(rlsRes.rows.map((r) => [r.relname, r.relrowsecurity]));
+  for (const expectedTable of expectedTables) {
+    if (!rlsMap.has(expectedTable)) {
+      throw new Error(`Missing expected table '${expectedTable}' in RLS check`);
+    }
+    if (!rlsMap.get(expectedTable)) {
+      throw new Error(`Row Level Security (RLS) is NOT enabled on table '${expectedTable}'`);
+    }
+  }
+
   console.log(
-    `✅ Fresh migration verification successful! Verified 6 tables, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly.`
+    `✅ Fresh migration verification successful! Verified 8 tables with RLS enabled, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly.`
   );
 }
 
