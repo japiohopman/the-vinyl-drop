@@ -1,0 +1,34 @@
+# Render Infrastructure-as-Code Blueprint
+# Defines the staging web service for The Vinyl Drop (Express + EJS + Supabase)
+
+services:
+  - type: web
+    name: the-vinyl-drop-staging
+    env: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: staging
+      - key: PORT
+        value: 10000
+      - key: APP_BASE_URL
+        value: https://the-vinyl-drop-staging.onrender.com
+      - key: ALLOWED_REDIRECT_URLS
+        value: https://the-vinyl-drop-staging.onrender.com
+      - key: STAGING_DB_HOST
+        sync: false
+      - key: STAGING_DB_PROJECT_REF
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_DIRECT_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false

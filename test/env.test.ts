@@ -52,4 +52,72 @@ describe('Environment Validation', () => {
     expect(env.NODE_ENV).toBe('development');
     expect(env.DATABASE_URL).toBe('postgresql://postgres:postgres@localhost:5432/test');
   });
+
+  it('should reject staging mode when APP_BASE_URL alone is missing', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'staging',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+        SUPABASE_URL: 'https://staging-project.supabase.co',
+        SUPABASE_ANON_KEY: 'some-staging-key',
+        ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+      })
+    ).toThrow('Invalid environment configuration');
+    expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
+  it('should reject staging mode when ALLOWED_REDIRECT_URLS alone is missing', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'staging',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+        SUPABASE_URL: 'https://staging-project.supabase.co',
+        SUPABASE_ANON_KEY: 'some-staging-key',
+        APP_BASE_URL: 'https://staging.vinyldrop.onrender.com',
+      })
+    ).toThrow('Invalid environment configuration');
+    expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
+  it('should reject staging mode when APP_BASE_URL is set to localhost', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'staging',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+        SUPABASE_URL: 'https://staging-project.supabase.co',
+        SUPABASE_ANON_KEY: 'some-staging-key',
+        APP_BASE_URL: 'http://localhost:3000',
+        ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+      })
+    ).toThrow('Invalid environment configuration');
+    expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
+  it('should pass staging mode when all required variables are present', () => {
+    const env = validateEnv({
+      NODE_ENV: 'staging',
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+      SUPABASE_URL: 'https://staging-project.supabase.co',
+      SUPABASE_ANON_KEY: 'some-staging-key',
+      APP_BASE_URL: 'https://staging.vinyldrop.onrender.com',
+      ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+    });
+    expect(env.NODE_ENV).toBe('staging');
+    expect(env.DATABASE_URL).toBe('postgresql://postgres:postgres@localhost:5432/staging_db');
+    expect(env.APP_BASE_URL).toBe('https://staging.vinyldrop.onrender.com');
+  });
+
+  it('should reject production mode when APP_BASE_URL is set to localhost', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgresql://postgres:postgres@prod-db:5432/prod',
+        SUPABASE_URL: 'https://prod-project.supabase.co',
+        SUPABASE_ANON_KEY: 'prod-key',
+        APP_BASE_URL: 'http://localhost:3000',
+        ALLOWED_REDIRECT_URLS: 'https://vinyldrop.com',
+      })
+    ).toThrow('Invalid environment configuration');
+    expect(consoleErrorSpy).toHaveBeenCalled();
+  });
 });
