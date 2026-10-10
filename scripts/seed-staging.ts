@@ -21,13 +21,13 @@ export interface SeedStagingOptions {
 /**
  * Seed script for Staging/Beta Environment.
  * Populates an isolated Supabase/PostgreSQL staging database with
- * deterministic test profiles, canonical releases, physical copies,
+ * deterministic test profile fixtures, canonical releases, physical copies,
  * published listings, and comment threads.
  *
  * Safety Rules:
  * 1. UNCONDITIONALLY refuses NODE_ENV=production.
  * 2. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names.
- * 3. Refuses external/opaque database target URLs unless explicitly confirmed via ALLOW_STAGING_SEED=true.
+ * 3. Requires explicit staging target URL patterns (/staging|vinyldrop-staging/i) or local dev engines.
  * 4. Ensures the database client is created from the EXACT target URL validated by the safety checks.
  * 5. Idempotent: uses fixed UUIDs and existing-record checks to prevent duplicate rows.
  * 6. Executes inside a database transaction to ensure atomicity.
@@ -61,14 +61,17 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 3: Fail closed for external/opaque database target URLs without explicit ALLOW_STAGING_SEED=true confirmation
+  // Rule 3: Fail closed for external/unknown database target URLs. Must match explicit staging patterns.
   const isLocalTarget =
     !targetDbUrl ||
     /localhost|127\.0\.0\.1|pglite/i.test(targetDbUrl);
 
-  if (!isLocalTarget && allowStagingSeed !== 'true') {
+  const isExplicitStagingTarget =
+    /staging|vinyldrop-staging/i.test(targetDbUrl);
+
+  if (!isLocalTarget && !isExplicitStagingTarget) {
     throw new Error(
-      'CRITICAL SAFETY ERROR: Refusing to seed unconfirmed external database target without explicit confirmation (ALLOW_STAGING_SEED=true).'
+      'CRITICAL SAFETY ERROR: Refusing to seed external database target without explicit staging host identifier (must contain "staging" or "vinyldrop-staging").'
     );
   }
 

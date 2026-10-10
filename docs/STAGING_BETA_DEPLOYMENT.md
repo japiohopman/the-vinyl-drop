@@ -85,8 +85,9 @@ The seed script inserts database profile fixtures with deterministic UUIDs:
 
 *Note on Supabase Auth Provisioning (Auth-First Provisioning Runbook):*
 Database profile rows alone do not populate Supabase Auth password credentials. To enable login-ready test accounts in the staging Supabase Auth directory matching the fixed profile UUIDs:
-1. **Option A — Auth-First User Creation (Recommended):** Create Supabase Auth accounts prior to running the seed script via Supabase Admin Dashboard or Admin API (`supabase.auth.admin.createUser({ email, password, email_confirm: true })`), obtaining the generated Auth UUIDs and supplying them to the seed script or mapping `profiles.id` to match `auth.users.id`.
-2. **Option B — Direct Auth Table Insertion (Local / CLI Staging):** Insert matching rows directly into `auth.users` in local/staging Supabase PostgreSQL with `id = '11111111-1111-4111-8111-111111111111'`, `email = 'seller.beta@vinyldrop.local'`, `encrypted_password`, and `email_confirmed_at = now()`.
+1. **Supabase Admin Dashboard:** Create Auth accounts with matching test emails (`seller.beta@vinyldrop.local`, `buyer.beta@vinyldrop.local`, `collector.beta@vinyldrop.local`) in the Supabase Dashboard, copy the generated user UUIDs, and map `profiles.id` to match `auth.users.id`.
+2. **Supabase Admin API:** Execute `supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { username } })` using the staging `SUPABASE_SERVICE_ROLE_KEY` in a secure server-only administrative task, updating `profiles.id` to match the created Auth user UUID.
+3. **Application Registration:** Alternatively, sign up test accounts through the application UI (`POST /auth/signup`), establishing authenticated credentials directly through Supabase Auth.
 *Security Requirement:* The Supabase service-role key MUST NEVER be committed to repository code or exposed in client builds.
 
 ### Pre-Seeded Dataset & Storage Fixtures
