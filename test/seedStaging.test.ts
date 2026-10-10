@@ -92,12 +92,26 @@ describe('Staging Seed Script Safety & Idempotency', () => {
           envOverride: {
             NODE_ENV: 'staging',
             ALLOW_STAGING_SEED: 'true',
-            STAGING_DB_HOST: 'vinyldrop-staging.supabase.co',
+            STAGING_DB_HOST: 'db.vinyldrop-staging.supabase.co',
             STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
           },
           dbUrlOverride: 'postgresql://postgres.vinyldrop-staging:pass@attacker.invalid:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unlisted external host "attacker.invalid"/i);
+    });
+
+    it('should refuse direct target URL if host lacks db.<project-ref>.supabase.co format even if STAGING_DB_HOST matches URL host', async () => {
+      await expect(
+        seedStaging({
+          envOverride: {
+            NODE_ENV: 'staging',
+            ALLOW_STAGING_SEED: 'true',
+            STAGING_DB_HOST: 'vinyldrop-staging.supabase.co',
+            STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
+          },
+          dbUrlOverride: 'postgresql://postgres:pass@vinyldrop-staging.supabase.co:5432/postgres',
+        })
+      ).rejects.toThrow(/Refusing to seed direct target. Connection URL must use documented "db.<project-ref>.supabase.co" format/i);
     });
 
     it('should refuse spoofed pooler host containing "pooler.supabase." substring', async () => {
@@ -120,12 +134,12 @@ describe('Staging Seed Script Safety & Idempotency', () => {
           envOverride: {
             NODE_ENV: 'staging',
             ALLOW_STAGING_SEED: 'true',
-            STAGING_DB_HOST: 'vinyldrop-staging.supabase.co',
+            STAGING_DB_HOST: 'db.vinyldrop-staging.supabase.co',
             STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
           },
           dbUrlOverride: 'postgresql://postgres.vinyldrop-staging:pass@aws-0-eu-central-1.pooler.supabase.com:5432/postgres',
         })
-      ).rejects.toThrow(/Refusing to seed unlisted external host "aws-0-eu-central-1.pooler.supabase.com". Expected exact configured staging host "vinyldrop-staging.supabase.co"/i);
+      ).rejects.toThrow(/Refusing to seed unlisted external host "aws-0-eu-central-1.pooler.supabase.com". Expected exact configured staging host "db.vinyldrop-staging.supabase.co"/i);
     });
 
     it('should successfully pass safety checks for fully configured matching direct and pooler targets', async () => {
@@ -209,14 +223,14 @@ describe('Staging Seed Script Safety & Idempotency', () => {
     it('should refuse execution against an unlisted lookalike host (e.g. staging.example.invalid or vinyldrop-staging.attacker.invalid)', async () => {
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'db.vinyldrop-staging.supabase.co', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
           dbUrlOverride: 'postgresql://user:pass@staging.example.invalid:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unlisted external host/i);
 
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'db.vinyldrop-staging.supabase.co', STAGING_DB_PROJECT_REF: 'vinyldrop-staging' },
           dbUrlOverride: 'postgresql://user:pass@vinyldrop-staging.attacker.invalid:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unlisted external host/i);
@@ -226,8 +240,8 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       await expect(
         seedStaging({
           dbOverride: {},
-          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'vinyldrop-staging.supabase.co' },
-          dbUrlOverride: 'postgresql://user:pass@vinyldrop-staging.supabase.co:5432/postgres',
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true', STAGING_DB_HOST: 'db.vinyldrop-staging.supabase.co' },
+          dbUrlOverride: 'postgresql://user:pass@db.vinyldrop-staging.supabase.co:5432/postgres',
         })
       ).rejects.toThrow(/Custom dbOverride is strictly forbidden outside of test execution/i);
     });

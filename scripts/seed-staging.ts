@@ -193,9 +193,9 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         );
       }
     } else {
-      if (urlProjectRef && urlProjectRef !== stagingProjectRef) {
+      if (!urlProjectRef || urlProjectRef !== stagingProjectRef) {
         throw new Error(
-          `CRITICAL SAFETY ERROR: Refusing to seed target host. Project reference in connection URL ("${urlProjectRef}") does not match configured staging project reference "${stagingProjectRef}".`
+          `CRITICAL SAFETY ERROR: Refusing to seed direct target. Connection URL must use documented "db.<project-ref>.supabase.co" format and project reference ("${urlProjectRef || 'unknown'}") must match configured staging project reference "${stagingProjectRef}".`
         );
       }
     }
