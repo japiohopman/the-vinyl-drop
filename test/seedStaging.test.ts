@@ -114,6 +114,20 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       ).rejects.toThrow(/Refusing to seed direct target. Connection URL must use documented "db.<project-ref>.supabase.co" format/i);
     });
 
+    it('should refuse direct target URL with dotted username when hostname is not a pooler host', async () => {
+      await expect(
+        seedStaging({
+          envOverride: {
+            NODE_ENV: 'staging',
+            ALLOW_STAGING_SEED: 'true',
+            STAGING_DB_HOST: 'vinyldrop-staging.supabase.co',
+            STAGING_DB_PROJECT_REF: 'vinyldrop-staging',
+          },
+          dbUrlOverride: 'postgresql://postgres.vinyldrop-staging:pass@vinyldrop-staging.supabase.co:5432/postgres',
+        })
+      ).rejects.toThrow(/Refusing to seed direct target. Connection URL must use documented "db.<project-ref>.supabase.co" format/i);
+    });
+
     it('should refuse spoofed pooler host containing "pooler.supabase." substring', async () => {
       await expect(
         seedStaging({

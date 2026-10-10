@@ -71,11 +71,13 @@ export function extractSupabaseProjectRef(dbUrl: string): string | null {
       }
     }
 
-    // 2. Check Session Pooler username: postgres.[project-ref] or user.[project-ref]
-    if (parsed.username && parsed.username.includes('.')) {
-      const userParts = parsed.username.split('.');
-      if (userParts.length >= 2) {
-        return userParts[1].toLowerCase();
+    // 2. Check Session Pooler username strictly on recognized pooler hosts (*.pooler.supabase.com): postgres.[project-ref] or user.[project-ref]
+    if (parsed.hostname.toLowerCase().endsWith('.pooler.supabase.com')) {
+      if (parsed.username && parsed.username.includes('.')) {
+        const userParts = parsed.username.split('.');
+        if (userParts.length >= 2) {
+          return userParts[1].toLowerCase();
+        }
       }
     }
 
