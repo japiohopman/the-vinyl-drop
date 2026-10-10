@@ -20,6 +20,10 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       expect(extractDbHostname('postgresql://user:pass@vinyldrop-staging.supabase.co:5432/postgres?ssl=true')).toBe('vinyldrop-staging.supabase.co');
       expect(extractDbHostname('http://localhost:3000')).toBe('localhost');
     });
+
+    it('should fail closed for malformed or missing hostname URLs', () => {
+      expect(() => extractDbHostname('invalid_url_without_host')).toThrow(/Invalid or malformed database URL/i);
+    });
   });
 
   describe('Safety Guards', () => {
@@ -62,23 +66,23 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
     });
 
-    it('should refuse execution against an unknown external host even when ALLOW_STAGING_SEED=true is set', async () => {
+    it('should refuse execution against an unlisted lookalike host (e.g. staging.example.invalid)', async () => {
       await expect(
         seedStaging({
           envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true' },
-          dbUrlOverride: 'postgresql://user:pass@db.some-external-host.com:5432/postgres',
+          dbUrlOverride: 'postgresql://user:pass@staging.example.invalid:5432/postgres',
         })
-      ).rejects.toThrow(/Refusing to seed external database target host/i);
+      ).rejects.toThrow(/Refusing to seed unlisted external host/i);
     });
 
-    it('should enforce URL target safety checks even when dbOverride is supplied', async () => {
+    it('should strictly forbid dbOverride when an external database URL is supplied', async () => {
       await expect(
         seedStaging({
           dbOverride: {},
-          envOverride: { NODE_ENV: 'staging' },
-          dbUrlOverride: 'postgresql://postgres:pass@vinyldrop-prod.supabase.co:5432/postgres',
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'true' },
+          dbUrlOverride: 'postgresql://user:pass@vinyldrop-staging.supabase.co:5432/postgres',
         })
-      ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
+      ).rejects.toThrow(/Custom dbOverride is strictly forbidden when targeting external database connections/i);
     });
   });
 
@@ -161,7 +165,21 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       expect(eventsSecond.length).toBe(eventsFirst.length);
     });
 
-    it('should support pre-provisioned Auth user IDs via accountIds option', async () => {
+    it('should reject seeding conflicting account IDs when profiles already exist with same usernames', async () => {
+      const customSellerId = '77777777-7777-4777-8777-777777777777';
+
+      await expect(
+        seedStaging({
+          dbOverride: db,
+          envOverride: { NODE_ENV: 'staging' },
+          accountIds: {
+            sellerId: customSellerId,
+          },
+        })
+      ).rejects.toThrow(/already exists with ID.*conflicts with requested ID/i);
+    });
+
+    it('should support pre-provisioned Auth user IDs via accountIds option on a clean database', async () => {
       const customDbPglite = new PGlite();
       await customDbPglite.waitReady;
       const customDb = drizzle(customDbPglite, { schema });

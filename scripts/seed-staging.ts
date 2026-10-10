@@ -8,7 +8,7 @@ import { listings } from '../src/db/schema/listings';
 import { comments } from '../src/db/schema/comments';
 import { activityEvents } from '../src/db/schema/activityEvents';
 import { config } from '../src/config/env';
-import { and, eq, or } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import * as schema from '../src/db/schema';
 
 export interface SeedStagingOptions {
@@ -25,16 +25,20 @@ export interface SeedStagingOptions {
 
 /**
  * Helper to parse the hostname portion from a PostgreSQL connection URL.
+ * Throws an error for malformed or unparseable URL inputs.
  */
 export function extractDbHostname(dbUrl: string): string {
-  if (!dbUrl) return '';
+  if (!dbUrl || dbUrl.trim() === '') return '';
+  const normalized = /^[a-z0-9+-.]+:\/\//i.test(dbUrl) ? dbUrl : `postgresql://${dbUrl}`;
   try {
-    const hasScheme = /^[a-z0-9+-.]+:\/\//i.test(dbUrl);
-    const normalized = hasScheme ? dbUrl : `postgresql://${dbUrl}`;
     const parsed = new URL(normalized);
-    return (parsed.hostname || '').toLowerCase();
+    const host = (parsed.hostname || '').toLowerCase();
+    if (!host || (!['localhost', '127.0.0.1', 'pglite'].includes(host) && !host.includes('.'))) {
+      throw new Error('Invalid host');
+    }
+    return host;
   } catch {
-    return dbUrl.toLowerCase();
+    throw new Error(`CRITICAL SAFETY ERROR: Invalid or malformed database URL "${dbUrl}".`);
   }
 }
 
@@ -47,16 +51,22 @@ export function extractDbHostname(dbUrl: string): string {
  * Safety Rules:
  * 1. UNCONDITIONALLY refuses NODE_ENV=production.
  * 2. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names.
- * 3. Enforces parsed hostname safety checks BEFORE evaluating dbOverride.
- * 4. Refuses external/unknown database target URLs unless the parsed HOSTNAME explicitly contains "staging" or "vinyldrop-staging".
- * 5. Ensures the database client is created from the EXACT target URL validated by the safety checks.
- * 6. Idempotent: uses fixed or configurable UUIDs and existing-record checks to prevent duplicate rows.
- * 7. Executes inside a database transaction to ensure atomicity.
+ * 3. Enforces parsed hostname allowlist checks BEFORE evaluating dbOverride.
+ * 4. Strictly forbids dbOverride when targeting external database connections.
+ * 5. Refuses external/unknown database target URLs unless the parsed HOSTNAME explicitly matches configured staging host identity.
+ * 6. Detects profile account ID conflicts and fails closed.
+ * 7. Idempotent: uses fixed or configurable UUIDs and existing-record checks to prevent duplicate rows.
+ * 8. Executes inside a database transaction to ensure atomicity.
  */
 export async function seedStaging(options: SeedStagingOptions = {}) {
   const currentEnv = options.envOverride?.NODE_ENV || process.env.NODE_ENV || config.NODE_ENV;
   const allowStagingSeed =
     options.envOverride?.ALLOW_STAGING_SEED || process.env.ALLOW_STAGING_SEED;
+  const stagingDbHost =
+    options.envOverride?.STAGING_DB_HOST ||
+    process.env.STAGING_DB_HOST ||
+    'vinyldrop-staging.supabase.co';
+
   const targetDbUrl =
     options.dbUrlOverride ||
     options.envOverride?.DATABASE_URL ||
@@ -64,7 +74,10 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     config.DATABASE_URL ||
     '';
 
-  const parsedHost = extractDbHostname(targetDbUrl);
+  let parsedHost = '';
+  if (targetDbUrl) {
+    parsedHost = extractDbHostname(targetDbUrl);
+  }
 
   // Rule 1: Unconditional production mode refusal
   if (currentEnv === 'production') {
@@ -73,7 +86,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 2: Unconditional production database target refusal (checked against host and full URL)
+  // Rule 2: Unconditional production database target refusal (checked against parsed host and full URL)
   const isProductionDbTarget =
     Boolean(parsedHost && /prod|production|vinyldrop-prod/i.test(parsedHost)) ||
     Boolean(targetDbUrl && /prod|production|vinyldrop-prod/i.test(targetDbUrl));
@@ -84,22 +97,38 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 3: Fail closed for external/unknown database target hosts.
-  // The HOSTNAME (not username/password/path) must explicitly contain "staging" or "vinyldrop-staging".
+  // Rule 3: Fail closed for external/unknown database target hosts using strict hostname allowlist
   const isLocalHost =
-    !parsedHost ||
-    ['localhost', '127.0.0.1', 'pglite'].includes(parsedHost);
+    !parsedHost || ['localhost', '127.0.0.1', 'pglite'].includes(parsedHost);
 
-  const isExplicitStagingHost =
-    parsedHost.includes('staging') || parsedHost.includes('vinyldrop-staging');
+  const isAllowedStagingHost =
+    Boolean(parsedHost) &&
+    (parsedHost === stagingDbHost.toLowerCase() ||
+      parsedHost === 'vinyldrop-staging.supabase.co' ||
+      parsedHost.startsWith('vinyldrop-staging.'));
 
-  if (!isLocalHost && !isExplicitStagingHost) {
-    throw new Error(
-      `CRITICAL SAFETY ERROR: Refusing to seed external database target host "${parsedHost}". Hostname MUST explicitly contain "staging" or "vinyldrop-staging" (e.g. vinyldrop-staging.supabase.co).`
-    );
+  if (!isLocalHost) {
+    if (!isAllowedStagingHost) {
+      throw new Error(
+        `CRITICAL SAFETY ERROR: Refusing to seed unlisted external host "${parsedHost}". Expected configured staging host "${stagingDbHost}".`
+      );
+    }
+
+    if (allowStagingSeed !== 'true' && currentEnv !== 'staging') {
+      throw new Error(
+        'CRITICAL SAFETY ERROR: Refusing to seed external database target without explicit staging confirmation (NODE_ENV=staging or ALLOW_STAGING_SEED=true).'
+      );
+    }
+
+    // Rule 4: Forbid custom dbOverride when targeting external databases
+    if (options.dbOverride) {
+      throw new Error(
+        'CRITICAL SAFETY ERROR: Custom dbOverride is strictly forbidden when targeting external database connections.'
+      );
+    }
   }
 
-  // Rule 4: Explicit target confirmation check
+  // Rule 5: Explicit target confirmation check
   const isAllowedTarget =
     currentEnv === 'staging' || currentEnv === 'development' || allowStagingSeed === 'true';
 
@@ -109,7 +138,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 5: Ensure database client matches the verified target URL
+  // Rule 6: Ensure database client matches the verified target URL
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let db: any;
   let sqlClient: ReturnType<typeof postgres> | null = null;
@@ -150,7 +179,7 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
         : async (cb: (tx: typeof db) => Promise<void>) => cb(db);
 
     await runTransaction(async (tx: typeof db) => {
-      // 1. Seed Profiles
+      // 1. Seed Profiles with Account ID Conflict Detection
       const testProfiles = [
         {
           id: sellerId,
@@ -179,11 +208,23 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
       ];
 
       for (const profile of testProfiles) {
-      const existing = await tx
-        .select()
-        .from(profiles)
-        .where(or(eq(profiles.id, profile.id), eq(profiles.username, profile.username)));
-        if (existing.length === 0) {
+        const existingById = await tx
+          .select()
+          .from(profiles)
+          .where(eq(profiles.id, profile.id));
+
+        const existingByUsername = await tx
+          .select()
+          .from(profiles)
+          .where(eq(profiles.username, profile.username));
+
+        if (existingByUsername.length > 0 && existingByUsername[0].id !== profile.id) {
+          throw new Error(
+            `CRITICAL SEED ERROR: Profile @${profile.username} already exists with ID ${existingByUsername[0].id}, which conflicts with requested ID ${profile.id}.`
+          );
+        }
+
+        if (existingById.length === 0 && existingByUsername.length === 0) {
           await tx.insert(profiles).values(profile);
         }
       }
