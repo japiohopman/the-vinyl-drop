@@ -13,8 +13,7 @@
     "test:a11y": "tsx scripts/test-accessibility.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:verify": "tsx scripts/verify-migration.ts",
-    "db:seed:staging": "tsx scripts/seed-staging.ts"
+    "db:verify": "tsx scripts/verify-migration.ts"
   },
   "keywords": [
     "vinyl",

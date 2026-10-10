@@ -45,9 +45,8 @@ export function isAllowedRedirectUrl(url: string | undefined | null): boolean {
     }
 
     try {
-      const appBaseUrl = config.APP_BASE_URL || 'http://localhost:3000';
-      const baseOrigin = new URL(appBaseUrl).origin;
-      const resolved = new URL(url, appBaseUrl);
+      const baseOrigin = new URL(config.APP_BASE_URL).origin;
+      const resolved = new URL(url, config.APP_BASE_URL);
       if (resolved.origin !== baseOrigin) {
         return false;
       }
@@ -58,10 +57,9 @@ export function isAllowedRedirectUrl(url: string | undefined | null): boolean {
   }
 
   try {
-    const appBaseUrl = config.APP_BASE_URL || 'http://localhost:3000';
     const parsed = new URL(url);
     const allowedOrigins = [
-      appBaseUrl,
+      config.APP_BASE_URL,
       ...config.ALLOWED_REDIRECT_URLS.split(',').map((u) => u.trim()),
     ].map((u) => {
       try {

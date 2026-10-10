@@ -45,10 +45,10 @@ describe('Staging Seed Script Safety & Idempotency', () => {
       ).rejects.toThrow(/UNCONDITIONALLY REFUSED against production database target/i);
     });
 
-    it('should refuse execution against an unconfirmed opaque external database URL when ALLOW_STAGING_SEED is not true', async () => {
+    it('should refuse execution against an opaque external database URL even when NODE_ENV=staging unless ALLOW_STAGING_SEED=true', async () => {
       await expect(
         seedStaging({
-          envOverride: { NODE_ENV: 'development', ALLOW_STAGING_SEED: 'false' },
+          envOverride: { NODE_ENV: 'staging', ALLOW_STAGING_SEED: 'false' },
           dbUrlOverride: 'postgresql://user:pass@db.internal.cloud:5432/postgres',
         })
       ).rejects.toThrow(/Refusing to seed unconfirmed external database target/i);

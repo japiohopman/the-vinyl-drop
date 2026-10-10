@@ -1,3 +1,5 @@
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import { getDb } from '../src/db';
 import { profiles } from '../src/db/schema/profiles';
 import { releases } from '../src/db/schema/releases';
@@ -7,6 +9,7 @@ import { comments } from '../src/db/schema/comments';
 import { activityEvents } from '../src/db/schema/activityEvents';
 import { config } from '../src/config/env';
 import { and, eq } from 'drizzle-orm';
+import * as schema from '../src/db/schema';
 
 export interface SeedStagingOptions {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,9 +27,10 @@ export interface SeedStagingOptions {
  * Safety Rules:
  * 1. UNCONDITIONALLY refuses NODE_ENV=production.
  * 2. UNCONDITIONALLY refuses DATABASE_URL targeting production hosts/database names.
- * 3. Refuses external/opaque database target URLs unless explicitly confirmed via NODE_ENV=staging or ALLOW_STAGING_SEED=true.
- * 4. Idempotent: uses fixed UUIDs and existing-record checks to prevent duplicate rows.
- * 5. Executes inside a database transaction to ensure atomicity.
+ * 3. Refuses external/opaque database target URLs unless explicitly confirmed via ALLOW_STAGING_SEED=true.
+ * 4. Ensures the database client is created from the EXACT target URL validated by the safety checks.
+ * 5. Idempotent: uses fixed UUIDs and existing-record checks to prevent duplicate rows.
+ * 6. Executes inside a database transaction to ensure atomicity.
  */
 export async function seedStaging(options: SeedStagingOptions = {}) {
   const currentEnv = options.envOverride?.NODE_ENV || process.env.NODE_ENV || config.NODE_ENV;
@@ -57,17 +61,14 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
-  // Rule 3: Fail closed for external/opaque database target URLs without explicit confirmation
+  // Rule 3: Fail closed for external/opaque database target URLs without explicit ALLOW_STAGING_SEED=true confirmation
   const isLocalTarget =
     !targetDbUrl ||
     /localhost|127\.0\.0\.1|pglite/i.test(targetDbUrl);
 
-  const isConfirmedStaging =
-    currentEnv === 'staging' || allowStagingSeed === 'true';
-
-  if (!isLocalTarget && !isConfirmedStaging) {
+  if (!isLocalTarget && allowStagingSeed !== 'true') {
     throw new Error(
-      'CRITICAL SAFETY ERROR: Refusing to seed unconfirmed external database target without explicit confirmation (NODE_ENV=staging or ALLOW_STAGING_SEED=true).'
+      'CRITICAL SAFETY ERROR: Refusing to seed unconfirmed external database target without explicit confirmation (ALLOW_STAGING_SEED=true).'
     );
   }
 
@@ -81,271 +82,288 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     );
   }
 
+  // Rule 5: Ensure database client matches the verified target URL
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db: any = options.dbOverride || getDb();
+  let db: any;
+  let sqlClient: ReturnType<typeof postgres> | null = null;
 
-  // Test accounts definitions (matching fixed profile UUIDs)
-  const sellerId = '11111111-1111-4111-8111-111111111111';
-  const buyerId = '22222222-2222-4222-8222-222222222222';
-  const collectorId = '33333333-3333-4333-8333-333333333333';
+  if (options.dbOverride) {
+    db = options.dbOverride;
+  } else if (targetDbUrl) {
+    sqlClient = postgres(targetDbUrl);
+    db = drizzle(sqlClient, { schema });
+  } else {
+    db = getDb();
+  }
 
-  // Perform all seed insertions inside a single transaction where transaction support is available
-  const runTransaction =
-    typeof db.transaction === 'function'
-      ? db.transaction.bind(db)
-      : async (cb: (tx: typeof db) => Promise<void>) => cb(db);
+  try {
+    // Test accounts definitions (matching fixed profile UUIDs)
+    const sellerId = '11111111-1111-4111-8111-111111111111';
+    const buyerId = '22222222-2222-4222-8222-222222222222';
+    const collectorId = '33333333-3333-4333-8333-333333333333';
 
-  await runTransaction(async (tx: typeof db) => {
-    // 1. Seed Profiles
-    const testProfiles = [
-      {
-        id: sellerId,
-        username: 'amsterdam_grooves',
-        displayName: 'Amsterdam Grooves',
-        bio: 'Crate digger & physical vinyl collector based in De Pijp, Amsterdam.',
-        location: 'Amsterdam, NL',
-        websiteUrl: 'https://vinyldrop.local/profiles/amsterdam_grooves',
-      },
-      {
-        id: buyerId,
-        username: 'spin_doctor',
-        displayName: 'Spin Doctor',
-        bio: 'Jazz & Electronic record enthusiast looking for clean original pressings.',
-        location: 'Amsterdam Noord, NL',
-        websiteUrl: null,
-      },
-      {
-        id: collectorId,
-        username: 'wax_collector',
-        displayName: 'Wax Collector',
-        bio: 'Rare soul, funk, and afrobeat vinyl curator.',
-        location: 'Oost, Amsterdam',
-        websiteUrl: null,
-      },
-    ];
+    // Perform all seed insertions inside a single transaction where transaction support is available
+    const runTransaction =
+      typeof db.transaction === 'function'
+        ? db.transaction.bind(db)
+        : async (cb: (tx: typeof db) => Promise<void>) => cb(db);
 
-    for (const profile of testProfiles) {
-      const existing = await tx.select().from(profiles).where(eq(profiles.id, profile.id));
-      if (existing.length === 0) {
-        await tx.insert(profiles).values(profile);
+    await runTransaction(async (tx: typeof db) => {
+      // 1. Seed Profiles
+      const testProfiles = [
+        {
+          id: sellerId,
+          username: 'amsterdam_grooves',
+          displayName: 'Amsterdam Grooves',
+          bio: 'Crate digger & physical vinyl collector based in De Pijp, Amsterdam.',
+          location: 'Amsterdam, NL',
+          websiteUrl: 'https://vinyldrop.local/profiles/amsterdam_grooves',
+        },
+        {
+          id: buyerId,
+          username: 'spin_doctor',
+          displayName: 'Spin Doctor',
+          bio: 'Jazz & Electronic record enthusiast looking for clean original pressings.',
+          location: 'Amsterdam Noord, NL',
+          websiteUrl: null,
+        },
+        {
+          id: collectorId,
+          username: 'wax_collector',
+          displayName: 'Wax Collector',
+          bio: 'Rare soul, funk, and afrobeat vinyl curator.',
+          location: 'Oost, Amsterdam',
+          websiteUrl: null,
+        },
+      ];
+
+      for (const profile of testProfiles) {
+        const existing = await tx.select().from(profiles).where(eq(profiles.id, profile.id));
+        if (existing.length === 0) {
+          await tx.insert(profiles).values(profile);
+        }
       }
+
+      // 2. Seed Releases (using correct catalogueNumber column name matching schema)
+      const testReleases = [
+        {
+          id: 'a1111111-1111-4111-8111-111111111111',
+          title: 'Kind of Blue',
+          artist: 'Miles Davis',
+          label: 'Columbia',
+          catalogueNumber: 'CS 8163',
+          releaseYear: 1959,
+          format: 'LP, Album, Reissue',
+          genre: 'Jazz',
+          coverArtUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4',
+        },
+        {
+          id: 'a2222222-2222-4222-8222-222222222222',
+          title: 'Rumours',
+          artist: 'Fleetwood Mac',
+          label: 'Warner Bros. Records',
+          catalogueNumber: 'BSK 3010',
+          releaseYear: 1977,
+          format: 'LP, Album',
+          genre: 'Rock',
+          coverArtUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819',
+        },
+        {
+          id: 'a3333333-3333-4333-8333-333333333333',
+          title: 'Random Access Memories',
+          artist: 'Daft Punk',
+          label: 'Columbia',
+          catalogueNumber: '88883743781',
+          releaseYear: 2013,
+          format: '2xLP, Album',
+          genre: 'Electronic',
+          coverArtUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745',
+        },
+        {
+          id: 'a4444444-4444-4444-8444-444444444444',
+          title: 'Back to Black',
+          artist: 'Amy Winehouse',
+          label: 'Island Records',
+          catalogueNumber: '1713041',
+          releaseYear: 2006,
+          format: 'LP, Album',
+          genre: 'Funk / Soul',
+          coverArtUrl: 'https://images.unsplash.com/photo-1511735111819-9a3f7709049c',
+        },
+        {
+          id: 'a5555555-5555-4555-8555-555555555555',
+          title: 'A Love Supreme',
+          artist: 'John Coltrane',
+          label: 'Impulse!',
+          catalogueNumber: 'AS-77',
+          releaseYear: 1965,
+          format: 'LP, Album',
+          genre: 'Jazz',
+          coverArtUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6',
+        },
+      ];
+
+      for (const relData of testReleases) {
+        const existing = await tx.select().from(releases).where(eq(releases.id, relData.id));
+        if (existing.length === 0) {
+          await tx.insert(releases).values(relData);
+        }
+      }
+
+      // 3. Seed Physical Copies & Listings with fixed UUIDs
+      const seedListingsData = [
+        {
+          copyId: 'b1111111-1111-4111-8111-111111111111',
+          listingId: 'c1111111-1111-4111-8111-111111111111',
+          commentId: 'e1111111-1111-4111-8111-111111111111',
+          releaseId: 'a1111111-1111-4111-8111-111111111111',
+          ownerId: sellerId,
+          mediaCondition: 'NM' as const,
+          sleeveCondition: 'VG+' as const,
+          notes: 'Crisp audio, slight corner wear on outer sleeve.',
+          price: 3850, // €38.50
+          description: 'Classic modal jazz landmark. Clean pressing, play-tested on Technics SL-1200.',
+          commentContent: 'Is this pressing Japanese or US reissue?',
+          commentAuthorId: buyerId,
+        },
+        {
+          copyId: 'b2222222-2222-4222-8222-222222222222',
+          listingId: 'c2222222-2222-4222-8222-222222222222',
+          commentId: 'e2222222-2222-4222-8222-222222222222',
+          releaseId: 'a2222222-2222-4222-8222-222222222222',
+          ownerId: sellerId,
+          mediaCondition: 'VG+' as const,
+          sleeveCondition: 'VG+' as const,
+          notes: 'Includes original lyric insert.',
+          price: 2800, // €28.00
+          description: 'Original 1977 US pressing with textured jacket and insert. Plays great.',
+          commentContent: 'Are there any audible pops on Side 2?',
+          commentAuthorId: collectorId,
+        },
+        {
+          copyId: 'b3333333-3333-4333-8333-333333333333',
+          listingId: 'c3333333-3333-4333-8333-333333333333',
+          commentId: 'e3333333-3333-4333-8333-333333333333',
+          releaseId: 'a3333333-3333-4333-8333-333333333333',
+          ownerId: sellerId,
+          mediaCondition: 'M' as const,
+          sleeveCondition: 'NM' as const,
+          notes: 'Sealed inside original poly sleeve.',
+          price: 4500, // €45.00
+          description: 'Gatefold 180g double LP. Flawless copy.',
+          commentContent: 'Can meet up at Central Station for pickup.',
+          commentAuthorId: buyerId,
+        },
+        {
+          copyId: 'b4444444-4444-4444-8444-444444444444',
+          listingId: 'c4444444-4444-4444-8444-444444444444',
+          commentId: 'e4444444-4444-4444-8444-444444444444',
+          releaseId: 'a4444444-4444-4444-8444-444444444444',
+          ownerId: collectorId,
+          mediaCondition: 'VG+' as const,
+          sleeveCondition: 'VG' as const,
+          notes: 'Minor seam split on top jacket.',
+          price: null, // Trade only
+          description: 'Looking to trade for Blue Note or Impulse! jazz titles in VG+ or better.',
+          commentContent: 'Would you be interested in a Coltrane trade?',
+          commentAuthorId: sellerId,
+        },
+      ];
+
+      for (const item of seedListingsData) {
+        // 3a. Physical Copy
+        const existingCopy = await tx
+          .select()
+          .from(physicalCopies)
+          .where(eq(physicalCopies.id, item.copyId));
+        if (existingCopy.length === 0) {
+          await tx.insert(physicalCopies).values({
+            id: item.copyId,
+            releaseId: item.releaseId,
+            ownerId: item.ownerId,
+            mediaCondition: item.mediaCondition,
+            sleeveCondition: item.sleeveCondition,
+            notes: item.notes,
+          });
+        }
+
+        // 3b. Listing
+        const existingListing = await tx
+          .select()
+          .from(listings)
+          .where(eq(listings.id, item.listingId));
+        if (existingListing.length === 0) {
+          await tx.insert(listings).values({
+            id: item.listingId,
+            physicalCopyId: item.copyId,
+            sellerId: item.ownerId,
+            price: item.price,
+            currency: 'EUR',
+            description: item.description,
+            status: 'published',
+          });
+        }
+
+        // 3c. Published Activity Event
+        const existingPubEvent = await tx
+          .select()
+          .from(activityEvents)
+          .where(
+            and(
+              eq(activityEvents.actorId, item.ownerId),
+              eq(activityEvents.listingId, item.listingId),
+              eq(activityEvents.eventType, 'listing.published')
+            )
+          );
+        if (existingPubEvent.length === 0) {
+          await tx.insert(activityEvents).values({
+            eventType: 'listing.published',
+            actorId: item.ownerId,
+            listingId: item.listingId,
+          });
+        }
+
+        // 3d. Comment
+        const existingComment = await tx
+          .select()
+          .from(comments)
+          .where(eq(comments.id, item.commentId));
+        if (existingComment.length === 0) {
+          await tx.insert(comments).values({
+            id: item.commentId,
+            listingId: item.listingId,
+            authorId: item.commentAuthorId,
+            content: item.commentContent,
+          });
+        }
+
+        // 3e. Comment Activity Event
+        const existingCmtEvent = await tx
+          .select()
+          .from(activityEvents)
+          .where(
+            and(
+              eq(activityEvents.actorId, item.commentAuthorId),
+              eq(activityEvents.listingId, item.listingId),
+              eq(activityEvents.commentId, item.commentId),
+              eq(activityEvents.eventType, 'comment.created')
+            )
+          );
+        if (existingCmtEvent.length === 0) {
+          await tx.insert(activityEvents).values({
+            eventType: 'comment.created',
+            actorId: item.commentAuthorId,
+            listingId: item.listingId,
+            commentId: item.commentId,
+          });
+        }
+      }
+    });
+  } finally {
+    if (sqlClient) {
+      await sqlClient.end();
     }
-
-    // 2. Seed Releases (using correct catalogueNumber column name matching schema)
-    const testReleases = [
-      {
-        id: 'a1111111-1111-4111-8111-111111111111',
-        title: 'Kind of Blue',
-        artist: 'Miles Davis',
-        label: 'Columbia',
-        catalogueNumber: 'CS 8163',
-        releaseYear: 1959,
-        format: 'LP, Album, Reissue',
-        genre: 'Jazz',
-        coverArtUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4',
-      },
-      {
-        id: 'a2222222-2222-4222-8222-222222222222',
-        title: 'Rumours',
-        artist: 'Fleetwood Mac',
-        label: 'Warner Bros. Records',
-        catalogueNumber: 'BSK 3010',
-        releaseYear: 1977,
-        format: 'LP, Album',
-        genre: 'Rock',
-        coverArtUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819',
-      },
-      {
-        id: 'a3333333-3333-4333-8333-333333333333',
-        title: 'Random Access Memories',
-        artist: 'Daft Punk',
-        label: 'Columbia',
-        catalogueNumber: '88883743781',
-        releaseYear: 2013,
-        format: '2xLP, Album',
-        genre: 'Electronic',
-        coverArtUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745',
-      },
-      {
-        id: 'a4444444-4444-4444-8444-444444444444',
-        title: 'Back to Black',
-        artist: 'Amy Winehouse',
-        label: 'Island Records',
-        catalogueNumber: '1713041',
-        releaseYear: 2006,
-        format: 'LP, Album',
-        genre: 'Funk / Soul',
-        coverArtUrl: 'https://images.unsplash.com/photo-1511735111819-9a3f7709049c',
-      },
-      {
-        id: 'a5555555-5555-4555-8555-555555555555',
-        title: 'A Love Supreme',
-        artist: 'John Coltrane',
-        label: 'Impulse!',
-        catalogueNumber: 'AS-77',
-        releaseYear: 1965,
-        format: 'LP, Album',
-        genre: 'Jazz',
-        coverArtUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6',
-      },
-    ];
-
-    for (const relData of testReleases) {
-      const existing = await tx.select().from(releases).where(eq(releases.id, relData.id));
-      if (existing.length === 0) {
-        await tx.insert(releases).values(relData);
-      }
-    }
-
-    // 3. Seed Physical Copies & Listings with fixed UUIDs
-    const seedListingsData = [
-      {
-        copyId: 'b1111111-1111-4111-8111-111111111111',
-        listingId: 'c1111111-1111-4111-8111-111111111111',
-        commentId: 'e1111111-1111-4111-8111-111111111111',
-        releaseId: 'a1111111-1111-4111-8111-111111111111',
-        ownerId: sellerId,
-        mediaCondition: 'NM' as const,
-        sleeveCondition: 'VG+' as const,
-        notes: 'Crisp audio, slight corner wear on outer sleeve.',
-        price: 3850, // €38.50
-        description: 'Classic modal jazz landmark. Clean pressing, play-tested on Technics SL-1200.',
-        commentContent: 'Is this pressing Japanese or US reissue?',
-        commentAuthorId: buyerId,
-      },
-      {
-        copyId: 'b2222222-2222-4222-8222-222222222222',
-        listingId: 'c2222222-2222-4222-8222-222222222222',
-        commentId: 'e2222222-2222-4222-8222-222222222222',
-        releaseId: 'a2222222-2222-4222-8222-222222222222',
-        ownerId: sellerId,
-        mediaCondition: 'VG+' as const,
-        sleeveCondition: 'VG+' as const,
-        notes: 'Includes original lyric insert.',
-        price: 2800, // €28.00
-        description: 'Original 1977 US pressing with textured jacket and insert. Plays great.',
-        commentContent: 'Are there any audible pops on Side 2?',
-        commentAuthorId: collectorId,
-      },
-      {
-        copyId: 'b3333333-3333-4333-8333-333333333333',
-        listingId: 'c3333333-3333-4333-8333-333333333333',
-        commentId: 'e3333333-3333-4333-8333-333333333333',
-        releaseId: 'a3333333-3333-4333-8333-333333333333',
-        ownerId: sellerId,
-        mediaCondition: 'M' as const,
-        sleeveCondition: 'NM' as const,
-        notes: 'Sealed inside original poly sleeve.',
-        price: 4500, // €45.00
-        description: 'Gatefold 180g double LP. Flawless copy.',
-        commentContent: 'Can meet up at Central Station for pickup.',
-        commentAuthorId: buyerId,
-      },
-      {
-        copyId: 'b4444444-4444-4444-8444-444444444444',
-        listingId: 'c4444444-4444-4444-8444-444444444444',
-        commentId: 'e4444444-4444-4444-8444-444444444444',
-        releaseId: 'a4444444-4444-4444-8444-444444444444',
-        ownerId: collectorId,
-        mediaCondition: 'VG+' as const,
-        sleeveCondition: 'VG' as const,
-        notes: 'Minor seam split on top jacket.',
-        price: null, // Trade only
-        description: 'Looking to trade for Blue Note or Impulse! jazz titles in VG+ or better.',
-        commentContent: 'Would you be interested in a Coltrane trade?',
-        commentAuthorId: sellerId,
-      },
-    ];
-
-    for (const item of seedListingsData) {
-      // 3a. Physical Copy
-      const existingCopy = await tx
-        .select()
-        .from(physicalCopies)
-        .where(eq(physicalCopies.id, item.copyId));
-      if (existingCopy.length === 0) {
-        await tx.insert(physicalCopies).values({
-          id: item.copyId,
-          releaseId: item.releaseId,
-          ownerId: item.ownerId,
-          mediaCondition: item.mediaCondition,
-          sleeveCondition: item.sleeveCondition,
-          notes: item.notes,
-        });
-      }
-
-      // 3b. Listing
-      const existingListing = await tx
-        .select()
-        .from(listings)
-        .where(eq(listings.id, item.listingId));
-      if (existingListing.length === 0) {
-        await tx.insert(listings).values({
-          id: item.listingId,
-          physicalCopyId: item.copyId,
-          sellerId: item.ownerId,
-          price: item.price,
-          currency: 'EUR',
-          description: item.description,
-          status: 'published',
-        });
-      }
-
-      // 3c. Published Activity Event
-      const existingPubEvent = await tx
-        .select()
-        .from(activityEvents)
-        .where(
-          and(
-            eq(activityEvents.actorId, item.ownerId),
-            eq(activityEvents.listingId, item.listingId),
-            eq(activityEvents.eventType, 'listing.published')
-          )
-        );
-      if (existingPubEvent.length === 0) {
-        await tx.insert(activityEvents).values({
-          eventType: 'listing.published',
-          actorId: item.ownerId,
-          listingId: item.listingId,
-        });
-      }
-
-      // 3d. Comment
-      const existingComment = await tx
-        .select()
-        .from(comments)
-        .where(eq(comments.id, item.commentId));
-      if (existingComment.length === 0) {
-        await tx.insert(comments).values({
-          id: item.commentId,
-          listingId: item.listingId,
-          authorId: item.commentAuthorId,
-          content: item.commentContent,
-        });
-      }
-
-      // 3e. Comment Activity Event
-      const existingCmtEvent = await tx
-        .select()
-        .from(activityEvents)
-        .where(
-          and(
-            eq(activityEvents.actorId, item.commentAuthorId),
-            eq(activityEvents.listingId, item.listingId),
-            eq(activityEvents.commentId, item.commentId),
-            eq(activityEvents.eventType, 'comment.created')
-          )
-        );
-      if (existingCmtEvent.length === 0) {
-        await tx.insert(activityEvents).values({
-          eventType: 'comment.created',
-          actorId: item.commentAuthorId,
-          listingId: item.listingId,
-          commentId: item.commentId,
-        });
-      }
-    }
-  });
+  }
 }
 
 async function main() {

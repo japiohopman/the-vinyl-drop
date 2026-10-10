@@ -12,7 +12,7 @@ export const envSchema = z
     SUPABASE_URL: z.string().optional(),
     SUPABASE_ANON_KEY: z.string().optional(),
     APP_BASE_URL: z.string().optional(),
-    ALLOWED_REDIRECT_URLS: z.string().optional().default('http://localhost:3000'),
+    ALLOWED_REDIRECT_URLS: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     const isRuntime =
@@ -25,7 +25,7 @@ export const envSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['DATABASE_URL'],
-          message: 'DATABASE_URL environment variable is required in development and production modes.',
+          message: 'DATABASE_URL environment variable is required in development, staging, and production modes.',
         });
       }
 
@@ -33,7 +33,7 @@ export const envSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['SUPABASE_URL'],
-          message: 'SUPABASE_URL environment variable is required in development and production modes.',
+          message: 'SUPABASE_URL environment variable is required in development, staging, and production modes.',
         });
       }
 
@@ -41,7 +41,7 @@ export const envSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['SUPABASE_ANON_KEY'],
-          message: 'SUPABASE_ANON_KEY environment variable is required in development and production modes.',
+          message: 'SUPABASE_ANON_KEY environment variable is required in development, staging, and production modes.',
         });
       }
     }
@@ -78,11 +78,40 @@ export const envSchema = z
           });
         }
       }
+
+      if (!data.ALLOWED_REDIRECT_URLS || data.ALLOWED_REDIRECT_URLS.trim() === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['ALLOWED_REDIRECT_URLS'],
+          message: 'ALLOWED_REDIRECT_URLS environment variable is required in staging and production modes.',
+        });
+      } else {
+        const urls = data.ALLOWED_REDIRECT_URLS.split(',').map((u) => u.trim());
+        for (const u of urls) {
+          try {
+            const parsed = new URL(u);
+            if (!['http:', 'https:'].includes(parsed.protocol)) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['ALLOWED_REDIRECT_URLS'],
+                message: 'ALLOWED_REDIRECT_URLS items must use http:// or https:// scheme.',
+              });
+            }
+          } catch {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['ALLOWED_REDIRECT_URLS'],
+              message: `ALLOWED_REDIRECT_URLS item "${u}" must be a valid absolute URL.`,
+            });
+          }
+        }
+      }
     }
   });
 
-export type Env = Omit<z.infer<typeof envSchema>, 'APP_BASE_URL'> & {
+export type Env = Omit<z.infer<typeof envSchema>, 'APP_BASE_URL' | 'ALLOWED_REDIRECT_URLS'> & {
   APP_BASE_URL: string;
+  ALLOWED_REDIRECT_URLS: string;
 };
 
 export function validateEnv(envInput: Record<string, unknown> = process.env): Env {
@@ -99,9 +128,16 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
       ? 'http://localhost:3000'
       : '');
 
+  const defaultAllowedRedirectUrls =
+    result.data.ALLOWED_REDIRECT_URLS ||
+    (result.data.NODE_ENV === 'development' || result.data.NODE_ENV === 'test'
+      ? 'http://localhost:3000'
+      : '');
+
   return {
     ...result.data,
     APP_BASE_URL: defaultAppBaseUrl,
+    ALLOWED_REDIRECT_URLS: defaultAllowedRedirectUrls,
     SUPABASE_URL: result.data.SUPABASE_URL || 'https://example.supabase.co',
     SUPABASE_ANON_KEY: result.data.SUPABASE_ANON_KEY || 'mock-anon-key',
   };

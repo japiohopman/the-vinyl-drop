@@ -42,8 +42,10 @@ async function main() {
   const sellerId = '11111111-1111-1111-1111-111111111111';
   const buyerId = '22222222-2222-2222-2222-222222222222';
 
-  await db.insert(profiles).values({ id: sellerId, username: 'groove_master', displayName: 'Groove Master' });
-  await db.insert(profiles).values({ id: buyerId, username: 'vinyl_digger', displayName: 'Vinyl Digger' });
+  await db.insert(profiles).values([
+    { id: sellerId, username: 'groove_master', displayName: 'Groove Master', email: 'groove@example.com' },
+    { id: buyerId, username: 'vinyl_digger', displayName: 'Vinyl Digger', email: 'digger@example.com' },
+  ]);
 
   const [release] = await db.insert(releases).values({
     title: 'A Love Supreme',
@@ -71,6 +73,7 @@ async function main() {
   await db.insert(listingPhotos).values({
     listingId: listing.id,
     storagePath: 'assets/test-cover.webp',
+    publicUrl: '/assets/test-cover.webp',
     displayOrder: 0,
     altText: 'Album cover artwork for A Love Supreme by John Coltrane',
   });

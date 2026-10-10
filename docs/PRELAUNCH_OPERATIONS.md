@@ -11,7 +11,7 @@ This document outlines the operational decisions, infrastructure choices, polici
 A multi-environment configuration strategy is required to isolate development, testing, and production data:
 
 - **Local Development:** Developers run local Express server instances backed by environment variables (`.env`). Database migrations are verified against in-memory PostgreSQL (`@electric-sql/pglite`) and local or dev Supabase instances.
-- **Staging / Preview Environment:** Dedicated beta environment (`https://the-vinyl-drop-staging.onrender.com`) deployed via Render (`render.yaml`). Backed by an isolated staging Supabase project (database, auth, and `listing-photos` storage bucket) seeded via `npm run db:seed:staging`. See full details in [STAGING_BETA_DEPLOYMENT.md](./STAGING_BETA_DEPLOYMENT.md).
+- **Staging / Preview Environment:** Automated preview deployments triggered on pull requests or staging branches. Backed by a dedicated staging Supabase project (isolated database, auth, and storage bucket) with seed catalog data.
 - **Production Environment:** Hardened production runtime environment backed by a dedicated production Supabase project with production SSL certificates, connection pooling, and strict secret management.
 
 ---

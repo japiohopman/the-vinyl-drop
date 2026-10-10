@@ -53,12 +53,27 @@ describe('Environment Validation', () => {
     expect(env.DATABASE_URL).toBe('postgresql://postgres:postgres@localhost:5432/test');
   });
 
-  it('should reject staging mode when DATABASE_URL is missing or APP_BASE_URL is missing', () => {
+  it('should reject staging mode when APP_BASE_URL alone is missing', () => {
     expect(() =>
       validateEnv({
         NODE_ENV: 'staging',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
         SUPABASE_URL: 'https://staging-project.supabase.co',
         SUPABASE_ANON_KEY: 'some-staging-key',
+        ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+      })
+    ).toThrow('Invalid environment configuration');
+    expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
+  it('should reject staging mode when ALLOWED_REDIRECT_URLS alone is missing', () => {
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'staging',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+        SUPABASE_URL: 'https://staging-project.supabase.co',
+        SUPABASE_ANON_KEY: 'some-staging-key',
+        APP_BASE_URL: 'https://staging.vinyldrop.onrender.com',
       })
     ).toThrow('Invalid environment configuration');
     expect(consoleErrorSpy).toHaveBeenCalled();
@@ -72,12 +87,13 @@ describe('Environment Validation', () => {
         SUPABASE_URL: 'https://staging-project.supabase.co',
         SUPABASE_ANON_KEY: 'some-staging-key',
         APP_BASE_URL: 'http://localhost:3000',
+        ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
       })
     ).toThrow('Invalid environment configuration');
     expect(consoleErrorSpy).toHaveBeenCalled();
   });
 
-  it('should pass staging mode when required variables are present', () => {
+  it('should pass staging mode when all required variables are present', () => {
     const env = validateEnv({
       NODE_ENV: 'staging',
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
@@ -99,6 +115,7 @@ describe('Environment Validation', () => {
         SUPABASE_URL: 'https://prod-project.supabase.co',
         SUPABASE_ANON_KEY: 'prod-key',
         APP_BASE_URL: 'http://localhost:3000',
+        ALLOWED_REDIRECT_URLS: 'https://vinyldrop.com',
       })
     ).toThrow('Invalid environment configuration');
     expect(consoleErrorSpy).toHaveBeenCalled();
