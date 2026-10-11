@@ -91,6 +91,11 @@ The persistent media layer utilizes Supabase Storage bucket `listing-photos` wit
 
 #### Storage RLS Policies (`storage.objects`)
 
+All Storage RLS policies are version-controlled in `drizzle/0006_storage_objects_rls.sql` and applied automatically during database migration (`npm run db:migrate`).
+
+*Important Privacy Note on Public Storage Buckets:*
+`listing-photos` is configured as a public bucket to enable performant public CDN asset delivery for published listings. The `SELECT` RLS policy below restricts key enumeration (listing bucket folder contents) to published listings or the authenticated seller. However, because public buckets do not require token-authenticated GET requests for direct object path downloads, any user with exact knowledge of a draft object path (`listings/{listing_id}/{photo_id}.webp`) can technically fetch the binary asset directly. If total privacy for draft photo assets is required in future releases, the architecture must transition to private storage buckets with signed, short-lived download URLs.
+
 1. **Scoped Read Policy (`SELECT`):**
    - Restricts key enumeration/listing to objects attached to published listings or objects owned by the authenticated seller (`seller_id = auth.uid()`), while permitting direct reads of known storage paths for published listings.
    ```sql

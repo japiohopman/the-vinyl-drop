@@ -509,8 +509,18 @@ export async function deletePhotoFromListing(
   // Delete from Storage first so failure throws before DB record is removed
   await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
 
-  // Once storage deletion succeeds, delete metadata record from DB
-  await deleteListingPhoto(photoId, dbOverride);
+  // Once storage deletion succeeds, delete metadata record from DB with compensation handling
+  try {
+    await deleteListingPhoto(photoId, dbOverride);
+  } catch (dbErr) {
+    // Cross-system consistency recovery strategy:
+    // Storage object was already deleted. DB deletion failure leaves an orphaned metadata row in DB.
+    // Log a critical error detailing the orphaned state for monitoring/operator compensation.
+    console.error(
+      `CRITICAL: Photo metadata record deletion failed after Storage file deletion. Orphaned photo record ID: '${photoId}', storagePath: '${photo.storagePath}'. Error: ${(dbErr as Error).message}`
+    );
+    throw dbErr;
+  }
 
   // Compact display orders
   const remainingPhotos = await findPhotosByListingId(listingId, dbOverride);

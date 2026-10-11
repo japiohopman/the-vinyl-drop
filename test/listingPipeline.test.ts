@@ -239,6 +239,25 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       deleteSpy.mockRestore();
     });
 
+    it('should handle database deletion failure after storage file deletion and surface error', async () => {
+      const photoId = '60000000-0000-4000-8000-000000000001';
+      (photoRepo.findPhotoById as jest.Mock).mockResolvedValue({
+        id: photoId,
+        listingId,
+        storagePath: `listings/${listingId}/${photoId}.webp`,
+      });
+
+      (photoRepo.deleteListingPhoto as jest.Mock).mockRejectedValueOnce(new Error('PostgreSQL write lock timeout'));
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('PostgreSQL write lock timeout');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('CRITICAL: Photo metadata record deletion failed after Storage file deletion'));
+
+      consoleErrorSpy.mockRestore();
+    });
+
     it('should rollback storage upload if database insertion fails when adding a photo', async () => {
       const sampleImage = await sharp({
         create: { width: 100, height: 100, channels: 3, background: { r: 128, g: 128, b: 128 } },

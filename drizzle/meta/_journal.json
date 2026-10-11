@@ -43,6 +43,13 @@
       "when": 1791500000000,
       "tag": "0005_enforce_least_privilege_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791600000000,
+      "tag": "0006_storage_objects_rls",
+      "breakpoints": true
     }
   ]
 }
