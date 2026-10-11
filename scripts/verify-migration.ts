@@ -89,7 +89,7 @@ export async function verifyMigrations(): Promise<void> {
     );
   }
 
-  // 1. Verify expected public tables (all 8 public tables)
+  // 1. Verify expected public tables (all 9 public tables including orphaned_storage_objects)
   const tablesRes = await pg.query<{ table_name: string }>(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;`
   );
@@ -100,6 +100,7 @@ export async function verifyMigrations(): Promise<void> {
     'favorites',
     'listing_photos',
     'listings',
+    'orphaned_storage_objects',
     'physical_copies',
     'profiles',
     'releases',
@@ -270,17 +271,42 @@ export async function verifyMigrations(): Promise<void> {
     { qualIncludes?: string[]; checkIncludes?: string[] }
   > = {
     'Authenticated Seller Delete for listing-photos': {
-      qualIncludes: ["bucket_id = 'listing-photos'", "auth.role() = 'authenticated'", "seller_id = auth.uid()"],
+      qualIncludes: [
+        "bucket_id = 'listing-photos'",
+        "auth.role() = 'authenticated'",
+        "seller_id = auth.uid()",
+        "storage.foldername(objects.name)",
+      ],
     },
     'Authenticated Seller Insert for listing-photos': {
-      checkIncludes: ["bucket_id = 'listing-photos'", "auth.role() = 'authenticated'", "seller_id = auth.uid()"],
+      checkIncludes: [
+        "bucket_id = 'listing-photos'",
+        "auth.role() = 'authenticated'",
+        "seller_id = auth.uid()",
+        "storage.foldername(objects.name)",
+      ],
     },
     'Authenticated Seller Update for listing-photos': {
-      qualIncludes: ["bucket_id = 'listing-photos'", "auth.role() = 'authenticated'", "seller_id = auth.uid()"],
-      checkIncludes: ["bucket_id = 'listing-photos'", "auth.role() = 'authenticated'", "seller_id = auth.uid()"],
+      qualIncludes: [
+        "bucket_id = 'listing-photos'",
+        "auth.role() = 'authenticated'",
+        "seller_id = auth.uid()",
+        "storage.foldername(objects.name)",
+      ],
+      checkIncludes: [
+        "bucket_id = 'listing-photos'",
+        "auth.role() = 'authenticated'",
+        "seller_id = auth.uid()",
+        "storage.foldername(objects.name)",
+      ],
     },
     'Scoped Read Access for listing-photos': {
-      qualIncludes: ["bucket_id = 'listing-photos'", "status = 'published'", "seller_id = auth.uid()"],
+      qualIncludes: [
+        "bucket_id = 'listing-photos'",
+        "status = 'published'",
+        "seller_id = auth.uid()",
+        "storage.foldername(objects.name)",
+      ],
     },
   };
 
@@ -318,8 +344,22 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
+  // 8. Verify orphaned_storage_objects client role privilege revocation
+  const anonPrivRes = await pg.query<{ has_privilege: boolean }>(
+    `SELECT has_table_privilege('anon', 'orphaned_storage_objects', 'SELECT, INSERT, UPDATE, DELETE') as has_privilege;`
+  );
+  const authPrivRes = await pg.query<{ has_privilege: boolean }>(
+    `SELECT has_table_privilege('authenticated', 'orphaned_storage_objects', 'SELECT, INSERT, UPDATE, DELETE') as has_privilege;`
+  );
+
+  if (anonPrivRes.rows[0].has_privilege || authPrivRes.rows[0].has_privilege) {
+    throw new Error(
+      "Table 'orphaned_storage_objects' must be internal-only, but client roles (anon/authenticated) hold table privileges"
+    );
+  }
+
   console.log(
-    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} recorded migration entries, 8 tables with RLS enabled, ${storagePoliciesRes.rows.length} Storage RLS policies on storage.objects, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
+    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} recorded migration entries, ${expectedTables.length} tables with RLS enabled, ${storagePoliciesRes.rows.length} Storage RLS policies on storage.objects, revoked client access on orphaned_storage_objects, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
   );
 }
 
