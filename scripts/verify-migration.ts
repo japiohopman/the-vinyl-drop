@@ -13,26 +13,22 @@ export async function verifyMigrations(): Promise<void> {
   // inside isolated PGlite. This fixture uses no live Supabase credentials.
   await pg.exec(`
     CREATE SCHEMA IF NOT EXISTS auth;
-    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $
-    BEGIN
-      RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
-    EXCEPTION WHEN OTHERS THEN
-      RETURN NULL;
-    END;
-    $ LANGUAGE plpgsql STABLE;
+    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid
+      LANGUAGE sql STABLE
+      AS 'SELECT NULLIF(current_setting(''request.jwt.claim.sub'', true), '''')::uuid';
 
-    CREATE OR REPLACE FUNCTION auth.role() RETURNS text AS $
-      SELECT COALESCE(NULLIF(current_setting('request.jwt.claim.role', true), ''), 'anon');
-    $ LANGUAGE sql STABLE;
+    CREATE OR REPLACE FUNCTION auth.role() RETURNS text
+      LANGUAGE sql STABLE
+      AS 'SELECT COALESCE(NULLIF(current_setting(''request.jwt.claim.role'', true), ''''), ''anon'')';
 
     CREATE SCHEMA IF NOT EXISTS storage;
     CREATE TABLE IF NOT EXISTS storage.objects (
       bucket_id text NOT NULL,
       name text NOT NULL
     );
-    CREATE OR REPLACE FUNCTION storage.foldername(object_name text) RETURNS text[] AS $
-      SELECT string_to_array(object_name, '/');
-    $ LANGUAGE sql IMMUTABLE;
+    CREATE OR REPLACE FUNCTION storage.foldername(object_name text) RETURNS text[]
+      LANGUAGE sql IMMUTABLE
+      AS 'SELECT string_to_array(object_name, ''/'')';
   `);
 
   const drizzleDir = path.join(process.cwd(), 'drizzle');
