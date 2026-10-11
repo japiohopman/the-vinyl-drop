@@ -476,7 +476,13 @@ export async function addPhotoToListing(
     };
   } catch (dbErr) {
     // Rollback: clean up orphaned file in storage if DB insert fails
-    await deleteListingPhotoFromStorage(storagePath, storageOptions);
+    try {
+      await deleteListingPhotoFromStorage(storagePath, storageOptions);
+    } catch (cleanupErr) {
+      console.error(
+        `CRITICAL UNRESOLVED STORAGE ORPHAN: Photo upload DB record creation failed AND compensating Storage file cleanup failed. listingId: '${listingId}', photoId: '${photoId}', storagePath: '${storagePath}'. DB Error: ${(dbErr as Error).message}. Storage Cleanup Error: ${(cleanupErr as Error).message}`
+      );
+    }
     throw dbErr;
   }
 }
@@ -506,19 +512,31 @@ export async function deletePhotoFromListing(
     throw new NotFoundError('Photo not found');
   }
 
-  // Execute database record deletion inside a transaction first
-  // If DB deletion fails, the Storage file remains intact and no orphaned DB record is created.
+  // Execute database metadata record deletion first
   await deleteListingPhoto(photoId, dbOverride);
 
-  // Once DB record deletion succeeds, delete object from Storage.
-  // If Storage deletion fails, attempt best-effort DB compensation rollback or log critical error.
+  // Attempt Storage object deletion
   try {
     await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
   } catch (storageErr) {
-    console.error(
-      `CRITICAL: Storage file deletion failed after DB metadata record deletion. Orphaned Storage object at storagePath: '${photo.storagePath}'. Error: ${(storageErr as Error).message}`
-    );
-    // Note: DB row was already committed/deleted. We surface the Storage error so callers know deletion did not fully complete.
+    // Compensation strategy: Storage deletion failed. Re-insert the DB metadata record
+    // to restore cross-system state consistency before re-throwing the error.
+    try {
+      await createListingPhoto(
+        {
+          id: photo.id,
+          listingId: photo.listingId,
+          storagePath: photo.storagePath,
+          displayOrder: photo.displayOrder,
+          altText: photo.altText,
+        },
+        dbOverride
+      );
+    } catch (compensationErr) {
+      console.error(
+        `CRITICAL UNRESOLVED METADATA ORPHAN: Storage deletion failed AND DB record re-insertion compensation failed for listingId: '${listingId}', photoId: '${photoId}', storagePath: '${photo.storagePath}'. Storage Error: ${(storageErr as Error).message}. Compensation DB Error: ${(compensationErr as Error).message}`
+      );
+    }
     throw storageErr;
   }
 

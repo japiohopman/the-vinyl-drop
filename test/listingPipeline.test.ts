@@ -237,30 +237,42 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       deleteStorageSpy.mockRestore();
     });
 
-    it('should handle storage object deletion failure after database row deletion and surface error', async () => {
+    it('should re-insert database metadata record as compensation if storage object deletion fails', async () => {
       const photoId = '60000000-0000-4000-8000-000000000001';
-      (photoRepo.findPhotoById as jest.Mock).mockResolvedValue({
+      const samplePhoto = {
         id: photoId,
         listingId,
         storagePath: `listings/${listingId}/${photoId}.webp`,
-      });
+        displayOrder: 0,
+        altText: 'Cover art',
+      };
 
+      (photoRepo.findPhotoById as jest.Mock).mockResolvedValue(samplePhoto);
       (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(true);
+      (photoRepo.createListingPhoto as jest.Mock).mockResolvedValueOnce(samplePhoto);
 
       const storageModule = await import('../src/app/services/storageService');
       const deleteStorageSpy = jest
         .spyOn(storageModule, 'deleteListingPhotoFromStorage')
         .mockRejectedValueOnce(new Error('Supabase Storage deletion failed: 500 Internal Server Error'));
 
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
       await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('Supabase Storage deletion failed');
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('CRITICAL: Storage file deletion failed after DB metadata record deletion')
+      // Verify that deleteListingPhoto was called first
+      expect(photoRepo.deleteListingPhoto).toHaveBeenCalledWith(photoId, undefined);
+
+      // Verify compensation re-insertion was called to restore the metadata row
+      expect(photoRepo.createListingPhoto).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: photoId,
+          listingId,
+          storagePath: `listings/${listingId}/${photoId}.webp`,
+          displayOrder: 0,
+          altText: 'Cover art',
+        }),
+        undefined
       );
 
-      consoleErrorSpy.mockRestore();
       deleteStorageSpy.mockRestore();
     });
 
@@ -285,6 +297,69 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       ).rejects.toThrow('Database transaction deadlocked');
 
       expect(deleteSpy).toHaveBeenCalled();
+    });
+
+    it('should log CRITICAL UNRESOLVED STORAGE ORPHAN if photo upload DB insertion fails AND Storage cleanup fails', async () => {
+      const sampleImage = await sharp({
+        create: { width: 100, height: 100, channels: 3, background: { r: 100, g: 100, b: 100 } },
+      })
+        .jpeg()
+        .toBuffer();
+
+      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(new Error('PostgreSQL unique constraint violation'));
+
+      const storageModule = await import('../src/app/services/storageService');
+      const deleteStorageSpy = jest
+        .spyOn(storageModule, 'deleteListingPhotoFromStorage')
+        .mockRejectedValueOnce(new Error('Supabase Storage 503 Service Unavailable'));
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(
+        addPhotoToListing(listingId, sellerId, {
+          buffer: sampleImage,
+          mimetype: 'image/jpeg',
+          originalname: 'cover.jpg',
+        })
+      ).rejects.toThrow('PostgreSQL unique constraint violation');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('CRITICAL UNRESOLVED STORAGE ORPHAN')
+      );
+
+      consoleErrorSpy.mockRestore();
+      deleteStorageSpy.mockRestore();
+    });
+
+    it('should log CRITICAL UNRESOLVED METADATA ORPHAN if photo deletion Storage removal fails AND DB compensation re-insertion fails', async () => {
+      const photoId = '60000000-0000-4000-8000-000000000001';
+      const samplePhoto = {
+        id: photoId,
+        listingId,
+        storagePath: `listings/${listingId}/${photoId}.webp`,
+        displayOrder: 0,
+        altText: 'Cover art',
+      };
+
+      (photoRepo.findPhotoById as jest.Mock).mockResolvedValue(samplePhoto);
+      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(true);
+      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(new Error('DB primary key conflict'));
+
+      const storageModule = await import('../src/app/services/storageService');
+      const deleteStorageSpy = jest
+        .spyOn(storageModule, 'deleteListingPhotoFromStorage')
+        .mockRejectedValueOnce(new Error('Supabase Storage 500 Network Timeout'));
+
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('Supabase Storage 500 Network Timeout');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('CRITICAL UNRESOLVED METADATA ORPHAN')
+      );
+
+      consoleErrorSpy.mockRestore();
+      deleteStorageSpy.mockRestore();
     });
 
     it('should reject publishing without server-side preview confirmation (Blocker 3)', async () => {

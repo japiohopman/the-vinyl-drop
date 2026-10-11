@@ -212,26 +212,83 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
-  // 7. Verify Storage RLS policies applied on storage.objects (from migration 0006)
-  const storagePoliciesRes = await pg.query<{ policyname: string }>(
-    `SELECT policyname FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' ORDER BY policyname;`
+  // 7. Verify Storage RLS enabled and policy details applied on storage.objects (from migration 0006)
+  const storageRlsRes = await pg.query<{ relrowsecurity: boolean }>(
+    `SELECT c.relrowsecurity
+     FROM pg_class c
+     JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'storage' AND c.relname = 'objects';`
   );
-  const storagePolicyNames = storagePoliciesRes.rows.map((r) => r.policyname);
-  const expectedStoragePolicies = [
-    'Authenticated Seller Delete for listing-photos',
-    'Authenticated Seller Insert for listing-photos',
-    'Authenticated Seller Update for listing-photos',
-    'Scoped Read Access for listing-photos',
-  ];
 
-  for (const expectedPolicy of expectedStoragePolicies) {
-    if (!storagePolicyNames.includes(expectedPolicy)) {
-      throw new Error(`Missing expected Storage RLS policy '${expectedPolicy}' on storage.objects`);
+  if (storageRlsRes.rows.length === 0 || !storageRlsRes.rows[0].relrowsecurity) {
+    throw new Error("Row Level Security (RLS) is NOT enabled on 'storage.objects'");
+  }
+
+  const storagePoliciesRes = await pg.query<{
+    policyname: string;
+    cmd: string;
+    qual: string | null;
+    with_check: string | null;
+  }>(
+    `SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' ORDER BY policyname;`
+  );
+
+  const expectedStoragePolicyMap: Record<
+    string,
+    { cmd: string; qualContains?: string; checkContains?: string }
+  > = {
+    'Authenticated Seller Delete for listing-photos': {
+      cmd: 'DELETE',
+      qualContains: "bucket_id = 'listing-photos'",
+    },
+    'Authenticated Seller Insert for listing-photos': {
+      cmd: 'INSERT',
+      checkContains: "bucket_id = 'listing-photos'",
+    },
+    'Authenticated Seller Update for listing-photos': {
+      cmd: 'UPDATE',
+      qualContains: "bucket_id = 'listing-photos'",
+      checkContains: "bucket_id = 'listing-photos'",
+    },
+    'Scoped Read Access for listing-photos': {
+      cmd: 'SELECT',
+      qualContains: "bucket_id = 'listing-photos'",
+    },
+  };
+
+  const foundPolicies = new Map(storagePoliciesRes.rows.map((p) => [p.policyname, p]));
+
+  for (const [policyName, spec] of Object.entries(expectedStoragePolicyMap)) {
+    const policy = foundPolicies.get(policyName);
+    if (!policy) {
+      throw new Error(`Missing expected Storage RLS policy '${policyName}' on storage.objects`);
+    }
+
+    if (policy.cmd.toUpperCase() !== spec.cmd) {
+      throw new Error(
+        `Storage policy '${policyName}' command mismatch: expected '${spec.cmd}', got '${policy.cmd}'`
+      );
+    }
+
+    if (spec.qualContains) {
+      if (!policy.qual || !policy.qual.includes(spec.qualContains)) {
+        throw new Error(
+          `Storage policy '${policyName}' USING predicate missing expected string '${spec.qualContains}'`
+        );
+      }
+    }
+
+    if (spec.checkContains) {
+      if (!policy.with_check || !policy.with_check.includes(spec.checkContains)) {
+        throw new Error(
+          `Storage policy '${policyName}' WITH CHECK predicate missing expected string '${spec.checkContains}'`
+        );
+      }
     }
   }
 
   console.log(
-    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} recorded migration entries, 8 tables with RLS enabled, ${storagePolicyNames.length} Storage RLS policies on storage.objects, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
+    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} recorded migration entries, 8 tables with RLS enabled, ${storagePoliciesRes.rows.length} Storage RLS policies on storage.objects, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
   );
 }
 
