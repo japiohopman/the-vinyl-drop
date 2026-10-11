@@ -237,27 +237,80 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       deleteStorageSpy.mockRestore();
     });
 
-    it('should handle storage object deletion failure after database row deletion and surface error', async () => {
+    it('should restore photo metadata when storage deletion fails after database row deletion', async () => {
       const photoId = '60000000-0000-4000-8000-000000000001';
-      (photoRepo.findPhotoById as jest.Mock).mockResolvedValue({
+      const createdAt = new Date('2026-01-01T00:00:00.000Z');
+      const photo = {
         id: photoId,
         listingId,
         storagePath: `listings/${listingId}/${photoId}.webp`,
-      });
-
-      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(true);
+        displayOrder: 2,
+        altText: 'Cover art',
+        createdAt,
+        updatedAt: createdAt,
+      };
+      (photoRepo.findPhotoById as jest.Mock).mockResolvedValue(photo);
+      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(photo);
+      (photoRepo.createListingPhoto as jest.Mock).mockResolvedValueOnce(photo);
 
       const storageModule = await import('../src/app/services/storageService');
       const deleteStorageSpy = jest
         .spyOn(storageModule, 'deleteListingPhotoFromStorage')
         .mockRejectedValueOnce(new Error('Supabase Storage deletion failed: 500 Internal Server Error'));
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
+      await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow(
+        'Supabase Storage deletion failed'
+      );
+
+      expect(photoRepo.createListingPhoto).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: photoId,
+          listingId,
+          storagePath: photo.storagePath,
+          displayOrder: photo.displayOrder,
+          altText: photo.altText,
+          createdAt: photo.createdAt,
+        }),
+        undefined
+      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('restored photo metadata so the object is still represented')
+      );
+
+      consoleWarnSpy.mockRestore();
+      deleteStorageSpy.mockRestore();
+    });
+
+    it('should report a critical error if storage deletion and DB metadata compensation both fail', async () => {
+      const photoId = '60000000-0000-4000-8000-000000000002';
+      const photo = {
+        id: photoId,
+        listingId,
+        storagePath: `listings/${listingId}/${photoId}.webp`,
+        displayOrder: 0,
+        altText: 'Sleeve photo',
+        createdAt: new Date('2026-01-02T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+      };
+      (photoRepo.findPhotoById as jest.Mock).mockResolvedValue(photo);
+      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(photo);
+      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(
+        new Error('PostgreSQL unavailable during compensation')
+      );
+
+      const storageModule = await import('../src/app/services/storageService');
+      const deleteStorageSpy = jest
+        .spyOn(storageModule, 'deleteListingPhotoFromStorage')
+        .mockRejectedValueOnce(new Error('Supabase Storage deletion failed: 500 Internal Server Error'));
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-      await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('Supabase Storage deletion failed');
+      await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow(
+        'Supabase Storage deletion failed'
+      );
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('CRITICAL: Storage file deletion failed after DB metadata record deletion')
+        expect.stringContaining('CRITICAL: Storage file deletion failed and photo metadata compensation also failed')
       );
 
       consoleErrorSpy.mockRestore();
