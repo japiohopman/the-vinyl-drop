@@ -9,16 +9,30 @@ export async function verifyMigrations(): Promise<void> {
 
   const pg = new PGlite();
 
-  // Bootstrap auth schema and auth.uid() stub for local/PGlite migration verification
+  // Bootstrap minimal Supabase Auth/Storage objects needed to execute migration 0006
+  // inside isolated PGlite. This fixture uses no live Supabase credentials.
   await pg.exec(`
     CREATE SCHEMA IF NOT EXISTS auth;
-    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $
     BEGIN
       RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
     EXCEPTION WHEN OTHERS THEN
       RETURN NULL;
     END;
-    $$ LANGUAGE plpgsql STABLE;
+    $ LANGUAGE plpgsql STABLE;
+
+    CREATE OR REPLACE FUNCTION auth.role() RETURNS text AS $
+      SELECT COALESCE(NULLIF(current_setting('request.jwt.claim.role', true), ''), 'anon');
+    $ LANGUAGE sql STABLE;
+
+    CREATE SCHEMA IF NOT EXISTS storage;
+    CREATE TABLE IF NOT EXISTS storage.objects (
+      bucket_id text NOT NULL,
+      name text NOT NULL
+    );
+    CREATE OR REPLACE FUNCTION storage.foldername(object_name text) RETURNS text[] AS $
+      SELECT string_to_array(object_name, '/');
+    $ LANGUAGE sql IMMUTABLE;
   `);
 
   const drizzleDir = path.join(process.cwd(), 'drizzle');
@@ -64,6 +78,57 @@ export async function verifyMigrations(): Promise<void> {
       `Drizzle migration history recorded ${migrationHistory.rows.length} entries, expected ${journal.entries.length}`
     );
   }
+
+  // Verify migration 0006 installed its policy definitions rather than silently skipping the guarded block.
+  const storagePoliciesRes = await pg.query<{
+    policyname: string;
+    cmd: string;
+    qual: string | null;
+    with_check: string | null;
+  }>(
+    `SELECT policyname, cmd, qual, with_check
+     FROM pg_policies
+     WHERE schemaname = 'storage' AND tablename = 'objects'
+     ORDER BY policyname;`
+  );
+  const storagePolicies = new Map(storagePoliciesRes.rows.map((policy) => [policy.policyname, policy]));
+  const expectedStoragePolicies = [
+    { name: 'Scoped Read Access for listing-photos', command: 'SELECT', conditionField: 'qual' as const },
+    { name: 'Authenticated Seller Insert for listing-photos', command: 'INSERT', conditionField: 'with_check' as const },
+    { name: 'Authenticated Seller Update for listing-photos', command: 'UPDATE', conditionField: 'qual' as const },
+    { name: 'Authenticated Seller Delete for listing-photos', command: 'DELETE', conditionField: 'qual' as const },
+  ];
+
+  for (const expected of expectedStoragePolicies) {
+    const actual = storagePolicies.get(expected.name);
+    if (!actual) {
+      throw new Error(`Storage RLS migration 0006 did not create policy '${expected.name}'`);
+    }
+    if (actual.cmd !== expected.command) {
+      throw new Error(
+        `Storage policy '${expected.name}' has command '${actual.cmd}', expected '${expected.command}'`
+      );
+    }
+    const predicate = actual[expected.conditionField];
+    if (!predicate || !predicate.includes('listing-photos')) {
+      throw new Error(
+        `Storage policy '${expected.name}' is missing the listing-photos bucket restriction`
+      );
+    }
+    if (expected.command !== 'SELECT' && !predicate.includes('seller_id')) {
+      throw new Error(
+        `Storage write policy '${expected.name}' is missing the seller ownership predicate`
+      );
+    }
+  }
+
+  const storageRlsRes = await pg.query<{ relrowsecurity: boolean }>(
+    `SELECT relrowsecurity FROM pg_class WHERE oid = 'storage.objects'::regclass;`
+  );
+  if (!storageRlsRes.rows[0]?.relrowsecurity) {
+    throw new Error('Storage RLS migration 0006 did not enable RLS on storage.objects');
+  }
+  console.log('✅ Storage RLS migration verified: four expected policies and RLS enabled on storage.objects.');
 
   // 1. Verify expected public tables (all 8 public tables)
   const tablesRes = await pg.query<{ table_name: string }>(
