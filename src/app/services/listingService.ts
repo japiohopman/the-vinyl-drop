@@ -506,19 +506,36 @@ export async function deletePhotoFromListing(
     throw new NotFoundError('Photo not found');
   }
 
-  // Execute database record deletion inside a transaction first
-  // If DB deletion fails, the Storage file remains intact and no orphaned DB record is created.
+  // Delete the metadata first. If PostgreSQL rejects the delete, the Storage object is untouched.
   await deleteListingPhoto(photoId, dbOverride);
 
-  // Once DB record deletion succeeds, delete object from Storage.
-  // If Storage deletion fails, attempt best-effort DB compensation rollback or log critical error.
+  // PostgreSQL and Storage cannot participate in one atomic transaction. If Storage refuses
+  // deletion, restore the exact metadata so the listing remains usable and the seller can retry.
+  // If the compensation also fails, log both failures so the orphan can be reconciled manually.
   try {
     await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
   } catch (storageErr) {
-    console.error(
-      `CRITICAL: Storage file deletion failed after DB metadata record deletion. Orphaned Storage object at storagePath: '${photo.storagePath}'. Error: ${(storageErr as Error).message}`
-    );
-    // Note: DB row was already committed/deleted. We surface the Storage error so callers know deletion did not fully complete.
+    try {
+      await createListingPhoto(
+        {
+          id: photo.id,
+          listingId: photo.listingId,
+          storagePath: photo.storagePath,
+          displayOrder: photo.displayOrder,
+          altText: photo.altText,
+          createdAt: photo.createdAt,
+          updatedAt: new Date(),
+        },
+        dbOverride
+      );
+      console.warn(
+        `Storage file deletion failed; restored photo metadata so the object is still represented. photoId='${photo.id}', storagePath='${photo.storagePath}'. Error: ${(storageErr as Error).message}`
+      );
+    } catch (compensationErr) {
+      console.error(
+        `CRITICAL: Storage file deletion failed and photo metadata compensation also failed. photoId='${photo.id}', storagePath='${photo.storagePath}'. Storage error: ${(storageErr as Error).message}. Compensation error: ${(compensationErr as Error).message}`
+      );
+    }
     throw storageErr;
   }
 
