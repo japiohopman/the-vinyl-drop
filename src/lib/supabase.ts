@@ -9,7 +9,11 @@ if (typeof globalThis.WebSocket === 'undefined') {
   (globalThis as any).WebSocket = WebSocket;
 }
 
-export function createExpressSupabaseClient(req?: Request, res?: Response): SupabaseClient {
+export function createExpressSupabaseClient(
+  req?: Request,
+  res?: Response,
+  accessToken?: string
+): SupabaseClient {
   const cookieStorage: SupportedStorage = {
     getItem: (key: string): string | null => {
       if (req && req.cookies && req.cookies[key]) {
@@ -37,7 +41,18 @@ export function createExpressSupabaseClient(req?: Request, res?: Response): Supa
   const url = config.SUPABASE_URL || 'https://example.supabase.co';
   const anonKey = config.SUPABASE_ANON_KEY || 'mock-anon-key';
 
+  const token =
+    accessToken ||
+    req?.session?.access_token ||
+    req?.cookies?.['sb-access-token'] ||
+    (req?.headers?.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.split(' ')[1]
+      : undefined);
+
+  const globalHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+
   return createClient(url, anonKey, {
+    ...(globalHeaders && { global: { headers: globalHeaders } }),
     auth: {
       flowType: 'pkce',
       persistSession: false,
@@ -50,11 +65,15 @@ export function createExpressSupabaseClient(req?: Request, res?: Response): Supa
 
 let mockClient: SupabaseClient | null = null;
 
-export function getSupabaseClient(req?: Request, res?: Response): SupabaseClient {
+export function getSupabaseClient(
+  req?: Request,
+  res?: Response,
+  accessToken?: string
+): SupabaseClient {
   if (mockClient) {
     return mockClient;
   }
-  return createExpressSupabaseClient(req, res);
+  return createExpressSupabaseClient(req, res, accessToken);
 }
 
 export function setSupabaseClient(client: SupabaseClient | null): void {

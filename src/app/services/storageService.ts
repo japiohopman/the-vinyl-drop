@@ -1,3 +1,4 @@
+import { Request } from 'express';
 import { getSupabaseClient } from '../../lib/supabase';
 import { config } from '../../config/env';
 
@@ -6,21 +7,27 @@ const BUCKET_NAME = 'listing-photos';
 // In-memory mock storage map strictly for test environment
 const inMemoryStorage = new Map<string, { buffer: Buffer; contentType: string }>();
 
+export interface StorageOptions {
+  accessToken?: string;
+  req?: Request;
+}
+
 export interface UploadPhotoParams {
   listingId: string;
   photoId: string;
   buffer: Buffer;
   contentType: string;
   extension?: string;
+  options?: StorageOptions;
 }
 
 /**
- * Uploads a processed photo buffer to Supabase Storage.
+ * Uploads a processed photo buffer to Supabase Storage using authenticated Supabase client context.
  * In `test` environment, uses in-memory storage adapter.
  * In `development` / `production`, requires successful Supabase Storage upload or throws an error.
  */
 export async function uploadListingPhotoToStorage(params: UploadPhotoParams): Promise<string> {
-  const { listingId, photoId, buffer, contentType, extension = 'webp' } = params;
+  const { listingId, photoId, buffer, contentType, extension = 'webp', options } = params;
   const storagePath = `listings/${listingId}/${photoId}.${extension}`;
 
   if (config.NODE_ENV === 'test') {
@@ -28,7 +35,7 @@ export async function uploadListingPhotoToStorage(params: UploadPhotoParams): Pr
     return storagePath;
   }
 
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
   const { error } = await supabase.storage.from(BUCKET_NAME).upload(storagePath, buffer, {
     contentType,
     upsert: true,
@@ -42,16 +49,19 @@ export async function uploadListingPhotoToStorage(params: UploadPhotoParams): Pr
 }
 
 /**
- * Deletes a photo file from Supabase Storage (and in-memory mock during tests).
+ * Deletes a photo file from Supabase Storage (and in-memory mock during tests) using authenticated context.
  * Surfaces deletion errors in non-test environments.
  */
-export async function deleteListingPhotoFromStorage(storagePath: string): Promise<boolean> {
+export async function deleteListingPhotoFromStorage(
+  storagePath: string,
+  options?: StorageOptions
+): Promise<boolean> {
   if (config.NODE_ENV === 'test') {
     inMemoryStorage.delete(storagePath);
     return true;
   }
 
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
   const { error } = await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
 
   if (error) {

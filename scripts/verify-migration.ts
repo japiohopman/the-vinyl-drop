@@ -9,7 +9,7 @@ export async function verifyMigrations(): Promise<void> {
 
   const pg = new PGlite();
 
-  // Bootstrap auth schema and auth.uid() stub for local/PGlite migration verification
+  // Bootstrap auth and storage schemas, auth.uid(), auth.role(), and storage.foldername() stubs for local/PGlite migration verification
   await pg.exec(`
     CREATE SCHEMA IF NOT EXISTS auth;
     CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
@@ -19,6 +19,30 @@ export async function verifyMigrations(): Promise<void> {
       RETURN NULL;
     END;
     $$ LANGUAGE plpgsql STABLE;
+
+    CREATE OR REPLACE FUNCTION auth.role() RETURNS text AS $$
+    BEGIN
+      RETURN COALESCE(NULLIF(current_setting('request.jwt.claim.role', true), ''), 'authenticated');
+    END;
+    $$ LANGUAGE plpgsql STABLE;
+
+    CREATE SCHEMA IF NOT EXISTS storage;
+    CREATE TABLE IF NOT EXISTS storage.objects (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      bucket_id text NOT NULL,
+      name text NOT NULL,
+      owner uuid,
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now(),
+      last_accessed_at timestamptz DEFAULT now(),
+      metadata jsonb
+    );
+
+    CREATE OR REPLACE FUNCTION storage.foldername(name text) RETURNS text[] AS $$
+    BEGIN
+      RETURN string_to_array(name, '/');
+    END;
+    $$ LANGUAGE plpgsql IMMUTABLE;
   `);
 
   const drizzleDir = path.join(process.cwd(), 'drizzle');
@@ -65,7 +89,7 @@ export async function verifyMigrations(): Promise<void> {
     );
   }
 
-  // 1. Verify expected public tables (all 8 public tables)
+  // 1. Verify expected public tables (all 9 public tables including orphaned_storage_objects)
   const tablesRes = await pg.query<{ table_name: string }>(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;`
   );
@@ -76,6 +100,7 @@ export async function verifyMigrations(): Promise<void> {
     'favorites',
     'listing_photos',
     'listings',
+    'orphaned_storage_objects',
     'physical_copies',
     'profiles',
     'releases',
@@ -188,8 +213,153 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
+  // 7. Verify Storage RLS enabled and policy details applied on storage.objects (from migration 0006)
+  const storageRlsRes = await pg.query<{ relrowsecurity: boolean }>(
+    `SELECT c.relrowsecurity
+     FROM pg_class c
+     JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'storage' AND c.relname = 'objects';`
+  );
+
+  if (storageRlsRes.rows.length === 0 || !storageRlsRes.rows[0].relrowsecurity) {
+    throw new Error("Row Level Security (RLS) is NOT enabled on 'storage.objects'");
+  }
+
+  const storagePoliciesRes = await pg.query<{
+    policyname: string;
+    cmd: string;
+    qual: string | null;
+    with_check: string | null;
+  }>(
+    `SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' ORDER BY policyname;`
+  );
+
+  const expectedStoragePolicyMap: Record<
+    string,
+    { cmd: string; qualContains?: string; checkContains?: string }
+  > = {
+    'Authenticated Seller Delete for listing-photos': {
+      cmd: 'DELETE',
+      qualContains: "bucket_id = 'listing-photos'",
+    },
+    'Authenticated Seller Insert for listing-photos': {
+      cmd: 'INSERT',
+      checkContains: "bucket_id = 'listing-photos'",
+    },
+    'Authenticated Seller Update for listing-photos': {
+      cmd: 'UPDATE',
+      qualContains: "bucket_id = 'listing-photos'",
+      checkContains: "bucket_id = 'listing-photos'",
+    },
+    'Scoped Read Access for listing-photos': {
+      cmd: 'SELECT',
+      qualContains: "bucket_id = 'listing-photos'",
+    },
+  };
+
+  const foundPolicies = new Map(storagePoliciesRes.rows.map((p) => [p.policyname, p]));
+
+  // Assert exact policy count to guarantee no extra/unrecognized permissive write policies exist
+  if (storagePoliciesRes.rows.length !== Object.keys(expectedStoragePolicyMap).length) {
+    throw new Error(
+      `Unexpected policy count on storage.objects: expected ${Object.keys(expectedStoragePolicyMap).length}, found ${storagePoliciesRes.rows.length}`
+    );
+  }
+
+  const expectedPredicates: Record<
+    string,
+    { qualIncludes?: string[]; checkIncludes?: string[] }
+  > = {
+    'Authenticated Seller Delete for listing-photos': {
+      qualIncludes: [
+        "bucket_id = 'listing-photos'",
+        "auth.role() = 'authenticated'",
+        "seller_id = auth.uid()",
+        "id)::text = (storage.foldername(objects.name))[2]",
+      ],
+    },
+    'Authenticated Seller Insert for listing-photos': {
+      checkIncludes: [
+        "bucket_id = 'listing-photos'",
+        "auth.role() = 'authenticated'",
+        "seller_id = auth.uid()",
+        "id)::text = (storage.foldername(objects.name))[2]",
+      ],
+    },
+    'Authenticated Seller Update for listing-photos': {
+      qualIncludes: [
+        "bucket_id = 'listing-photos'",
+        "auth.role() = 'authenticated'",
+        "seller_id = auth.uid()",
+        "id)::text = (storage.foldername(objects.name))[2]",
+      ],
+      checkIncludes: [
+        "bucket_id = 'listing-photos'",
+        "auth.role() = 'authenticated'",
+        "seller_id = auth.uid()",
+        "id)::text = (storage.foldername(objects.name))[2]",
+      ],
+    },
+    'Scoped Read Access for listing-photos': {
+      qualIncludes: [
+        "bucket_id = 'listing-photos'",
+        "status = 'published'",
+        "seller_id = auth.uid()",
+        "id)::text = (storage.foldername(objects.name))[2]",
+      ],
+    },
+  };
+
+  for (const [policyName, spec] of Object.entries(expectedStoragePolicyMap)) {
+    const policy = foundPolicies.get(policyName);
+    if (!policy) {
+      throw new Error(`Missing expected Storage RLS policy '${policyName}' on storage.objects`);
+    }
+
+    if (policy.cmd.toUpperCase() !== spec.cmd) {
+      throw new Error(
+        `Storage policy '${policyName}' command mismatch: expected '${spec.cmd}', got '${policy.cmd}'`
+      );
+    }
+
+    const predicates = expectedPredicates[policyName];
+    if (predicates.qualIncludes) {
+      for (const requiredStr of predicates.qualIncludes) {
+        if (!policy.qual || !policy.qual.includes(requiredStr)) {
+          throw new Error(
+            `Storage policy '${policyName}' USING predicate missing required clause '${requiredStr}'`
+          );
+        }
+      }
+    }
+
+    if (predicates.checkIncludes) {
+      for (const requiredStr of predicates.checkIncludes) {
+        if (!policy.with_check || !policy.with_check.includes(requiredStr)) {
+          throw new Error(
+            `Storage policy '${policyName}' WITH CHECK predicate missing required clause '${requiredStr}'`
+          );
+        }
+      }
+    }
+  }
+
+  // 8. Verify orphaned_storage_objects client role privilege revocation
+  const anonPrivRes = await pg.query<{ has_privilege: boolean }>(
+    `SELECT has_table_privilege('anon', 'orphaned_storage_objects', 'SELECT, INSERT, UPDATE, DELETE') as has_privilege;`
+  );
+  const authPrivRes = await pg.query<{ has_privilege: boolean }>(
+    `SELECT has_table_privilege('authenticated', 'orphaned_storage_objects', 'SELECT, INSERT, UPDATE, DELETE') as has_privilege;`
+  );
+
+  if (anonPrivRes.rows[0].has_privilege || authPrivRes.rows[0].has_privilege) {
+    throw new Error(
+      "Table 'orphaned_storage_objects' must be internal-only, but client roles (anon/authenticated) hold table privileges"
+    );
+  }
+
   console.log(
-    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} recorded migration entries, 8 tables with RLS enabled, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
+    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} recorded migration entries, ${expectedTables.length} tables with RLS enabled, ${storagePoliciesRes.rows.length} Storage RLS policies on storage.objects, revoked client access on orphaned_storage_objects, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
   );
 }
 

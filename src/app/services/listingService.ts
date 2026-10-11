@@ -48,8 +48,10 @@ import { ProcessedImage, processAndValidateImage } from '../utils/imageProcessor
 import {
   deleteListingPhotoFromStorage,
   getPhotoPublicUrl,
+  StorageOptions,
   uploadListingPhotoToStorage,
 } from './storageService';
+import { recordOrphanedStorageObject } from '../repositories/orphanRepository';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
 import { buildListingCardViewModel, ListingCardViewModel } from '../view-models/listingCardViewModel';
 import { recordListingPublishedEvent } from './activityService';
@@ -415,7 +417,8 @@ export async function addPhotoToListing(
   requestingUserId: string,
   file: { buffer: Buffer; mimetype: string; originalname?: string },
   altText?: string,
-  dbOverride?: DbInstance
+  dbOverride?: DbInstance,
+  storageOptions?: StorageOptions
 ): Promise<ListingPhotoWithUrl> {
   const listing = await findListingById(listingId, dbOverride);
   if (!listing) {
@@ -452,6 +455,7 @@ export async function addPhotoToListing(
     buffer: processed.buffer,
     contentType: processed.contentType,
     extension: processed.extension,
+    options: storageOptions,
   });
 
   // Insert into DB with rollback handling if DB write fails
@@ -473,7 +477,27 @@ export async function addPhotoToListing(
     };
   } catch (dbErr) {
     // Rollback: clean up orphaned file in storage if DB insert fails
-    await deleteListingPhotoFromStorage(storagePath);
+    try {
+      await deleteListingPhotoFromStorage(storagePath, storageOptions);
+    } catch (cleanupErr) {
+      // Record durable orphan record in database for double-failure reconciliation
+      try {
+        await recordOrphanedStorageObject(
+          {
+            listingId,
+            photoId,
+            storagePath,
+            reason: 'UPLOAD_DB_INSERT_FAILED_AND_STORAGE_CLEANUP_FAILED',
+            errorDetails: `DB Error: ${(dbErr as Error).message}; Cleanup Error: ${(cleanupErr as Error).message}`,
+          },
+          dbOverride
+        );
+      } catch {
+        console.error(
+          `CRITICAL UNRESOLVED STORAGE ORPHAN: Photo upload DB record creation failed AND compensating Storage file cleanup failed. listingId: '${listingId}', photoId: '${photoId}', storagePath: '${storagePath}'. DB Error: ${(dbErr as Error).message}. Storage Cleanup Error: ${(cleanupErr as Error).message}`
+        );
+      }
+    }
     throw dbErr;
   }
 }
@@ -482,7 +506,8 @@ export async function deletePhotoFromListing(
   listingId: string,
   photoId: string,
   requestingUserId: string,
-  dbOverride?: DbInstance
+  dbOverride?: DbInstance,
+  storageOptions?: StorageOptions
 ): Promise<boolean> {
   const listing = await findListingById(listingId, dbOverride);
   if (!listing) {
@@ -502,8 +527,47 @@ export async function deletePhotoFromListing(
     throw new NotFoundError('Photo not found');
   }
 
+  // Execute database metadata record deletion first
   await deleteListingPhoto(photoId, dbOverride);
-  await deleteListingPhotoFromStorage(photo.storagePath);
+
+  // Attempt Storage object deletion
+  try {
+    await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
+  } catch (storageErr) {
+    // Compensation strategy: Storage deletion failed. Re-insert the DB metadata record
+    // to restore cross-system state consistency before re-throwing the error.
+    try {
+      await createListingPhoto(
+        {
+          id: photo.id,
+          listingId: photo.listingId,
+          storagePath: photo.storagePath,
+          displayOrder: photo.displayOrder,
+          altText: photo.altText,
+        },
+        dbOverride
+      );
+    } catch (compensationErr) {
+      // Record durable orphan record in database for double-failure reconciliation
+      try {
+        await recordOrphanedStorageObject(
+          {
+            listingId,
+            photoId,
+            storagePath: photo.storagePath,
+            reason: 'DELETE_STORAGE_FAILED_AND_DB_COMPENSATION_FAILED',
+            errorDetails: `Storage Error: ${(storageErr as Error).message}; Compensation Error: ${(compensationErr as Error).message}`,
+          },
+          dbOverride
+        );
+      } catch {
+        console.error(
+          `CRITICAL UNRESOLVED METADATA ORPHAN: Storage deletion failed AND DB record re-insertion compensation failed for listingId: '${listingId}', photoId: '${photoId}', storagePath: '${photo.storagePath}'. Storage Error: ${(storageErr as Error).message}. Compensation DB Error: ${(compensationErr as Error).message}`
+        );
+      }
+    }
+    throw storageErr;
+  }
 
   // Compact display orders
   const remainingPhotos = await findPhotosByListingId(listingId, dbOverride);

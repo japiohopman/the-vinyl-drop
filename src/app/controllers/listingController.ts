@@ -259,12 +259,21 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
       throw new ValidationError('Please select an image file to upload.');
     }
 
+    const storageOptions = { req };
+
     for (const file of files) {
-      await addPhotoToListing(listingId, req.user.id, {
-        buffer: file.buffer,
-        mimetype: file.mimetype,
-        originalname: file.filename,
-      }, req.body.altText);
+      await addPhotoToListing(
+        listingId,
+        req.user.id,
+        {
+          buffer: file.buffer,
+          mimetype: file.mimetype,
+          originalname: file.filename,
+        },
+        req.body.altText,
+        undefined,
+        storageOptions
+      );
     }
 
     res.redirect(`/listings/${listingId}/edit`);
@@ -300,7 +309,7 @@ export async function postDeletePhoto(req: Request, res: Response, next: NextFun
     }
 
     const { id: listingId, photoId } = req.params;
-    await deletePhotoFromListing(listingId, photoId, req.user.id);
+    await deletePhotoFromListing(listingId, photoId, req.user.id, undefined, { req });
 
     res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {

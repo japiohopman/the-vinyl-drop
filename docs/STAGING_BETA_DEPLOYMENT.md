@@ -79,13 +79,134 @@ The application's backend server uses Express/EJS and Drizzle ORM connecting via
 | **`activity_events`** | **Public / Actor:** `event_type IN ('listing.published', 'comment.created') OR (event_type = 'favorite.created' AND actor_id = auth.uid())` | **Denied for Data API:** Server-managed only | **Denied:** Default deny | **Denied for Data API:** Server-managed only | `anon` (SELECT), `authenticated` (SELECT) |
 | **`favorites`** | **Owner Only:** `user_id = auth.uid()` (Strictly private) | **Owner:** `auth.uid() = user_id` on published listing | **Denied:** Default deny | **Owner:** `auth.uid() = user_id` | `authenticated` (SELECT, INSERT, DELETE); `anon` has NO grants |
 
-### 3.2 Storage Object Access Assumptions
-- **Intended bucket:** Persistent media should use a dedicated staging Supabase Storage bucket named `listing-photos`, not Render's ephemeral filesystem.
-- **Current status (2026-10-11):** The staging bucket was not present when `storage.buckets` was queried. Public read policy and successful writes have therefore not been verified live.
-- **Upload authorization:** The route uses server-side streaming via `@fastify/busboy` and image processing via `sharp`, but the live Storage authorization/session path still needs review. Do not claim that server credentials are configured until verified, and never expose a service-role key.
-- **Tracking:** See [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61) for bucket configuration, least-privilege upload authorization, failure handling, and end-to-end tests.
+### 3.2 Storage Object Access & Storage RLS Policy Specification
 
-### 3.3 Human Runbook: Staging RLS Migration Application & Live Data API Verification
+The persistent media layer utilizes Supabase Storage bucket `listing-photos` with strict least-privilege policies. Anonymous write access is disabled. Write calls (`upload`, `remove`) require an authenticated user JWT (`Authorization: Bearer <token>`) passed via Express session cookies or authorization headers.
+
+#### Staging Bucket Configuration Specifications
+- **Bucket Name:** `listing-photos`
+- **Public Access:** Enabled (Public read access for object downloading)
+- **Maximum File Size Limit:** `5242880` bytes (5 MB)
+- **Allowed MIME Types:** `image/webp`, `image/jpeg`, `image/png`
+
+#### Storage RLS Policies (`storage.objects`)
+
+All Storage RLS policies are version-controlled in `drizzle/0006_storage_objects_rls.sql` and applied automatically during database migration (`npm run db:migrate`).
+
+*Important Privacy Note on Public Storage Buckets:*
+`listing-photos` is configured as a public bucket to enable performant public CDN asset delivery for published listings. The `SELECT` RLS policy below restricts key enumeration (listing bucket folder contents) to published listings or the authenticated seller. However, because public buckets do not require token-authenticated GET requests for direct object path downloads, any user with exact knowledge of a draft object path (`listings/{listing_id}/{photo_id}.webp`) can technically fetch the binary asset directly. If total privacy for draft photo assets is required in future releases, the architecture must transition to private storage buckets with signed, short-lived download URLs.
+
+1. **Scoped Read Policy (`SELECT`):**
+   - Restricts key enumeration/listing in bucket folder queries to objects attached to published listings or objects owned by the authenticated seller (`seller_id = auth.uid()`). Direct object GET requests on public buckets do not evaluate RLS policies; anyone with exact knowledge of a draft object key can download the binary.
+   ```sql
+   CREATE POLICY "Scoped Read Access for listing-photos"
+   ON storage.objects FOR SELECT
+   USING (
+     bucket_id = 'listing-photos'
+     AND (
+       EXISTS (
+         SELECT 1 FROM public.listings
+         WHERE id::text = (storage.foldername(name))[2]
+           AND (status = 'published' OR seller_id = auth.uid())
+       )
+     )
+   );
+   ```
+
+2. **Authenticated Seller Insert Policy (`INSERT`):**
+   - Objects are stored under key prefix `listings/{listing_id}/{photo_id}.webp`.
+   - Access requires the authenticated user (`auth.uid()`) to be the verified seller of the target listing:
+   ```sql
+   CREATE POLICY "Authenticated Seller Insert for listing-photos"
+   ON storage.objects FOR INSERT
+   WITH CHECK (
+     bucket_id = 'listing-photos'
+     AND auth.role() = 'authenticated'
+     AND EXISTS (
+       SELECT 1 FROM public.listings
+       WHERE id::text = (storage.foldername(name))[2]
+         AND seller_id = auth.uid()
+     )
+   );
+   ```
+
+3. **Authenticated Seller Update Policy (`UPDATE`):**
+   ```sql
+   CREATE POLICY "Authenticated Seller Update for listing-photos"
+   ON storage.objects FOR UPDATE
+   USING (
+     bucket_id = 'listing-photos'
+     AND auth.role() = 'authenticated'
+     AND EXISTS (
+       SELECT 1 FROM public.listings
+       WHERE id::text = (storage.foldername(name))[2]
+         AND seller_id = auth.uid()
+     )
+   )
+   WITH CHECK (
+     bucket_id = 'listing-photos'
+     AND auth.role() = 'authenticated'
+     AND EXISTS (
+       SELECT 1 FROM public.listings
+       WHERE id::text = (storage.foldername(name))[2]
+         AND seller_id = auth.uid()
+     )
+   );
+   ```
+
+4. **Authenticated Seller Delete Policy (`DELETE`):**
+   ```sql
+   CREATE POLICY "Authenticated Seller Delete for listing-photos"
+   ON storage.objects FOR DELETE
+   USING (
+     bucket_id = 'listing-photos'
+     AND auth.role() = 'authenticated'
+     AND EXISTS (
+       SELECT 1 FROM public.listings
+       WHERE id::text = (storage.foldername(name))[2]
+         AND seller_id = auth.uid()
+     )
+   );
+   ```
+
+### 3.3 Human Runbook: Staging Storage Bucket Provisioning & Access Policy Verification
+
+*Notice: This runbook is a human-only operational guide. Do NOT execute live dashboard edits or service-role mutations from automated CI sessions.*
+
+#### Step 1 — Verify Staging Project Identity
+Confirm that the active project reference in the Supabase Dashboard matches `STAGING_DB_PROJECT_REF` and that `SUPABASE_URL` matches `https://[STAGING_REF].supabase.co`. Do NOT apply changes to production.
+
+#### Step 2 — Provision Storage Bucket in Staging Supabase Dashboard
+1. Log into the Supabase Staging Project Dashboard.
+2. Navigate to **Storage** -> **New Bucket**.
+3. Set **Bucket Name**: `listing-photos`.
+4. Toggle **Public Bucket**: **Enabled**.
+5. Set **Max file size**: `5 MB`.
+6. Restrict **Allowed MIME types**: `image/webp`, `image/jpeg`, `image/png`.
+7. Save bucket.
+
+#### Step 3 — Apply Migration 0006 to Staging Database
+Execute version-controlled database migrations via standard application CLI against the target staging database:
+
+```bash
+DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:migrate
+```
+
+*Verification:* Confirm migration execution and RLS policy assertion by running:
+```bash
+DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:verify
+```
+
+#### Step 4 — Verify Live Staging Upload & Public Read
+1. Log in to the staging application using a confirmed Auth-provisioned staging account (e.g. created via Supabase Auth Admin API with `STAGING_SELLER_ID` or registered directly via `/auth/signup`). Note: seed profile rows alone do not automatically create password-ready Auth users in Supabase Auth directory.
+2. Navigate to an existing draft listing edit page (`/listings/[id]/edit`) owned by the signed-in user.
+3. Upload a sample image (`< 5MB`, JPEG/PNG/WebP).
+4. Verify image displays correctly on the preview page (`/listings/[id]/preview`) and public detail page (`/listings/[id]`).
+5. Inspect image element `src` URL: `https://[STAGING_REF].supabase.co/storage/v1/object/public/listing-photos/listings/[id]/[photoId].webp`.
+6. Open image URL in an unauthenticated incognito tab to confirm public read access.
+7. Attempt upload as non-owner or unauthenticated user (e.g. via cURL) to verify 401/403 rejection.
+
+### 3.4 Human Runbook: Staging RLS Migration Application & Live Data API Verification
 
 *Notice: This runbook is a human-only operational guide. Do NOT execute live database migrations, dashboard policy edits, or database resets from automated CI sessions.*
 
