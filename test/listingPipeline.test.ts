@@ -216,6 +216,29 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(photoRepo.deleteListingPhoto).toHaveBeenCalledWith(photoId, undefined);
     });
 
+    it('should prevent database row deletion if storage object removal fails during photo deletion', async () => {
+      const photoId = '60000000-0000-4000-8000-000000000001';
+      (photoRepo.findPhotoById as jest.Mock).mockResolvedValue({
+        id: photoId,
+        listingId,
+        storagePath: `listings/${listingId}/${photoId}.webp`,
+      });
+
+      const storageModule = await import('../src/app/services/storageService');
+      const deleteSpy = jest
+        .spyOn(storageModule, 'deleteListingPhotoFromStorage')
+        .mockRejectedValueOnce(new Error('Supabase Storage deletion failed: 500 Internal Server Error'));
+
+      await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow(
+        'Supabase Storage deletion failed'
+      );
+
+      // Verify DB row deletion was NOT called because Storage removal failed first
+      expect(photoRepo.deleteListingPhoto).not.toHaveBeenCalled();
+
+      deleteSpy.mockRestore();
+    });
+
     it('should rollback storage upload if database insertion fails when adding a photo', async () => {
       const sampleImage = await sharp({
         create: { width: 100, height: 100, channels: 3, background: { r: 128, g: 128, b: 128 } },

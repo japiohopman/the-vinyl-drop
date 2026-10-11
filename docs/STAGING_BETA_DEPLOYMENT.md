@@ -91,11 +91,21 @@ The persistent media layer utilizes Supabase Storage bucket `listing-photos` wit
 
 #### Storage RLS Policies (`storage.objects`)
 
-1. **Public Read Policy (`SELECT`):**
+1. **Scoped Read Policy (`SELECT`):**
+   - Restricts key enumeration/listing to objects attached to published listings or objects owned by the authenticated seller (`seller_id = auth.uid()`), while permitting direct reads of known storage paths for published listings.
    ```sql
-   CREATE POLICY "Public Read Access for listing-photos"
+   CREATE POLICY "Scoped Read Access for listing-photos"
    ON storage.objects FOR SELECT
-   USING (bucket_id = 'listing-photos');
+   USING (
+     bucket_id = 'listing-photos'
+     AND (
+       EXISTS (
+         SELECT 1 FROM public.listings
+         WHERE id::text = (storage.foldername(name))[2]
+           AND (status = 'published' OR seller_id = auth.uid())
+       )
+     )
+   );
    ```
 
 2. **Authenticated Seller Insert Policy (`INSERT`):**
@@ -183,10 +193,21 @@ DROP POLICY IF EXISTS "Authenticated Seller Insert for listing-photos" ON storag
 DROP POLICY IF EXISTS "Authenticated Seller Update for listing-photos" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated Seller Delete for listing-photos" ON storage.objects;
 
--- 1. Public Read
-CREATE POLICY "Public Read Access for listing-photos"
+-- 1. Scoped Read Access (Published or Seller Owned)
+DROP POLICY IF EXISTS "Scoped Read Access for listing-photos" ON storage.objects;
+
+CREATE POLICY "Scoped Read Access for listing-photos"
 ON storage.objects FOR SELECT
-USING (bucket_id = 'listing-photos');
+USING (
+  bucket_id = 'listing-photos'
+  AND (
+    EXISTS (
+      SELECT 1 FROM public.listings
+      WHERE id::text = (storage.foldername(name))[2]
+        AND (status = 'published' OR seller_id = auth.uid())
+    )
+  )
+);
 
 -- 2. Authenticated Seller Insert
 CREATE POLICY "Authenticated Seller Insert for listing-photos"
@@ -238,8 +259,8 @@ USING (
 ```
 
 #### Step 4 — Verify Live Staging Upload & Public Read
-1. Log in to the staging application as `@amsterdam_grooves` (`seller.beta@vinyldrop.local`).
-2. Navigate to an existing draft listing edit page (`/listings/[id]/edit`).
+1. Log in to the staging application using a confirmed Auth-provisioned staging account (e.g. created via Supabase Auth Admin API with `STAGING_SELLER_ID` or registered directly via `/auth/signup`). Note: seed profile rows alone do not automatically create password-ready Auth users in Supabase Auth directory.
+2. Navigate to an existing draft listing edit page (`/listings/[id]/edit`) owned by the signed-in user.
 3. Upload a sample image (`< 5MB`, JPEG/PNG/WebP).
 4. Verify image displays correctly on the preview page (`/listings/[id]/preview`) and public detail page (`/listings/[id]`).
 5. Inspect image element `src` URL: `https://[STAGING_REF].supabase.co/storage/v1/object/public/listing-photos/listings/[id]/[photoId].webp`.

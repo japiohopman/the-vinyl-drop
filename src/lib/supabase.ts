@@ -43,6 +43,7 @@ export function createExpressSupabaseClient(
 
   const token =
     accessToken ||
+    req?.session?.access_token ||
     req?.cookies?.['sb-access-token'] ||
     (req?.headers?.authorization?.startsWith('Bearer ')
       ? req.headers.authorization.split(' ')[1]

@@ -15,16 +15,32 @@ describe('Storage Authorization and Service Boundaries (Issue #61)', () => {
 
   describe('Supabase Client Authorization Headers', () => {
     it('should create Supabase client with global Authorization header when bearer token is passed', () => {
-      const client = createExpressSupabaseClient(undefined, undefined, 'my-test-access-token');
+      const token = 'my-test-access-token';
+      const client = createExpressSupabaseClient(undefined, undefined, token);
       /* eslint-disable @typescript-eslint/no-explicit-any */
-      const restUrl = (client as any).restUrl || '';
-      expect(restUrl).toBeDefined();
+      // Access storage client internal headers or global fetch config
+      const storageFetchHeaders = (client.storage as any).headers || {};
 
-      const defaultHeaders = (client as any).headers || (client as any).rest?.headers || {};
-      expect(defaultHeaders['Authorization'] || (client as any).auth?.headers?.['Authorization'] || true).toBeTruthy();
+      expect(storageFetchHeaders['Authorization'] || storageFetchHeaders['authorization']).toBe(`Bearer ${token}`);
     });
 
-    it('should extract access token from Express cookies if available', () => {
+    it('should prioritize req.session.access_token over stale sb-access-token cookie', () => {
+      const req = {
+        session: {
+          access_token: 'fresh-refreshed-session-token-456',
+        },
+        cookies: {
+          'sb-access-token': 'stale-cookie-token-123',
+        },
+      } as unknown as Request;
+
+      const client = getSupabaseClient(req);
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      const storageFetchHeaders = (client.storage as any).headers || {};
+      expect(storageFetchHeaders['Authorization'] || storageFetchHeaders['authorization']).toBe('Bearer fresh-refreshed-session-token-456');
+    });
+
+    it('should fallback to sb-access-token cookie if req.session is absent', () => {
       const req = {
         cookies: {
           'sb-access-token': 'cookie-access-token-123',
@@ -32,10 +48,12 @@ describe('Storage Authorization and Service Boundaries (Issue #61)', () => {
       } as unknown as Request;
 
       const client = getSupabaseClient(req);
-      expect(client).toBeDefined();
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      const storageFetchHeaders = (client.storage as any).headers || {};
+      expect(storageFetchHeaders['Authorization'] || storageFetchHeaders['authorization']).toBe('Bearer cookie-access-token-123');
     });
 
-    it('should extract access token from Authorization header if cookies are missing', () => {
+    it('should extract access token from Authorization header if cookies and session are missing', () => {
       const req = {
         headers: {
           authorization: 'Bearer bearer-token-xyz',
@@ -43,7 +61,9 @@ describe('Storage Authorization and Service Boundaries (Issue #61)', () => {
       } as unknown as Request;
 
       const client = getSupabaseClient(req);
-      expect(client).toBeDefined();
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      const storageFetchHeaders = (client.storage as any).headers || {};
+      expect(storageFetchHeaders['Authorization'] || storageFetchHeaders['authorization']).toBe('Bearer bearer-token-xyz');
     });
   });
 

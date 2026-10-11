@@ -506,8 +506,11 @@ export async function deletePhotoFromListing(
     throw new NotFoundError('Photo not found');
   }
 
-  await deleteListingPhoto(photoId, dbOverride);
+  // Delete from Storage first so failure throws before DB record is removed
   await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
+
+  // Once storage deletion succeeds, delete metadata record from DB
+  await deleteListingPhoto(photoId, dbOverride);
 
   // Compact display orders
   const remainingPhotos = await findPhotosByListingId(listingId, dbOverride);
