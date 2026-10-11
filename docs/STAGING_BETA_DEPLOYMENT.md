@@ -58,10 +58,11 @@ Staging infrastructure utilizes a dedicated, standalone Supabase project:
    - Redirect URL whitelist configured in Supabase Dashboard (Auth -> URL Configuration):
      - `https://the-vinyl-drop-staging.onrender.com/auth/callback`
      - `http://localhost:3000/auth/callback` (for local dev testing)
-3. **Supabase Storage (`listing-photos` bucket):**
-   - Dedicated `listing-photos` bucket created in staging Supabase project.
-   - Public read permissions enabled for serving album artwork WebP photos.
-   - Server-side streaming via `@fastify/busboy` and `sharp` processes uploaded images directly to Supabase Storage, keeping media completely off the local filesystem.
+3. **Supabase Storage (`listing-photos` bucket) — CURRENTLY BLOCKED:**
+   - Intended state: a dedicated `listing-photos` bucket in the staging Supabase project, with only the access needed for public image reads and authorized uploads.
+   - Live verification on 2026-10-11 queried `storage.buckets` and returned no buckets; `listing-photos` is currently missing from staging.
+   - The upload flow has not passed an end-to-end live test. Do not assume that bucket creation alone fixes it; inspect the server-side authorization/session flow and Storage write permissions first.
+   - Track remediation in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61). Verify project identity before making any live Storage changes.
 
 ### 3.1 Least-Privilege Data API Access Matrix
 
@@ -79,9 +80,10 @@ The application's backend server uses Express/EJS and Drizzle ORM connecting via
 | **`favorites`** | **Owner Only:** `user_id = auth.uid()` (Strictly private) | **Owner:** `auth.uid() = user_id` on published listing | **Denied:** Default deny | **Owner:** `auth.uid() = user_id` | `authenticated` (SELECT, INSERT, DELETE); `anon` has NO grants |
 
 ### 3.2 Storage Object Access Assumptions
-- **Storage Bucket:** Persistent media objects are stored in the Supabase Storage `listing-photos` bucket.
-- **Public Cover Art Reads:** Public HTTP GET reads for album artwork are enabled on the `listing-photos` bucket via Supabase Storage public access policies.
-- **Write Operations:** File uploads (`POST /listings/new`) are handled server-side via `@fastify/busboy` and `sharp` image processing using server credentials, ensuring direct storage writes are authenticated and sanitized.
+- **Intended bucket:** Persistent media should use a dedicated staging Supabase Storage bucket named `listing-photos`, not Render's ephemeral filesystem.
+- **Current status (2026-10-11):** The staging bucket was not present when `storage.buckets` was queried. Public read policy and successful writes have therefore not been verified live.
+- **Upload authorization:** The route uses server-side streaming via `@fastify/busboy` and image processing via `sharp`, but the live Storage authorization/session path still needs review. Do not claim that server credentials are configured until verified, and never expose a service-role key.
+- **Tracking:** See [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61) for bucket configuration, least-privilege upload authorization, failure handling, and end-to-end tests.
 
 ### 3.3 Human Runbook: Staging RLS Migration Application & Live Data API Verification
 
@@ -172,21 +174,51 @@ Database profile rows alone do not populate Supabase Auth password credentials. 
 
 ---
 
-## 5. Minimum Pre-Launch Deployment Checklist (Live Verification Pending)
+## 5. Minimum Pre-Launch Deployment Checklist
 
-*Notice: The following checklist represents the manual pre-launch verification gates to be performed against deployed live staging resources before inviting external beta testers (#48).*
+The checkboxes below reflect the actual live staging evidence recorded on 2026-10-11. A passed sub-check does not imply that the whole beta gate is complete. Keep the parent staging issue [#49](https://github.com/japiohopman/the-vinyl-drop/issues/49) open until all required checks and blockers are resolved.
 
-- [ ] **1. Isolated Database Migration & RLS Enforcement:** Run `npm run db:migrate` against staging `DATABASE_URL` to apply all migrations including `0005_enforce_least_privilege_rls.sql`. Run `npm run db:verify` to confirm RLS is enabled on all 8 public tables.
-- [ ] **2. Data API Least-Privilege Verification:** Perform CURL checks against Supabase Data API (`/rest/v1/`) as `anon` and `authenticated` user to confirm direct anonymous writes are rejected and private favorites are inaccessible across users.
-- [ ] **3. Staging Seed Data:** Execute `npm run db:seed:staging` to populate test accounts, catalog releases, listings, and comment threads.
-- [ ] **4. Environment Variable Audit:** Verify that `NODE_ENV=staging`, `APP_BASE_URL`, `ALLOWED_REDIRECT_URLS`, `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `STAGING_DB_HOST`, and `STAGING_DB_PROJECT_REF` are populated in the Render Dashboard.
-- [ ] **5. Health Check Endpoint:** Confirm that `GET https://the-vinyl-drop-staging.onrender.com/health` returns `200 OK` with status `ok` and valid JSON timestamp.
-- [ ] **6. HTTPS & Certificate Verification:** Confirm browser renders valid TLS certificate with HTTPS connection lock.
-- [ ] **7. Authentication & Callback Flow:** Test login, registration, and logout using test accounts. Verify callback redirect returns safely to `APP_BASE_URL`.
-- [ ] **8. Storage Access & Media Upload:** Verify album cover images load properly from Supabase Storage and test uploading a new listing photo via `/listings/new`.
-- [ ] **9. CSRF & Same-Origin Boundary:** Verify state-changing form posts (`POST /listings/new`, `POST /profile/edit`) pass same-origin verification without 403 errors.
+- [x] **1. Staging database migration & RLS:** Migration `0005_enforce_least_privilege_rls.sql` was applied. Read-only database queries confirmed RLS is enabled on all 8 public tables and verified the expected policies/grants.
+- [x] **2. Anonymous Data API boundaries:** Public listings returned HTTP 200; anonymous access to `favorites` returned HTTP 401; anonymous profile creation returned HTTP 401. These are expected deny/allow results.
+- [ ] **2a. Authenticated cross-user tampering:** A signed-in cross-user access test was not performed in this verification session.
+- [ ] **3. Staging seed data & test-account fixtures:** Confirm the intended fixtures/accounts and record the result. A public listing response alone is not proof that all seed fixtures are correct.
+- [ ] **4. Environment variable audit:** Reconfirm the required staging-only Render variables and exact `STAGING_DB_HOST` / `STAGING_DB_PROJECT_REF` identity.
+- [x] **5. Health and basic HTTP responses:** `GET /health`, `/`, and `/profiles/jaap` returned HTTP 200.
+- [ ] **6. Browser HTTPS/certificate review:** HTTPS requests succeeded, but the requested browser lock/certificate check was not separately recorded.
+- [x] **7a. Registration/login/logout:** Manually tested by the operator; the operator reported that these flows worked without errors.
+- [ ] **7b. Auth/OAuth callback and redirect:** The callback/redirect flow was not independently verified in this session.
+- [ ] **8. Storage access & media upload:** **Blocked.** The staging `listing-photos` bucket was absent and the upload flow has not passed an end-to-end live test. See [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
+- [x] **9a. CSRF/Same-Origin check on `POST /auth/login`:** External Origin returned HTTP 403; missing Origin/Referer returned HTTP 403; the staging Origin reached form validation and returned HTTP 400 for deliberately invalid form data.
+- [ ] **9b. CSRF/Same-Origin on listing/profile mutations:** The `POST /listings/new` and `POST /profile/edit` paths still need their own verification.
+- [ ] **10. Supabase Auth leaked-password protection:** Security Advisor still reported `auth_leaked_password_protection` as disabled. Track the staging-only setting in [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62).
 
----
+### 5.1 Live Verification Log — 2026-10-11
+
+**Target:** [Staging site](https://the-vinyl-drop-staging.onrender.com)  
+**Scope:** HTTP health/routes, staging database RLS/grants, anonymous Data API access, manually tested Auth flows, and CSRF behavior on the login route.
+
+#### Confirmed results
+
+| Check | Observed result | Assessment |
+| --- | --- | --- |
+| `GET /health` | HTTP 200; JSON status `ok` | Pass |
+| `GET /` | HTTP 200 | Pass |
+| `GET /profiles/jaap` | HTTP 200 | Pass |
+| RLS on public tables | Enabled on all 8 checked tables | Pass |
+| Public listings through Data API | HTTP 200 with listing rows | Expected public access |
+| Anonymous Data API access to `favorites` | HTTP 401, permission denied | Expected denial |
+| Anonymous profile creation through Data API | HTTP 401, permission denied | Expected denial |
+| CSRF test, external Origin | HTTP 403 | Pass |
+| CSRF test, missing Origin/Referer | HTTP 403 | Pass |
+| CSRF test, staging Origin + deliberately invalid form | HTTP 400 from form validation | Pass; request passed the same-origin gate |
+| Registration/login/logout UI flow | Operator reported no errors | Pass for manual UI smoke test |
+
+#### Remaining blockers and scope limits
+
+- The staging Supabase Storage bucket `listing-photos` was not present in `storage.buckets`. A real upload was not attempted; the missing bucket and unverified write authorization must be fixed before testing. See [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
+- Supabase Security Advisor still reported `auth_leaked_password_protection` as disabled. See [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62).
+- Authenticated cross-user Data API access, OAuth callback behavior, listing/profile mutation CSRF tests, the full environment-variable audit, fixture verification, and browser certificate inspection remain unverified.
+- **Do not mark staging/beta ready or close Issue #49 yet.** Once the remaining checks are completed, append their actual outcomes here rather than assuming success.
 
 ## 6. Handoff to Product Specialist
 
