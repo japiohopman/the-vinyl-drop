@@ -275,7 +275,7 @@ export async function verifyMigrations(): Promise<void> {
         "bucket_id = 'listing-photos'",
         "auth.role() = 'authenticated'",
         "seller_id = auth.uid()",
-        "storage.foldername(objects.name)",
+        "id)::text = (storage.foldername(objects.name))[2]",
       ],
     },
     'Authenticated Seller Insert for listing-photos': {
@@ -283,7 +283,7 @@ export async function verifyMigrations(): Promise<void> {
         "bucket_id = 'listing-photos'",
         "auth.role() = 'authenticated'",
         "seller_id = auth.uid()",
-        "storage.foldername(objects.name)",
+        "id)::text = (storage.foldername(objects.name))[2]",
       ],
     },
     'Authenticated Seller Update for listing-photos': {
@@ -291,13 +291,13 @@ export async function verifyMigrations(): Promise<void> {
         "bucket_id = 'listing-photos'",
         "auth.role() = 'authenticated'",
         "seller_id = auth.uid()",
-        "storage.foldername(objects.name)",
+        "id)::text = (storage.foldername(objects.name))[2]",
       ],
       checkIncludes: [
         "bucket_id = 'listing-photos'",
         "auth.role() = 'authenticated'",
         "seller_id = auth.uid()",
-        "storage.foldername(objects.name)",
+        "id)::text = (storage.foldername(objects.name))[2]",
       ],
     },
     'Scoped Read Access for listing-photos': {
@@ -305,7 +305,7 @@ export async function verifyMigrations(): Promise<void> {
         "bucket_id = 'listing-photos'",
         "status = 'published'",
         "seller_id = auth.uid()",
-        "storage.foldername(objects.name)",
+        "id)::text = (storage.foldername(objects.name))[2]",
       ],
     },
   };
