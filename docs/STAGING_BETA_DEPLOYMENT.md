@@ -97,7 +97,7 @@ All Storage RLS policies are version-controlled in `drizzle/0006_storage_objects
 `listing-photos` is configured as a public bucket to enable performant public CDN asset delivery for published listings. The `SELECT` RLS policy below restricts key enumeration (listing bucket folder contents) to published listings or the authenticated seller. However, because public buckets do not require token-authenticated GET requests for direct object path downloads, any user with exact knowledge of a draft object path (`listings/{listing_id}/{photo_id}.webp`) can technically fetch the binary asset directly. If total privacy for draft photo assets is required in future releases, the architecture must transition to private storage buckets with signed, short-lived download URLs.
 
 1. **Scoped Read Policy (`SELECT`):**
-   - Restricts key enumeration/listing to objects attached to published listings or objects owned by the authenticated seller (`seller_id = auth.uid()`), while permitting direct reads of known storage paths for published listings.
+   - Restricts key enumeration/listing in bucket folder queries to objects attached to published listings or objects owned by the authenticated seller (`seller_id = auth.uid()`). Direct object GET requests on public buckets do not evaluate RLS policies; anyone with exact knowledge of a draft object key can download the binary.
    ```sql
    CREATE POLICY "Scoped Read Access for listing-photos"
    ON storage.objects FOR SELECT
@@ -185,82 +185,16 @@ Confirm that the active project reference in the Supabase Dashboard matches `STA
 6. Restrict **Allowed MIME types**: `image/webp`, `image/jpeg`, `image/png`.
 7. Save bucket.
 
-#### Step 3 — Apply Storage RLS Policies via SQL Editor
-Execute the following SQL block in the Staging project SQL Editor:
+#### Step 3 — Apply Migration 0006 to Staging Database
+Execute version-controlled database migrations via standard application CLI against the target staging database:
 
-```sql
--- Ensure storage RLS is active
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+```bash
+DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:migrate
+```
 
--- Drop existing policies if re-running
-DROP POLICY IF EXISTS "Public Read Access for listing-photos" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated Seller Insert for listing-photos" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated Seller Update for listing-photos" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated Seller Delete for listing-photos" ON storage.objects;
-
--- 1. Scoped Read Access (Published or Seller Owned)
-DROP POLICY IF EXISTS "Scoped Read Access for listing-photos" ON storage.objects;
-
-CREATE POLICY "Scoped Read Access for listing-photos"
-ON storage.objects FOR SELECT
-USING (
-  bucket_id = 'listing-photos'
-  AND (
-    EXISTS (
-      SELECT 1 FROM public.listings
-      WHERE id::text = (storage.foldername(name))[2]
-        AND (status = 'published' OR seller_id = auth.uid())
-    )
-  )
-);
-
--- 2. Authenticated Seller Insert
-CREATE POLICY "Authenticated Seller Insert for listing-photos"
-ON storage.objects FOR INSERT
-WITH CHECK (
-  bucket_id = 'listing-photos'
-  AND auth.role() = 'authenticated'
-  AND EXISTS (
-    SELECT 1 FROM public.listings
-    WHERE id::text = (storage.foldername(name))[2]
-      AND seller_id = auth.uid()
-  )
-);
-
--- 3. Authenticated Seller Update
-CREATE POLICY "Authenticated Seller Update for listing-photos"
-ON storage.objects FOR UPDATE
-USING (
-  bucket_id = 'listing-photos'
-  AND auth.role() = 'authenticated'
-  AND EXISTS (
-    SELECT 1 FROM public.listings
-    WHERE id::text = (storage.foldername(name))[2]
-      AND seller_id = auth.uid()
-  )
-)
-WITH CHECK (
-  bucket_id = 'listing-photos'
-  AND auth.role() = 'authenticated'
-  AND EXISTS (
-    SELECT 1 FROM public.listings
-    WHERE id::text = (storage.foldername(name))[2]
-      AND seller_id = auth.uid()
-  )
-);
-
--- 4. Authenticated Seller Delete
-CREATE POLICY "Authenticated Seller Delete for listing-photos"
-ON storage.objects FOR DELETE
-USING (
-  bucket_id = 'listing-photos'
-  AND auth.role() = 'authenticated'
-  AND EXISTS (
-    SELECT 1 FROM public.listings
-    WHERE id::text = (storage.foldername(name))[2]
-      AND seller_id = auth.uid()
-  )
-);
+*Verification:* Confirm migration execution and RLS policy assertion by running:
+```bash
+DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:verify
 ```
 
 #### Step 4 — Verify Live Staging Upload & Public Read

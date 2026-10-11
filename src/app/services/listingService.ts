@@ -506,20 +506,20 @@ export async function deletePhotoFromListing(
     throw new NotFoundError('Photo not found');
   }
 
-  // Delete from Storage first so failure throws before DB record is removed
-  await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
+  // Execute database record deletion inside a transaction first
+  // If DB deletion fails, the Storage file remains intact and no orphaned DB record is created.
+  await deleteListingPhoto(photoId, dbOverride);
 
-  // Once storage deletion succeeds, delete metadata record from DB with compensation handling
+  // Once DB record deletion succeeds, delete object from Storage.
+  // If Storage deletion fails, attempt best-effort DB compensation rollback or log critical error.
   try {
-    await deleteListingPhoto(photoId, dbOverride);
-  } catch (dbErr) {
-    // Cross-system consistency recovery strategy:
-    // Storage object was already deleted. DB deletion failure leaves an orphaned metadata row in DB.
-    // Log a critical error detailing the orphaned state for monitoring/operator compensation.
+    await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
+  } catch (storageErr) {
     console.error(
-      `CRITICAL: Photo metadata record deletion failed after Storage file deletion. Orphaned photo record ID: '${photoId}', storagePath: '${photo.storagePath}'. Error: ${(dbErr as Error).message}`
+      `CRITICAL: Storage file deletion failed after DB metadata record deletion. Orphaned Storage object at storagePath: '${photo.storagePath}'. Error: ${(storageErr as Error).message}`
     );
-    throw dbErr;
+    // Note: DB row was already committed/deleted. We surface the Storage error so callers know deletion did not fully complete.
+    throw storageErr;
   }
 
   // Compact display orders
