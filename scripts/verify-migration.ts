@@ -258,6 +258,32 @@ export async function verifyMigrations(): Promise<void> {
 
   const foundPolicies = new Map(storagePoliciesRes.rows.map((p) => [p.policyname, p]));
 
+  // Assert exact policy count to guarantee no extra/unrecognized permissive write policies exist
+  if (storagePoliciesRes.rows.length !== Object.keys(expectedStoragePolicyMap).length) {
+    throw new Error(
+      `Unexpected policy count on storage.objects: expected ${Object.keys(expectedStoragePolicyMap).length}, found ${storagePoliciesRes.rows.length}`
+    );
+  }
+
+  const expectedPredicates: Record<
+    string,
+    { qualIncludes?: string[]; checkIncludes?: string[] }
+  > = {
+    'Authenticated Seller Delete for listing-photos': {
+      qualIncludes: ["bucket_id = 'listing-photos'", "auth.role() = 'authenticated'", "seller_id = auth.uid()"],
+    },
+    'Authenticated Seller Insert for listing-photos': {
+      checkIncludes: ["bucket_id = 'listing-photos'", "auth.role() = 'authenticated'", "seller_id = auth.uid()"],
+    },
+    'Authenticated Seller Update for listing-photos': {
+      qualIncludes: ["bucket_id = 'listing-photos'", "auth.role() = 'authenticated'", "seller_id = auth.uid()"],
+      checkIncludes: ["bucket_id = 'listing-photos'", "auth.role() = 'authenticated'", "seller_id = auth.uid()"],
+    },
+    'Scoped Read Access for listing-photos': {
+      qualIncludes: ["bucket_id = 'listing-photos'", "status = 'published'", "seller_id = auth.uid()"],
+    },
+  };
+
   for (const [policyName, spec] of Object.entries(expectedStoragePolicyMap)) {
     const policy = foundPolicies.get(policyName);
     if (!policy) {
@@ -270,19 +296,24 @@ export async function verifyMigrations(): Promise<void> {
       );
     }
 
-    if (spec.qualContains) {
-      if (!policy.qual || !policy.qual.includes(spec.qualContains)) {
-        throw new Error(
-          `Storage policy '${policyName}' USING predicate missing expected string '${spec.qualContains}'`
-        );
+    const predicates = expectedPredicates[policyName];
+    if (predicates.qualIncludes) {
+      for (const requiredStr of predicates.qualIncludes) {
+        if (!policy.qual || !policy.qual.includes(requiredStr)) {
+          throw new Error(
+            `Storage policy '${policyName}' USING predicate missing required clause '${requiredStr}'`
+          );
+        }
       }
     }
 
-    if (spec.checkContains) {
-      if (!policy.with_check || !policy.with_check.includes(spec.checkContains)) {
-        throw new Error(
-          `Storage policy '${policyName}' WITH CHECK predicate missing expected string '${spec.checkContains}'`
-        );
+    if (predicates.checkIncludes) {
+      for (const requiredStr of predicates.checkIncludes) {
+        if (!policy.with_check || !policy.with_check.includes(requiredStr)) {
+          throw new Error(
+            `Storage policy '${policyName}' WITH CHECK predicate missing required clause '${requiredStr}'`
+          );
+        }
       }
     }
   }

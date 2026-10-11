@@ -38,8 +38,10 @@ jest.mock('../src/app/repositories/profileRepository');
 jest.mock('../src/app/repositories/physicalCopyRepository');
 jest.mock('../src/app/repositories/listingRepository');
 jest.mock('../src/app/repositories/listingPhotoRepository');
+jest.mock('../src/app/repositories/orphanRepository');
 
 import * as releaseRepo from '../src/app/repositories/releaseRepository';
+import * as orphanRepo from '../src/app/repositories/orphanRepository';
 import * as profileRepo from '../src/app/repositories/profileRepository';
 import * as copyRepo from '../src/app/repositories/physicalCopyRepository';
 import * as listingRepo from '../src/app/repositories/listingRepository';
@@ -299,7 +301,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(deleteSpy).toHaveBeenCalled();
     });
 
-    it('should log CRITICAL UNRESOLVED STORAGE ORPHAN if photo upload DB insertion fails AND Storage cleanup fails', async () => {
+    it('should record durable orphan record if photo upload DB insertion fails AND Storage cleanup fails', async () => {
       const sampleImage = await sharp({
         create: { width: 100, height: 100, channels: 3, background: { r: 100, g: 100, b: 100 } },
       })
@@ -307,13 +309,16 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         .toBuffer();
 
       (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(new Error('PostgreSQL unique constraint violation'));
+      (orphanRepo.recordOrphanedStorageObject as jest.Mock).mockResolvedValueOnce({
+        id: 'orphan-123',
+        listingId,
+        storagePath: 'listings/sample.webp',
+      });
 
       const storageModule = await import('../src/app/services/storageService');
       const deleteStorageSpy = jest
         .spyOn(storageModule, 'deleteListingPhotoFromStorage')
         .mockRejectedValueOnce(new Error('Supabase Storage 503 Service Unavailable'));
-
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
       await expect(
         addPhotoToListing(listingId, sellerId, {
@@ -323,15 +328,18 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         })
       ).rejects.toThrow('PostgreSQL unique constraint violation');
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('CRITICAL UNRESOLVED STORAGE ORPHAN')
+      expect(orphanRepo.recordOrphanedStorageObject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          listingId,
+          reason: 'UPLOAD_DB_INSERT_FAILED_AND_STORAGE_CLEANUP_FAILED',
+        }),
+        undefined
       );
 
-      consoleErrorSpy.mockRestore();
       deleteStorageSpy.mockRestore();
     });
 
-    it('should log CRITICAL UNRESOLVED METADATA ORPHAN if photo deletion Storage removal fails AND DB compensation re-insertion fails', async () => {
+    it('should record durable orphan record if photo deletion Storage removal fails AND DB compensation re-insertion fails', async () => {
       const photoId = '60000000-0000-4000-8000-000000000001';
       const samplePhoto = {
         id: photoId,
@@ -344,21 +352,30 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       (photoRepo.findPhotoById as jest.Mock).mockResolvedValue(samplePhoto);
       (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(true);
       (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(new Error('DB primary key conflict'));
+      (orphanRepo.recordOrphanedStorageObject as jest.Mock).mockResolvedValueOnce({
+        id: 'orphan-456',
+        listingId,
+        photoId,
+        storagePath: samplePhoto.storagePath,
+      });
 
       const storageModule = await import('../src/app/services/storageService');
       const deleteStorageSpy = jest
         .spyOn(storageModule, 'deleteListingPhotoFromStorage')
         .mockRejectedValueOnce(new Error('Supabase Storage 500 Network Timeout'));
 
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
       await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('Supabase Storage 500 Network Timeout');
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('CRITICAL UNRESOLVED METADATA ORPHAN')
+      expect(orphanRepo.recordOrphanedStorageObject).toHaveBeenCalledWith(
+        expect.objectContaining({
+          listingId,
+          photoId,
+          storagePath: samplePhoto.storagePath,
+          reason: 'DELETE_STORAGE_FAILED_AND_DB_COMPENSATION_FAILED',
+        }),
+        undefined
       );
 
-      consoleErrorSpy.mockRestore();
       deleteStorageSpy.mockRestore();
     });
 
