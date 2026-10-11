@@ -48,6 +48,7 @@ import { ProcessedImage, processAndValidateImage } from '../utils/imageProcessor
 import {
   deleteListingPhotoFromStorage,
   getPhotoPublicUrl,
+  StorageOptions,
   uploadListingPhotoToStorage,
 } from './storageService';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
@@ -415,7 +416,8 @@ export async function addPhotoToListing(
   requestingUserId: string,
   file: { buffer: Buffer; mimetype: string; originalname?: string },
   altText?: string,
-  dbOverride?: DbInstance
+  dbOverride?: DbInstance,
+  storageOptions?: StorageOptions
 ): Promise<ListingPhotoWithUrl> {
   const listing = await findListingById(listingId, dbOverride);
   if (!listing) {
@@ -452,6 +454,7 @@ export async function addPhotoToListing(
     buffer: processed.buffer,
     contentType: processed.contentType,
     extension: processed.extension,
+    options: storageOptions,
   });
 
   // Insert into DB with rollback handling if DB write fails
@@ -473,7 +476,7 @@ export async function addPhotoToListing(
     };
   } catch (dbErr) {
     // Rollback: clean up orphaned file in storage if DB insert fails
-    await deleteListingPhotoFromStorage(storagePath);
+    await deleteListingPhotoFromStorage(storagePath, storageOptions);
     throw dbErr;
   }
 }
@@ -482,7 +485,8 @@ export async function deletePhotoFromListing(
   listingId: string,
   photoId: string,
   requestingUserId: string,
-  dbOverride?: DbInstance
+  dbOverride?: DbInstance,
+  storageOptions?: StorageOptions
 ): Promise<boolean> {
   const listing = await findListingById(listingId, dbOverride);
   if (!listing) {
@@ -503,7 +507,7 @@ export async function deletePhotoFromListing(
   }
 
   await deleteListingPhoto(photoId, dbOverride);
-  await deleteListingPhotoFromStorage(photo.storagePath);
+  await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
 
   // Compact display orders
   const remainingPhotos = await findPhotosByListingId(listingId, dbOverride);

@@ -216,6 +216,29 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(photoRepo.deleteListingPhoto).toHaveBeenCalledWith(photoId, undefined);
     });
 
+    it('should rollback storage upload if database insertion fails when adding a photo', async () => {
+      const sampleImage = await sharp({
+        create: { width: 100, height: 100, channels: 3, background: { r: 128, g: 128, b: 128 } },
+      })
+        .jpeg()
+        .toBuffer();
+
+      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(new Error('Database transaction deadlocked'));
+
+      const storageModule = await import('../src/app/services/storageService');
+      const deleteSpy = jest.spyOn(storageModule, 'deleteListingPhotoFromStorage');
+
+      await expect(
+        addPhotoToListing(listingId, sellerId, {
+          buffer: sampleImage,
+          mimetype: 'image/jpeg',
+          originalname: 'cover.jpg',
+        })
+      ).rejects.toThrow('Database transaction deadlocked');
+
+      expect(deleteSpy).toHaveBeenCalled();
+    });
+
     it('should reject publishing without server-side preview confirmation (Blocker 3)', async () => {
       await expect(publishListing(listingId, sellerId)).rejects.toThrow('Preview confirmation required');
 
