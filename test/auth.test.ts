@@ -647,7 +647,7 @@ describe('Authentication & Session Handling', () => {
         expect(cookies).toContain('sb-recovery-mode=77777777-7777-7777-7777-777777777777.');
       });
 
-      it('GET /auth/callback with PKCE code and next=/auth/reset-password (normal OAuth/login callback) should NOT set recovery cookie', async () => {
+      it('GET /auth/callback with PKCE code and a forged type=recovery query must NOT set recovery cookie', async () => {
         const mockUser = {
           id: '99999999-9999-9999-9999-999999999999',
           email: 'oauth_user@example.com',
@@ -678,7 +678,7 @@ describe('Authentication & Session Handling', () => {
         });
 
         const app = createApp();
-        const res = await request(app).get('/auth/callback?code=mock_code&next=%2Fauth%2Freset-password');
+        const res = await request(app).get('/auth/callback?code=mock_code&type=recovery&next=%2Fauth%2Freset-password');
 
         expect(res.status).toBe(302);
         const cookieHeader = res.header['set-cookie'];
