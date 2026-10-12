@@ -368,5 +368,21 @@ For invite-only beta onboarding (#48), hand off the staging target URL (`https:/
 | --- | --- | --- |
 | Direct public image URL in incognito | The image was visible without signing in. The exact URL and HTTP status code were not recorded. | Pass — operator-reported visual confirmation |
 
-**Still not verified by this test:** anonymous upload denial, authenticated non-owner upload denial, unsupported MIME-type rejection, and absence of orphaned Storage objects/database rows after rejected uploads. Keep those checks open under [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61). This successful direct-read check confirms public readability for the tested object; it does not establish that draft object URLs are private.
+**Not verified by the public-read test:** direct anonymous upload denial, authenticated non-owner upload denial, unsupported MIME-type rejection, and absence of orphaned Storage objects/database rows after rejected uploads. See the separate application-route check in Section 5.3. Keep the remaining Storage/API and data-integrity checks open under [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61). This successful direct-read check confirms public readability for the tested object; it does not establish that draft object URLs are private.
 
+
+
+### 5.3 Live Verification Log — 2026-10-12 (Unauthenticated listing-photo UI flow)
+
+**Target:** [Staging site](https://the-vinyl-drop-staging.onrender.com)  
+**Performed by:** Operator  
+**Test:** While signed out, the operator attempted to enter the listing-photo upload flow. The app redirected to the sign-in page before the operator could upload. The operator also reported that, after signing in to an account in the incognito window, a photo upload succeeded.
+
+| Check | Observed result | Assessment |
+| --- | --- | --- |
+| Enter listing-photo upload flow while signed out | Redirected to sign-in; no photo was uploaded while signed out. Exact request URL and HTTP status were not captured. | Pass — operator-reported application-route authentication guard |
+| Upload photo after signing in within incognito | Upload succeeded after sign-in. | Pass — operator-reported authenticated upload smoke test |
+
+**Security scope:** The app-level redirect confirms the normal UI flow requires authentication before upload. It is not the same test as sending a direct anonymous HTTP POST to the Supabase Storage API without a user session. The staging Storage INSERT policy has separately been inspected and is targeted to `authenticated` with an `auth.role() = 'authenticated'` check, but a raw unauthenticated Storage API POST has not been independently executed in this run. Do not claim that raw API probe was performed.
+
+**Remaining checks under Issue #61:** authenticated non-owner upload denial, unsupported MIME-type rejection, and no orphaned Storage objects/listing-photo rows after rejected uploads. The direct anonymous Storage API probe may be performed if stricter independent evidence is needed. Keep Issue #61 and parent Issue #49 open until all required checks are evidenced.
