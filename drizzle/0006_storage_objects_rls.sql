@@ -1,7 +1,7 @@
 -- Version-controlled migration for Supabase Storage objects RLS policies
 -- Bucket: listing-photos
 
-DO $
+DO $$
 DECLARE
   v_storage_owner name;
   v_total_policy_count integer;
