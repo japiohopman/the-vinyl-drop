@@ -6,6 +6,7 @@ import { Profile } from '../../db/schema/profiles';
 import { SignUpInput, LoginInput } from '../../validators/auth';
 import { config } from '../../config/env';
 import { getDb } from '../../db';
+import { isPasswordPwned } from './pwnedPasswordService';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -97,6 +98,27 @@ export async function signUp(input: SignUpInput, options?: AuthOptions): Promise
       session: null,
       profile: null,
       error: 'Username is already taken',
+    };
+  }
+
+  // Check new passwords before they reach Supabase Auth. Routine login is intentionally unaffected.
+  try {
+    const passwordIsBreached = await isPasswordPwned(input.password);
+    if (passwordIsBreached) {
+      return {
+        user: null,
+        session: null,
+        profile: null,
+        error: 'This password appears in known data breaches. Please choose a different password.',
+      };
+    }
+  } catch {
+    // Fail closed without exposing or logging the submitted password, hash, or HIBP response.
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: 'Password security check is temporarily unavailable. Please try again in a moment.',
     };
   }
 
