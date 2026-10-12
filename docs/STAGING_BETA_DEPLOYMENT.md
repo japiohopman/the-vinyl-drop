@@ -368,5 +368,31 @@ For invite-only beta onboarding (#48), hand off the staging target URL (`https:/
 | --- | --- | --- |
 | Direct public image URL in incognito | The image was visible without signing in. The exact URL and HTTP status code were not recorded. | Pass — operator-reported visual confirmation |
 
-**Still not verified by this test:** anonymous upload denial, authenticated non-owner upload denial, unsupported MIME-type rejection, and absence of orphaned Storage objects/database rows after rejected uploads. Keep those checks open under [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61). This successful direct-read check confirms public readability for the tested object; it does not establish that draft object URLs are private.
+**Not verified by the public-read test:** direct anonymous upload denial, authenticated non-owner upload denial, unsupported MIME-type rejection, and absence of orphaned Storage objects/database rows after rejected uploads. See the separate application-route check in Section 5.3. Keep the remaining Storage/API and data-integrity checks open under [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61). This successful direct-read check confirms public readability for the tested object; it does not establish that draft object URLs are private.
 
+### 5.3 Live Verification Log — 2026-10-12 (Unauthenticated listing-photo UI flow)
+
+**Target:** [Staging site](https://the-vinyl-drop-staging.onrender.com)  
+**Performed by:** Operator  
+**Test:** While signed out, the operator attempted to enter the listing-photo upload flow. The app redirected to the sign-in page before the operator could upload. The operator also reported that, after signing in to an account in the incognito window, a photo upload succeeded.
+
+| Check | Observed result | Assessment |
+| --- | --- | --- |
+| Enter listing-photo upload flow while signed out | Redirected to sign-in; no photo was uploaded while signed out. Exact request URL and HTTP status were not captured. | Pass — operator-reported application-route authentication guard |
+| Upload photo after signing in within incognito | Upload succeeded after sign-in. | Pass — operator-reported authenticated upload smoke test |
+
+**Security scope:** The app-level redirect confirms the normal UI flow requires authentication before upload. It is not the same test as sending a direct anonymous HTTP POST to the Supabase Storage API without a user session. The staging Storage INSERT policy has separately been inspected and is targeted to `authenticated` with an `auth.role() = 'authenticated'` check, but a raw unauthenticated Storage API POST has not been independently executed in this run. Do not claim that raw API probe was performed.
+
+**Remaining checks under Issue #61:** The normal application listing-access guard for a signed-in non-owner was also checked by the operator; see Section 5.4. A direct authenticated upload attempt targeting another seller's listing has not been separately demonstrated and remains open, along with unsupported MIME-type rejection and verification that rejected uploads leave no orphaned Storage objects/listing-photo rows. A raw anonymous Storage API write is also distinct from the UI sign-in redirect and remains untested. Keep Issue #61 and parent Issue #49 open until all required checks are evidenced.
+
+### 5.4 Live Verification Log — 2026-10-12 (Signed-in non-owner listing access)
+
+**Target:** [Staging site](https://the-vinyl-drop-staging.onrender.com)  
+**Performed by:** Operator  
+**Test:** The operator signed in as a different seller and attempted to access a listing owned by another seller. The listing was not accessible under the non-owner account, and the operator reported that the behavior worked as intended. The exact URL, HTTP status, and browser/network evidence were not captured.
+
+| Check | Observed result | Assessment |
+| --- | --- | --- |
+| Access another seller's listing while signed in as a different seller | The listing could not be accessed under the non-owner account; the operator reports the behavior worked as intended. Exact URL and HTTP status were not recorded. | Pass — operator-reported application listing-access/ownership guard |
+
+**Security scope:** This confirms the application-level access guard for the listing flow the operator tested. It does not prove that a direct upload request using another seller's listing ID is rejected by the upload handler or Storage authorization. Keep a targeted non-owner upload/authorization probe open until that operation is directly attempted or verified by an appropriate integration test.
