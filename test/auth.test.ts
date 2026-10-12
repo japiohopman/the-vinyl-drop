@@ -6,6 +6,7 @@ import { isAllowedRedirectUrl, sanitizeRedirectUrl } from '../src/validators/aut
 import * as profileRepository from '../src/app/repositories/profileRepository';
 import { ensureProfileForUser } from '../src/app/services/authService';
 import { Profile } from '../src/db/schema/profiles';
+import * as pwnedPasswordService from '../src/app/services/pwnedPasswordService';
 
 describe('Authentication & Session Handling', () => {
   describe('Redirect URL Allow-List Validation', () => {
@@ -104,6 +105,7 @@ describe('Authentication & Session Handling', () => {
 
     beforeEach(() => {
       jest.clearAllMocks();
+      jest.spyOn(pwnedPasswordService, 'isPasswordPwned').mockResolvedValue(false);
 
       mockSupabase = {
         auth: {
@@ -154,6 +156,51 @@ describe('Authentication & Session Handling', () => {
       expect(res.text).toContain('Username must be at least 3 characters long');
       expect(res.text).toContain('Please enter a valid email address');
       expect(res.text).toContain('Password must be at least 8 characters long');
+    });
+
+    it('POST /auth/signup should reject a breached password before calling Supabase Auth', async () => {
+      const submittedPassword = 'known-breached-password-test-value';
+      jest.spyOn(pwnedPasswordService, 'isPasswordPwned').mockResolvedValue(true);
+      const supabaseSignUpSpy = mockSupabase.auth.signUp;
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/auth/signup')
+        .set('Origin', 'http://localhost:3000')
+        .send({
+          username: 'breached_digger',
+          email: 'breached@example.com',
+          password: submittedPassword,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('This password appears in known data breaches. Please choose a different password.');
+      expect(res.text).not.toContain(submittedPassword);
+      expect(supabaseSignUpSpy).not.toHaveBeenCalled();
+    });
+
+    it('POST /auth/signup should fail closed when the password lookup is unavailable', async () => {
+      const submittedPassword = 'temporary-strong-test-password';
+      jest.spyOn(pwnedPasswordService, 'isPasswordPwned').mockRejectedValue(new Error('private lookup detail'));
+      const supabaseSignUpSpy = mockSupabase.auth.signUp;
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/auth/signup')
+        .set('Origin', 'http://localhost:3000')
+        .send({
+          username: 'retry_digger',
+          email: 'retry@example.com',
+          password: submittedPassword,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Password security check is temporarily unavailable. Please try again in a moment.');
+      expect(res.text).not.toContain(submittedPassword);
+      expect(res.text).not.toContain('private lookup detail');
+      expect(supabaseSignUpSpy).not.toHaveBeenCalled();
     });
 
     it('POST /auth/signup should create user and set session cookies on immediate session', async () => {
