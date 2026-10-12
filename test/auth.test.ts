@@ -6,7 +6,13 @@ import { isAllowedRedirectUrl, sanitizeRedirectUrl } from '../src/validators/aut
 import * as profileRepository from '../src/app/repositories/profileRepository';
 import { ensureProfileForUser } from '../src/app/services/authService';
 import { Profile } from '../src/db/schema/profiles';
-import * as pwnedPasswordService from '../src/app/services/pwnedPasswordService';
+import { isPasswordPwned } from '../src/app/services/pwnedPasswordService';
+
+jest.mock('../src/app/services/pwnedPasswordService', () => ({
+  isPasswordPwned: jest.fn(),
+}));
+
+const mockIsPasswordPwned = isPasswordPwned as jest.MockedFunction<typeof isPasswordPwned>;
 
 describe('Authentication & Session Handling', () => {
   describe('Redirect URL Allow-List Validation', () => {
@@ -105,7 +111,7 @@ describe('Authentication & Session Handling', () => {
 
     beforeEach(() => {
       jest.clearAllMocks();
-      jest.spyOn(pwnedPasswordService, 'isPasswordPwned').mockResolvedValue(false);
+      mockIsPasswordPwned.mockResolvedValue(false);
 
       mockSupabase = {
         auth: {
@@ -160,7 +166,7 @@ describe('Authentication & Session Handling', () => {
 
     it('POST /auth/signup should reject a breached password before calling Supabase Auth', async () => {
       const submittedPassword = 'known-breached-password-test-value';
-      jest.spyOn(pwnedPasswordService, 'isPasswordPwned').mockResolvedValue(true);
+      mockIsPasswordPwned.mockResolvedValue(true);
       const supabaseSignUpSpy = mockSupabase.auth.signUp;
       jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
 
@@ -182,7 +188,7 @@ describe('Authentication & Session Handling', () => {
 
     it('POST /auth/signup should fail closed when the password lookup is unavailable', async () => {
       const submittedPassword = 'temporary-strong-test-password';
-      jest.spyOn(pwnedPasswordService, 'isPasswordPwned').mockRejectedValue(new Error('private lookup detail'));
+      mockIsPasswordPwned.mockRejectedValue(new Error('private lookup detail'));
       const supabaseSignUpSpy = mockSupabase.auth.signUp;
       jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
 
@@ -242,7 +248,7 @@ describe('Authentication & Session Handling', () => {
         });
 
       expect(res.status).toBe(302);
-      expect(pwnedPasswordService.isPasswordPwned).toHaveBeenCalledWith('securepassword123');
+      expect(mockIsPasswordPwned).toHaveBeenCalledWith('securepassword123');
       expect(res.header.location).toBe('/profile');
       expect(res.header['set-cookie']).toBeDefined();
       const cookieHeader = res.header['set-cookie'];
@@ -397,7 +403,7 @@ describe('Authentication & Session Handling', () => {
         });
 
       expect(res.status).toBe(302);
-      expect(pwnedPasswordService.isPasswordPwned).not.toHaveBeenCalled();
+      expect(mockIsPasswordPwned).not.toHaveBeenCalled();
       expect(res.header.location).toBe('/profile');
       const cookieHeader = res.header['set-cookie'];
       const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
