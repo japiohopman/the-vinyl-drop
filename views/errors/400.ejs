@@ -1,0 +1,5 @@
+<section class="error-section">
+  <h1><%= typeof title === 'string' && title ? title : '400 - Bad Request' %></h1>
+  <p><%= typeof message === 'string' && message ? message : 'The request could not be processed due to invalid input.' %></p>
+  <a href="/" class="btn">Back to Home</a>
+</section>

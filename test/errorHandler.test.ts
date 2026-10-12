@@ -2,6 +2,7 @@ import request from 'supertest';
 import express, { Request, Response, NextFunction } from 'express';
 import { errorHandler } from '../src/app/middleware/errorHandler';
 import { renderWithLayout } from '../src/app/utils/render';
+import { ValidationError, AuthorizationError } from '../src/app/services/errors';
 
 describe('Centralized Error Handler Middleware', () => {
   let consoleErrorSpy: jest.SpyInstance;
@@ -67,5 +68,61 @@ describe('Centralized Error Handler Middleware', () => {
     expect(response.status).toBe(500);
     expect(response.text).toContain('500 - Server Error');
     expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
+  it('should render 400 HTML page with custom message for client validation/upload errors', async () => {
+    const app = express();
+    app.set('views', './views');
+    app.set('view engine', 'ejs');
+
+    app.get('/client-error', (_req: Request, _res: Response, next: NextFunction) => {
+      next(new ValidationError('File upload size exceeds maximum limit of 5MB'));
+    });
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .get('/client-error')
+      .set('Accept', 'text/html');
+
+    expect(response.status).toBe(400);
+    expect(response.text).toContain('400 - Bad Request');
+    expect(response.text).toContain('File upload size exceeds maximum limit of 5MB');
+    expect(response.text).not.toContain('500 - Server Error');
+  });
+
+  it('should return 400 JSON with error message for client errors when JSON is accepted', async () => {
+    const app = express();
+
+    app.get('/client-error-json', (_req: Request, _res: Response, next: NextFunction) => {
+      next(new ValidationError('File upload size exceeds maximum limit of 5MB'));
+    });
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .get('/client-error-json')
+      .set('Accept', 'application/json');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'File upload size exceeds maximum limit of 5MB' });
+  });
+
+  it('should render 403 HTML page with forbidden heading for AuthorizationError', async () => {
+    const app = express();
+    app.set('views', './views');
+    app.set('view engine', 'ejs');
+
+    app.get('/forbidden', (_req: Request, _res: Response, next: NextFunction) => {
+      next(new AuthorizationError('You do not have permission to perform this action'));
+    });
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .get('/forbidden')
+      .set('Accept', 'text/html');
+
+    expect(response.status).toBe(403);
+    expect(response.text).toContain('403 - Forbidden');
+    expect(response.text).toContain('You do not have permission to perform this action');
+    expect(response.text).not.toContain('500 - Server Error');
   });
 });
