@@ -370,8 +370,6 @@ For invite-only beta onboarding (#48), hand off the staging target URL (`https:/
 
 **Not verified by the public-read test:** direct anonymous upload denial, authenticated non-owner upload denial, unsupported MIME-type rejection, and absence of orphaned Storage objects/database rows after rejected uploads. See the separate application-route check in Section 5.3. Keep the remaining Storage/API and data-integrity checks open under [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61). This successful direct-read check confirms public readability for the tested object; it does not establish that draft object URLs are private.
 
-
-
 ### 5.3 Live Verification Log — 2026-10-12 (Unauthenticated listing-photo UI flow)
 
 **Target:** [Staging site](https://the-vinyl-drop-staging.onrender.com)  
@@ -386,7 +384,6 @@ For invite-only beta onboarding (#48), hand off the staging target URL (`https:/
 **Security scope:** The app-level redirect confirms the normal UI flow requires authentication before upload. It is not the same test as sending a direct anonymous HTTP POST to the Supabase Storage API without a user session. The staging Storage INSERT policy has separately been inspected and is targeted to `authenticated` with an `auth.role() = 'authenticated'` check, but a raw unauthenticated Storage API POST has not been independently executed in this run. Do not claim that raw API probe was performed.
 
 **Remaining checks under Issue #61:** The normal application listing-access guard for a signed-in non-owner was also checked by the operator; see Section 5.4. A direct authenticated upload attempt targeting another seller's listing has not been separately demonstrated and remains open, along with unsupported MIME-type rejection and verification that rejected uploads leave no orphaned Storage objects/listing-photo rows. A raw anonymous Storage API write is also distinct from the UI sign-in redirect and remains untested. Keep Issue #61 and parent Issue #49 open until all required checks are evidenced.
-
 
 ### 5.4 Live Verification Log — 2026-10-12 (Signed-in non-owner listing access)
 
