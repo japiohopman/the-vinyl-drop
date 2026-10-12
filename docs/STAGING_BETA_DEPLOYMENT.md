@@ -58,11 +58,12 @@ Staging infrastructure utilizes a dedicated, standalone Supabase project:
    - Redirect URL whitelist configured in Supabase Dashboard (Auth -> URL Configuration):
      - `https://the-vinyl-drop-staging.onrender.com/auth/callback`
      - `http://localhost:3000/auth/callback` (for local dev testing)
-3. **Supabase Storage (`listing-photos` bucket) — CURRENTLY BLOCKED:**
-   - Intended state: a dedicated `listing-photos` bucket in the staging Supabase project, with only the access needed for public image reads and authorized uploads.
-   - Live verification on 2026-10-11 queried `storage.buckets` and returned no buckets; `listing-photos` is currently missing from staging.
-   - The upload flow has not passed an end-to-end live test. Do not assume that bucket creation alone fixes it; inspect the server-side authorization/session flow and Storage write permissions first.
-   - Track remediation in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61). Verify project identity before making any live Storage changes.
+3. **Supabase Storage (`listing-photos` bucket) — CONFIGURATION VERIFIED; UPLOAD TEST PENDING:**
+   - Live verification on 2026-10-12 confirms the staging bucket exists, is public, has a 5 MiB file-size limit, and allows only `image/webp`, `image/jpeg`, and `image/png`.
+   - Live verification confirms the four expected policies exist on `storage.objects`: scoped SELECT for published/owner listings; authenticated seller INSERT, UPDATE, and DELETE.
+   - Drizzle migration history still needs to complete migrations `0006` and `0007`. The previous migration attempt exited with code 1, and `public.orphaned_storage_objects` was still absent at the last check.
+   - The upload flow has not passed an end-to-end live test. Do not claim the issue is resolved until a real owner upload, image read, and unauthorized-write denial are tested.
+   - Track remaining work in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
 
 ### 3.1 Least-Privilege Data API Access Matrix
 
@@ -91,7 +92,7 @@ The persistent media layer utilizes Supabase Storage bucket `listing-photos` wit
 
 #### Storage RLS Policies (`storage.objects`)
 
-All Storage RLS policies are version-controlled in `drizzle/0006_storage_objects_rls.sql` and applied automatically during database migration (`npm run db:migrate`).
+The four Storage RLS policies are version-controlled in `drizzle/0006_storage_objects_rls.sql`. Supabase may own the managed `storage.objects` table under a role different from the application's database role. Migration `0006` therefore applies the policy DDL only when the migration role owns that table; otherwise it verifies that the exact four expected policies are already provisioned and refuses to mark the migration applied if they are missing or differ. This allows the dashboard-provisioned staging policies to be reconciled safely without trying to alter a Supabase-managed table.
 
 *Important Privacy Note on Public Storage Buckets:*
 `listing-photos` is configured as a public bucket to enable performant public CDN asset delivery for published listings. The `SELECT` RLS policy below restricts key enumeration (listing bucket folder contents) to published listings or the authenticated seller. However, because public buckets do not require token-authenticated GET requests for direct object path downloads, any user with exact knowledge of a draft object path (`listings/{listing_id}/{photo_id}.webp`) can technically fetch the binary asset directly. If total privacy for draft photo assets is required in future releases, the architecture must transition to private storage buckets with signed, short-lived download URLs.
@@ -185,17 +186,29 @@ Confirm that the active project reference in the Supabase Dashboard matches `STA
 6. Restrict **Allowed MIME types**: `image/webp`, `image/jpeg`, `image/png`.
 7. Save bucket.
 
-#### Step 3 — Apply Migration 0006 to Staging Database
-Execute version-controlled database migrations via standard application CLI against the target staging database:
+#### Step 3 — Reconcile Storage Policies and Apply Database Migrations
+1. Confirm the four policies in Section 3.2 exist in the staging Supabase Dashboard under `storage.objects`, with SELECT targeted to `public` and INSERT/UPDATE/DELETE targeted to `authenticated`.
+2. Execute the version-controlled Drizzle migrations against the confirmed staging database:
 
-```bash
-DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:migrate
-```
+   ```bash
+   DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:migrate
+   ```
 
-*Verification:* Confirm migration execution and RLS policy assertion by running:
-```bash
-DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:verify
-```
+   Migration `0006` applies its policy DDL only when the current role owns `storage.objects`; otherwise it validates the four pre-provisioned policies and skips managed-table DDL only if they match. It fails with a clear error if they do not match. Migration `0007` then creates the private `orphaned_storage_objects` tracking table.
+
+3. `npm run db:verify` runs the migration verifier against an isolated in-memory PGlite database; it is not a live staging database check. Verify the live state in the Supabase SQL Editor with read-only queries:
+
+   ```sql
+   SELECT policyname, roles, cmd
+   FROM pg_policies
+   WHERE schemaname = 'storage' AND tablename = 'objects'
+   ORDER BY cmd, policyname;
+
+   SELECT to_regclass('public.orphaned_storage_objects') IS NOT NULL AS orphan_table_exists;
+
+   SELECT count(*) AS migration_count, max(created_at) AS latest_migration_at
+   FROM drizzle.__drizzle_migrations;
+   ```
 
 #### Step 4 — Verify Live Staging Upload & Public Read
 1. Log in to the staging application using a confirmed Auth-provisioned staging account (e.g. created via Supabase Auth Admin API with `STAGING_SELLER_ID` or registered directly via `/auth/signup`). Note: seed profile rows alone do not automatically create password-ready Auth users in Supabase Auth directory.
@@ -308,7 +321,7 @@ The checkboxes below reflect the actual live staging evidence recorded on 2026-1
 - [ ] **6. Browser HTTPS/certificate review:** HTTPS requests succeeded, but the requested browser lock/certificate check was not separately recorded.
 - [x] **7a. Registration/login/logout:** Manually tested by the operator; the operator reported that these flows worked without errors.
 - [ ] **7b. Auth/OAuth callback and redirect:** The callback/redirect flow was not independently verified in this session.
-- [ ] **8. Storage access & media upload:** **Blocked.** The staging `listing-photos` bucket was absent and the upload flow has not passed an end-to-end live test. See [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
+- [ ] **8. Storage access & media upload:** Bucket settings and all four Storage policies are now verified live (2026-10-12). Drizzle migrations `0006`/`0007` and end-to-end upload/authorization tests remain outstanding. See [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
 - [x] **9a. CSRF/Same-Origin check on `POST /auth/login`:** External Origin returned HTTP 403; missing Origin/Referer returned HTTP 403; the staging Origin reached form validation and returned HTTP 400 for deliberately invalid form data.
 - [ ] **9b. CSRF/Same-Origin on listing/profile mutations:** The `POST /listings/new` and `POST /profile/edit` paths still need their own verification.
 - [ ] **10. Supabase Auth leaked-password protection:** Security Advisor still reported `auth_leaked_password_protection` as disabled. Track the staging-only setting in [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62).
