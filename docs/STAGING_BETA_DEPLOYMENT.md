@@ -396,3 +396,79 @@ For invite-only beta onboarding (#48), hand off the staging target URL (`https:/
 | Access another seller's listing while signed in as a different seller | The listing could not be accessed under the non-owner account; the operator reports the behavior worked as intended. Exact URL and HTTP status were not recorded. | Pass — operator-reported application listing-access/ownership guard |
 
 **Security scope:** This confirms the application-level access guard for the listing flow the operator tested. It does not prove that a direct upload request using another seller's listing ID is rejected by the upload handler or Storage authorization. Keep a targeted non-owner upload/authorization probe open until that operation is directly attempted or verified by an appropriate integration test.
+
+### 5.5 Upload validation and data-integrity checks — 2026-10-12
+
+**Target:** [Staging site](https://the-vinyl-drop-staging.onrender.com)  
+**Performed by:** Operator  
+**Scope:** Unsupported image type, oversized image, and non-owner listing UI access.
+
+#### Operator-reported results
+
+| Check | Observed result | Assessment |
+| --- | --- | --- |
+| Signed-in alternate seller opens another seller's listing | The other seller's listing was inaccessible and upload controls were not visible. | Pass for the tested application UI ownership guard. A direct forged POST to the upload endpoint was not tested, so backend authorization of a crafted request remains a separate check. |
+| Unsupported GIF | Operator reports trying this; the exact response for this individual test was not separately captured. | Not yet confirmed. Capture the request/status and visible message separately from the oversized-file test. |
+| Valid image larger than 5 MiB | Operator confirms that the application's existing 404-style/error partial displayed the expected “Image too big” message and that this user-facing message/presentation is correct. The raw upload POST status and any redirect chain were not captured. | **Pass for the visible error message/presentation.** The transport-level HTTP status remains unverified; the name/appearance of the rendered partial does not establish the POST status. |
+
+The upload-response implementation from Issue #69 is deployed. The operator confirms the visible “Image too big” message in the existing 404-style/error partial is the correct user-facing response for an oversized image. This is recorded as a pass for the displayed message/presentation. The exact upload POST status is still unknown because the Network response and any redirect chain were not captured. Use the Network steps below only if we need to close that separate transport-level status check; do not infer HTTP 404 from the name or appearance of the rendered view.
+
+#### How to capture the actual upload response in Firefox
+
+1. Open the staging listing edit page while signed in as the listing's owner.
+2. Press **F12** and open **Network**. Enable **Persist Logs** (wording can vary), then clear existing requests.
+3. Test the files separately: first a small GIF under 5 MiB; then a valid JPEG or PNG larger than 5 MiB.
+4. After each upload, inspect the upload **POST** request and record its HTTP status. If the POST is 301/302/303, also record the following GET request's status and the `Location` response header. This distinguishes the original upload response from a subsequent page that happens to show “404”.
+5. Record the visible error text and the request/status results; do not share cookies, authorization headers, or tokens.
+
+#### Read-only data-integrity check
+
+Run these queries in the **Supabase SQL Editor for the confirmed staging project** only. Replace `<LISTING_UUID>` with the UUID from the seller's own staging edit URL (the part in `/listings/<LISTING_UUID>/edit`). These are SELECT-only queries; do not run DELETE/UPDATE statements.
+
+Capture the results **before** the first rejected upload, then repeat all three queries after each rejected upload:
+
+```sql
+-- Database photo rows attached to this listing
+SELECT id, listing_id, storage_path, created_at
+FROM public.listing_photos
+WHERE listing_id = '<LISTING_UUID>'::uuid
+ORDER BY created_at, id;
+
+-- Actual Storage objects belonging to this listing
+SELECT name, bucket_id, created_at
+FROM storage.objects
+WHERE bucket_id = 'listing-photos'
+  AND name LIKE 'listings/<LISTING_UUID>/%'
+ORDER BY created_at, name;
+
+-- Durable records for objects that could not be cleaned up after a failed DB write
+SELECT id, listing_id, photo_id, storage_path, reason, created_at
+FROM public.orphaned_storage_objects
+WHERE listing_id = '<LISTING_UUID>'::uuid
+ORDER BY created_at, id;
+```
+
+**Expected result for rejected GIF / oversized uploads:** no new `listing_photos` row, no new `storage.objects` object under that listing's folder, and no new `orphaned_storage_objects` record. Existing photos/objects may already be present, so compare row IDs and storage paths against the baseline rather than expecting zero total rows.
+
+- If all three result sets are unchanged, record data-integrity as a pass for that specific rejected upload and attach the before/after counts or screenshots.
+- If a new Storage object appears without a corresponding photo row, or a new photo row refers to a missing Storage object, record a failure and keep the issue open. Do not manually delete anything; preserve the paths/IDs for investigation.
+- A record in `orphaned_storage_objects` means the compensation path registered a cleanup problem and must be investigated, not silently marked passed.
+
+**Still open under Issue #61:** confirm the exact HTTP response for GIF and >5 MiB uploads; run the before/after read-only comparison for each rejected upload; perform a direct authenticated non-owner upload authorization check if the endpoint-level protection still needs explicit runtime evidence; and retain the separate raw anonymous Storage API write check only if required beyond the verified normal UI sign-in guard and inspected policy.
+
+#### Connected read-only staging snapshot — 2026-10-12
+
+The operator's Supabase SQL Editor returned a browser-level `NetworkError when attempting to fetch resource (api.supabase.com)`. The accompanying note about a 100-row limit is not a query result and does not establish a SQL syntax error. To avoid treating that failed dashboard request as evidence, a separate connected, read-only SQL check was run against the confirmed staging project. No data was changed.
+
+| Check | Observed current snapshot | Assessment |
+| --- | ---: | --- |
+| Rows in `public.listing_photos` | 4 | Current count recorded |
+| Objects in `storage.objects` for bucket `listing-photos` | 4 | Current count recorded |
+| Photo rows with a matching Storage object path | 4 of 4 | Pass — no missing object for a current photo row |
+| Photo rows whose Storage object is missing | 0 | Pass — none observed |
+| Storage objects without a matching `listing_photos` row | 0 | Pass — no unreferenced bucket objects observed |
+| Rows in `public.orphaned_storage_objects` | 0 | Pass — no cleanup failures registered |
+
+The newest `listing_photos` row had both `created_at` and `updated_at` at `2026-10-12 09:31:52.639760 UTC`; the newest Storage object had both timestamps at `2026-10-12 09:31:52.582630 UTC`. These timestamps predate the operator's later rejected-upload test report. The post-test snapshot still showed 4 photo rows and 4 bucket objects, with no missing/unreferenced paths and no orphan-tracking rows; no photo row or object timestamp was newer than the earlier successful upload. This is useful post-test evidence that the rejected attempts did not leave persistent new/updated rows or objects in the current snapshot, although there is no exact per-request before/after export.
+
+**Scope limitation:** this is a current-state, read-only consistency snapshot, not a recorded before/after comparison for each rejected GIF/oversized upload. It is useful evidence that no unmatched object or missing object exists in the current staging data, but it does not by itself prove which specific rejected request did or did not create a transient record. Keep the per-attempt before/after check open until that evidence is captured. The raw HTTP POST status and the separate GIF response also remain unrecorded.
