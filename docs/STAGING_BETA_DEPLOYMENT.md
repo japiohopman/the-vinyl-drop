@@ -58,12 +58,12 @@ Staging infrastructure utilizes a dedicated, standalone Supabase project:
    - Redirect URL whitelist configured in Supabase Dashboard (Auth -> URL Configuration):
      - `https://the-vinyl-drop-staging.onrender.com/auth/callback`
      - `http://localhost:3000/auth/callback` (for local dev testing)
-3. **Supabase Storage (`listing-photos` bucket) — CONFIGURATION VERIFIED; UPLOAD TEST PENDING:**
+3. **Supabase Storage (`listing-photos` bucket) — CONFIGURATION VERIFIED; END-TO-END CHECKS IN PROGRESS:**
    - Live verification on 2026-10-12 confirms the staging bucket exists, is public, has a 5 MiB file-size limit, and allows only `image/webp`, `image/jpeg`, and `image/png`.
    - Live verification confirms the four expected policies exist on `storage.objects`: scoped SELECT for published/owner listings; authenticated seller INSERT, UPDATE, and DELETE.
-   - Drizzle migration history still needs to complete migrations `0006` and `0007`. The previous migration attempt exited with code 1, and `public.orphaned_storage_objects` was still absent at the last check.
-   - The upload flow has not passed an end-to-end live test. Do not claim the issue is resolved until a real owner upload, image read, and unauthorized-write denial are tested.
-   - Track remaining work in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
+   - Migrations `0006` and `0007` are applied; live migration history has eight entries, and `public.orphaned_storage_objects` exists with RLS enabled and no privileges for `anon` or `authenticated`.
+   - The operator confirmed on 2026-10-12 that a listing photo's direct public Storage URL displayed the image in an incognito browser without signing in. The exact HTTP status and URL were not recorded.
+   - Other end-to-end authorization, invalid-file, and data-integrity checks remain open in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
 
 ### 3.1 Least-Privilege Data API Access Matrix
 
@@ -321,7 +321,7 @@ The checkboxes below reflect the actual live staging evidence recorded on 2026-1
 - [ ] **6. Browser HTTPS/certificate review:** HTTPS requests succeeded, but the requested browser lock/certificate check was not separately recorded.
 - [x] **7a. Registration/login/logout:** Manually tested by the operator; the operator reported that these flows worked without errors.
 - [ ] **7b. Auth/OAuth callback and redirect:** The callback/redirect flow was not independently verified in this session.
-- [ ] **8. Storage access & media upload:** Bucket settings and all four Storage policies are now verified live (2026-10-12). Drizzle migrations `0006`/`0007` and end-to-end upload/authorization tests remain outstanding. See [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
+- [ ] **8. Storage access & media upload:** Bucket settings, all four Storage policies, and migrations `0006`/`0007` are verified live. A direct public photo URL was opened successfully in an unauthenticated incognito browser on 2026-10-12. Remaining upload authorization, invalid-file, and data-integrity checks are tracked in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
 - [x] **9a. CSRF/Same-Origin check on `POST /auth/login`:** External Origin returned HTTP 403; missing Origin/Referer returned HTTP 403; the staging Origin reached form validation and returned HTTP 400 for deliberately invalid form data.
 - [ ] **9b. CSRF/Same-Origin on listing/profile mutations:** The `POST /listings/new` and `POST /profile/edit` paths still need their own verification.
 - [ ] **10. Supabase Auth leaked-password protection:** Security Advisor still reported `auth_leaked_password_protection` as disabled. Track the staging-only setting in [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62).
@@ -349,7 +349,7 @@ The checkboxes below reflect the actual live staging evidence recorded on 2026-1
 
 #### Remaining blockers and scope limits
 
-- The staging Supabase Storage bucket `listing-photos` was not present in `storage.buckets`. A real upload was not attempted; the missing bucket and unverified write authorization must be fixed before testing. See [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
+- The staging Supabase Storage bucket, policies, and migrations are now configured and verified. The operator confirmed a public image URL loaded in an incognito browser without authentication on 2026-10-12. Remaining upload authorization, unsupported-file, and failed-upload data-integrity checks are tracked in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
 - Supabase Security Advisor still reported `auth_leaked_password_protection` as disabled. See [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62).
 - Authenticated cross-user Data API access, OAuth callback behavior, listing/profile mutation CSRF tests, the full environment-variable audit, fixture verification, and browser certificate inspection remain unverified.
 - **Do not mark staging/beta ready or close Issue #49 yet.** Once the remaining checks are completed, append their actual outcomes here rather than assuming success.
@@ -357,3 +357,16 @@ The checkboxes below reflect the actual live staging evidence recorded on 2026-1
 ## 6. Handoff to Product Specialist
 
 For invite-only beta onboarding (#48), hand off the staging target URL (`https://the-vinyl-drop-staging.onrender.com`) along with the pre-seeded test account matrix (`seller.beta@vinyldrop.local` / `buyer.beta@vinyldrop.local`) upon completion of live deployment verification.
+
+### 5.2 Live Verification Log — 2026-10-12 (Storage public-read check)
+
+**Target:** Staging listing-photo public Storage URL  
+**Performed by:** Operator  
+**Test:** Opened the direct URL for an uploaded listing photo in an incognito browser with no signed-in session.
+
+| Check | Observed result | Assessment |
+| --- | --- | --- |
+| Direct public image URL in incognito | The image was visible without signing in. The exact URL and HTTP status code were not recorded. | Pass — operator-reported visual confirmation |
+
+**Still not verified by this test:** anonymous upload denial, authenticated non-owner upload denial, unsupported MIME-type rejection, and absence of orphaned Storage objects/database rows after rejected uploads. Keep those checks open under [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61). This successful direct-read check confirms public readability for the tested object; it does not establish that draft object URLs are private.
+
