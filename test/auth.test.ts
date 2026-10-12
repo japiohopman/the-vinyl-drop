@@ -242,6 +242,7 @@ describe('Authentication & Session Handling', () => {
         });
 
       expect(res.status).toBe(302);
+      expect(pwnedPasswordService.isPasswordPwned).toHaveBeenCalledWith('securepassword123');
       expect(res.header.location).toBe('/profile');
       expect(res.header['set-cookie']).toBeDefined();
       const cookieHeader = res.header['set-cookie'];
@@ -396,6 +397,7 @@ describe('Authentication & Session Handling', () => {
         });
 
       expect(res.status).toBe(302);
+      expect(pwnedPasswordService.isPasswordPwned).not.toHaveBeenCalled();
       expect(res.header.location).toBe('/profile');
       const cookieHeader = res.header['set-cookie'];
       const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
