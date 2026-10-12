@@ -293,9 +293,8 @@ Before deploying PR #81 / Issue #79 to staging, the human operator must set the 
 2. **Email Templates (Auth -> Email Templates -> Reset Password):**
    - Recommended custom Reset Password template redirect link target (token_hash flow):
      `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset-password`
-   - Default Supabase Auth PKCE recovery flow (`/auth/v1/verify?token=...&type=recovery&redirect_to=...`):
-     Supabase Auth redirects to `{{ .SiteURL }}/auth/callback?code=...&type=recovery&next=/auth/reset-password`.
-   - Both token_hash (`token_hash` + `type=recovery`) and PKCE code (`code` + `type=recovery`) recovery link shapes are supported server-side, requiring verified `type=recovery` context to issue the signed HMAC recovery session marker.
+   - Do **not** use the default `{{ .ConfirmationURL }}` verification link for this server-rendered recovery route. Supabase's built-in `/auth/v1/verify?token=...` flow redirects back with a PKCE `code`; a `type=recovery` query parameter on that callback is browser-controlled and is not proof of recovery.
+   - The application intentionally grants recovery state only after the server calls `verifyOtp({ token_hash, type: 'recovery' })` successfully. Do not re-enable recovery-marker issuance from a PKCE code callback based on `type`, `next`, or any other query parameter.
    - Ensure SMTP/email delivery settings in Supabase Staging Auth are configured for staging email delivery. Do NOT modify production configuration.
 
 #### Password Recovery Session Policy
