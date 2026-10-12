@@ -75,9 +75,9 @@ describe('HIBP Pwned Passwords range lookup', () => {
       ) as unknown as typeof fetch;
 
       const pending = isPasswordPwned('password', { fetchImpl, timeoutMs: 25 });
+      const rejected = expect(pending).rejects.toBeInstanceOf(PasswordCheckUnavailableError);
       await jest.advanceTimersByTimeAsync(25);
-
-      await expect(pending).rejects.toBeInstanceOf(PasswordCheckUnavailableError);
+      await rejected;
     } finally {
       jest.useRealTimers();
     }
