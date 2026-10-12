@@ -63,8 +63,8 @@ jobs:
 
             let prBody = pr.body || '';
 
-            // Strip HTML comments
-            prBody = prBody.replace(/<!--[\s\S]*?-->/g, '');
+            // Normalize line endings and strip HTML comments
+            prBody = prBody.replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '');
 
             if (!prBody.trim()) {
               core.setFailed('PR body is empty or missing.');

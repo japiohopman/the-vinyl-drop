@@ -48,8 +48,8 @@ export function validatePrContract(prBody: string | null | undefined): PrContrac
     return { valid: false, errors: ['PR body is empty or missing.'] };
   }
 
-  // Strip HTML comments (e.g. <!-- comment -->)
-  const cleanedBody = prBody.replace(/<!--[\s\S]*?-->/g, '');
+  // Normalize line endings and strip HTML comments (e.g. <!-- comment -->)
+  const cleanedBody = prBody.replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '');
 
   // 1. Validate required section headings
   for (const section of REQUIRED_PR_SECTIONS) {
