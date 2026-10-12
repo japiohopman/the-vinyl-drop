@@ -33,40 +33,40 @@ BEGIN
           (p.policyname = 'Scoped Read Access for listing-photos'
             AND p.cmd = 'SELECT'
             AND p.roles = ARRAY['public']::name[]
-            AND p.qual LIKE '%bucket_id = ''listing-photos''%'
-            AND p.qual LIKE '%storage.foldername(objects.name))[2]%'
-            AND p.qual LIKE '%status = ''published''%'
-            AND p.qual LIKE '%seller_id = auth.uid()%'
+            AND position('bucket_id = ''listing-photos''' in p.qual) > 0
+            AND position('storage.foldername(objects.name))[2]' in p.qual) > 0
+            AND position('status = ''published''' in p.qual) > 0
+            AND position('seller_id = auth.uid()' in p.qual) > 0
             AND p.with_check IS NULL)
           OR
           (p.policyname = 'Authenticated Seller Insert for listing-photos'
             AND p.cmd = 'INSERT'
             AND p.roles = ARRAY['authenticated']::name[]
             AND p.qual IS NULL
-            AND p.with_check LIKE '%bucket_id = ''listing-photos''%'
-            AND p.with_check LIKE '%auth.role() = ''authenticated''%'
-            AND p.with_check LIKE '%storage.foldername(objects.name))[2]%'
-            AND p.with_check LIKE '%seller_id = auth.uid()%')
+            AND position('bucket_id = ''listing-photos''' in p.with_check) > 0
+            AND position('auth.role() = ''authenticated''' in p.with_check) > 0
+            AND position('storage.foldername(objects.name))[2]' in p.with_check) > 0
+            AND position('seller_id = auth.uid()' in p.with_check) > 0)
           OR
           (p.policyname = 'Authenticated Seller Update for listing-photos'
             AND p.cmd = 'UPDATE'
             AND p.roles = ARRAY['authenticated']::name[]
-            AND p.qual LIKE '%bucket_id = ''listing-photos''%'
-            AND p.qual LIKE '%auth.role() = ''authenticated''%'
-            AND p.qual LIKE '%storage.foldername(objects.name))[2]%'
-            AND p.qual LIKE '%seller_id = auth.uid()%'
-            AND p.with_check LIKE '%bucket_id = ''listing-photos''%'
-            AND p.with_check LIKE '%auth.role() = ''authenticated''%'
-            AND p.with_check LIKE '%storage.foldername(objects.name))[2]%'
-            AND p.with_check LIKE '%seller_id = auth.uid()%')
+            AND position('bucket_id = ''listing-photos''' in p.qual) > 0
+            AND position('auth.role() = ''authenticated''' in p.qual) > 0
+            AND position('storage.foldername(objects.name))[2]' in p.qual) > 0
+            AND position('seller_id = auth.uid()' in p.qual) > 0
+            AND position('bucket_id = ''listing-photos''' in p.with_check) > 0
+            AND position('auth.role() = ''authenticated''' in p.with_check) > 0
+            AND position('storage.foldername(objects.name))[2]' in p.with_check) > 0
+            AND position('seller_id = auth.uid()' in p.with_check) > 0)
           OR
           (p.policyname = 'Authenticated Seller Delete for listing-photos'
             AND p.cmd = 'DELETE'
             AND p.roles = ARRAY['authenticated']::name[]
-            AND p.qual LIKE '%bucket_id = ''listing-photos''%'
-            AND p.qual LIKE '%auth.role() = ''authenticated''%'
-            AND p.qual LIKE '%storage.foldername(objects.name))[2]%'
-            AND p.qual LIKE '%seller_id = auth.uid()%'
+            AND position('bucket_id = ''listing-photos''' in p.qual) > 0
+            AND position('auth.role() = ''authenticated''' in p.qual) > 0
+            AND position('storage.foldername(objects.name))[2]' in p.qual) > 0
+            AND position('seller_id = auth.uid()' in p.qual) > 0
             AND p.with_check IS NULL)
         );
 
