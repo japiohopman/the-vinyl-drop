@@ -456,3 +456,19 @@ ORDER BY created_at, id;
 
 **Still open under Issue #61:** confirm the exact HTTP response for GIF and >5 MiB uploads; run the before/after read-only comparison for each rejected upload; perform a direct authenticated non-owner upload authorization check if the endpoint-level protection still needs explicit runtime evidence; and retain the separate raw anonymous Storage API write check only if required beyond the verified normal UI sign-in guard and inspected policy.
 
+#### Connected read-only staging snapshot — 2026-10-12
+
+The operator's Supabase SQL Editor returned a browser-level `NetworkError when attempting to fetch resource (api.supabase.com)`. The accompanying note about a 100-row limit is not a query result and does not establish a SQL syntax error. To avoid treating that failed dashboard request as evidence, a separate connected, read-only SQL check was run against the confirmed staging project. No data was changed.
+
+| Check | Observed current snapshot | Assessment |
+| --- | ---: | --- |
+| Rows in `public.listing_photos` | 4 | Current count recorded |
+| Objects in `storage.objects` for bucket `listing-photos` | 4 | Current count recorded |
+| Photo rows with a matching Storage object path | 4 of 4 | Pass — no missing object for a current photo row |
+| Photo rows whose Storage object is missing | 0 | Pass — none observed |
+| Storage objects without a matching `listing_photos` row | 0 | Pass — no unreferenced bucket objects observed |
+| Rows in `public.orphaned_storage_objects` | 0 | Pass — no cleanup failures registered |
+
+The newest `listing_photos` row and newest Storage object were both timestamped approximately `2026-10-12 09:31:52 UTC`. At the time of this check, the current database and Storage contents were internally consistent and no orphaned object/tracking row was found.
+
+**Scope limitation:** this is a current-state, read-only consistency snapshot, not a recorded before/after comparison for each rejected GIF/oversized upload. It is useful evidence that no unmatched object or missing object exists in the current staging data, but it does not by itself prove which specific rejected request did or did not create a transient record. Keep the per-attempt before/after check open until that evidence is captured. The raw HTTP POST status and the separate GIF response also remain unrecorded.
