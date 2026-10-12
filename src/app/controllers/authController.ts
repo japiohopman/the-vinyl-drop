@@ -16,7 +16,13 @@ import {
   updatePassword,
   signOut,
 } from '../services/authService';
-import { setAuthCookies, clearAuthCookies, setRecoveryCookie, clearRecoveryCookie } from '../middleware/auth';
+import {
+  setAuthCookies,
+  clearAuthCookies,
+  setRecoveryCookie,
+  clearRecoveryCookie,
+  isRecoverySessionVerified,
+} from '../middleware/auth';
 import { renderWithLayout } from '../utils/render';
 import { config } from '../../config/env';
 
@@ -243,8 +249,8 @@ export async function getAuthCallback(req: Request, res: Response, next: NextFun
     }
 
     setAuthCookies(res, authResult.session);
-    if (authResult.isRecoverySession || type === 'recovery' || nextUrl.includes('/auth/reset-password')) {
-      setRecoveryCookie(res);
+    if (authResult.isRecoverySession && authResult.user) {
+      setRecoveryCookie(res, authResult.user.id);
     }
     res.redirect(nextUrl);
   } catch (error) {
@@ -315,8 +321,8 @@ export async function postForgotPassword(req: Request, res: Response, next: Next
 
 export async function getResetPasswordPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // Setting a new password strictly requires an active verified recovery session marker
-    const isRecoverySession = req.cookies?.['sb-recovery-mode'] === 'true' && Boolean(req.user);
+    // Setting a new password strictly requires a cryptographically verified recovery session marker bound to req.user
+    const isRecoverySession = isRecoverySessionVerified(req);
     if (!isRecoverySession) {
       res.status(400);
       renderWithLayout(res, 'auth/forgot-password', {
@@ -349,8 +355,8 @@ export async function getResetPasswordPage(req: Request, res: Response, next: Ne
 
 export async function postResetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // Setting a new password strictly requires an active verified recovery session marker
-    const isRecoverySession = req.cookies?.['sb-recovery-mode'] === 'true' && Boolean(req.user);
+    // Setting a new password strictly requires a cryptographically verified recovery session marker bound to req.user
+    const isRecoverySession = isRecoverySessionVerified(req);
     if (!isRecoverySession) {
       res.status(400);
       renderWithLayout(res, 'auth/forgot-password', {
