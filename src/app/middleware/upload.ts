@@ -49,8 +49,9 @@ export function multipartUploadHandler(req: Request, res: Response, next: NextFu
       },
     });
   } catch (err) {
+    console.error('Busboy initialization error:', err);
     res.status(400);
-    return next(new ValidationError(`Invalid multipart request: ${(err as Error).message}`));
+    return next(new ValidationError('Invalid multipart upload request.'));
   }
 
   const files: UploadedFile[] = [];
@@ -138,8 +139,9 @@ export function multipartUploadHandler(req: Request, res: Response, next: NextFu
   busboy.on('error', (err: Error) => {
     if (hasError) return;
     hasError = true;
+    console.error('Busboy parse error:', err);
     res.status(400);
-    return next(new ValidationError(`Malformed multipart request: ${err.message}`));
+    return next(new ValidationError('Malformed multipart upload request.'));
   });
 
   req.pipe(busboy);

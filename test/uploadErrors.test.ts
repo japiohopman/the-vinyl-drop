@@ -56,6 +56,8 @@ describe('Listing Photo Upload Error Handling', () => {
 
     expect(response.status).toBe(400);
     expect(response.text).toContain('400 - Bad Request');
+    expect(response.text).toContain('Malformed multipart upload request.');
+    expect(response.text).not.toContain('Unexpected end of multipart data');
     expect(response.text).not.toContain('500 - Server Error');
   });
 

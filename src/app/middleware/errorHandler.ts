@@ -51,8 +51,14 @@ export function errorHandler(
           message: clientMessage,
         });
       } else {
+        const title =
+          statusCode === 403
+            ? '403 - Forbidden'
+            : statusCode === 400
+            ? '400 - Bad Request'
+            : `${statusCode} - Client Error`;
         renderWithLayout(res, 'errors/400', {
-          title: `${statusCode} - Bad Request`,
+          title,
           message: clientMessage,
         });
       }

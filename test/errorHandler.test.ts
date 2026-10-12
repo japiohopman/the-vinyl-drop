@@ -2,7 +2,7 @@ import request from 'supertest';
 import express, { Request, Response, NextFunction } from 'express';
 import { errorHandler } from '../src/app/middleware/errorHandler';
 import { renderWithLayout } from '../src/app/utils/render';
-import { ValidationError } from '../src/app/services/errors';
+import { ValidationError, AuthorizationError } from '../src/app/services/errors';
 
 describe('Centralized Error Handler Middleware', () => {
   let consoleErrorSpy: jest.SpyInstance;
@@ -104,5 +104,25 @@ describe('Centralized Error Handler Middleware', () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'File upload size exceeds maximum limit of 5MB' });
+  });
+
+  it('should render 403 HTML page with forbidden heading for AuthorizationError', async () => {
+    const app = express();
+    app.set('views', './views');
+    app.set('view engine', 'ejs');
+
+    app.get('/forbidden', (_req: Request, _res: Response, next: NextFunction) => {
+      next(new AuthorizationError('You do not have permission to perform this action'));
+    });
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .get('/forbidden')
+      .set('Accept', 'text/html');
+
+    expect(response.status).toBe(403);
+    expect(response.text).toContain('403 - Forbidden');
+    expect(response.text).toContain('You do not have permission to perform this action');
+    expect(response.text).not.toContain('500 - Server Error');
   });
 });
