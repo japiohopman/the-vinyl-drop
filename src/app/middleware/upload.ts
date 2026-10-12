@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import Busboy from '@fastify/busboy';
+import { ValidationError } from '../services/errors';
 
 export interface UploadedFile {
   fieldname: string;
@@ -48,7 +49,8 @@ export function multipartUploadHandler(req: Request, res: Response, next: NextFu
       },
     });
   } catch (err) {
-    return next(err);
+    res.status(400);
+    return next(new ValidationError(`Invalid multipart request: ${(err as Error).message}`));
   }
 
   const files: UploadedFile[] = [];
@@ -125,7 +127,7 @@ export function multipartUploadHandler(req: Request, res: Response, next: NextFu
 
     if (limitExceededReason) {
       res.status(400);
-      return next(new Error(limitExceededReason));
+      return next(new ValidationError(limitExceededReason));
     }
 
     req.body = { ...req.body, ...fields };
@@ -134,8 +136,10 @@ export function multipartUploadHandler(req: Request, res: Response, next: NextFu
   });
 
   busboy.on('error', (err: Error) => {
+    if (hasError) return;
     hasError = true;
-    next(err);
+    res.status(400);
+    return next(new ValidationError(`Malformed multipart request: ${err.message}`));
   });
 
   req.pipe(busboy);
