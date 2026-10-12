@@ -472,3 +472,23 @@ The operator's Supabase SQL Editor returned a browser-level `NetworkError when a
 The latest `listing_photos` row still has `created_at` and `updated_at` of `2026-10-12 09:31:52.639760 UTC`; the latest Storage object still has timestamps of `2026-10-12 09:31:52.582630 UTC`. These timestamps predate the operator-reported rejected-upload tests. A read-only staging snapshot taken after the reported rejection attempts matched the recorded baseline: 4 photo rows, 4 Storage objects, all 4 photo rows matched to their object paths, 0 rows missing objects, 0 objects without photo rows, and 0 orphan-tracking records. All recorded photo/object IDs, paths, and timestamps still match the earlier baseline. **Assessment: aggregate pass — no persistent database/Storage additions or mismatches were detected after the reported rejected-upload attempts.**
 
 **Scope limitation:** no separate immediate snapshot was taken between the individual GIF and oversized attempts, so this supports an aggregate post-test consistency pass but does not independently isolate the effect of each request. The visible GIF and oversized error messages are recorded above; the original upload POST status/redirect chain for each attempt remains unverified.
+
+---
+
+### 5.6 Auth security — leaked-password protection (2026-10-12)
+
+**Target:** Supabase staging project `xuhzhdjmgvqzjxijmksu` (The Vinyl Drop)  
+**Verification source:** Connected Supabase project and organization metadata, read-only; Security Advisor.
+
+| Check | Observed result | Assessment |
+| --- | --- | --- |
+| Staging project identity | Project reference is `xuhzhdjmgvqzjxijmksu`; project is active/healthy. | Confirmed — staging only |
+| Supabase organization plan | Organization `The Vinyl Drop` is on the **Free** plan. | Confirmed plan limitation |
+| Security Advisor: `auth_leaked_password_protection` | **WARN — Leaked Password Protection Disabled** remains present. | Not resolved |
+| Auth configuration change | No Auth settings were changed during this check. | No configuration mutation |
+
+Supabase's current [password-security documentation](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) and [pricing matrix](https://supabase.com/pricing) state that leaked-password protection is not included on Free and is available on Pro and above. The current warning therefore matches a verified plan-entitlement limitation; it is not evidence that an available toggle was enabled.
+
+**Decision required:** the recommended path is for the owner to approve upgrading the Supabase organization to a plan that includes this feature (currently Pro or above). Supabase billing is organization-based, so verify the current price and the impact on every project in the organization in the Dashboard before confirming an upgrade. After approval and upgrade, open the verified staging project's Auth password-security settings, enable **Prevent use of leaked passwords**, save, and re-run Security Advisor to confirm the warning clears.
+
+**Safety and release gate:** no plan upgrade was performed and no production Auth setting was touched. Do not suppress the warning or weaken password controls to work around the plan gate. Keep [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62) open until an approved mitigation is implemented and evidenced. Keep [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) and external beta invitations blocked until the overall staging gate is satisfied.
