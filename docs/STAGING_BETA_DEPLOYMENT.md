@@ -277,6 +277,13 @@ If an issue occurs during migration application on staging:
 
 *Notice: This runbook is a human-only operational guide. Automated CI and Jules MUST NOT alter live Supabase Auth settings, send live password-reset emails, or modify real staging accounts.*
 
+#### Required Staging Environment Configuration (Pre-Deployment Operation)
+Before deploying PR #81 / Issue #79 to staging, the human operator must set the mandatory `RECOVERY_SIGNING_SECRET` environment variable in the **staging Render web service settings**:
+1. Generate a secure, high-entropy secret string (minimum 32 characters, e.g. using `openssl rand -hex 32` or a secure local random generator).
+2. Log into the Render Dashboard -> Staging Web Service -> **Environment**.
+3. Add environment variable `RECOVERY_SIGNING_SECRET` with the generated secret value (>= 32 chars).
+4. *Security Warning:* Do NOT commit the secret value to repository code, pull request descriptions, or logs. Jules and automated CI must NOT alter live Render environment settings.
+
 #### Required Supabase Staging Auth Setup (Dashboard Operations)
 1. **Redirect URL Whitelist (Auth -> URL Configuration):**
    - Ensure the staging callback URL is explicitly listed in allowed redirect URLs:
