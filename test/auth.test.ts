@@ -6,7 +6,9 @@ import { isAllowedRedirectUrl, sanitizeRedirectUrl } from '../src/validators/aut
 import * as profileRepository from '../src/app/repositories/profileRepository';
 import { ensureProfileForUser } from '../src/app/services/authService';
 import { Profile } from '../src/db/schema/profiles';
+import crypto from 'crypto';
 import { generateRecoveryToken } from '../src/app/middleware/auth';
+import { config } from '../src/config/env';
 import { isPasswordPwned } from '../src/app/services/pwnedPasswordService';
 
 jest.mock('../src/app/services/pwnedPasswordService', () => ({
@@ -685,6 +687,24 @@ describe('Authentication & Session Handling', () => {
         expect(cookies).not.toContain('sb-recovery-mode=');
       });
 
+      it('GET /auth/callback when verifyOtp fails (invalid/expired recovery token) should NOT set recovery cookie', async () => {
+        mockSupabase.auth.verifyOtp.mockResolvedValue({
+          data: { user: null, session: null },
+          error: { message: 'Token has expired or is invalid' },
+        });
+
+        const app = createApp();
+        const res = await request(app).get(
+          '/auth/callback?token_hash=expired_token_hash&type=recovery&next=%2Fauth%2Freset-password'
+        );
+
+        expect(res.status).toBe(400);
+        expect(res.text).toContain('Token has expired or is invalid');
+        const cookieHeader = res.header['set-cookie'];
+        const cookies = cookieHeader ? (Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader)) : '';
+        expect(cookies).not.toContain('sb-recovery-mode=');
+      });
+
       it('GET /auth/callback with type=signup or magiclink should NOT set recovery cookie', async () => {
         const mockUser = {
           id: '77777777-7777-7777-7777-777777777777',
@@ -777,6 +797,46 @@ describe('Authentication & Session Handling', () => {
 
         expect(resForged.status).toBe(400);
         expect(resForged.text).toContain('Password reset link is invalid or has expired');
+        expect(updateUserSpy).not.toHaveBeenCalled();
+      });
+
+      it('GET and POST /auth/reset-password should reject an expired signed recovery token and NEVER call updateUser', async () => {
+        const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'user@example.com' };
+        mockSupabase.auth.getUser.mockResolvedValue({
+          data: { user: mockUser },
+          error: null,
+        });
+
+        // Construct a token signed with the actual secret, but with an expired timestamp in the past
+        const expiredTimestamp = Date.now() - 60000; // 1 minute in the past
+        const payload = `${mockUser.id}:${expiredTimestamp}`;
+        const RECOVERY_SECRET = config.RECOVERY_SIGNING_SECRET;
+        const signature = crypto.createHmac('sha256', RECOVERY_SECRET).update(payload).digest('hex');
+        const expiredToken = `${mockUser.id}.${expiredTimestamp}.${signature}`;
+
+        const updateUserSpy = mockSupabase.auth.updateUser;
+        const app = createApp();
+
+        // GET with expired token
+        const resGet = await request(app)
+          .get('/auth/reset-password')
+          .set('Cookie', ['sb-access-token=valid-user-token', `sb-recovery-mode=${expiredToken}`]);
+
+        expect(resGet.status).toBe(400);
+        expect(resGet.text).toContain('Password reset link is invalid or has expired');
+
+        // POST with expired token
+        const resPost = await request(app)
+          .post('/auth/reset-password')
+          .set('Origin', 'http://localhost:3000')
+          .set('Cookie', ['sb-access-token=valid-user-token', `sb-recovery-mode=${expiredToken}`])
+          .send({
+            password: 'brandnewpassword123',
+            confirmPassword: 'brandnewpassword123',
+          });
+
+        expect(resPost.status).toBe(400);
+        expect(resPost.text).toContain('Password reset link is invalid or has expired');
         expect(updateUserSpy).not.toHaveBeenCalled();
       });
 

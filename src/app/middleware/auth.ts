@@ -39,7 +39,7 @@ export function setAuthCookies(res: Response, session: Session): void {
   }
 }
 
-const RECOVERY_SECRET = config.SUPABASE_ANON_KEY || 'vinyl-drop-recovery-secret';
+const RECOVERY_SECRET = config.RECOVERY_SIGNING_SECRET;
 const RECOVERY_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
 export function generateRecoveryToken(userId: string): string {

@@ -13,6 +13,9 @@ export const envSchema = z
     SUPABASE_ANON_KEY: z.string().optional(),
     APP_BASE_URL: z.string().optional(),
     ALLOWED_REDIRECT_URLS: z.string().optional(),
+    RECOVERY_SIGNING_SECRET: z
+      .string()
+      .default('development-only-recovery-signing-secret-key-32-bytes'),
   })
   .superRefine((data, ctx) => {
     const isRuntime =
@@ -112,6 +115,7 @@ export const envSchema = z
 export type Env = Omit<z.infer<typeof envSchema>, 'APP_BASE_URL' | 'ALLOWED_REDIRECT_URLS'> & {
   APP_BASE_URL: string;
   ALLOWED_REDIRECT_URLS: string;
+  RECOVERY_SIGNING_SECRET: string;
 };
 
 export function validateEnv(envInput: Record<string, unknown> = process.env): Env {
@@ -134,10 +138,17 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
       ? 'http://localhost:3000'
       : '');
 
+  const defaultRecoverySigningSecret =
+    result.data.RECOVERY_SIGNING_SECRET ||
+    (result.data.NODE_ENV === 'development' || result.data.NODE_ENV === 'test'
+      ? 'development-only-recovery-signing-secret-key-32-bytes'
+      : '');
+
   return {
     ...result.data,
     APP_BASE_URL: defaultAppBaseUrl,
     ALLOWED_REDIRECT_URLS: defaultAllowedRedirectUrls,
+    RECOVERY_SIGNING_SECRET: defaultRecoverySigningSecret,
     SUPABASE_URL: result.data.SUPABASE_URL || 'https://example.supabase.co',
     SUPABASE_ANON_KEY: result.data.SUPABASE_ANON_KEY || 'mock-anon-key',
   };

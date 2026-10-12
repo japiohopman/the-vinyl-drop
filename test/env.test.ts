@@ -101,10 +101,12 @@ describe('Environment Validation', () => {
       SUPABASE_ANON_KEY: 'some-staging-key',
       APP_BASE_URL: 'https://staging.vinyldrop.onrender.com',
       ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+      RECOVERY_SIGNING_SECRET: 'custom-staging-recovery-secret-key-32-bytes',
     });
     expect(env.NODE_ENV).toBe('staging');
     expect(env.DATABASE_URL).toBe('postgresql://postgres:postgres@localhost:5432/staging_db');
     expect(env.APP_BASE_URL).toBe('https://staging.vinyldrop.onrender.com');
+    expect(env.RECOVERY_SIGNING_SECRET).toBe('custom-staging-recovery-secret-key-32-bytes');
   });
 
   it('should reject production mode when APP_BASE_URL is set to localhost', () => {
