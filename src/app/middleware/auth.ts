@@ -6,16 +6,6 @@ import { getProfileById } from '../services/profileService';
 import { Profile } from '../../db/schema/profiles';
 import { config } from '../../config/env';
 
-/**
- * Auth/session and recovery cookies are bearer credentials. Staging is public HTTPS too,
- * so only local development and tests may issue these cookies without the Secure flag.
- */
-export function shouldUseSecureCookies(
-  nodeEnv: typeof config.NODE_ENV = config.NODE_ENV
-): boolean {
-  return nodeEnv !== 'development' && nodeEnv !== 'test';
-}
-
 // Extend Express Request type
 /* eslint-disable @typescript-eslint/no-namespace */
 declare global {
@@ -34,7 +24,7 @@ declare global {
 export function setAuthCookies(res: Response, session: Session): void {
   res.cookie('sb-access-token', session.access_token, {
     httpOnly: true,
-    secure: shouldUseSecureCookies(),
+    secure: config.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: (session.expires_in || 3600) * 1000,
   });
@@ -42,7 +32,7 @@ export function setAuthCookies(res: Response, session: Session): void {
   if (session.refresh_token) {
     res.cookie('sb-refresh-token', session.refresh_token, {
       httpOnly: true,
-      secure: shouldUseSecureCookies(),
+      secure: config.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
@@ -94,7 +84,7 @@ export function setRecoveryCookie(res: Response, userId: string): void {
   const token = generateRecoveryToken(userId);
   res.cookie('sb-recovery-mode', token, {
     httpOnly: true,
-    secure: shouldUseSecureCookies(),
+    secure: config.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: RECOVERY_WINDOW_MS,
   });

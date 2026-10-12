@@ -220,6 +220,9 @@ export async function handleAuthCallback(
     const res = await supabase.auth.exchangeCodeForSession(params.code);
     data = res.data;
     error = res.error;
+    if (params.type === 'recovery') {
+      isRecoverySession = true;
+    }
   } else if (params.token_hash && params.type) {
     if (!ALLOWED_EMAIL_OTP_TYPES.includes(params.type as EmailOtpType)) {
       return {
