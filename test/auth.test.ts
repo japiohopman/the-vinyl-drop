@@ -641,18 +641,51 @@ describe('Authentication & Session Handling', () => {
         const cookieHeader = res.header['set-cookie'];
         const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
         expect(cookies).toContain('sb-access-token=recovery-access-token');
+        expect(cookies).toContain('sb-recovery-mode=true');
       });
 
-      it('GET /auth/reset-password should reject unauthenticated requests without a valid recovery session', async () => {
+      it('GET /auth/callback with type=signup or magiclink should NOT set recovery cookie', async () => {
+        const mockUser = {
+          id: '77777777-7777-7777-7777-777777777777',
+          email: 'signup@example.com',
+        };
+
+        mockSupabase.auth.verifyOtp.mockResolvedValue({
+          data: {
+            user: mockUser,
+            session: {
+              access_token: 'signup-access-token',
+              refresh_token: 'signup-refresh-token',
+              expires_in: 3600,
+            },
+          },
+          error: null,
+        });
+
+        jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue({
+          id: mockUser.id,
+          username: 'signup_user',
+          displayName: 'Signup User',
+          avatarUrl: null,
+          websiteUrl: null,
+          bio: null,
+          location: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
         const app = createApp();
-        const res = await request(app).get('/auth/reset-password');
+        const res = await request(app).get('/auth/callback?token_hash=mock_token_hash&type=signup');
 
-        expect(res.status).toBe(400);
-        expect(res.text).toContain('Password reset link is invalid or has expired');
+        expect(res.status).toBe(302);
+        const cookieHeader = res.header['set-cookie'];
+        const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
+        expect(cookies).toContain('sb-access-token=signup-access-token');
+        expect(cookies).not.toContain('sb-recovery-mode=true');
       });
 
-      it('GET /auth/reset-password should render new password form when authenticated with recovery session', async () => {
-        const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'reset@example.com' };
+      it('GET /auth/reset-password should reject ordinary login sessions lacking recovery marker', async () => {
+        const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'user@example.com' };
         mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: mockUser },
           error: null,
@@ -661,16 +694,14 @@ describe('Authentication & Session Handling', () => {
         const app = createApp();
         const res = await request(app)
           .get('/auth/reset-password')
-          .set('Cookie', ['sb-access-token=valid-recovery-token']);
+          .set('Cookie', ['sb-access-token=ordinary-user-token']); // No sb-recovery-mode cookie!
 
-        expect(res.status).toBe(200);
-        expect(res.text).toContain('Choose New Password');
-        expect(res.text).toContain('name="password"');
-        expect(res.text).toContain('name="confirmPassword"');
+        expect(res.status).toBe(400);
+        expect(res.text).toContain('Password reset link is invalid or has expired');
       });
 
-      it('POST /auth/reset-password should reject mismatched or short passwords with Zod form errors', async () => {
-        const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'reset@example.com' };
+      it('POST /auth/reset-password should reject ordinary login sessions lacking recovery marker', async () => {
+        const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'user@example.com' };
         mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: mockUser },
           error: null,
@@ -680,15 +711,67 @@ describe('Authentication & Session Handling', () => {
         const res = await request(app)
           .post('/auth/reset-password')
           .set('Origin', 'http://localhost:3000')
-          .set('Cookie', ['sb-access-token=valid-recovery-token'])
+          .set('Cookie', ['sb-access-token=ordinary-user-token']) // No sb-recovery-mode cookie!
           .send({
-            password: 'pass1',
-            confirmPassword: 'pass2',
+            password: 'brandnewpassword123',
+            confirmPassword: 'brandnewpassword123',
           });
 
         expect(res.status).toBe(400);
-        expect(res.text).toContain('Password must be at least 8 characters long');
-        expect(res.text).toContain('Passwords do not match');
+        expect(res.text).toContain('Password reset link is invalid or has expired');
+      });
+
+      it('GET /auth/reset-password should render new password form when authenticated with verified recovery session', async () => {
+        const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'reset@example.com' };
+        mockSupabase.auth.getUser.mockResolvedValue({
+          data: { user: mockUser },
+          error: null,
+        });
+
+        const app = createApp();
+        const res = await request(app)
+          .get('/auth/reset-password')
+          .set('Cookie', ['sb-access-token=valid-recovery-token', 'sb-recovery-mode=true']);
+
+        expect(res.status).toBe(200);
+        expect(res.text).toContain('Choose New Password');
+        expect(res.text).toContain('name="password"');
+        expect(res.text).toContain('name="confirmPassword"');
+      });
+
+      it('POST /auth/reset-password should reject omitted, empty, or mismatched confirmation password', async () => {
+        const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'reset@example.com' };
+        mockSupabase.auth.getUser.mockResolvedValue({
+          data: { user: mockUser },
+          error: null,
+        });
+
+        const app = createApp();
+
+        // Omitted confirmation
+        const resOmitted = await request(app)
+          .post('/auth/reset-password')
+          .set('Origin', 'http://localhost:3000')
+          .set('Cookie', ['sb-access-token=valid-recovery-token', 'sb-recovery-mode=true'])
+          .send({
+            password: 'securepassword123',
+          });
+
+        expect(resOmitted.status).toBe(400);
+        expect(resOmitted.text).toContain('Please confirm your new password');
+
+        // Mismatched confirmation
+        const resMismatched = await request(app)
+          .post('/auth/reset-password')
+          .set('Origin', 'http://localhost:3000')
+          .set('Cookie', ['sb-access-token=valid-recovery-token', 'sb-recovery-mode=true'])
+          .send({
+            password: 'securepassword123',
+            confirmPassword: 'differentpassword123',
+          });
+
+        expect(resMismatched.status).toBe(400);
+        expect(resMismatched.text).toContain('Passwords do not match');
       });
 
       it('POST /auth/reset-password should reject breached new passwords before calling Supabase Auth', async () => {
@@ -705,7 +788,7 @@ describe('Authentication & Session Handling', () => {
         const res = await request(app)
           .post('/auth/reset-password')
           .set('Origin', 'http://localhost:3000')
-          .set('Cookie', ['sb-access-token=valid-recovery-token'])
+          .set('Cookie', ['sb-access-token=valid-recovery-token', 'sb-recovery-mode=true'])
           .send({
             password: 'breachedpassword123',
             confirmPassword: 'breachedpassword123',
@@ -731,7 +814,7 @@ describe('Authentication & Session Handling', () => {
         const res = await request(app)
           .post('/auth/reset-password')
           .set('Origin', 'http://localhost:3000')
-          .set('Cookie', ['sb-access-token=valid-recovery-token'])
+          .set('Cookie', ['sb-access-token=valid-recovery-token', 'sb-recovery-mode=true'])
           .send({
             password: 'validstrongpassword123',
             confirmPassword: 'validstrongpassword123',
@@ -758,7 +841,7 @@ describe('Authentication & Session Handling', () => {
         const res = await request(app)
           .post('/auth/reset-password')
           .set('Origin', 'http://localhost:3000')
-          .set('Cookie', ['sb-access-token=valid-recovery-token'])
+          .set('Cookie', ['sb-access-token=valid-recovery-token', 'sb-recovery-mode=true'])
           .send({
             password: 'brandnewstrongpassword123',
             confirmPassword: 'brandnewstrongpassword123',

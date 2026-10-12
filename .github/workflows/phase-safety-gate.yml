@@ -63,28 +63,8 @@ jobs:
 
             let prBody = pr.body || '';
 
-            // Normalize line endings and strip HTML comments
-            prBody = prBody.replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '');
-
-            // Fallback: If PR body lacks contract headers, check head commit message
-            if (!prBody.includes('## Phase / Governing Issue')) {
-              try {
-                const headSha = pr.head && pr.head.sha;
-                if (headSha) {
-                  const commitRes = await github.rest.repos.getCommit({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    ref: headSha
-                  });
-                  const commitMsg = commitRes.data && commitRes.data.commit && commitRes.data.commit.message;
-                  if (commitMsg && commitMsg.includes('## Phase / Governing Issue')) {
-                    prBody = commitMsg.replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '');
-                  }
-                }
-              } catch (e) {
-                console.log('Head commit message fallback lookup failed:', e.message);
-              }
-            }
+            // Strip HTML comments
+            prBody = prBody.replace(/<!--[\s\S]*?-->/g, '');
 
             if (!prBody.trim()) {
               core.setFailed('PR body is empty or missing.');

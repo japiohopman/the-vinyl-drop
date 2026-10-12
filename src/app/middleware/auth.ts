@@ -39,11 +39,31 @@ export function setAuthCookies(res: Response, session: Session): void {
 }
 
 /**
+ * Helper to set short-lived recovery session marker cookie
+ */
+export function setRecoveryCookie(res: Response): void {
+  res.cookie('sb-recovery-mode', 'true', {
+    httpOnly: true,
+    secure: config.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 15 * 60 * 1000, // 15 minutes
+  });
+}
+
+/**
+ * Helper to clear recovery session marker cookie
+ */
+export function clearRecoveryCookie(res: Response): void {
+  res.clearCookie('sb-recovery-mode');
+}
+
+/**
  * Helper to clear session cookies
  */
 export function clearAuthCookies(res: Response): void {
   res.clearCookie('sb-access-token');
   res.clearCookie('sb-refresh-token');
+  res.clearCookie('sb-recovery-mode');
 }
 
 /**

@@ -16,7 +16,7 @@ import {
   updatePassword,
   signOut,
 } from '../services/authService';
-import { setAuthCookies, clearAuthCookies } from '../middleware/auth';
+import { setAuthCookies, clearAuthCookies, setRecoveryCookie, clearRecoveryCookie } from '../middleware/auth';
 import { renderWithLayout } from '../utils/render';
 import { config } from '../../config/env';
 
@@ -243,6 +243,9 @@ export async function getAuthCallback(req: Request, res: Response, next: NextFun
     }
 
     setAuthCookies(res, authResult.session);
+    if (authResult.isRecoverySession || type === 'recovery' || nextUrl.includes('/auth/reset-password')) {
+      setRecoveryCookie(res);
+    }
     res.redirect(nextUrl);
   } catch (error) {
     next(error);
@@ -312,8 +315,9 @@ export async function postForgotPassword(req: Request, res: Response, next: Next
 
 export async function getResetPasswordPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // Setting a new password requires an active recovery session established via recovery token exchange
-    if (!req.user) {
+    // Setting a new password strictly requires an active verified recovery session marker
+    const isRecoverySession = req.cookies?.['sb-recovery-mode'] === 'true' && Boolean(req.user);
+    if (!isRecoverySession) {
       res.status(400);
       renderWithLayout(res, 'auth/forgot-password', {
         title: 'Reset Your Password — The Vinyl Drop',
@@ -345,7 +349,9 @@ export async function getResetPasswordPage(req: Request, res: Response, next: Ne
 
 export async function postResetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    if (!req.user) {
+    // Setting a new password strictly requires an active verified recovery session marker
+    const isRecoverySession = req.cookies?.['sb-recovery-mode'] === 'true' && Boolean(req.user);
+    if (!isRecoverySession) {
       res.status(400);
       renderWithLayout(res, 'auth/forgot-password', {
         title: 'Reset Your Password — The Vinyl Drop',
@@ -395,9 +401,10 @@ export async function postResetPassword(req: Request, res: Response, next: NextF
     // Session policy: Clear session/cookies after successful password reset to enforce re-login with new credentials
     await signOut({ req, res });
     clearAuthCookies(res);
+    clearRecoveryCookie(res);
 
     const form: FormViewModel = {
-      values: { email: req.user.email || '', password: '' },
+      values: { email: req.user?.email || '', password: '' },
       fieldErrors: {},
       generalErrors: [],
       isSubmitted: true,

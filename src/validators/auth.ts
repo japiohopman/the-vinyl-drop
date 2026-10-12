@@ -34,20 +34,17 @@ export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export const resetPasswordSchema = z
   .object({
     password: z.string().min(8, { message: 'Password must be at least 8 characters long' }),
-    confirmPassword: z.string().optional(),
+    confirmPassword: z
+      .string({
+        required_error: 'Please confirm your new password',
+        invalid_type_error: 'Please confirm your new password',
+      })
+      .min(1, { message: 'Please confirm your new password' }),
   })
-  .refine(
-    (data) => {
-      if (data.confirmPassword !== undefined && data.confirmPassword !== '') {
-        return data.password === data.confirmPassword;
-      }
-      return true;
-    },
-    {
-      message: 'Passwords do not match',
-      path: ['confirmPassword'],
-    }
-  );
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
 
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 

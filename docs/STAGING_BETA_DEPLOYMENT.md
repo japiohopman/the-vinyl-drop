@@ -285,7 +285,7 @@ If an issue occurs during migration application on staging:
      `http://localhost:3000/auth/callback`
 2. **Email Templates (Auth -> Email Templates -> Reset Password):**
    - Verify/configure the Reset Password template redirect link target:
-     `{{ .SiteURL }}/auth/callback?next=/auth/reset-password`
+     `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset-password`
    - Ensure SMTP/email delivery settings in Supabase Staging Auth are configured for staging email delivery. Do NOT modify production configuration.
 
 #### Password Recovery Session Policy

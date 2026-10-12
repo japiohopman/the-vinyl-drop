@@ -1,4 +1,4 @@
-import { User, Session, SupabaseClient } from '@supabase/supabase-js';
+import { User, Session, SupabaseClient, EmailOtpType } from '@supabase/supabase-js';
 import { Request, Response } from 'express';
 import { getSupabaseClient } from '../../lib/supabase';
 import { findProfileById, findProfileByUsername, createProfile } from '../repositories/profileRepository';
@@ -16,6 +16,7 @@ export interface AuthResult {
   profile: Profile | null;
   error?: string;
   requiresEmailConfirmation?: boolean;
+  isRecoverySession?: boolean;
 }
 
 export interface AuthOptions {
@@ -196,24 +197,50 @@ export async function getGoogleOAuthUrl(redirectTo?: string, options?: AuthOptio
   return data.url;
 }
 
+const ALLOWED_EMAIL_OTP_TYPES: EmailOtpType[] = [
+  'recovery',
+  'signup',
+  'invite',
+  'magiclink',
+  'email_change',
+  'email',
+];
+
 export async function handleAuthCallback(
   params: { code?: string; token_hash?: string; type?: string },
   options?: AuthOptions
 ): Promise<AuthResult> {
   const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
   let data: { user: User | null; session: Session | null } | null = null;
   let error: { message: string } | null = null;
+  let isRecoverySession = false;
 
   if (params.code) {
     const res = await supabase.auth.exchangeCodeForSession(params.code);
     data = res.data;
     error = res.error;
+    if (params.type === 'recovery') {
+      isRecoverySession = true;
+    }
   } else if (params.token_hash && params.type) {
+    if (!ALLOWED_EMAIL_OTP_TYPES.includes(params.type as EmailOtpType)) {
+      return {
+        user: null,
+        session: null,
+        profile: null,
+        error: 'Invalid or unsupported verification token type',
+      };
+    }
+
+    const otpType = params.type as EmailOtpType;
+    if (otpType === 'recovery') {
+      isRecoverySession = true;
+    }
+
     const res = await supabase.auth.verifyOtp({
       token_hash: params.token_hash,
-      type: params.type as any,
+      type: otpType,
     });
     data = res.data;
     error = res.error;
@@ -241,6 +268,7 @@ export async function handleAuthCallback(
     user: data.user,
     session: data.session,
     profile,
+    isRecoverySession,
   };
 }
 
