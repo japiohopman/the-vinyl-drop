@@ -273,6 +273,32 @@ If an issue occurs during migration application on staging:
 1. Re-run `npm run db:migrate` or connect via `psql` to check `pg_stat_activity` if connection pooling locks occur.
 2. If policies need adjustment, prepare a new version-controlled Drizzle migration SQL file in `drizzle/` (e.g. `0006_*.sql`). Do NOT perform ad-hoc edits in the Supabase Dashboard.
 
+### 3.5 Human Runbook: Staging Password Recovery & Reset Flow Setup & Verification (Issue #79)
+
+*Notice: This runbook is a human-only operational guide. Automated CI and Jules MUST NOT alter live Supabase Auth settings, send live password-reset emails, or modify real staging accounts.*
+
+#### Required Supabase Staging Auth Setup (Dashboard Operations)
+1. **Redirect URL Whitelist (Auth -> URL Configuration):**
+   - Ensure the staging callback URL is explicitly listed in allowed redirect URLs:
+     `https://the-vinyl-drop-staging.onrender.com/auth/callback`
+   - For local development testing:
+     `http://localhost:3000/auth/callback`
+2. **Email Templates (Auth -> Email Templates -> Reset Password):**
+   - Verify/configure the Reset Password template redirect link target:
+     `{{ .SiteURL }}/auth/callback?next=/auth/reset-password`
+   - Ensure SMTP/email delivery settings in Supabase Staging Auth are configured for staging email delivery. Do NOT modify production configuration.
+
+#### Password Recovery Session Policy
+- **Post-Reset Session Behavior:** Upon successfully submitting a new password (`POST /auth/reset-password`), the server clears active session cookies (`sb-access-token`, `sb-refresh-token`) and signs out of the temporary recovery session (`signOut`). The user is redirected to `/auth/login` with a success message asking them to sign in with their new password.
+- **Security Invariant:** Password recovery tokens and session credentials are processed purely in memory and encrypted session cookies. They are never logged, stored in persistent application tables, or echoed in rendered view errors.
+
+#### Operator Human Verification Steps (Staging Post-Deploy)
+Perform these verification steps after PR merge and deployment to staging:
+1. **Neutral Request Test:** Navigate to `https://the-vinyl-drop-staging.onrender.com/auth/forgot-password`. Submit both an existing account email and an unregistered test email (`unregistered@example.com`). Confirm that both submissions display the exact same neutral message: *"If an account with that email exists, we have sent instructions to reset your password. Please check your inbox."*
+2. **Email & Redirect Verification:** Check the inbox for the registered staging account and click the recovery link. Confirm that it redirects to the verified staging URL (`https://the-vinyl-drop-staging.onrender.com/auth/callback?code=...&next=/auth/reset-password`) and lands safely on the "Choose New Password" page (`/auth/reset-password`).
+3. **Breached Password Rejection:** On the reset form, submit a known breached password (e.g. `password123`). Confirm that the form rejects the submission with the message *"This password appears in known data breaches. Please choose a different password."* without updating the account password.
+4. **Successful Password Reset & Session Re-Authentication:** Submit a unique, unbreached strong password. Confirm that the system clears the recovery session and redirects to `/auth/login` with the success banner *"Your password has been successfully updated. Please sign in with your new password."* Verify that signing in with the old password fails, and signing in with the new password succeeds.
+
 ---
 
 ## 4. Staging Seed Data, Test Accounts & Storage Fixtures

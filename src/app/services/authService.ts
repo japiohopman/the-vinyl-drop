@@ -196,17 +196,42 @@ export async function getGoogleOAuthUrl(redirectTo?: string, options?: AuthOptio
   return data.url;
 }
 
-export async function handleOAuthCallback(code: string, options?: AuthOptions): Promise<AuthResult> {
+export async function handleAuthCallback(
+  params: { code?: string; token_hash?: string; type?: string },
+  options?: AuthOptions
+): Promise<AuthResult> {
   const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
 
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  let data: { user: User | null; session: Session | null } | null = null;
+  let error: { message: string } | null = null;
 
-  if (error || !data.user || !data.session) {
+  if (params.code) {
+    const res = await supabase.auth.exchangeCodeForSession(params.code);
+    data = res.data;
+    error = res.error;
+  } else if (params.token_hash && params.type) {
+    const res = await supabase.auth.verifyOtp({
+      token_hash: params.token_hash,
+      type: params.type as any,
+    });
+    data = res.data;
+    error = res.error;
+  } else {
     return {
       user: null,
       session: null,
       profile: null,
-      error: error?.message || 'Failed to exchange authorization code for session',
+      error: 'Missing authorization code or verification token',
+    };
+  }
+
+  if (error || !data?.user || !data?.session) {
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: error?.message || 'Failed to authenticate session',
     };
   }
 
@@ -216,6 +241,70 @@ export async function handleOAuthCallback(code: string, options?: AuthOptions): 
     user: data.user,
     session: data.session,
     profile,
+  };
+}
+
+export async function handleOAuthCallback(code: string, options?: AuthOptions): Promise<AuthResult> {
+  return handleAuthCallback({ code }, options);
+}
+
+export async function sendPasswordResetEmail(
+  email: string,
+  redirectTo: string,
+  options?: AuthOptions
+): Promise<{ error?: string }> {
+  const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
+}
+
+export async function updatePassword(password: string, options?: AuthOptions): Promise<AuthResult> {
+  const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
+
+  // Check new passwords before they reach Supabase Auth.
+  try {
+    const passwordIsBreached = await isPasswordPwned(password);
+    if (passwordIsBreached) {
+      return {
+        user: null,
+        session: null,
+        profile: null,
+        error: 'This password appears in known data breaches. Please choose a different password.',
+      };
+    }
+  } catch {
+    // Fail closed without exposing or logging the submitted password, hash, or HIBP response.
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: 'Password security check is temporarily unavailable. Please try again in a moment.',
+    };
+  }
+
+  const { data, error } = await supabase.auth.updateUser({ password });
+
+  if (error || !data.user) {
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: error?.message || 'Failed to update password',
+    };
+  }
+
+  return {
+    user: data.user,
+    session: null,
+    profile: null,
   };
 }
 
