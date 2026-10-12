@@ -4,12 +4,13 @@
 DO $$
 DECLARE
   v_storage_owner name;
+  v_storage_rls_enabled boolean;
   v_total_policy_count integer;
   v_matching_policy_count integer;
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'storage' AND table_name = 'objects') THEN
-    SELECT pg_get_userbyid(c.relowner)::name
-    INTO v_storage_owner
+    SELECT pg_get_userbyid(c.relowner)::name, c.relrowsecurity
+    INTO v_storage_owner, v_storage_rls_enabled
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'storage' AND c.relname = 'objects';
@@ -69,12 +70,12 @@ BEGIN
             AND p.with_check IS NULL)
         );
 
-      IF v_total_policy_count = 4 AND v_matching_policy_count = 4 THEN
+      IF v_storage_rls_enabled AND v_total_policy_count = 4 AND v_matching_policy_count = 4 THEN
         RAISE NOTICE 'Storage policy migration verified the four pre-provisioned listing-photos policies; skipping managed storage.objects DDL because current role % is not the table owner %.', current_user, v_storage_owner;
       ELSE
         RAISE EXCEPTION USING
           ERRCODE = '42501',
-          MESSAGE = format('Cannot safely apply listing-photos policies: current role %I does not own storage.objects (owner: %I), and the exact four expected policies are not present.', current_user, v_storage_owner),
+          MESSAGE = format('Cannot safely apply listing-photos policies: current role %I does not own storage.objects (owner: %I), and RLS is disabled or the exact four expected policies are not present.', current_user, v_storage_owner),
           HINT = 'Provision the four listing-photos policies using the Supabase Dashboard as an authorized owner, then rerun npm run db:migrate.';
       END IF;
     ELSE
