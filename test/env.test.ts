@@ -53,6 +53,34 @@ describe('Environment Validation', () => {
     expect(env.DATABASE_URL).toBe('postgresql://postgres:postgres@localhost:5432/test');
   });
 
+  it('should reject staging mode when RECOVERY_SIGNING_SECRET is missing or under 32 characters', () => {
+    // Missing RECOVERY_SIGNING_SECRET
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'staging',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+        SUPABASE_URL: 'https://staging-project.supabase.co',
+        SUPABASE_ANON_KEY: 'some-staging-key',
+        APP_BASE_URL: 'https://staging.vinyldrop.onrender.com',
+        ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+      })
+    ).toThrow('Invalid environment configuration');
+    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    // Too short RECOVERY_SIGNING_SECRET (< 32 chars)
+    expect(() =>
+      validateEnv({
+        NODE_ENV: 'staging',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+        SUPABASE_URL: 'https://staging-project.supabase.co',
+        SUPABASE_ANON_KEY: 'some-staging-key',
+        APP_BASE_URL: 'https://staging.vinyldrop.onrender.com',
+        ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+        RECOVERY_SIGNING_SECRET: 'short-key',
+      })
+    ).toThrow('Invalid environment configuration');
+  });
+
   it('should reject staging mode when APP_BASE_URL alone is missing', () => {
     expect(() =>
       validateEnv({
@@ -61,6 +89,7 @@ describe('Environment Validation', () => {
         SUPABASE_URL: 'https://staging-project.supabase.co',
         SUPABASE_ANON_KEY: 'some-staging-key',
         ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+        RECOVERY_SIGNING_SECRET: 'custom-staging-recovery-secret-key-32-bytes',
       })
     ).toThrow('Invalid environment configuration');
     expect(consoleErrorSpy).toHaveBeenCalled();

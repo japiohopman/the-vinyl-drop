@@ -13,9 +13,7 @@ export const envSchema = z
     SUPABASE_ANON_KEY: z.string().optional(),
     APP_BASE_URL: z.string().optional(),
     ALLOWED_REDIRECT_URLS: z.string().optional(),
-    RECOVERY_SIGNING_SECRET: z
-      .string()
-      .default('development-only-recovery-signing-secret-key-32-bytes'),
+    RECOVERY_SIGNING_SECRET: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     const isRuntime =
@@ -50,6 +48,15 @@ export const envSchema = z
     }
 
     if (data.NODE_ENV === 'staging' || data.NODE_ENV === 'production') {
+      if (!data.RECOVERY_SIGNING_SECRET || data.RECOVERY_SIGNING_SECRET.trim().length < 32) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['RECOVERY_SIGNING_SECRET'],
+          message:
+            'RECOVERY_SIGNING_SECRET environment variable is required and must be at least 32 characters long in staging and production modes.',
+        });
+      }
+
       if (!data.APP_BASE_URL || data.APP_BASE_URL.trim() === '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
