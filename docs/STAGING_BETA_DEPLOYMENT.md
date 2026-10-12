@@ -324,7 +324,7 @@ The checkboxes below reflect the actual live staging evidence recorded on 2026-1
 - [ ] **8. Storage access & media upload:** Bucket settings, all four Storage policies, and migrations `0006`/`0007` are verified live. A direct public photo URL was opened successfully in an unauthenticated incognito browser on 2026-10-12. Remaining upload authorization, invalid-file, and data-integrity checks are tracked in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
 - [x] **9a. CSRF/Same-Origin check on `POST /auth/login`:** External Origin returned HTTP 403; missing Origin/Referer returned HTTP 403; the staging Origin reached form validation and returned HTTP 400 for deliberately invalid form data.
 - [ ] **9b. CSRF/Same-Origin on listing/profile mutations:** The `POST /listings/new` and `POST /profile/edit` paths still need their own verification.
-- [ ] **10. Supabase Auth leaked-password protection:** Security Advisor still reported `auth_leaked_password_protection` as disabled. Track the staging-only setting in [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62).
+- [ ] **10. Supabase Auth leaked-password protection:** the native `auth_leaked_password_protection` control is unavailable on the current Free plan; the Security Advisor warning remains. Issue #62 tracks the application-level compensating control, its direct-Auth limitation, and the human risk decision.
 
 ### 5.1 Live Verification Log — 2026-10-11
 
@@ -350,7 +350,7 @@ The checkboxes below reflect the actual live staging evidence recorded on 2026-1
 #### Remaining blockers and scope limits
 
 - The staging Supabase Storage bucket, policies, and migrations are now configured and verified. The operator confirmed a public image URL loaded in an incognito browser without authentication on 2026-10-12. Remaining upload authorization, unsupported-file, and failed-upload data-integrity checks are tracked in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
-- Supabase Security Advisor still reported `auth_leaked_password_protection` as disabled. See [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62).
+- The native Supabase Security Advisor warning `auth_leaked_password_protection` remains because the organization is on Free. See [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62) for the compensating control and residual-risk decision.
 - Authenticated cross-user Data API access, OAuth callback behavior, listing/profile mutation CSRF tests, the full environment-variable audit, fixture verification, and browser certificate inspection remain unverified.
 - **Do not mark staging/beta ready or close Issue #49 yet.** Once the remaining checks are completed, append their actual outcomes here rather than assuming success.
 
@@ -472,3 +472,52 @@ The operator's Supabase SQL Editor returned a browser-level `NetworkError when a
 The latest `listing_photos` row still has `created_at` and `updated_at` of `2026-10-12 09:31:52.639760 UTC`; the latest Storage object still has timestamps of `2026-10-12 09:31:52.582630 UTC`. These timestamps predate the operator-reported rejected-upload tests. A read-only staging snapshot taken after the reported rejection attempts matched the recorded baseline: 4 photo rows, 4 Storage objects, all 4 photo rows matched to their object paths, 0 rows missing objects, 0 objects without photo rows, and 0 orphan-tracking records. All recorded photo/object IDs, paths, and timestamps still match the earlier baseline. **Assessment: aggregate pass — no persistent database/Storage additions or mismatches were detected after the reported rejected-upload attempts.**
 
 **Scope limitation:** no separate immediate snapshot was taken between the individual GIF and oversized attempts, so this supports an aggregate post-test consistency pass but does not independently isolate the effect of each request. The visible GIF and oversized error messages are recorded above; the original upload POST status/redirect chain for each attempt remains unverified.
+---
+
+### 5.6 Auth security — leaked-password protection (2026-10-12)
+
+**Target:** Supabase staging project `xuhzhdjmgvqzjxijmksu` (The Vinyl Drop)  
+**Verification source:** Connected Supabase project and organization metadata, read-only; Security Advisor; current official Supabase and Have I Been Pwned documentation.
+
+| Check | Observed result | Assessment |
+| --- | --- | --- |
+| Staging project identity | Project reference is `xuhzhdjmgvqzjxijmksu`; project is active/healthy. | Confirmed — staging only |
+| Supabase organization plan | Organization `The Vinyl Drop` is on the **Free** plan. | Confirmed plan limitation |
+| Security Advisor: `auth_leaked_password_protection` | **WARN — Leaked Password Protection Disabled** remains present. | Native Supabase control is unavailable on Free |
+| Auth configuration change | No Auth settings or billing settings were changed as part of this mitigation. | No configuration mutation |
+
+Supabase's [password-security documentation](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) states that its native leaked-password control is available on Pro and above. The current Free plan therefore leaves a real Security Advisor warning. Do not describe that native warning as cleared or enabled.
+
+#### Application-level free compensating control
+
+The application checks new passwords on its server-rendered signup path:
+
+`POST /auth/signup` → `src/app/controllers/authController.ts` → `src/app/services/authService.ts::signUp` → `supabase.auth.signUp()`.
+
+The server calculates a SHA-1 lookup hash in memory and sends only its first five hexadecimal characters to the free [Have I Been Pwned Pwned Passwords range API](https://haveibeenpwned.com/API/V3#PwnedPasswords). It compares the returned suffixes locally, sends a truthful User-Agent, requests Add-Padding, and ignores zero-count padding entries. A bounded timeout and defensive response parsing fail closed. A known breached password is rejected before the Supabase signup call; if the lookup is unavailable or malformed, the user sees a generic retryable error and the password is not sent to Supabase. Routine sign-in does not invoke this check.
+
+The application code does not send the raw password or full SHA-1 hash to HIBP and does not log or persist password/hash material. Automated tests cover the breached and absent-suffix cases, zero-count padding, non-success and malformed responses, network failure, timeout, and the signup route's fail-closed behavior.
+
+#### Security boundary and remaining limitation
+
+This is an application-level compensating control, not the native Supabase feature. A direct request to the project's Supabase Auth signup API could bypass the Express signup guard. This is an **architecture-based bypass risk**; no live direct-Auth request was performed. Supabase's [Before User Created hook](https://supabase.com/docs/guides/auth/auth-hooks/before-user-created-hook) accepts user data and metadata but does not receive the submitted password, so it cannot perform this HIBP password comparison centrally. Therefore, the app-level check protects the normal The Vinyl Drop signup route; it must not be represented as project-wide enforcement for every possible Auth/API path.
+
+The native `auth_leaked_password_protection` warning remains present on Free and is not cleared by this code. Under [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62), the owner must explicitly decide whether the app-route control and this direct-Auth limitation are acceptable for the invite-only beta. If not, scope a separately reviewed trusted server-managed signup design; do not silently broaden this implementation or change live Auth settings.
+
+#### Human-operated staging verification after merge and deployment
+
+Do these checks only after the implementation has been human-reviewed, merged, and deployed to the confirmed staging target. Automated CI must not create real Auth accounts or mutate live Auth settings.
+
+1. **Confirm the target first.** Verify that the deployment is the staging app and its configured Supabase project reference is `xuhzhdjmgvqzjxijmksu`. Do not run these tests against production.
+2. **Known breached password.** Use a known breached test value (for example, `password`) on the normal signup form with a disposable test email and username. Expected: the form shows the safe rejection message. In the browser Network panel, confirm the signup request returns the validation response; do not copy cookies, authorization headers, or any password into the evidence. Confirm that no new Auth user was created by the rejected attempt.
+3. **Password not present in the returned range.** Use a newly generated high-entropy test password and a deliberately disposable staging identity. Expected: the normal signup flow proceeds according to the staging email-confirmation configuration. Record that this was a deliberate human-operated smoke test. Do not reuse a real account password.
+4. **Failure handling.** Automated tests cover network errors, timeouts, non-success status, malformed data, and fail-closed behavior. Do not take HIBP offline or disrupt shared staging to simulate an outage; rely on isolated CI tests unless a separately approved staging fault-injection method exists.
+5. **Security Advisor.** Re-run the read-only Security Advisor check. Record the native `auth_leaked_password_protection` warning accurately as still present if the project remains on Free.
+6. **Record evidence.** In Issue #62, record the staging deployment/commit, timestamp, observed success/error messages, whether the rejected attempt created an Auth user, the clean-password outcome, and the Security Advisor result. Never include passwords, tokens, session cookies, API keys, or other secrets.
+
+#### Verification and release gate
+
+- No Supabase plan upgrade is part of this mitigation.
+- Do not modify production Auth settings.
+- Human-controlled staging evidence and the owner's explicit residual-risk decision belong to [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62).
+- Keep [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) open and external beta invitations blocked until the full staging gate is evidenced and accepted.
