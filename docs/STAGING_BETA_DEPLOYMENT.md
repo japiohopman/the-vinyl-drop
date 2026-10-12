@@ -396,3 +396,63 @@ For invite-only beta onboarding (#48), hand off the staging target URL (`https:/
 | Access another seller's listing while signed in as a different seller | The listing could not be accessed under the non-owner account; the operator reports the behavior worked as intended. Exact URL and HTTP status were not recorded. | Pass — operator-reported application listing-access/ownership guard |
 
 **Security scope:** This confirms the application-level access guard for the listing flow the operator tested. It does not prove that a direct upload request using another seller's listing ID is rejected by the upload handler or Storage authorization. Keep a targeted non-owner upload/authorization probe open until that operation is directly attempted or verified by an appropriate integration test.
+
+### 5.5 Upload validation and data-integrity checks — 2026-10-12
+
+**Target:** [Staging site](https://the-vinyl-drop-staging.onrender.com)  
+**Performed by:** Operator  
+**Scope:** Unsupported image type, oversized image, and non-owner listing UI access.
+
+#### Operator-reported results
+
+| Check | Observed result | Assessment |
+| --- | --- | --- |
+| Signed-in alternate seller opens another seller's listing | The other seller's listing was inaccessible and upload controls were not visible. | Pass for the tested application UI ownership guard. A direct forged POST to the upload endpoint was not tested, so backend authorization of a crafted request remains a separate check. |
+| Unsupported GIF | Operator reports trying this; the exact response for this individual test was not separately captured. | Not yet confirmed. Capture the request/status and visible message separately from the oversized-file test. |
+| Valid image larger than 5 MiB | Operator reports seeing/routing to a 404 page with wording similar to “image upload too large.” The exact request status, redirect chain, and which file test produced the message were not captured. | **Unexpected / unresolved, not a pass.** The UI's final 404 page may differ from the upload POST's initial HTTP status. Inspect the Network panel before concluding that the server returned HTTP 404. |
+
+The upload-response implementation from Issue #69 is deployed. For the oversized-file check, the expected upload rejection is a deliberate 4xx client response (currently 400), not a misleading generic 404 page. If the request itself is HTTP 400 but a later redirect lands on a 404 page, record both responses; that is a distinct navigation/error-rendering problem to investigate.
+
+#### How to capture the actual upload response in Firefox
+
+1. Open the staging listing edit page while signed in as the listing's owner.
+2. Press **F12** and open **Network**. Enable **Persist Logs** (wording can vary), then clear existing requests.
+3. Test the files separately: first a small GIF under 5 MiB; then a valid JPEG or PNG larger than 5 MiB.
+4. After each upload, inspect the upload **POST** request and record its HTTP status. If the POST is 301/302/303, also record the following GET request's status and the `Location` response header. This distinguishes the original upload response from a subsequent page that happens to show “404”.
+5. Record the visible error text and the request/status results; do not share cookies, authorization headers, or tokens.
+
+#### Read-only data-integrity check
+
+Run these queries in the **Supabase SQL Editor for the confirmed staging project** only. Replace `<LISTING_UUID>` with the UUID from the seller's own staging edit URL (the part in `/listings/<LISTING_UUID>/edit`). These are SELECT-only queries; do not run DELETE/UPDATE statements.
+
+Capture the results **before** the first rejected upload, then repeat all three queries after each rejected upload:
+
+```sql
+-- Database photo rows attached to this listing
+SELECT id, listing_id, storage_path, created_at
+FROM public.listing_photos
+WHERE listing_id = '<LISTING_UUID>'::uuid
+ORDER BY created_at, id;
+
+-- Actual Storage objects belonging to this listing
+SELECT name, bucket_id, created_at
+FROM storage.objects
+WHERE bucket_id = 'listing-photos'
+  AND name LIKE 'listings/<LISTING_UUID>/%'
+ORDER BY created_at, name;
+
+-- Durable records for objects that could not be cleaned up after a failed DB write
+SELECT id, listing_id, photo_id, storage_path, reason, created_at
+FROM public.orphaned_storage_objects
+WHERE listing_id = '<LISTING_UUID>'::uuid
+ORDER BY created_at, id;
+```
+
+**Expected result for rejected GIF / oversized uploads:** no new `listing_photos` row, no new `storage.objects` object under that listing's folder, and no new `orphaned_storage_objects` record. Existing photos/objects may already be present, so compare row IDs and storage paths against the baseline rather than expecting zero total rows.
+
+- If all three result sets are unchanged, record data-integrity as a pass for that specific rejected upload and attach the before/after counts or screenshots.
+- If a new Storage object appears without a corresponding photo row, or a new photo row refers to a missing Storage object, record a failure and keep the issue open. Do not manually delete anything; preserve the paths/IDs for investigation.
+- A record in `orphaned_storage_objects` means the compensation path registered a cleanup problem and must be investigated, not silently marked passed.
+
+**Still open under Issue #61:** confirm the exact HTTP response for GIF and >5 MiB uploads; run the before/after read-only comparison for each rejected upload; perform a direct authenticated non-owner upload authorization check if the endpoint-level protection still needs explicit runtime evidence; and retain the separate raw anonymous Storage API write check only if required beyond the verified normal UI sign-in guard and inspected policy.
+
