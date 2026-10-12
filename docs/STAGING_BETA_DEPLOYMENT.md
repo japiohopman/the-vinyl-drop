@@ -478,17 +478,28 @@ The latest `listing_photos` row still has `created_at` and `updated_at` of `2026
 ### 5.6 Auth security — leaked-password protection (2026-10-12)
 
 **Target:** Supabase staging project `xuhzhdjmgvqzjxijmksu` (The Vinyl Drop)  
-**Verification source:** Connected Supabase project and organization metadata, read-only; Security Advisor.
+**Verification source:** Connected Supabase project and organization metadata, read-only; Security Advisor; current official Supabase and Have I Been Pwned documentation.
 
 | Check | Observed result | Assessment |
 | --- | --- | --- |
 | Staging project identity | Project reference is `xuhzhdjmgvqzjxijmksu`; project is active/healthy. | Confirmed — staging only |
 | Supabase organization plan | Organization `The Vinyl Drop` is on the **Free** plan. | Confirmed plan limitation |
-| Security Advisor: `auth_leaked_password_protection` | **WARN — Leaked Password Protection Disabled** remains present. | Not resolved |
-| Auth configuration change | No Auth settings were changed during this check. | No configuration mutation |
+| Security Advisor: `auth_leaked_password_protection` | **WARN — Leaked Password Protection Disabled** remains present. | Native Supabase control is unavailable on Free |
+| Auth configuration change | No Auth settings or billing settings were changed. | No configuration mutation |
 
-Supabase's current [password-security documentation](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) and [pricing matrix](https://supabase.com/pricing) state that leaked-password protection is not included on Free and is available on Pro and above. The current warning therefore matches a verified plan-entitlement limitation; it is not evidence that an available toggle was enabled.
+Supabase's [password-security documentation](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection) states the native leaked-password control is available on Pro and above. This remains a real Security Advisor warning on the current Free plan; it must not be described as cleared or enabled.
 
-**Decision required:** the recommended path is for the owner to approve upgrading the Supabase organization to a plan that includes this feature (currently Pro or above). Supabase billing is organization-based, so verify the current price and the impact on every project in the organization in the Dashboard before confirming an upgrade. After approval and upgrade, open the verified staging project's Auth password-security settings, enable **Prevent use of leaked passwords**, save, and re-run Security Advisor to confirm the warning clears.
+#### Free compensating-control approach — implementation pending
 
-**Safety and release gate:** no plan upgrade was performed and no production Auth setting was touched. Do not suppress the warning or weaken password controls to work around the plan gate. Keep [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62) open until an approved mitigation is implemented and evidenced. Keep [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) and external beta invitations blocked until the overall staging gate is satisfied.
+The proposed free alternative is to screen new passwords in the server-side signup flow with the [Have I Been Pwned Pwned Passwords range API](https://haveibeenpwned.com/API/V3#PwnedPasswords), which is free and supports k-anonymity. The server calculates a SHA-1 lookup hash in memory, sends only the first five hexadecimal characters to the range endpoint, and checks the returned suffixes locally. The raw password and full hash must never be sent to HIBP, logged, or persisted.
+
+The current app signup path is server-rendered: `POST /auth/signup` → `src/app/controllers/authController.ts` → `src/app/services/authService.ts::signUp` → `supabase.auth.signUp()`. A code-level guard is planned in [Issue #78](https://github.com/japiohopman/the-vinyl-drop/issues/78). It must reject a known breached password before the Supabase signup call, fail closed with a retryable error if the check cannot complete, avoid checking existing users' routine login attempts, and include automated tests.
+
+**Important limitation:** this is a proposed application-level compensating control, not the native Supabase feature. Issue #78 must audit the current Auth/API exposure and determine whether the check covers all password-creation paths or can be bypassed by a direct Supabase Auth request. Do not claim the mitigation is complete until that boundary is verified and the implementation is tested. A successful application-level check will not by itself clear Supabase's native `auth_leaked_password_protection` warning.
+
+#### Verification and release gate
+
+- No plan upgrade was approved or performed.
+- No production Auth settings were touched.
+- Issue #62 remains open pending Issue #78 implementation, tests, staging evidence, and acceptance of any remaining limitation.
+- Keep [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) open and external beta invitations blocked until the overall staging gate is satisfied.
