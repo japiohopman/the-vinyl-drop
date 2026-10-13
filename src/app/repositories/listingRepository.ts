@@ -6,6 +6,7 @@ import { physicalCopies, PhysicalCopy } from '../../db/schema/physicalCopies';
 import { releases, Release } from '../../db/schema/releases';
 import { profiles, Profile } from '../../db/schema/profiles';
 import { listingPhotos } from '../../db/schema/listingPhotos';
+import { DatabaseError } from '../services/errors';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -218,76 +219,93 @@ export async function searchListings(
       break;
   }
 
-  // Count total matching items
-  const countResult = await db
-    .select({ total: count() })
-    .from(listings)
-    .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
-    .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
-    .innerJoin(profiles, eq(listings.sellerId, profiles.id))
-    .where(whereClause);
+  try {
+    // Count total matching items
+    const countResult = await db
+      .select({ total: count() })
+      .from(listings)
+      .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
+      .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
+      .innerJoin(profiles, eq(listings.sellerId, profiles.id))
+      .where(whereClause);
 
-  const totalCount = Number(countResult[0]?.total || 0);
+    const totalCount = Number(countResult[0]?.total || 0);
 
-  const page = Math.max(1, params.page || 1);
-  const limit = Math.max(1, Math.min(100, params.limit || 12));
-  const offset = (page - 1) * limit;
-  const totalPages = Math.ceil(totalCount / limit) || 1;
+    const page = Math.max(1, params.page || 1);
+    const limit = Math.max(1, Math.min(100, params.limit || 12));
+    const offset = (page - 1) * limit;
+    const totalPages = Math.ceil(totalCount / limit) || 1;
 
-  if (totalCount === 0) {
+    if (totalCount === 0) {
+      return {
+        records: [],
+        totalCount: 0,
+        page,
+        limit,
+        totalPages: 1,
+      };
+    }
+
+    const rows = await db
+      .select({
+        listing: listings,
+        physicalCopy: physicalCopies,
+        release: releases,
+        seller: profiles,
+      })
+      .from(listings)
+      .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
+      .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
+      .innerJoin(profiles, eq(listings.sellerId, profiles.id))
+      .where(whereClause)
+      .orderBy(...orderBy)
+      .limit(limit)
+      .offset(offset);
+
+    // Bulk query primary photos for returned listing IDs
+    const listingIds = rows.map((r) => r.listing.id);
+    const photoRecords =
+      listingIds.length > 0
+        ? await db
+            .select()
+            .from(listingPhotos)
+            .where(inArray(listingPhotos.listingId, listingIds))
+            .orderBy(asc(listingPhotos.displayOrder))
+        : [];
+
+    const primaryPhotoMap = new Map<string, string>();
+    for (const photo of photoRecords) {
+      if (!primaryPhotoMap.has(photo.listingId)) {
+        primaryPhotoMap.set(photo.listingId, photo.storagePath);
+      }
+    }
+
+    const records: JoinedListingRecord[] = rows.map((row) => ({
+      ...row,
+      primaryPhotoPath: primaryPhotoMap.get(row.listing.id) || null,
+    }));
+
     return {
-      records: [],
-      totalCount: 0,
+      records,
+      totalCount,
       page,
       limit,
-      totalPages: 1,
+      totalPages,
     };
-  }
-
-  const rows = await db
-    .select({
-      listing: listings,
-      physicalCopy: physicalCopies,
-      release: releases,
-      seller: profiles,
-    })
-    .from(listings)
-    .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
-    .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
-    .innerJoin(profiles, eq(listings.sellerId, profiles.id))
-    .where(whereClause)
-    .orderBy(...orderBy)
-    .limit(limit)
-    .offset(offset);
-
-  // Bulk query primary photos for returned listing IDs
-  const listingIds = rows.map((r) => r.listing.id);
-  const photoRecords =
-    listingIds.length > 0
-      ? await db
-          .select()
-          .from(listingPhotos)
-          .where(inArray(listingPhotos.listingId, listingIds))
-          .orderBy(asc(listingPhotos.displayOrder))
-      : [];
-
-  const primaryPhotoMap = new Map<string, string>();
-  for (const photo of photoRecords) {
-    if (!primaryPhotoMap.has(photo.listingId)) {
-      primaryPhotoMap.set(photo.listingId, photo.storagePath);
+  } catch (error: unknown) {
+    if (error instanceof DatabaseError) {
+      throw error;
     }
+    const errObj = error && typeof error === 'object' ? (error as Record<string, unknown>) : null;
+    const sqlState = typeof errObj?.code === 'string' ? errObj.code : (typeof errObj?.routine === 'string' ? errObj.routine : 'UNKNOWN');
+    const severity = typeof errObj?.severity === 'string' ? errObj.severity : 'ERROR';
+    console.error(
+      `[listingRepository:searchListings] Database query failed: SQLSTATE=${sqlState} severity=${severity}`
+    );
+    throw new DatabaseError(`Database query failed (code: ${sqlState})`, {
+      code: sqlState,
+      severity,
+      cause: error,
+    });
   }
-
-  const records: JoinedListingRecord[] = rows.map((row) => ({
-    ...row,
-    primaryPhotoPath: primaryPhotoMap.get(row.listing.id) || null,
-  }));
-
-  return {
-    records,
-    totalCount,
-    page,
-    limit,
-    totalPages,
-  };
 }

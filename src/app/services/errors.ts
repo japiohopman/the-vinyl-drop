@@ -18,3 +18,21 @@ export class NotFoundError extends Error {
     this.name = 'NotFoundError';
   }
 }
+
+export class DatabaseError extends Error {
+  public readonly code?: string;
+  public readonly severity?: string;
+
+  constructor(
+    message = 'Database operation failed',
+    options?: { code?: string; severity?: string; cause?: unknown }
+  ) {
+    super(message);
+    this.name = 'DatabaseError';
+    this.code = options?.code;
+    this.severity = options?.severity;
+    if (options?.cause) {
+      this.cause = options.cause;
+    }
+  }
+}

@@ -124,11 +124,13 @@ export async function seedStaging(options: SeedStagingOptions = {}) {
     .trim();
 
   const targetDbUrl =
-    options.dbUrlOverride ||
-    options.envOverride?.DATABASE_URL ||
-    process.env.DATABASE_URL ||
-    config.DATABASE_URL ||
-    '';
+    options.dbUrlOverride !== undefined
+      ? options.dbUrlOverride
+      : options.envOverride?.DATABASE_URL !== undefined
+      ? options.envOverride.DATABASE_URL
+      : options.dbOverride
+      ? ''
+      : process.env.DATABASE_URL || config.DATABASE_URL || '';
 
   // Rule 1: Restrict custom dbOverride strictly to test execution
   if (options.dbOverride && currentEnv !== 'test') {

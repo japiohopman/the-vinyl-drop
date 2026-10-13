@@ -315,6 +315,32 @@ export async function updatePassword(password: string, options?: AuthOptions): P
     };
   }
 
+  // Ensure Supabase client has an active session before calling updateUser
+  const accessToken =
+    options?.req?.cookies?.['sb-access-token'] ||
+    options?.req?.session?.access_token ||
+    (options?.req?.headers?.authorization?.startsWith('Bearer ')
+      ? options.req.headers.authorization.split(' ')[1]
+      : undefined);
+  const refreshToken =
+    options?.req?.cookies?.['sb-refresh-token'] ||
+    options?.req?.session?.refresh_token;
+
+  if (accessToken && refreshToken && typeof supabase.auth?.setSession === 'function') {
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (sessionError) {
+      return {
+        user: null,
+        session: null,
+        profile: null,
+        error: sessionError.message || 'Failed to authenticate recovery session',
+      };
+    }
+  }
+
   const { data, error } = await supabase.auth.updateUser({ password });
 
   if (error || !data.user) {

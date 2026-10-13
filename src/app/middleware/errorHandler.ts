@@ -15,13 +15,33 @@ export function notFoundHandler(req: Request, res: Response): void {
   res.type('txt').send('Not Found');
 }
 
+/**
+ * Redacts credential-bearing data (tokens, passwords, database credentials, recovery URLs)
+ * from logged strings and user-facing error messages.
+ */
+export function sanitizeLogOutput(text: string): string {
+  if (!text) return text;
+  return text
+    // Redact query parameter or key-value credentials: token_hash, access_token, refresh_token, token, code, password
+    .replace(
+      /(?:([?&]|\b)(token_hash|access_token|refresh_token|token|code|password)\s*=\s*)[^&\s;,]+/gi,
+      (_match, prefix, key) => `${prefix}${key}=[REDACTED]`
+    )
+    // Redact Authorization headers: Bearer <token>
+    .replace(/Bearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [REDACTED]')
+    // Redact database connection URLs containing user:password@
+    .replace(/(postgres(?:ql)?:\/\/[^:]+:)[^@]+(@[^\s/:]+)/gi, '$1[REDACTED]$2')
+    // Redact auth cookies: sb-access-token, sb-refresh-token, sb-recovery-mode
+    .replace(/(sb-(?:access-token|refresh-token|recovery-mode)=)[^;\s&]+/gi, '$1[REDACTED]');
+}
+
 export function errorHandler(
   err: Error & { statusCode?: number; status?: number },
   req: Request,
   res: Response,
   _next: NextFunction
 ): void {
-  console.error(err.stack || err.message);
+  console.error(sanitizeLogOutput(err.stack || err.message));
 
   let statusCode = 500;
   if (err.statusCode && err.statusCode >= 400 && err.statusCode < 600) {
@@ -41,7 +61,9 @@ export function errorHandler(
   res.status(statusCode);
 
   const isClientError = statusCode >= 400 && statusCode < 500;
-  const clientMessage = isClientError ? err.message || 'Bad Request' : 'Internal Server Error';
+  const clientMessage = isClientError
+    ? sanitizeLogOutput(err.message || 'Bad Request')
+    : 'Internal Server Error';
 
   if (req.accepts('html')) {
     if (isClientError) {
