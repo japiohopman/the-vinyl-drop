@@ -137,7 +137,7 @@ describe('Centralized Error Handler Middleware', () => {
     app.use(errorHandler);
 
     const response = await request(app).get('/safe-error-log').set('Accept', 'application/json');
-    const logged = JSON.stringify(consoleErrorSpy.mock.calls);
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
 
     expect(response.status).toBe(500);
     expect(logged).toContain('"event":"http_error"');
@@ -161,7 +161,7 @@ describe('Centralized Error Handler Middleware', () => {
     app.use(errorHandler);
 
     await request(app).get('/invalid-error-code').set('Accept', 'application/json');
-    const logged = JSON.stringify(consoleErrorSpy.mock.calls);
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
 
     expect(logged).not.toContain('secret-value-that-is-not-a-sqlstate');
     expect(logged).not.toContain('Sensitive diagnostic detail');
