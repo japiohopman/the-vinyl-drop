@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { User, Session } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import { getUserFromToken, refreshSession } from '../services/authService';
 import { getProfileById } from '../services/profileService';
 import { Profile } from '../../db/schema/profiles';
 import { config } from '../../config/env';
+import { shouldUseSecureCookies } from '../../config/cookiePolicy';
 
 // Extend Express Request type
 /* eslint-disable @typescript-eslint/no-namespace */
@@ -23,7 +25,7 @@ declare global {
 export function setAuthCookies(res: Response, session: Session): void {
   res.cookie('sb-access-token', session.access_token, {
     httpOnly: true,
-    secure: config.NODE_ENV === 'production',
+    secure: shouldUseSecureCookies(config.NODE_ENV),
     sameSite: 'lax',
     maxAge: (session.expires_in || 3600) * 1000,
   });
@@ -31,11 +33,78 @@ export function setAuthCookies(res: Response, session: Session): void {
   if (session.refresh_token) {
     res.cookie('sb-refresh-token', session.refresh_token, {
       httpOnly: true,
-      secure: config.NODE_ENV === 'production',
+      secure: shouldUseSecureCookies(config.NODE_ENV),
       sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
   }
+}
+
+const RECOVERY_SECRET = config.RECOVERY_SIGNING_SECRET;
+const RECOVERY_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+
+export function generateRecoveryToken(userId: string): string {
+  const expiresAt = Date.now() + RECOVERY_WINDOW_MS;
+  const payload = `${userId}:${expiresAt}`;
+  const signature = crypto.createHmac('sha256', RECOVERY_SECRET).update(payload).digest('hex');
+  return `${userId}.${expiresAt}.${signature}`;
+}
+
+export function verifyRecoveryToken(
+  token: string | undefined | null,
+  activeUserId: string | undefined | null
+): boolean {
+  if (!token || !activeUserId) return false;
+
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+
+  const [userId, expiresAtStr, signature] = parts;
+  if (userId !== activeUserId) return false;
+
+  const expiresAt = Number(expiresAtStr);
+  if (isNaN(expiresAt) || Date.now() > expiresAt) return false;
+
+  const payload = `${userId}:${expiresAtStr}`;
+  const expectedSignature = crypto.createHmac('sha256', RECOVERY_SECRET).update(payload).digest('hex');
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Helper to set short-lived cryptographically verified recovery session marker cookie
+ */
+export function setRecoveryCookie(res: Response, userId: string): void {
+  const token = generateRecoveryToken(userId);
+  res.cookie('sb-recovery-mode', token, {
+    httpOnly: true,
+    secure: shouldUseSecureCookies(config.NODE_ENV),
+    sameSite: 'lax',
+    maxAge: RECOVERY_WINDOW_MS,
+  });
+}
+
+/**
+ * Helper to clear recovery session marker cookie
+ */
+export function clearRecoveryCookie(res: Response): void {
+  res.clearCookie('sb-recovery-mode');
+}
+
+/**
+ * Helper to check if current request has a cryptographically verified recovery marker bound to req.user
+ */
+export function isRecoverySessionVerified(req: Request): boolean {
+  if (!req.user) return false;
+  const token = req.cookies?.['sb-recovery-mode'];
+  return verifyRecoveryToken(token, req.user.id);
 }
 
 /**
@@ -44,6 +113,7 @@ export function setAuthCookies(res: Response, session: Session): void {
 export function clearAuthCookies(res: Response): void {
   res.clearCookie('sb-access-token');
   res.clearCookie('sb-refresh-token');
+  res.clearCookie('sb-recovery-mode');
 }
 
 /**

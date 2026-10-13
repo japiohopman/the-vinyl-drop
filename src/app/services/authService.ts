@@ -1,4 +1,4 @@
-import { User, Session, SupabaseClient } from '@supabase/supabase-js';
+import { User, Session, SupabaseClient, EmailOtpType } from '@supabase/supabase-js';
 import { Request, Response } from 'express';
 import { getSupabaseClient } from '../../lib/supabase';
 import { findProfileById, findProfileByUsername, createProfile } from '../repositories/profileRepository';
@@ -16,6 +16,7 @@ export interface AuthResult {
   profile: Profile | null;
   error?: string;
   requiresEmailConfirmation?: boolean;
+  isRecoverySession?: boolean;
 }
 
 export interface AuthOptions {
@@ -196,17 +197,65 @@ export async function getGoogleOAuthUrl(redirectTo?: string, options?: AuthOptio
   return data.url;
 }
 
-export async function handleOAuthCallback(code: string, options?: AuthOptions): Promise<AuthResult> {
+const ALLOWED_EMAIL_OTP_TYPES: EmailOtpType[] = [
+  'recovery',
+  'signup',
+  'invite',
+  'magiclink',
+  'email_change',
+  'email',
+];
+
+export async function handleAuthCallback(
+  params: { code?: string; token_hash?: string; type?: string },
+  options?: AuthOptions
+): Promise<AuthResult> {
   const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
 
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  let data: { user: User | null; session: Session | null } | null = null;
+  let error: { message: string } | null = null;
+  let isRecoverySession = false;
 
-  if (error || !data.user || !data.session) {
+  if (params.code) {
+    const res = await supabase.auth.exchangeCodeForSession(params.code);
+    data = res.data;
+    error = res.error;
+  } else if (params.token_hash && params.type) {
+    if (!ALLOWED_EMAIL_OTP_TYPES.includes(params.type as EmailOtpType)) {
+      return {
+        user: null,
+        session: null,
+        profile: null,
+        error: 'Invalid or unsupported verification token type',
+      };
+    }
+
+    const otpType = params.type as EmailOtpType;
+    if (otpType === 'recovery') {
+      isRecoverySession = true;
+    }
+
+    const res = await supabase.auth.verifyOtp({
+      token_hash: params.token_hash,
+      type: otpType,
+    });
+    data = res.data;
+    error = res.error;
+  } else {
     return {
       user: null,
       session: null,
       profile: null,
-      error: error?.message || 'Failed to exchange authorization code for session',
+      error: 'Missing authorization code or verification token',
+    };
+  }
+
+  if (error || !data?.user || !data?.session) {
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: error?.message || 'Failed to authenticate session',
     };
   }
 
@@ -216,6 +265,118 @@ export async function handleOAuthCallback(code: string, options?: AuthOptions): 
     user: data.user,
     session: data.session,
     profile,
+    isRecoverySession,
+  };
+}
+
+export async function handleOAuthCallback(code: string, options?: AuthOptions): Promise<AuthResult> {
+  return handleAuthCallback({ code }, options);
+}
+
+export async function sendPasswordResetEmail(
+  email: string,
+  redirectTo: string,
+  options?: AuthOptions
+): Promise<{ error?: string }> {
+  const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
+}
+
+export async function updatePassword(password: string, options?: AuthOptions): Promise<AuthResult> {
+  const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
+
+  // Extract access and refresh tokens from express request cookies / session
+  const accessToken =
+    options?.req?.cookies?.['sb-access-token'] ||
+    options?.req?.session?.access_token ||
+    (options?.req?.headers?.authorization?.startsWith('Bearer ')
+      ? options.req.headers.authorization.split(' ')[1]
+      : undefined);
+
+  const refreshToken =
+    options?.req?.cookies?.['sb-refresh-token'] || options?.req?.session?.refresh_token;
+
+  if (!accessToken || !refreshToken) {
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: 'Auth session missing! Please request a new password reset email.',
+    };
+  }
+
+  // Explicitly initialize the session on the Supabase client instance before updating user
+  const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+
+  if (sessionError || !sessionData?.session) {
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: sessionError?.message || 'Auth session missing! Please request a new password reset email.',
+    };
+  }
+
+  // Check new passwords before they reach Supabase Auth.
+  try {
+    const passwordIsBreached = await isPasswordPwned(password);
+    if (passwordIsBreached) {
+      return {
+        user: null,
+        session: null,
+        profile: null,
+        error: 'This password appears in known data breaches. Please choose a different password.',
+      };
+    }
+  } catch {
+    // Fail closed without exposing or logging the submitted password, hash, or HIBP response.
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: 'Password security check is temporarily unavailable. Please try again in a moment.',
+    };
+  }
+
+  const { data, error } = await supabase.auth.updateUser({ password });
+
+  if (error || !data.user) {
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: error?.message || 'Failed to update password',
+    };
+  }
+
+  // Revoke the recovery session using the same client that holds the setSession() state.
+  // The controller will clear the browser cookies regardless; a revocation failure must not
+  // turn an already-successful password update into a misleading failed-reset response.
+  try {
+    const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
+    if (signOutError) {
+      console.error('[auth:updatePassword] Session revocation failed after password update');
+    }
+  } catch {
+    console.error('[auth:updatePassword] Session revocation failed after password update');
+  }
+
+  return {
+    user: data.user,
+    session: null,
+    profile: null,
   };
 }
 

@@ -2,6 +2,7 @@ import { createClient, SupabaseClient, SupportedStorage } from '@supabase/supaba
 import WebSocket from 'ws';
 import { Request, Response } from 'express';
 import { config } from '../config/env';
+import { shouldUseSecureCookies } from '../config/cookiePolicy';
 
 // Polyfill global WebSocket if missing in Node < 22 runtime environments
 if (typeof globalThis.WebSocket === 'undefined') {
@@ -25,7 +26,7 @@ export function createExpressSupabaseClient(
       if (res) {
         res.cookie(key, value, {
           httpOnly: true,
-          secure: config.NODE_ENV === 'production',
+          secure: shouldUseSecureCookies(config.NODE_ENV),
           sameSite: 'lax',
           maxAge: 10 * 60 * 1000, // 10 minutes for PKCE verifier / temp auth items
         });
