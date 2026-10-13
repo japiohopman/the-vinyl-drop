@@ -3,7 +3,7 @@
 **Status:** Open investigation — root causes are not yet confirmed  
 **Last updated:** 2026-10-13  
 **Repository:** The Vinyl Drop  
-**Related work:** [Issue #79 — password recovery](https://github.com/japiohopman/the-vinyl-drop/issues/79), [PR #81 — recovery implementation](https://github.com/japiohopman/the-vinyl-drop/pull/81), [Issue #82 — Supabase Auth email branding](https://github.com/japiohopman/the-vinyl-drop/issues/82)
+**Related work:** [Issue #85 — this investigation handoff document](https://github.com/japiohopman/the-vinyl-drop/issues/85), [Issue #87 — root-cause investigation and remediation](https://github.com/japiohopman/the-vinyl-drop/issues/87), [Issue #79 — password recovery](https://github.com/japiohopman/the-vinyl-drop/issues/79), [PR #81 — recovery implementation](https://github.com/japiohopman/the-vinyl-drop/pull/81), [Issue #82 — Supabase Auth email branding](https://github.com/japiohopman/the-vinyl-drop/issues/82)
 
 ## Purpose
 
