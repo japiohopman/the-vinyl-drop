@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { basename } from 'node:path';
@@ -8,6 +9,7 @@ import { getSafeSqlState } from './diagnoseLocalListingsDb';
 const STAGING_SUPABASE_PROJECT_REF = 'xuhzhdjmgvqzjxijmksu';
 const CONFIRMATION_ENV = 'TVD_CONFIRM_STAGING_READONLY_DB_DIAGNOSTIC';
 const REQUIRED_CONFIRMATION = 'CONFIRM_STAGING_READ_ONLY';
+const CA_PATH_ENV = 'TVD_SUPABASE_DB_CA_PATH';
 
 export function isApprovedStagingPoolerUrl(value: string | undefined): boolean {
   if (!value) return false;
@@ -16,13 +18,16 @@ export function isApprovedStagingPoolerUrl(value: string | undefined): boolean {
     const url = new URL(value);
     const username = decodeURIComponent(url.username);
     const sslmode = url.searchParams.get('sslmode')?.toLowerCase();
+    const hasUnexpectedQueryParameter = [...url.searchParams.keys()].some((key) => key !== 'sslmode');
 
     return (
       (url.protocol === 'postgres:' || url.protocol === 'postgresql:') &&
       /^aws-\d+-[a-z0-9-]+\.pooler\.supabase\.com$/i.test(url.hostname) &&
       username === 'postgres.' + STAGING_SUPABASE_PROJECT_REF &&
+      url.password.length > 0 &&
       ['5432', '6543'].includes(url.port) &&
       url.pathname === '/postgres' &&
+      !hasUnexpectedQueryParameter &&
       (!sslmode || ['require', 'verify-ca', 'verify-full'].includes(sslmode))
     );
   } catch {
@@ -30,48 +35,86 @@ export function isApprovedStagingPoolerUrl(value: string | undefined): boolean {
   }
 }
 
+/**
+ * Use Supabase's session pooler for this multi-query diagnostic. Supabase's
+ * transaction pooler (6543) has known Postgres.js pipelining limitations.
+ * The host, database, user, and project remain allowlisted before this rewrite.
+ */
+export function getApprovedStagingConnectionUrl(value: string | undefined): string | null {
+  if (!isApprovedStagingPoolerUrl(value)) return null;
+
+  try {
+    const url = new URL(value);
+    url.port = '5432';
+    // TLS is configured with an explicit CA certificate below, never URL defaults.
+    url.searchParams.delete('sslmode');
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export function hasExplicitRemoteDiagnosticConfirmation(value: string | undefined): boolean {
   return value === REQUIRED_CONFIRMATION;
 }
 
+function printRefusal(reason: string): void {
+  console.log(JSON.stringify({ status: 'refused', reason }, null, 2));
+  process.exitCode = 2;
+}
+
 async function main(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
+  const connectionUrl = getApprovedStagingConnectionUrl(databaseUrl);
 
   // This tool has an intentionally narrow remote allowlist: only the known staging
   // project's Supabase pooler. It does not accept arbitrary hosted DBs or localhost.
-  if (!isApprovedStagingPoolerUrl(databaseUrl)) {
-    console.log(JSON.stringify({
-      status: 'refused',
-      reason: 'DATABASE_URL is not the allowlisted staging Supabase pooler URL; no database connection was attempted.',
-    }, null, 2));
-    process.exitCode = 2;
+  if (!connectionUrl) {
+    printRefusal('DATABASE_URL is not the allowlisted staging Supabase pooler URL; no database connection was attempted.');
     return;
   }
 
   // Require a one-command opt-in; do not put this confirmation in .env.
   if (!hasExplicitRemoteDiagnosticConfirmation(process.env[CONFIRMATION_ENV])) {
-    console.log(JSON.stringify({
-      status: 'refused',
-      reason: 'Explicit remote read-only confirmation is missing; no database connection was attempted.',
-    }, null, 2));
-    process.exitCode = 2;
+    printRefusal('Explicit remote read-only confirmation is missing; no database connection was attempted.');
+    return;
+  }
+
+  // A trusted Supabase database root certificate is required; sslmode=require alone
+  // encrypts transport but does not authenticate the server certificate.
+  const caPath = process.env[CA_PATH_ENV];
+  if (!caPath) {
+    printRefusal('TVD_SUPABASE_DB_CA_PATH must point to the staging database root certificate; no database connection was attempted.');
+    return;
+  }
+
+  let caCertificate: Buffer;
+  try {
+    caCertificate = readFileSync(caPath);
+    if (caCertificate.length === 0) {
+      printRefusal('The configured staging database root certificate is empty; no database connection was attempted.');
+      return;
+    }
+  } catch {
+    printRefusal('The configured staging database root certificate could not be read; no database connection was attempted.');
     return;
   }
 
   // Force certificate-verified TLS, use one connection, and disable prepared
-  // statements for compatibility with the Supabase transaction pooler.
-  const client = postgres(databaseUrl, {
+  // statements. Use session-pooler port 5432 even if DATABASE_URL used 6543.
+  const client = postgres(connectionUrl, {
     max: 1,
     connect_timeout: 8,
     idle_timeout: 5,
     max_lifetime: 30,
     prepare: false,
-    ssl: { rejectUnauthorized: true },
+    ssl: { ca: caCertificate, rejectUnauthorized: true },
     connection: { application_name: 'tvd-staging-readonly-listings-diagnostic' },
   });
 
   const report: Record<string, unknown> = {
     target: 'allowlisted staging Supabase project',
+    connectionMode: 'session-pooler',
     transactionMode: 'read-only',
     schemaCheck: 'not-run',
     migrationHistoryCheck: 'not-run',
