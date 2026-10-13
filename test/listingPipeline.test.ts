@@ -504,6 +504,62 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
   describe('HTTP Endpoints & Navigation Route Integration (/drop and /listings)', () => {
     let uploadTestApp: express.Express;
 
+    const csrfSellerId = '10000000-0000-4000-8000-000000000001';
+    const csrfReleaseId = '30000000-0000-4000-8000-000000000003';
+    const csrfCopyId = '40000000-0000-4000-8000-000000000004';
+    const csrfListingId = '50000000-0000-4000-8000-000000000005';
+
+    const prepareAuthenticatedListingCreate = () => {
+      const mockSupabase = {
+        auth: {
+          getUser: jest.fn().mockResolvedValue({
+            data: { user: { id: csrfSellerId, email: 'seller@example.com' } },
+            error: null,
+          }),
+        },
+      };
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      setSupabaseClient(mockSupabase as any);
+      (profileRepo.findProfileById as jest.Mock).mockResolvedValue({
+        id: csrfSellerId,
+        username: 'seller_user',
+        displayName: 'Seller User',
+      });
+      (releaseRepo.findReleaseById as jest.Mock).mockResolvedValue({
+        id: csrfReleaseId,
+        artist: 'Blue Note All-Stars',
+        title: 'Blue Spirits',
+        label: 'Blue Note',
+        releaseYear: 1965,
+        format: 'Vinyl, LP',
+      });
+      (copyRepo.createPhysicalCopy as jest.Mock).mockResolvedValue({
+        id: csrfCopyId,
+        releaseId: csrfReleaseId,
+        ownerId: csrfSellerId,
+        mediaCondition: 'NM',
+        sleeveCondition: 'VG+',
+      });
+      (listingRepo.createListing as jest.Mock).mockResolvedValue({
+        id: csrfListingId,
+        physicalCopyId: csrfCopyId,
+        sellerId: csrfSellerId,
+        price: 2999,
+        currency: 'EUR',
+        tradeAvailable: true,
+        status: 'draft',
+      });
+    };
+
+    const validListingForm = {
+      releaseId: csrfReleaseId,
+      mediaCondition: 'NM',
+      sleeveCondition: 'VG+',
+      priceEur: '29.99',
+      tradeAvailable: true,
+      description: 'Original press in fantastic shape',
+    };
+
     beforeAll(() => {
       uploadTestApp = express();
       uploadTestApp.post('/test-upload', multipartUploadHandler, (req: Request, res: Response) => {
@@ -555,6 +611,37 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       const response = await supertest(app).get('/listings/new');
       expect(response.status).toBe(302);
       expect(response.headers.location).toContain('/auth/login?next=%2Flistings%2Fnew');
+    });
+
+    it('POST /listings should reject a foreign Origin before creating a listing', async () => {
+      prepareAuthenticatedListingCreate();
+
+      const response = await supertest(app)
+        .post('/listings')
+        .set('Cookie', ['sb-access-token=mock-valid-token'])
+        .set('Origin', 'https://attacker.example')
+        .send(validListingForm);
+
+      expect(response.status).toBe(403);
+      expect(response.body).toEqual({ error: 'CSRF Forbidden: Origin mismatch' });
+      expect(releaseRepo.findReleaseById).not.toHaveBeenCalled();
+      expect(copyRepo.createPhysicalCopy).not.toHaveBeenCalled();
+      expect(listingRepo.createListing).not.toHaveBeenCalled();
+    });
+
+    it('POST /listings should reject missing Origin and Referer before creating a listing', async () => {
+      prepareAuthenticatedListingCreate();
+
+      const response = await supertest(app)
+        .post('/listings')
+        .set('Cookie', ['sb-access-token=mock-valid-token'])
+        .send(validListingForm);
+
+      expect(response.status).toBe(403);
+      expect(response.body).toEqual({ error: 'CSRF Forbidden: Missing Origin and Referer headers' });
+      expect(releaseRepo.findReleaseById).not.toHaveBeenCalled();
+      expect(copyRepo.createPhysicalCopy).not.toHaveBeenCalled();
+      expect(listingRepo.createListing).not.toHaveBeenCalled();
     });
 
     it('GET /health should confirm health check status', async () => {

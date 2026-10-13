@@ -5,6 +5,7 @@ import { setSupabaseClient } from '../src/lib/supabase';
 import * as profileRepository from '../src/app/repositories/profileRepository';
 import * as listingService from '../src/app/services/listingService';
 import { updateProfile, AuthorizationError } from '../src/app/services/profileService';
+import * as profileService from '../src/app/services/profileService';
 import { Profile } from '../src/db/schema/profiles';
 
 jest.mock('../src/app/services/listingService');
@@ -201,6 +202,53 @@ describe('Profile Foundation & Server-Side Ownership', () => {
         }),
         undefined
       );
+    });
+
+    it('POST /profile/edit should reject a foreign Origin before any profile mutation', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      const updateSpy = jest.spyOn(profileService, 'updateProfile').mockResolvedValue(mockProfileAlice);
+
+      try {
+        const app = createApp();
+        const res = await request(app)
+          .post('/profile/edit')
+          .set('Cookie', ['sb-access-token=alice-token'])
+          .set('Origin', 'https://attacker.example')
+          .send({ username: 'attacker_changed' });
+
+        expect(res.status).toBe(403);
+        expect(res.body).toEqual({ error: 'CSRF Forbidden: Origin mismatch' });
+        expect(updateSpy).not.toHaveBeenCalled();
+      } finally {
+        updateSpy.mockRestore();
+      }
+    });
+
+    it('POST /profile/edit should reject missing Origin and Referer before any profile mutation', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      const updateSpy = jest.spyOn(profileService, 'updateProfile').mockResolvedValue(mockProfileAlice);
+
+      try {
+        const app = createApp();
+        const res = await request(app)
+          .post('/profile/edit')
+          .set('Cookie', ['sb-access-token=alice-token'])
+          .send({ username: 'attacker_changed' });
+
+        expect(res.status).toBe(403);
+        expect(res.body).toEqual({ error: 'CSRF Forbidden: Missing Origin and Referer headers' });
+        expect(updateSpy).not.toHaveBeenCalled();
+      } finally {
+        updateSpy.mockRestore();
+      }
     });
 
     it('POST /profile/edit with whitespace-only websiteUrl should normalize websiteUrl to null and update successfully', async () => {
