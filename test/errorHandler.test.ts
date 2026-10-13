@@ -144,7 +144,7 @@ describe('Centralized Error Handler Middleware', () => {
 
     expect(response.status).toBe(500);
     expect(logged).toContain('"event":"http_error"');
-    expect(logged).toContain('"errorName":"Error"');
+    expect(logged).toContain('"errorName":"PostgresError"');
     expect(logged).toContain('"statusCode":500');
     expect(logged).toContain('"method":"GET"');
     expect(logged).toContain('"diagnosticCode":"42703"');
@@ -173,8 +173,9 @@ describe('Centralized Error Handler Middleware', () => {
 
   it('should not reflect an unknown client-error message in the response or logs', async () => {
     const app = express();
-    const privateValue = 'example-password-or-token-that-must-not-escape';
+    const privateValue = 'ConfidentialTokenValue';
     const error = new Error(`Bad request with private value ${privateValue}`) as Error & { statusCode?: number };
+    error.name = privateValue;
     error.statusCode = 400;
 
     app.get('/untrusted-client-error', (_req: Request, _res: Response, next: NextFunction) => {
