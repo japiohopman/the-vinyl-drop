@@ -291,11 +291,11 @@ Before deploying PR #81 / Issue #79 to staging, the human operator must set the 
    - For local development testing:
      `http://localhost:3000/auth/callback`
 2. **Email Templates (Auth -> Email Templates -> Reset Password):**
-   - Required custom Reset Password email link (the app supplies a trusted, allow-listed `RedirectTo` ending in `/auth/callback?next=/auth/reset-password`):
-     `<p><a href="{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=recovery">Reset password</a></p>`
-     This appends the single-use token hash and recovery type to the callback URL passed by `resetPasswordForEmail`, so local and staging redirect to their own configured `APP_BASE_URL`.
-   - Do **not** use the default `{{ .ConfirmationURL }}` verification link for this server-rendered recovery route. Supabase's built-in `/auth/v1/verify?token=...` flow redirects back with a PKCE `code`; a `type=recovery` query parameter on that callback is browser-controlled and is not proof of recovery.
-   - The application intentionally grants recovery state only after the server calls `verifyOtp({ token_hash, type: 'recovery' })` successfully. Do not re-enable recovery-marker issuance from a PKCE code callback based on `type`, `next`, or any other query parameter.
+   - Recommended custom Reset Password template redirect link target (token_hash flow):
+     `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/auth/reset-password`
+   - Default Supabase Auth PKCE recovery flow (`/auth/v1/verify?token=...&type=recovery&redirect_to=...`):
+     Supabase Auth redirects to `{{ .SiteURL }}/auth/callback?code=...&type=recovery&next=/auth/reset-password`.
+   - Both token_hash (`token_hash` + `type=recovery`) and PKCE code (`code` + `type=recovery`) recovery link shapes are supported server-side, requiring verified `type=recovery` context to issue the signed HMAC recovery session marker.
    - Ensure SMTP/email delivery settings in Supabase Staging Auth are configured for staging email delivery. Do NOT modify production configuration.
 
 #### Password Recovery Session Policy
@@ -305,7 +305,7 @@ Before deploying PR #81 / Issue #79 to staging, the human operator must set the 
 #### Operator Human Verification Steps (Staging Post-Deploy)
 Perform these verification steps after PR merge and deployment to staging:
 1. **Neutral Request Test:** Navigate to `https://the-vinyl-drop-staging.onrender.com/auth/forgot-password`. Submit both an existing account email and an unregistered test email (`unregistered@example.com`). Confirm that both submissions display the exact same neutral message: *"If an account with that email exists, we have sent instructions to reset your password. Please check your inbox."*
-2. **Email & Redirect Verification:** Check the inbox for the registered staging account and click the recovery link. Confirm that it redirects to the verified staging URL (`https://the-vinyl-drop-staging.onrender.com/auth/callback?next=/auth/reset-password&token_hash=...&type=recovery`) and lands safely on the "Choose New Password" page (`/auth/reset-password`). The reset-password email template must use the custom `token_hash` link specified above; a default Supabase `/auth/v1/verify?token=...` PKCE link is not accepted as proof of recovery by this server-side flow.
+2. **Email & Redirect Verification:** Check the inbox for the registered staging account and click the recovery link. Confirm that it redirects to the verified staging URL (`https://the-vinyl-drop-staging.onrender.com/auth/callback?token_hash=...&type=recovery&next=/auth/reset-password` or `https://the-vinyl-drop-staging.onrender.com/auth/callback?code=...&type=recovery&next=/auth/reset-password`) and lands safely on the "Choose New Password" page (`/auth/reset-password`).
 3. **Breached Password Rejection:** On the reset form, submit a known breached password (e.g. `password123`). Confirm that the form rejects the submission with the message *"This password appears in known data breaches. Please choose a different password."* without updating the account password.
 4. **Successful Password Reset & Session Re-Authentication:** Submit a unique, unbreached strong password. Confirm that the system clears the recovery session and redirects to `/auth/login` with the success banner *"Your password has been successfully updated. Please sign in with your new password."* Verify that signing in with the old password fails, and signing in with the new password succeeds.
 

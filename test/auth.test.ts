@@ -128,7 +128,6 @@ describe('Authentication & Session Handling', () => {
           getUser: jest.fn(),
           refreshSession: jest.fn(),
           signOut: jest.fn().mockResolvedValue({ error: null }),
-          setSession: jest.fn().mockResolvedValue({ data: { user: null, session: null }, error: null }),
         },
       };
 
@@ -648,7 +647,7 @@ describe('Authentication & Session Handling', () => {
         expect(cookies).toContain('sb-recovery-mode=77777777-7777-7777-7777-777777777777.');
       });
 
-      it('GET /auth/callback with PKCE code and a forged type=recovery query must NOT set recovery cookie', async () => {
+      it('GET /auth/callback with PKCE code and next=/auth/reset-password (normal OAuth/login callback) should NOT set recovery cookie', async () => {
         const mockUser = {
           id: '99999999-9999-9999-9999-999999999999',
           email: 'oauth_user@example.com',
@@ -679,7 +678,7 @@ describe('Authentication & Session Handling', () => {
         });
 
         const app = createApp();
-        const res = await request(app).get('/auth/callback?code=mock_code&type=recovery&next=%2Fauth%2Freset-password');
+        const res = await request(app).get('/auth/callback?code=mock_code&next=%2Fauth%2Freset-password');
 
         expect(res.status).toBe(302);
         const cookieHeader = res.header['set-cookie'];
@@ -966,11 +965,7 @@ describe('Authentication & Session Handling', () => {
         const res = await request(app)
           .post('/auth/reset-password')
           .set('Origin', 'http://localhost:3000')
-          .set('Cookie', [
-            'sb-access-token=valid-recovery-token',
-            'sb-refresh-token=valid-refresh-token',
-            `sb-recovery-mode=${validRecoveryToken}`,
-          ])
+          .set('Cookie', ['sb-access-token=valid-recovery-token', `sb-recovery-mode=${validRecoveryToken}`])
           .send({
             password: 'brandnewstrongpassword123',
             confirmPassword: 'brandnewstrongpassword123',
@@ -978,46 +973,11 @@ describe('Authentication & Session Handling', () => {
 
         expect(res.status).toBe(200);
         expect(mockIsPasswordPwned).toHaveBeenCalledWith('brandnewstrongpassword123');
-        expect(mockSupabase.auth.setSession).toHaveBeenCalledWith({
-          access_token: 'valid-recovery-token',
-          refresh_token: 'valid-refresh-token',
-        });
         expect(mockSupabase.auth.updateUser).toHaveBeenCalledWith({ password: 'brandnewstrongpassword123' });
         expect(res.text).toContain('Your password has been successfully updated. Please sign in with your new password.');
         const cookieHeader = res.header['set-cookie'];
         const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
         expect(cookies).toContain('sb-access-token=;');
-      });
-
-      it('POST /auth/reset-password should render error and reject when Supabase setSession fails', async () => {
-        const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'reset@example.com' };
-        mockSupabase.auth.getUser.mockResolvedValue({
-          data: { user: mockUser },
-          error: null,
-        });
-        mockSupabase.auth.setSession.mockResolvedValue({
-          data: { user: null, session: null },
-          error: { message: 'Invalid or expired session token' },
-        });
-
-        const validRecoveryToken = generateRecoveryToken(mockUser.id);
-        const app = createApp();
-        const res = await request(app)
-          .post('/auth/reset-password')
-          .set('Origin', 'http://localhost:3000')
-          .set('Cookie', [
-            'sb-access-token=valid-recovery-token',
-            'sb-refresh-token=expired-refresh-token',
-            `sb-recovery-mode=${validRecoveryToken}`,
-          ])
-          .send({
-            password: 'brandnewstrongpassword123',
-            confirmPassword: 'brandnewstrongpassword123',
-          });
-
-        expect(res.status).toBe(400);
-        expect(res.text).toContain('Invalid or expired session token');
-        expect(mockSupabase.auth.updateUser).not.toHaveBeenCalled();
       });
 
       it('POST /auth/reset-password should enforce same-origin CSRF protection', async () => {

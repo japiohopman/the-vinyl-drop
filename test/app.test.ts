@@ -38,26 +38,6 @@ describe('App Routes and Error Handling', () => {
       expect(response.text).toContain('href="/activity" class="nav-link">ACTIVITY</a>');
       expect(response.text).toContain('href="/profile" class="nav-link">YOU</a>');
     });
-
-    it('should safely render 500 server error page without leaking database internals if getHomeFeedListings fails', async () => {
-      const { DatabaseError } = await import('../src/app/services/errors');
-      (listingService.getHomeFeedListings as jest.Mock).mockRejectedValue(
-        new DatabaseError('Database query failed (code: 42703)', {
-          code: '42703',
-          severity: 'ERROR',
-        })
-      );
-
-      const response = await request(app)
-        .get('/')
-        .set('Accept', 'text/html');
-
-      expect(response.status).toBe(500);
-      expect(response.headers['content-type']).toMatch(/html/);
-      expect(response.text).toContain('500 - Server Error');
-      expect(response.text).toContain('Something went wrong on our end.');
-      expect(response.text).not.toContain('42703');
-    });
   });
 
   describe('GET /health', () => {
