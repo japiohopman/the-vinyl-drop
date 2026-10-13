@@ -33,14 +33,14 @@ describe('local listings DB diagnostic safety', () => {
     });
 
     it('does not expose non-Postgres errors or malformed codes', () => {
-      const ordinaryError = Object.assign(new Error('private'), { code: '42703' });
+      const ordinaryError = Object.assign(new Error('private'), { code: 'EPIPE' });
       expect(getSafeSqlState(ordinaryError)).toBeUndefined();
 
-      const postgresError = new Error('private') as Error & { code?: unknown };
-      Object.setPrototypeOf(postgresError, postgres.PostgresError.prototype);
-      postgresError.code = 'EPIPE';
+      const malformedPostgresError = new Error('private') as Error & { code?: unknown };
+      Object.setPrototypeOf(malformedPostgresError, postgres.PostgresError.prototype);
+      malformedPostgresError.code = '42!03';
 
-      expect(getSafeSqlState(postgresError)).toBeUndefined();
+      expect(getSafeSqlState(malformedPostgresError)).toBeUndefined();
     });
   });
 });
