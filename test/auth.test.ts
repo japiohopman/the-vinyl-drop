@@ -902,6 +902,11 @@ describe('Authentication & Session Handling', () => {
           error: null,
         });
 
+        mockSupabase.auth.setSession = jest.fn().mockResolvedValue({
+          data: { user: mockUser, session: { access_token: 'valid-recovery-token', refresh_token: 'valid-refresh-token' } },
+          error: null,
+        });
+
         mockIsPasswordPwned.mockResolvedValue(true);
         const updateUserSpy = mockSupabase.auth.updateUser;
 
@@ -910,7 +915,11 @@ describe('Authentication & Session Handling', () => {
         const res = await request(app)
           .post('/auth/reset-password')
           .set('Origin', 'http://localhost:3000')
-          .set('Cookie', ['sb-access-token=valid-recovery-token', `sb-recovery-mode=${validRecoveryToken}`])
+          .set('Cookie', [
+            'sb-access-token=valid-recovery-token',
+            'sb-refresh-token=valid-refresh-token',
+            `sb-recovery-mode=${validRecoveryToken}`,
+          ])
           .send({
             password: 'breachedpassword123',
             confirmPassword: 'breachedpassword123',
@@ -929,6 +938,11 @@ describe('Authentication & Session Handling', () => {
           error: null,
         });
 
+        mockSupabase.auth.setSession = jest.fn().mockResolvedValue({
+          data: { user: mockUser, session: { access_token: 'valid-recovery-token', refresh_token: 'valid-refresh-token' } },
+          error: null,
+        });
+
         mockIsPasswordPwned.mockRejectedValue(new Error('Network error'));
         const updateUserSpy = mockSupabase.auth.updateUser;
 
@@ -937,7 +951,11 @@ describe('Authentication & Session Handling', () => {
         const res = await request(app)
           .post('/auth/reset-password')
           .set('Origin', 'http://localhost:3000')
-          .set('Cookie', ['sb-access-token=valid-recovery-token', `sb-recovery-mode=${validRecoveryToken}`])
+          .set('Cookie', [
+            'sb-access-token=valid-recovery-token',
+            'sb-refresh-token=valid-refresh-token',
+            `sb-recovery-mode=${validRecoveryToken}`,
+          ])
           .send({
             password: 'validstrongpassword123',
             confirmPassword: 'validstrongpassword123',
@@ -948,10 +966,15 @@ describe('Authentication & Session Handling', () => {
         expect(updateUserSpy).not.toHaveBeenCalled();
       });
 
-      it('POST /auth/reset-password should update password, clear recovery session cookies, and require re-login upon success', async () => {
+      it('POST /auth/reset-password should restore session via setSession prior to calling updateUser', async () => {
         const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'reset@example.com' };
         mockSupabase.auth.getUser.mockResolvedValue({
           data: { user: mockUser },
+          error: null,
+        });
+
+        mockSupabase.auth.setSession = jest.fn().mockResolvedValue({
+          data: { user: mockUser, session: { access_token: 'valid-recovery-token', refresh_token: 'valid-refresh-token' } },
           error: null,
         });
 
@@ -965,7 +988,84 @@ describe('Authentication & Session Handling', () => {
         const res = await request(app)
           .post('/auth/reset-password')
           .set('Origin', 'http://localhost:3000')
-          .set('Cookie', ['sb-access-token=valid-recovery-token', `sb-recovery-mode=${validRecoveryToken}`])
+          .set('Cookie', [
+            'sb-access-token=valid-recovery-token',
+            'sb-refresh-token=valid-refresh-token',
+            `sb-recovery-mode=${validRecoveryToken}`,
+          ])
+          .send({
+            password: 'brandnewstrongpassword123',
+            confirmPassword: 'brandnewstrongpassword123',
+          });
+
+        expect(res.status).toBe(200);
+        expect(mockSupabase.auth.setSession).toHaveBeenCalledWith({
+          access_token: 'valid-recovery-token',
+          refresh_token: 'valid-refresh-token',
+        });
+        expect(mockSupabase.auth.updateUser).toHaveBeenCalledWith({ password: 'brandnewstrongpassword123' });
+      });
+
+      it('POST /auth/reset-password should fail safely and NEVER call updateUser when setSession fails or session is missing', async () => {
+        const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'reset@example.com' };
+        mockSupabase.auth.getUser.mockResolvedValue({
+          data: { user: mockUser },
+          error: null,
+        });
+
+        mockSupabase.auth.setSession = jest.fn().mockResolvedValue({
+          data: { user: null, session: null },
+          error: { message: 'Auth session missing!' },
+        });
+
+        const updateUserSpy = mockSupabase.auth.updateUser;
+        const validRecoveryToken = generateRecoveryToken(mockUser.id);
+        const app = createApp();
+        const res = await request(app)
+          .post('/auth/reset-password')
+          .set('Origin', 'http://localhost:3000')
+          .set('Cookie', [
+            'sb-access-token=valid-recovery-token',
+            'sb-refresh-token=valid-refresh-token',
+            `sb-recovery-mode=${validRecoveryToken}`,
+          ])
+          .send({
+            password: 'brandnewstrongpassword123',
+            confirmPassword: 'brandnewstrongpassword123',
+          });
+
+        expect(res.status).toBe(400);
+        expect(res.text).toContain('Auth session missing!');
+        expect(updateUserSpy).not.toHaveBeenCalled();
+      });
+
+      it('POST /auth/reset-password should update password, clear recovery session cookies, and require re-login upon success', async () => {
+        const mockUser = { id: '88888888-8888-8888-8888-888888888888', email: 'reset@example.com' };
+        mockSupabase.auth.getUser.mockResolvedValue({
+          data: { user: mockUser },
+          error: null,
+        });
+
+        mockSupabase.auth.setSession = jest.fn().mockResolvedValue({
+          data: { user: mockUser, session: { access_token: 'valid-recovery-token', refresh_token: 'valid-refresh-token' } },
+          error: null,
+        });
+
+        mockSupabase.auth.updateUser.mockResolvedValue({
+          data: { user: mockUser },
+          error: null,
+        });
+
+        const validRecoveryToken = generateRecoveryToken(mockUser.id);
+        const app = createApp();
+        const res = await request(app)
+          .post('/auth/reset-password')
+          .set('Origin', 'http://localhost:3000')
+          .set('Cookie', [
+            'sb-access-token=valid-recovery-token',
+            'sb-refresh-token=valid-refresh-token',
+            `sb-recovery-mode=${validRecoveryToken}`,
+          ])
           .send({
             password: 'brandnewstrongpassword123',
             confirmPassword: 'brandnewstrongpassword123',

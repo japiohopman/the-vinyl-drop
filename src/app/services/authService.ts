@@ -220,9 +220,6 @@ export async function handleAuthCallback(
     const res = await supabase.auth.exchangeCodeForSession(params.code);
     data = res.data;
     error = res.error;
-    if (params.type === 'recovery') {
-      isRecoverySession = true;
-    }
   } else if (params.token_hash && params.type) {
     if (!ALLOWED_EMAIL_OTP_TYPES.includes(params.type as EmailOtpType)) {
       return {
@@ -296,6 +293,41 @@ export async function sendPasswordResetEmail(
 
 export async function updatePassword(password: string, options?: AuthOptions): Promise<AuthResult> {
   const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
+
+  // Extract access and refresh tokens from express request cookies / session
+  const accessToken =
+    options?.req?.cookies?.['sb-access-token'] ||
+    options?.req?.session?.access_token ||
+    (options?.req?.headers?.authorization?.startsWith('Bearer ')
+      ? options.req.headers.authorization.split(' ')[1]
+      : undefined);
+
+  const refreshToken =
+    options?.req?.cookies?.['sb-refresh-token'] || options?.req?.session?.refresh_token;
+
+  if (!accessToken || !refreshToken) {
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: 'Auth session missing! Please request a new password reset email.',
+    };
+  }
+
+  // Explicitly initialize the session on the Supabase client instance before updating user
+  const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+
+  if (sessionError || !sessionData?.session) {
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: sessionError?.message || 'Auth session missing! Please request a new password reset email.',
+    };
+  }
 
   // Check new passwords before they reach Supabase Auth.
   try {
