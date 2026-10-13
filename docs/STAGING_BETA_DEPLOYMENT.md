@@ -403,7 +403,7 @@ For invite-only beta onboarding (#48), hand off the staging target URL (`https:/
 | --- | --- | --- |
 | Direct public image URL in incognito | The image was visible without signing in. The exact URL and HTTP status code were not recorded. | Pass — operator-reported visual confirmation |
 
-**Not verified by the public-read test:** direct anonymous upload denial, authenticated non-owner upload denial, unsupported MIME-type rejection, and absence of orphaned Storage objects/database rows after rejected uploads. See the separate application-route check in Section 5.3. Keep the remaining Storage/API and data-integrity checks open under [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61). This successful direct-read check confirms public readability for the tested object; it does not establish that draft object URLs are private.
+**Not verified by the public-read test alone:** authenticated non-owner upload denial and absence of orphaned Storage objects/database rows after rejected uploads. The separate direct anonymous Storage API write-denial test passed on 2026-10-13; see Section 5.3 and [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61). This successful direct-read check confirms public readability for the tested object; it does not establish that draft object URLs are private.
 
 ### 5.3 Live Verification Log — 2026-10-12 (Unauthenticated listing-photo UI flow)
 
@@ -416,9 +416,26 @@ For invite-only beta onboarding (#48), hand off the staging target URL (`https:/
 | Enter listing-photo upload flow while signed out | Redirected to sign-in; no photo was uploaded while signed out. Exact request URL and HTTP status were not captured. | Pass — operator-reported application-route authentication guard |
 | Upload photo after signing in within incognito | Upload succeeded after sign-in. | Pass — operator-reported authenticated upload smoke test |
 
-**Security scope:** The app-level redirect confirms the normal UI flow requires authentication before upload. It is not the same test as sending a direct anonymous HTTP POST to the Supabase Storage API without a user session. The staging Storage INSERT policy has separately been inspected and is targeted to `authenticated` with an `auth.role() = 'authenticated'` check, but a raw unauthenticated Storage API POST has not been independently executed in this run. Do not claim that raw API probe was performed.
+**Security scope:** The app-level redirect confirms the normal UI flow requires authentication before upload. A separate direct anonymous HTTP POST to the Supabase Storage API was subsequently executed on 2026-10-13 and denied by Storage RLS; see the evidence immediately below. The Storage INSERT policy was also independently inspected and is restricted to authenticated users with a listing-owner check.
 
-**Remaining checks under Issue #61:** The normal application listing-access guard for a signed-in non-owner was also checked by the operator; see Section 5.4. A direct authenticated upload attempt targeting another seller's listing has not been separately demonstrated and remains open, along with unsupported MIME-type rejection and verification that rejected uploads leave no orphaned Storage objects/listing-photo rows. A raw anonymous Storage API write is also distinct from the UI sign-in redirect and remains untested. Keep Issue #61 and parent Issue #49 open until all required checks are evidenced.
+#### Direct anonymous Storage API write-denial — 2026-10-13
+
+**Target:** Confirmed staging Supabase project `xuhzhdjmgvqzjxijmksu`, public bucket `listing-photos`  
+**Performed by:** Operator, from Windows PowerShell  
+**Authentication:** No signed-in user session or user access token. The public anon key was supplied as both the `apikey` and `Authorization: Bearer` header; no service-role or secret key was used.  
+**Request:** One `POST` to a unique disposable object path under `__security_probe__/anonymous-probe-<timestamp>.jpg`.
+
+| Evidence | Observed result |
+| --- | --- |
+| Outer HTTP response | `400 Bad Request` |
+| Storage response `statusCode` | `403` |
+| `error` | `Unauthorized` |
+| `message` | `new row violates row-level security policy` |
+| `code` | `AccessDenied` |
+
+**Assessment: PASS — anonymous Storage INSERT denied by RLS.** Although the HTTP envelope uses status 400, the Storage API response explicitly identifies the authorization denial as status 403 / `AccessDenied` caused by the row-level security policy. This was not a missing-header or missing-object error. The request did not create the probe object; no cleanup was required. No policy, bucket, account, or existing data was changed.
+
+**Remaining checks under Issue #61:** The normal application listing-access guard for a signed-in non-owner was also checked by the operator; see Section 5.4. The current issue still requires the other remaining upload checks to be reconciled or explicitly scoped, including authenticated non-owner upload authorization if additional direct endpoint evidence is required, rejected-upload data-integrity evidence, and recording the raw POST status/redirect chain for GIF and oversized uploads. Keep Issue #61 and parent Issue #49 open until all required checks are evidenced.
 
 ### 5.4 Live Verification Log — 2026-10-12 (Signed-in non-owner listing access)
 
@@ -489,7 +506,7 @@ ORDER BY created_at, id;
 - If a new Storage object appears without a corresponding photo row, or a new photo row refers to a missing Storage object, record a failure and keep the issue open. Do not manually delete anything; preserve the paths/IDs for investigation.
 - A record in `orphaned_storage_objects` means the compensation path registered a cleanup problem and must be investigated, not silently marked passed.
 
-**Still open under Issue #61:** confirm the exact HTTP response for GIF and >5 MiB uploads; run the before/after read-only comparison for each rejected upload; perform a direct authenticated non-owner upload authorization check if the endpoint-level protection still needs explicit runtime evidence; and retain the separate raw anonymous Storage API write check only if required beyond the verified normal UI sign-in guard and inspected policy.
+**Still open under Issue #61:** confirm the exact HTTP response for GIF and >5 MiB uploads; run the before/after read-only comparison for each rejected upload; and perform a direct authenticated non-owner upload authorization check if endpoint-level protection still needs explicit runtime evidence. The separate raw anonymous Storage API write-denial test passed on 2026-10-13; see Section 5.3 above.
 
 #### Connected read-only staging snapshot — 2026-10-12
 
