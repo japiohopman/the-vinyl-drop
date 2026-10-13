@@ -653,6 +653,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       try {
         const response = await supertest(app)
           .post(`/listings/${csrfListingId}/photos`)
+          .set('Accept', 'application/json')
           .set('Cookie', ['sb-access-token=mock-valid-non-owner-token'])
           .set('Origin', new URL(config.APP_BASE_URL).origin)
           .attach('photo', sampleImage, { filename: 'forged-owner-upload.jpg', contentType: 'image/jpeg' });
