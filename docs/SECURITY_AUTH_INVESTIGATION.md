@@ -145,6 +145,24 @@ The captured error includes the SQL and parameters (published status and limit) 
 5. Improve error reporting so developer logs retain the PostgreSQL code and safe diagnostic context, while production responses never expose SQL, filesystem paths, stack traces, credentials, or database internals.
 6. Add/adjust tests for the intended query and safe handling of query failure.
 
+### Safe local reproduction (read-only)
+
+Run the new helper only after checking that the local `.env` is intended to target the local development database and that no SSH/database tunnel maps a loopback port to a remote target:
+
+```powershell
+npm run db:diagnose:listings
+```
+
+The helper refuses to connect unless `DATABASE_URL` uses a PostgreSQL URL whose host is `localhost`, `127.0.0.1`, or `::1`. It checks whether `public.profiles.website_url` exists, whether Drizzle migration history records migration 0004 or a later migration, and executes the actual read-only `getHomeFeedListings(6)` code path. It makes no writes and does not apply migrations. Output is limited to schema booleans, the number of cards returned, and a validated PostgreSQL SQLSTATE; it never prints the database URL, row contents, SQL, or raw error message. A loopback check cannot detect a manually configured SSH tunnel, so confirm that no such tunnel is active before running it.
+
+Interpret the result without assuming the cause:
+
+- If `profilesWebsiteUrlColumnExists` is `false` and the migration history does not record migration 0004 or later, a local schema/migration mismatch is supported by evidence.
+- If the query fails with SQLSTATE `42703` but the column check passes, another undefined-column reference or schema mismatch remains to be investigated.
+- If the query succeeds, record that the current local database is healthy for this path; it does not retroactively prove the old incident had the same cause or that staging was checked.
+
+Do not run `npm run db:migrate` as part of this diagnostic. If the URL is refused, do not change the guard to permit staging or production; inspect the local development environment and database target first.
+
 Keep this investigation separate from password recovery unless evidence establishes a common cause.
 
 ## Supabase email delivery and branding dependency
