@@ -52,6 +52,14 @@ jobs:
               return;
             }
 
+            // A PR can be edited after merge/closure. Contract checks protect active PRs;
+            // editing an archived PR must not fail because its governing Issue is now closed.
+            if (pr.state === 'closed' || pr.merged === true) {
+              const reason = pr.merged === true ? 'merged' : 'closed';
+              console.log(`Skipping Phase Safety Gate validation for ${reason} PR #${pr.number}; active contract checks apply only to open PRs.`);
+              return;
+            }
+
             // 1. Validate branch conventions
             if (pr.base && pr.base.ref !== 'main') {
               errors.push(`Target branch must be "main", got "${pr.base.ref}".`);
