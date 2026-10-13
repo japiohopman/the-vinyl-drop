@@ -5,6 +5,7 @@ import { getUserFromToken, refreshSession } from '../services/authService';
 import { getProfileById } from '../services/profileService';
 import { Profile } from '../../db/schema/profiles';
 import { config } from '../../config/env';
+import { shouldUseSecureCookies } from '../../config/cookiePolicy';
 
 // Extend Express Request type
 /* eslint-disable @typescript-eslint/no-namespace */
@@ -24,7 +25,7 @@ declare global {
 export function setAuthCookies(res: Response, session: Session): void {
   res.cookie('sb-access-token', session.access_token, {
     httpOnly: true,
-    secure: config.NODE_ENV === 'production',
+    secure: shouldUseSecureCookies(config.NODE_ENV),
     sameSite: 'lax',
     maxAge: (session.expires_in || 3600) * 1000,
   });
@@ -32,7 +33,7 @@ export function setAuthCookies(res: Response, session: Session): void {
   if (session.refresh_token) {
     res.cookie('sb-refresh-token', session.refresh_token, {
       httpOnly: true,
-      secure: config.NODE_ENV === 'production',
+      secure: shouldUseSecureCookies(config.NODE_ENV),
       sameSite: 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
@@ -84,7 +85,7 @@ export function setRecoveryCookie(res: Response, userId: string): void {
   const token = generateRecoveryToken(userId);
   res.cookie('sb-recovery-mode', token, {
     httpOnly: true,
-    secure: config.NODE_ENV === 'production',
+    secure: shouldUseSecureCookies(config.NODE_ENV),
     sameSite: 'lax',
     maxAge: RECOVERY_WINDOW_MS,
   });
