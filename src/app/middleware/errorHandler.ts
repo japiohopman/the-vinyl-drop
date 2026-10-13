@@ -15,9 +15,11 @@ export function notFoundHandler(req: Request, res: Response): void {
   res.type('txt').send('Not Found');
 }
 
-function isSafeDiagnosticCode(code: unknown): code is string {
-  // PostgreSQL SQLSTATE values are five uppercase alphanumeric characters; do not log arbitrary error codes.
-  return typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code);
+function getSafeDiagnosticCode(error: Error & { code?: unknown }): string | undefined {
+  // postgres.js marks server SQL errors with the PostgresError class name. Network/system errors
+  // can also carry short codes (for example EPIPE), so validate the source before accepting SQLSTATE.
+  if (error.name !== 'PostgresError') return undefined;
+  return typeof error.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code) ? error.code : undefined;
 }
 
 export function errorHandler(
@@ -57,8 +59,9 @@ export function errorHandler(
   ) {
     logEntry.route = routePath;
   }
-  if (isSafeDiagnosticCode(err.code)) {
-    logEntry.diagnosticCode = err.code;
+  const diagnosticCode = getSafeDiagnosticCode(err);
+  if (diagnosticCode) {
+    logEntry.diagnosticCode = diagnosticCode;
   }
   console.error(JSON.stringify(logEntry));
 
