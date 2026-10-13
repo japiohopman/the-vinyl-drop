@@ -178,6 +178,7 @@ Start with a read-only inspection and a concise root-cause report. Then propose 
 ## Evidence update — 2026-10-13 (PR #81 follow-up)
 
 This update records the current state without marking Issue #87 complete.
+The operator-confirmed staging password-update result below supersedes the earlier pending-manual-retest statements for the live password-update step only; it does not resolve the separate Console-source or DB-01 findings.
 
 ### AUTH-01 / AUTH-02 — Password recovery session
 
