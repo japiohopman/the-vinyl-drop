@@ -16,11 +16,39 @@ export function notFoundHandler(req: Request, res: Response): void {
   res.type('txt').send('Not Found');
 }
 
+function getSafeErrorType(error: Error): string {
+  if (error instanceof ValidationError) return 'ValidationError';
+  if (error instanceof AuthorizationError) return 'AuthorizationError';
+  if (error instanceof NotFoundError) return 'NotFoundError';
+  if (error instanceof postgres.PostgresError) return 'PostgresError';
+  if (error instanceof TypeError) return 'TypeError';
+  if (error instanceof RangeError) return 'RangeError';
+  if (error instanceof SyntaxError) return 'SyntaxError';
+  return 'Error';
+}
+
 function getSafeDiagnosticCode(error: Error & { code?: unknown }): string | undefined {
-  // postgres.js marks server SQL errors with the PostgresError class name. Network/system errors
-  // can also carry short codes (for example EPIPE), so validate the source before accepting SQLSTATE.
+  // Only the database driver's PostgresError class can contribute a diagnostic SQLSTATE.
+  // Network/system errors can also carry short codes (for example EPIPE), which are omitted.
   if (!(error instanceof postgres.PostgresError)) return undefined;
   return typeof error.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code) ? error.code : undefined;
+}
+
+function getGenericClientErrorMessage(statusCode: number): string {
+  switch (statusCode) {
+    case 400: return 'Bad Request';
+    case 401: return 'Unauthorized';
+    case 403: return 'Forbidden';
+    case 404: return 'Not Found';
+    case 405: return 'Method Not Allowed';
+    case 408: return 'Request Timeout';
+    case 409: return 'Conflict';
+    case 413: return 'Payload Too Large';
+    case 415: return 'Unsupported Media Type';
+    case 422: return 'Unprocessable Entity';
+    case 429: return 'Too Many Requests';
+    default: return 'Client Error';
+  }
 }
 
 export function errorHandler(
@@ -48,7 +76,7 @@ export function errorHandler(
   // Keep only bounded metadata and a validated SQLSTATE so failures remain diagnosable without echoing sensitive values.
   const logEntry: Record<string, string | number> = {
     event: 'http_error',
-    errorName: /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(err.name) ? err.name : 'Error',
+    errorName: getSafeErrorType(err),
     statusCode,
     method: req.method,
   };
@@ -79,12 +107,8 @@ export function errorHandler(
       clientMessage = err.message || 'Forbidden';
     } else if (err instanceof NotFoundError) {
       clientMessage = err.message || 'Not Found';
-    } else if (statusCode === 403) {
-      clientMessage = 'Forbidden';
-    } else if (statusCode === 404) {
-      clientMessage = 'Not Found';
     } else {
-      clientMessage = 'Bad Request';
+      clientMessage = getGenericClientErrorMessage(statusCode);
     }
   }
 
