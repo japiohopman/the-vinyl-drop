@@ -1,4 +1,5 @@
 import request from 'supertest';
+import postgres from 'postgres';
 import express, { Request, Response, NextFunction } from 'express';
 import { errorHandler } from '../src/app/middleware/errorHandler';
 import { renderWithLayout } from '../src/app/utils/render';
@@ -129,6 +130,7 @@ describe('Centralized Error Handler Middleware', () => {
     const app = express();
     const secretLikeValue = 'mock-refresh-token-must-not-be-logged';
     const error = new Error(`Query failed while processing ${secretLikeValue}`) as Error & { code?: unknown };
+    Object.setPrototypeOf(error, postgres.PostgresError.prototype);
     error.name = 'PostgresError';
     error.code = '42703';
 
