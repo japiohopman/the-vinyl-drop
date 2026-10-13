@@ -361,6 +361,18 @@ export async function updatePassword(password: string, options?: AuthOptions): P
     };
   }
 
+  // Revoke the recovery session using the same client that holds the setSession() state.
+  // The controller will clear the browser cookies regardless; a revocation failure must not
+  // turn an already-successful password update into a misleading failed-reset response.
+  try {
+    const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
+    if (signOutError) {
+      console.error('[auth:updatePassword] Session revocation failed after password update');
+    }
+  } catch {
+    console.error('[auth:updatePassword] Session revocation failed after password update');
+  }
+
   return {
     user: data.user,
     session: null,
