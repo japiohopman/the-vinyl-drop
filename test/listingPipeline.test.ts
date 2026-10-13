@@ -17,6 +17,7 @@ import {
   getListingWithDetails,
 } from '../src/app/services/listingService';
 import { ConditionGrade } from '../src/db/schema/enums';
+import { config } from '../src/config/env';
 import { AuthorizationError, ValidationError } from '../src/app/services/errors';
 
 // Mock repository functions and database for isolated unit testing
@@ -611,6 +612,62 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       const response = await supertest(app).get('/listings/new');
       expect(response.status).toBe(302);
       expect(response.headers.location).toContain('/auth/login?next=%2Flistings%2Fnew');
+    });
+
+    it('POST /listings/:id/photos should reject an authenticated non-owner before any photo/storage write', async () => {
+      const nonOwnerId = '20000000-0000-4000-8000-000000000002';
+      const mockSupabase = {
+        auth: {
+          getUser: jest.fn().mockResolvedValue({
+            data: { user: { id: nonOwnerId, email: 'buyer@example.com' } },
+            error: null,
+          }),
+        },
+      };
+      /* eslint-disable @typescript-eslint/no-explicit-any */
+      setSupabaseClient(mockSupabase as any);
+      (profileRepo.findProfileById as jest.Mock).mockResolvedValue({
+        id: nonOwnerId,
+        username: 'buyer_user',
+        displayName: 'Buyer User',
+      });
+      (listingRepo.findListingById as jest.Mock).mockResolvedValue({
+        id: csrfListingId,
+        sellerId: csrfSellerId,
+        physicalCopyId: csrfCopyId,
+        status: 'draft',
+        price: 2999,
+        currency: 'EUR',
+        tradeAvailable: false,
+        description: null,
+      });
+
+      const sampleImage = await sharp({
+        create: { width: 50, height: 50, channels: 3, background: { r: 30, g: 80, b: 120 } },
+      })
+        .jpeg()
+        .toBuffer();
+      const storageModule = await import('../src/app/services/storageService');
+      const uploadSpy = jest.spyOn(storageModule, 'uploadListingPhotoToStorage');
+
+      try {
+        const response = await supertest(app)
+          .post(`/listings/${csrfListingId}/photos`)
+          .set('Accept', 'application/json')
+          .set('Cookie', ['sb-access-token=mock-valid-non-owner-token'])
+          .set('Origin', new URL(config.APP_BASE_URL).origin)
+          .attach('photo', sampleImage, { filename: 'forged-owner-upload.jpg', contentType: 'image/jpeg' });
+
+        expect(response.status).toBe(403);
+        expect(response.body.error).toContain('authorized');
+        expect(listingRepo.findListingById).toHaveBeenCalledWith(csrfListingId, undefined);
+        expect(photoRepo.countPhotosByListingId).not.toHaveBeenCalled();
+        expect(photoRepo.createListingPhoto).not.toHaveBeenCalled();
+        expect(orphanRepo.recordOrphanedStorageObject).not.toHaveBeenCalled();
+        expect(uploadSpy).not.toHaveBeenCalled();
+      } finally {
+        uploadSpy.mockRestore();
+      }
     });
 
     it('POST /listings should reject a foreign Origin before creating a listing', async () => {
