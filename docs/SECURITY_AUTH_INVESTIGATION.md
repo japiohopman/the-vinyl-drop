@@ -173,3 +173,27 @@ Do not mark this work complete until evidence is recorded for the relevant items
 ## CLI agent hand-off
 
 Start with a read-only inspection and a concise root-cause report. Then propose focused changes and tests. Preserve the current recovery security invariant, never print secrets, do not modify `CHATGPT.md`, do not bypass repository safety gates, and do not merge any pull request. Update this document with confirmed findings, remediation, and test evidence after the implementation has been reviewed.
+
+
+## Evidence update — 2026-10-13 (PR #81 follow-up)
+
+This update records the current state without marking Issue #87 complete.
+
+### AUTH-01 / AUTH-02 — Password recovery session
+
+- The operator reproduced `Auth session missing!` when submitting a new password on the reset page at prior PR HEAD `e9b373bab378eb377c2a73b60307c90a54fd8253`. At that revision, `updatePassword()` did not explicitly initialize the Supabase client session immediately before calling `updateUser({ password })`.
+- A follow-up commit `5265f45c891ac2d7c2d007e0c38d7346bb55dfe1` on PR #81 restores an explicit `supabase.auth.setSession({ access_token, refresh_token })` step and fails safely before `updateUser` if tokens are absent or session setup fails. Automated regression tests now cover successful session setup and failure/missing-session behavior.
+- GitHub Actions CI passed on that commit: [CI run #38372794718](https://github.com/japiohopman/the-vinyl-drop/actions/runs/38372794718) (lint, typecheck, unit/integration tests, build). The Phase Safety Gate passed on the same commit: [run #38372791640](https://github.com/japiohopman/the-vinyl-drop/actions/runs/38372791640).
+- **Not yet confirmed:** the operator has not reported a new end-to-end reset result after this corrective commit. The code fix is a supported explanation/remediation for the missing-session path, but the live/manual symptom is not marked closed until a fresh valid recovery link is exercised.
+- The current implementation grants recovery-only state only after successful server-side `verifyOtp({ token_hash, type: 'recovery' })`. A regular PKCE `code` exchange is deliberately not sufficient because the callback query's `type`/destination can be user-controlled. The reset email must therefore use the custom token-hash link documented for PR #81; the ordinary Supabase `/auth/v1/verify?token=...` route that returns a PKCE `code` is not accepted as recovery proof by this implementation.
+- The absence of the prior credential-related Console output was reported by the operator, but the exact former Console source is still not independently identified. Do not mark SEC-01 resolved based on that observation alone.
+
+### DB-01 — Separate listings-query finding
+
+The homepage `searchListings` failure remains a separate investigation from password recovery. Retain the prior database evidence and do not infer that a passing auth CI run or the recovery-session change resolves DB-01. Verify the intended database/schema only if this failure recurs; no live database operation is authorized by this note.
+
+### Remaining human verification
+
+- Re-test password recovery locally with a fresh email generated from the documented custom `token_hash` template. Do not paste the full URL, token hash, or cookies into GitHub/chat.
+- Before any staging deployment, a human must set a high-entropy `RECOVERY_SIGNING_SECRET` in the staging Render environment. After deployment, verify actual email delivery, callback/redirect, breached-password rejection, successful reset, old-password rejection, and new-password sign-in.
+- Keep Issue #87 open until the Console source/containment, recovery flow, and separate DB-01 evidence are fully resolved and recorded.
