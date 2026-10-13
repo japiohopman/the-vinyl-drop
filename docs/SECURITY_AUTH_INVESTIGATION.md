@@ -18,8 +18,8 @@ This is an evidence log, not a claim that a root cause has been found. Confirmed
 | ID | Area | Observed result | Status |
 | --- | --- | --- | --- |
 | SEC-01 | Credential exposure | Authentication cookie values from a local test session were included in a troubleshooting message. The user also reported seeing a token/code as a log entry in the browser Console. | Treat shared session credentials as compromised; exact Console log source remains unknown. |
-| AUTH-01 | Password reset | `POST /auth/reset-password` returns HTTP 400 with `Auth session missing!` after the reset page opens. | Root cause unknown. |
-| AUTH-02 | Reset email link | A received link reached the local callback/reset page; the displayed `token_hash` value appeared to begin with `pkce_`. | The link format and server-side verification result need to be verified. Do not assume this value is a valid OTP token. |
+| AUTH-01 | Password reset | An earlier revision returned HTTP 400 with `Auth session missing!`; after the session-initialization correction, the operator completed a staging password update and saw the success confirmation. | The corrective path is manually confirmed through password update. Record post-reset sign-in with the new password, rejection of the old password, and session cleanup before closing the full recovery acceptance item. |
+| AUTH-02 | Reset email link | The operator confirmed the staging Supabase URL configuration and template, requested a fresh email, followed the staging callback, and reached the successful password-update response. | The corrected staging callback/token-hash recovery path has passed the manual password-update step. Never copy a full recovery URL or token into the record. |
 | DB-01 | Homepage listings | The published-listings query fails in development while loading the homepage. Captured output includes SQL and a stack trace but no underlying PostgreSQL error code/message. | Root cause unknown. |
 
 ## SEC-01 — Authentication credentials potentially exposed
@@ -184,7 +184,7 @@ This update records the current state without marking Issue #87 complete.
 - The operator reproduced `Auth session missing!` when submitting a new password on the reset page at prior PR HEAD `e9b373bab378eb377c2a73b60307c90a54fd8253`. At that revision, `updatePassword()` did not explicitly initialize the Supabase client session immediately before calling `updateUser({ password })`.
 - A follow-up commit `5265f45c891ac2d7c2d007e0c38d7346bb55dfe1` on PR #81 restores an explicit `supabase.auth.setSession({ access_token, refresh_token })` step and fails safely before `updateUser` if tokens are absent or session setup fails. Automated regression tests now cover successful session setup and failure/missing-session behavior.
 - GitHub Actions CI passed on that commit: [CI run #38372794718](https://github.com/japiohopman/the-vinyl-drop/actions/runs/38372794718) (lint, typecheck, unit/integration tests, build). The Phase Safety Gate passed on the same commit: [run #38372791640](https://github.com/japiohopman/the-vinyl-drop/actions/runs/38372791640).
-- **Not yet confirmed:** the operator has not reported a new end-to-end reset result after this corrective commit. The code fix is a supported explanation/remediation for the missing-session path, but the live/manual symptom is not marked closed until a fresh valid recovery link is exercised.
+- **Manual staging result confirmed — 2026-10-13:** after the corrected code was deployed and the staging redirect settings/template were verified, the operator requested a fresh recovery email and completed the password update. The browser displayed: `Success: Your password has been successfully updated. Please sign in with your new password.` This confirms the flow reached a successful password-update response on staging; it does not, by itself, establish that the subsequent sign-in and old-password rejection were tested.
 - The current implementation grants recovery-only state only after successful server-side `verifyOtp({ token_hash, type: 'recovery' })`. A regular PKCE `code` exchange is deliberately not sufficient because the callback query's `type`/destination can be user-controlled. The reset email must therefore use the custom token-hash link documented for PR #81; the ordinary Supabase `/auth/v1/verify?token=...` route that returns a PKCE `code` is not accepted as recovery proof by this implementation.
 - The absence of the prior credential-related Console output was reported by the operator, but the exact former Console source is still not independently identified. Do not mark SEC-01 resolved based on that observation alone.
 
@@ -194,6 +194,8 @@ The homepage `searchListings` failure remains a separate investigation from pass
 
 ### Remaining human verification
 
-- Re-test password recovery locally with a fresh email generated from the documented custom `token_hash` template. Do not paste the full URL, token hash, or cookies into GitHub/chat.
-- Before any staging deployment, a human must set a high-entropy `RECOVERY_SIGNING_SECRET` in the staging Render environment. After deployment, verify actual email delivery, callback/redirect, breached-password rejection, successful reset, old-password rejection, and new-password sign-in.
+- The operator confirmed on 2026-10-13 that a fresh staging recovery email used the corrected staging callback and that the password update completed successfully. The browser displayed: `Success: Your password has been successfully updated. Please sign in with your new password.`
+- The earlier missing-`RECOVERY_SIGNING_SECRET` startup blocker is no longer preventing the recovery flow from executing.
+- Record a successful sign-in using the new password, confirm the old password is rejected, and confirm recovery/session cookies are cleared and the user must authenticate again. Do not share full URLs, token hashes, cookies, or passwords in GitHub/chat.
+
 - Keep Issue #87 open until the Console source/containment, recovery flow, and separate DB-01 evidence are fully resolved and recorded.
