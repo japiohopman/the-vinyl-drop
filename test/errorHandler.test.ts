@@ -183,7 +183,7 @@ describe('Centralized Error Handler Middleware', () => {
     app.use(errorHandler);
 
     const response = await request(app).get('/untrusted-client-error').set('Accept', 'application/json');
-    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\\n');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'Bad Request' });
@@ -203,7 +203,7 @@ describe('Centralized Error Handler Middleware', () => {
     app.use(errorHandler);
 
     await request(app).get('/system-code-error').set('Accept', 'application/json');
-    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\\n');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
 
     expect(logged).not.toContain('"diagnosticCode"');
     expect(logged).not.toContain('EPIPE');
