@@ -1074,6 +1074,10 @@ describe('Authentication & Session Handling', () => {
         expect(res.status).toBe(200);
         expect(mockIsPasswordPwned).toHaveBeenCalledWith('brandnewstrongpassword123');
         expect(mockSupabase.auth.updateUser).toHaveBeenCalledWith({ password: 'brandnewstrongpassword123' });
+        expect(mockSupabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+        expect(mockSupabase.auth.updateUser.mock.invocationCallOrder[0]).toBeLessThan(
+          mockSupabase.auth.signOut.mock.invocationCallOrder[0]
+        );
         expect(res.text).toContain('Your password has been successfully updated. Please sign in with your new password.');
         const cookieHeader = res.header['set-cookie'];
         const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
