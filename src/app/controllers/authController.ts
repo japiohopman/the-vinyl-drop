@@ -404,8 +404,8 @@ export async function postResetPassword(req: Request, res: Response, next: NextF
       return;
     }
 
-    // Session policy: Clear session/cookies after successful password reset to enforce re-login with new credentials
-    await signOut({ req, res });
+    // updatePassword() already revokes the active recovery session on the same Supabase client.
+    // Always clear browser cookies after the password has changed, even if server-side revocation failed.
     clearAuthCookies(res);
     clearRecoveryCookie(res);
 
