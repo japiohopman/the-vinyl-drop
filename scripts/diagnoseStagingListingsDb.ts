@@ -41,7 +41,7 @@ export function isApprovedStagingPoolerUrl(value: string | undefined): boolean {
  * The host, database, user, and project remain allowlisted before this rewrite.
  */
 export function getApprovedStagingConnectionUrl(value: string | undefined): string | null {
-  if (!isApprovedStagingPoolerUrl(value)) return null;
+  if (typeof value !== 'string' || !isApprovedStagingPoolerUrl(value)) return null;
 
   try {
     const url = new URL(value);
