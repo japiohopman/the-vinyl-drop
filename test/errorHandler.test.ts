@@ -129,6 +129,7 @@ describe('Centralized Error Handler Middleware', () => {
     const app = express();
     const secretLikeValue = 'mock-refresh-token-must-not-be-logged';
     const error = new Error(`Query failed while processing ${secretLikeValue}`) as Error & { code?: unknown };
+    error.name = 'PostgresError';
     error.code = '42703';
 
     app.get('/safe-error-log', (_req: Request, _res: Response, next: NextFunction) => {
@@ -187,6 +188,24 @@ describe('Centralized Error Handler Middleware', () => {
     expect(response.text).not.toContain(privateValue);
     expect(logged).not.toContain(privateValue);
     expect(logged).not.toContain('Bad request with private value');
+  });
+
+  it('should not log short system codes as PostgreSQL SQLSTATE values', async () => {
+    const app = express();
+    const error = new Error('Connection failed') as Error & { code?: unknown };
+    error.code = 'EPIPE';
+
+    app.get('/system-code-error', (_req: Request, _res: Response, next: NextFunction) => {
+      next(error);
+    });
+    app.use(errorHandler);
+
+    await request(app).get('/system-code-error').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\\n');
+
+    expect(logged).not.toContain('"diagnosticCode"');
+    expect(logged).not.toContain('EPIPE');
+    expect(logged).not.toContain('Connection failed');
   });
 
 });
