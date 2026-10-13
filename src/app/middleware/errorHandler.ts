@@ -15,14 +15,17 @@ export function notFoundHandler(req: Request, res: Response): void {
   res.type('txt').send('Not Found');
 }
 
+function isSafeDiagnosticCode(code: unknown): code is string {
+  // PostgreSQL SQLSTATE values are five uppercase alphanumeric characters; do not log arbitrary error codes.
+  return typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code);
+}
+
 export function errorHandler(
-  err: Error & { statusCode?: number; status?: number },
+  err: Error & { statusCode?: number; status?: number; code?: unknown },
   req: Request,
   res: Response,
   _next: NextFunction
 ): void {
-  console.error(err.stack || err.message);
-
   let statusCode = 500;
   if (err.statusCode && err.statusCode >= 400 && err.statusCode < 600) {
     statusCode = err.statusCode;
@@ -37,6 +40,27 @@ export function errorHandler(
   } else if (err instanceof NotFoundError) {
     statusCode = 404;
   }
+
+  // Never log err.message, err.stack, or arbitrary error objects: they can contain credentials or SQL details.
+  // Keep only bounded metadata and a validated SQLSTATE so failures remain diagnosable without echoing sensitive values.
+  const logEntry: Record<string, string | number> = {
+    event: 'http_error',
+    errorName: /^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(err.name) ? err.name : 'Error',
+    statusCode,
+    method: req.method,
+  };
+  const routePath = req.route?.path;
+  if (
+    typeof routePath === 'string' &&
+    routePath.length <= 160 &&
+    /^[A-Za-z0-9_/:.*-]+$/.test(routePath)
+  ) {
+    logEntry.route = routePath;
+  }
+  if (isSafeDiagnosticCode(err.code)) {
+    logEntry.diagnosticCode = err.code;
+  }
+  console.error(JSON.stringify(logEntry));
 
   res.status(statusCode);
 
