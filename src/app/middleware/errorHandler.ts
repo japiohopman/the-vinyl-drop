@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import postgres from 'postgres';
 import { renderWithLayout } from '../utils/render';
 import { ValidationError, AuthorizationError, NotFoundError } from '../services/errors';
 
@@ -18,7 +19,7 @@ export function notFoundHandler(req: Request, res: Response): void {
 function getSafeDiagnosticCode(error: Error & { code?: unknown }): string | undefined {
   // postgres.js marks server SQL errors with the PostgresError class name. Network/system errors
   // can also carry short codes (for example EPIPE), so validate the source before accepting SQLSTATE.
-  if (error.name !== 'PostgresError') return undefined;
+  if (!(error instanceof postgres.PostgresError)) return undefined;
   return typeof error.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code) ? error.code : undefined;
 }
 
