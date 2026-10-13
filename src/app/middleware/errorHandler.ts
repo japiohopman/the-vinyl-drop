@@ -65,7 +65,24 @@ export function errorHandler(
   res.status(statusCode);
 
   const isClientError = statusCode >= 400 && statusCode < 500;
-  const clientMessage = isClientError ? err.message || 'Bad Request' : 'Internal Server Error';
+  let clientMessage = 'Internal Server Error';
+  if (isClientError) {
+    // Only explicitly defined application errors may supply a user-facing message.
+    // Unknown errors can contain SQL, credentials, or other private diagnostics.
+    if (err instanceof ValidationError) {
+      clientMessage = err.message || 'Bad Request';
+    } else if (err instanceof AuthorizationError) {
+      clientMessage = err.message || 'Forbidden';
+    } else if (err instanceof NotFoundError) {
+      clientMessage = err.message || 'Not Found';
+    } else if (statusCode === 403) {
+      clientMessage = 'Forbidden';
+    } else if (statusCode === 404) {
+      clientMessage = 'Not Found';
+    } else {
+      clientMessage = 'Bad Request';
+    }
+  }
 
   if (req.accepts('html')) {
     if (isClientError) {
