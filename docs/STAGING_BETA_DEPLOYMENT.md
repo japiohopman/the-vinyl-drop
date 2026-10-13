@@ -574,6 +574,19 @@ The fresh Supabase Security Advisor query returned:
 **Issue status:** Issue #61 and parent Issue #49 remain OPEN / NOT READY until the remaining operator-run upload/network checks, the Auth Anonymous Sign-Ins configuration check, and the other documented live staging requirements are evidenced.
 
 
+#### Operator-confirmed follow-up — 2026-10-13
+
+This note supersedes the open-action wording in the earlier audit snapshot above where the operator has since supplied new confirmation. It records operator evidence; no new live upload request or Auth configuration change was performed as part of this update.
+
+- **Rejected GIF and oversized image checks:** the operator confirms these staging upload checks have already been performed three times and passed. Do not ask the operator to repeat them solely to reproduce this note. The confirmation supplied in chat did not include the numeric HTTP status codes or redirect `Location` values, so this note records the repeated pass as operator-reported and does not invent those values.
+- **Supabase Auth Anonymous Sign-Ins:** the operator checked the staging dashboard and confirmed **Allow anonymous sign-ins is OFF**. No Auth setting was changed. The conditional follow-up test for anonymous Auth-user upload behavior is therefore not required for the current staging configuration.
+- **Non-owner endpoint authorization:** [PR #98](https://github.com/japiohopman/the-vinyl-drop/pull/98) is merged. Its regression test passed CI run [#38456892479](https://github.com/japiohopman/the-vinyl-drop/actions/runs/38456892479): 28 suites and 374 tests passed, including a request through the actual `POST /listings/:id/photos` route. The non-owner received HTTP 403; photo-row counting/insertion, orphan tracking, and Storage upload were not invoked.
+- **Audit documentation:** [PR #97](https://github.com/japiohopman/the-vinyl-drop/pull/97) is merged. The latest read-only aggregate Storage snapshot remains 4 photo rows, 4 objects, 4/4 matched paths, 0 missing/unreferenced objects, 0 orphan-tracking rows, and 0 objects in the disposable probe path.
+
+The native Supabase leaked-password protection warning under Issue #62 and unrelated staging checks under parent Issue #49 remain separate gates. No live data, Storage policy, bucket setting, Auth setting, or secret was changed during this follow-up.
+
+---
+
 ### 5.6 Auth security — leaked-password protection (2026-10-12)
 
 **Target:** Supabase staging project `xuhzhdjmgvqzjxijmksu` (The Vinyl Drop)  
