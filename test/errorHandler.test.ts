@@ -168,4 +168,25 @@ describe('Centralized Error Handler Middleware', () => {
     expect(logged).not.toContain('"diagnosticCode"');
   });
 
+  it('should not reflect an unknown client-error message in the response or logs', async () => {
+    const app = express();
+    const privateValue = 'example-password-or-token-that-must-not-escape';
+    const error = new Error(`Bad request with private value ${privateValue}`) as Error & { statusCode?: number };
+    error.statusCode = 400;
+
+    app.get('/untrusted-client-error', (_req: Request, _res: Response, next: NextFunction) => {
+      next(error);
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).get('/untrusted-client-error').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\\n');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'Bad Request' });
+    expect(response.text).not.toContain(privateValue);
+    expect(logged).not.toContain(privateValue);
+    expect(logged).not.toContain('Bad request with private value');
+  });
+
 });
