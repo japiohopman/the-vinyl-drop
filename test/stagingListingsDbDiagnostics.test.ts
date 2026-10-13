@@ -1,14 +1,18 @@
 import {
+  getApprovedStagingConnectionUrl,
   hasExplicitRemoteDiagnosticConfirmation,
   isApprovedStagingPoolerUrl,
 } from '../scripts/diagnoseStagingListingsDb';
 
 const stagingRef = 'xuhzhdjmgvqzjxijmksu';
+const transactionPoolerUrl =
+  'postgresql://postgres.' + stagingRef +
+  ':password@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require';
 
 describe('remote listings DB diagnostic safety', () => {
   describe('isApprovedStagingPoolerUrl', () => {
     it.each([
-      'postgresql://postgres.' + stagingRef + ':password@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require',
+      transactionPoolerUrl,
       'postgres://postgres.' + stagingRef + ':password@aws-1-eu-west-1.pooler.supabase.com:5432/postgres',
     ])('allows the known staging pooler URL shape %s', (url) => {
       expect(isApprovedStagingPoolerUrl(url)).toBe(true);
@@ -24,9 +28,27 @@ describe('remote listings DB diagnostic safety', () => {
       'postgres://postgres.' + stagingRef + ':password@db.' + stagingRef + '.supabase.co:5432/postgres',
       'postgres://postgres.' + stagingRef + ':password@aws-0-eu-west-1.pooler.supabase.com/postgres',
       'postgres://postgres.' + stagingRef + ':password@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=disable',
+      'postgres://postgres.' + stagingRef + ':password@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require&sslrootcert=somefile',
       'postgres://postgres.' + stagingRef + ':password@aws-0-eu-west-1.pooler.supabase.com:6543/otherdb',
     ])('refuses missing, malformed, non-staging, or unsafe URL %s', (url) => {
       expect(isApprovedStagingPoolerUrl(url)).toBe(false);
+    });
+  });
+
+  describe('getApprovedStagingConnectionUrl', () => {
+    it('uses the session-pooler port and removes URL SSL options in favor of explicit verified TLS', () => {
+      const connectionUrl = getApprovedStagingConnectionUrl(transactionPoolerUrl);
+      expect(connectionUrl).not.toBeNull();
+
+      const parsed = new URL(connectionUrl as string);
+      expect(parsed.port).toBe('5432');
+      expect(parsed.searchParams.has('sslmode')).toBe(false);
+      expect(parsed.hostname).toBe('aws-0-eu-west-1.pooler.supabase.com');
+      expect(parsed.pathname).toBe('/postgres');
+    });
+
+    it('does not produce a connection URL for a non-allowlisted database', () => {
+      expect(getApprovedStagingConnectionUrl('postgres://postgres:password@db.example.com:5432/postgres')).toBeNull();
     });
   });
 
