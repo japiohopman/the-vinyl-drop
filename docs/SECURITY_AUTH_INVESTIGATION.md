@@ -1,13 +1,13 @@
 # Security and Authentication Investigation
 
-**Status:** Open investigation — root causes are not yet confirmed  
+**Status:** Open investigation — password recovery passed staging; credential-logging source and homepage database-query root cause remain unresolved  
 **Last updated:** 2026-10-13  
 **Repository:** The Vinyl Drop  
 **Related work:** [Issue #85 — this investigation handoff document](https://github.com/japiohopman/the-vinyl-drop/issues/85), [Issue #87 — root-cause investigation and remediation](https://github.com/japiohopman/the-vinyl-drop/issues/87), [Issue #79 — password recovery](https://github.com/japiohopman/the-vinyl-drop/issues/79), [PR #81 — recovery implementation](https://github.com/japiohopman/the-vinyl-drop/pull/81), [Issue #82 — Supabase Auth email branding](https://github.com/japiohopman/the-vinyl-drop/issues/82)
 
 ## Purpose
 
-Record the observed password-recovery failure, reported credential exposure in the browser Console, and development homepage database error in one place for the CLI agent and reviewers.
+Preserve the history and resolution of the password-recovery failure, and track the still-unresolved credential-related browser Console output and development homepage database error in one place for the CLI agent and reviewers.
 
 This is an evidence log, not a claim that a root cause has been found. Confirmed observations, hypotheses, and outstanding work are separated below. Update this document as investigation and tests produce evidence.
 
@@ -62,18 +62,20 @@ Treat the shared authentication cookie values as disclosed bearer credentials, e
 
 Firefox DevTools can display cookies and headers under Network even when the application never logs those values. In this case, the user separately confirmed seeing a Console log entry, so the source must be traced. Do not conclude that the logging vulnerability is fixed until that entry is identified and the relevant code/configuration is tested.
 
-## AUTH-01 — Password reset fails with `Auth session missing!`
+## AUTH-01 — Historical reset failure, corrected in PR #81
 
-### Reproduction observed
+> **Current status (2026-10-13):** the corrected recovery flow has passed the required staging email/password tests, including rejection of a known-breached password, rejection of the old password, and successful sign-in with the new password. The report below records the original failure before the fix; it is not the current staging result.
+
+### Historical reproduction (before the PR #81 correction)
 
 1. Request a password recovery email using the local application and test account.
 2. Open the reset link. The browser reaches `/auth/reset-password`.
 3. Submit the new password.
 4. `POST /auth/reset-password` returns **HTTP 400 Bad Request** with the error `Auth session missing!`.
 
-The inspected request included the three cookie names listed in SEC-01, but that alone does not prove that the server validated the session successfully, that middleware attached a user/session, or that Supabase's client used by the password-update operation has the expected session.
+The inspected request included the three cookie names listed in SEC-01, but that alone did not prove that the server validated the session successfully, that middleware attached a user/session, or that Supabase's client used by the password-update operation had the expected session. The missing-session path was corrected by the `setSession()` change in merged PR #81 and the corrected recovery flow passed staging verification on 2026-10-13.
 
-### Relevant code paths to trace
+### Relevant code paths
 
 - `src/app/controllers/authController.ts` — callback handling and GET/POST reset handlers.
 - `src/app/services/authService.ts` — callback verification and password update.
@@ -82,9 +84,11 @@ The inspected request included the three cookie names listed in SEC-01, but that
 - `test/auth.test.ts`, `test/authCookieFlags.test.ts`, and relevant recovery tests.
 - `docs/STAGING_BETA_DEPLOYMENT.md` — staging instructions and recovery-email template.
 
-### Required investigation
+### Historical diagnostic checklist and ongoing security invariants
 
-1. Trace the request end-to-end: reset email request → callback → OTP/token verification → session cookie response → redirect → session middleware → reset POST → Supabase password update → cookie/session cleanup.
+The diagnostic steps below document the original investigation. The successful staging email/reset/login test is now confirmed; unresolved work in this document concerns SEC-01 and DB-01. Preserve all security invariants in any future change.
+
+1. Trace the request end-to-end when investigating any future regression: reset email request → callback → OTP/token verification → session cookie response → redirect → session middleware → reset POST → Supabase password update → cookie/session cleanup.
 2. Inspect the callback response status and redirect, whether it sets the expected cookies, cookie attributes, and whether the following POST sends them. Record only cookie **names and attributes**, never values.
 3. Inspect server-side state at the POST and the actual sanitized Supabase error. Determine why the session is missing despite cookie names being present in the request.
 4. Verify the local environment's cookie flags, host, path, SameSite, and Secure behaviour. Do not change production configuration to debug a local flow.
@@ -94,16 +98,18 @@ The inspected request included the three cookie names listed in SEC-01, but that
 
 **Do not weaken or bypass `isRecoverySessionVerified` or the server-side verification requirement to make the test pass.**
 
-## AUTH-02 — Verify the Supabase recovery email link
+## AUTH-02 — Historical email-link issue, corrected and verified on staging
 
-### Observations
+> **Current status (2026-10-13):** the staging URL configuration and custom token-hash template were verified, and the operator confirmed the complete recovery email/password test sequence passed. The observations below preserve the earlier local/redirect problem and are not a current blocker.
+
+### Historical observations (before staging configuration was corrected)
 
 - The received message used a custom callback-style link targeting the local app at `/auth/callback`, with a recovery destination and recovery-related query parameters.
 - The `token_hash` value observed in the link appeared to start with `pkce_`. The value itself is deliberately omitted.
-- The user reached the reset-password page, but submitting the form failed as described under AUTH-01.
-- The runbook currently documents a custom Supabase Reset Password template using `{{ .RedirectTo }}`, `{{ .TokenHash }}`, and `type=recovery`.
+- The user initially reached the reset-password page, but submitting the form failed as described in the historical AUTH-01 report.
+- The runbook documents the custom Supabase Reset Password template using `{{ .RedirectTo }}`, `{{ .TokenHash }}`, and `type=recovery`; this template and the corrected staging callback were subsequently verified in the successful staging test.
 
-### Required investigation
+### Historical diagnostic checklist
 
 - Inspect the actual configured Supabase template and the actual link structure locally without copying the complete URL into logs, documentation, or chat.
 - Confirm that the variable and link format produce the token type expected by the application's callback.
@@ -112,7 +118,7 @@ The inspected request included the three cookie names listed in SEC-01, but that
 - Distinguish a real OTP/token-verification failure from a session persistence/middleware failure.
 - Document a safe template example only after it is verified against the implementation and a successful staging end-to-end test.
 
-Do not assume the link is valid merely because its query parameters are present. Do not manually log or expose the token to investigate it.
+These bullets preserve the original diagnostic questions; the configured staging link/callback has since passed the manual recovery test. Never log or expose the token.
 
 ## DB-01 — Homepage published-listings query failure
 
@@ -155,20 +161,20 @@ Keep the following concerns separate:
 
 Do not weaken the provider's sending restrictions or change production Auth configuration during this investigation. Test changes in staging first.
 
-## Required final verification
+## Remaining investigation closure checklist
 
-Do not mark this work complete until evidence is recorded for the relevant items.
+The recovery-specific items below are checked because the merged fix, the required staging email/password tests, and automated session-cleanup coverage are confirmed. Issue #87 remains open until the independent security-logging and database-query findings are resolved.
 
-- [ ] Identify the exact source file/line responsible for the reported Console log entry.
-- [ ] Revoke the affected test session as far as possible and record the outcome.
-- [ ] Confirm no passwords, access tokens, refresh tokens, recovery cookies, OTPs, or complete recovery links are logged by application code or exposed in responses.
-- [ ] Explain and fix the `Auth session missing!` failure without weakening server-side recovery verification.
-- [ ] Verify the email-template link format and successful recovery end-to-end in staging.
-- [ ] Confirm a reset changes the password, clears the recovery session, and requires signing in again.
-- [ ] Capture the underlying PostgreSQL error and resolve or document the homepage listings query failure.
+- [ ] Identify the exact source file/line responsible for the reported credential-related Console log entry (SEC-01).
+- [ ] Revoke/contain the affected test session as far as possible and record the outcome (SEC-01).
+- [ ] Confirm no passwords, access tokens, refresh tokens, recovery cookies, OTPs, or complete recovery links are logged by application code or exposed in responses (SEC-01).
+- [x] Explain and fix the historical `Auth session missing!` failure without weakening server-side recovery verification (PR #81; staging retest passed).
+- [x] Verify the email-template link format and successful recovery end-to-end in staging (operator-confirmed 2026-10-13).
+- [x] Confirm the password changes, old-password login is rejected, new-password login succeeds, and recovery-session sign-out/cookie-clearing behavior is covered by the implementation and regression tests.
+- [ ] Capture the underlying PostgreSQL error and resolve or document the homepage listings query failure (DB-01).
 - [ ] Audit `docs/last_chat.md` and related diagnostic artefacts for accidental secret exposure.
-- [ ] Run relevant unit/integration tests and record actual commands/results. Mark infrastructure-dependent tests as blocked if they could not run.
-- [ ] Ensure production settings were not changed as part of this investigation.
+- [x] Run relevant recovery unit/integration tests and record CI results: [CI #38378272942](https://github.com/japiohopman/the-vinyl-drop/actions/runs/38378272942) and [Phase Safety Gate #38378269653](https://github.com/japiohopman/the-vinyl-drop/actions/runs/38378269653). The independent DB-01 tests still depend on diagnosis.
+- [x] No production settings were changed as part of the recovery fix or this documentation update.
 
 ## CLI agent hand-off
 
@@ -199,4 +205,4 @@ The homepage `searchListings` failure remains a separate investigation from pass
 - The implementation revokes the recovery session and clears the auth/recovery cookies after a successful password update; automated regression coverage checks the session cleanup call and the route's cookie-clearing behavior.
 - The recovery flow no longer needs additional email/password tests. Issue #87 remains open for the unrelated credential-related Console source/containment (SEC-01) and homepage listings-query investigation (DB-01). Do not share passwords, full recovery URLs, tokens, cookies, API keys, or secret values.
 
-- Keep Issue #87 open until the Console source/containment, recovery flow, and separate DB-01 evidence are fully resolved and recorded.
+- Keep Issue #87 open until SEC-01 Console-source/containment and DB-01 root-cause evidence are resolved and recorded. AUTH-01/AUTH-02 recovery testing passed on staging and is no longer an outstanding blocker.
