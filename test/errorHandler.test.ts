@@ -1,4 +1,5 @@
 import request from 'supertest';
+import postgres from 'postgres';
 import express, { Request, Response, NextFunction } from 'express';
 import { errorHandler } from '../src/app/middleware/errorHandler';
 import { renderWithLayout } from '../src/app/utils/render';
@@ -125,4 +126,89 @@ describe('Centralized Error Handler Middleware', () => {
     expect(response.text).toContain('You do not have permission to perform this action');
     expect(response.text).not.toContain('500 - Server Error');
   });
+  it('should log safe structured metadata without exposing an error message or stack', async () => {
+    const app = express();
+    const secretLikeValue = 'mock-refresh-token-must-not-be-logged';
+    const error = new Error(`Query failed while processing ${secretLikeValue}`) as Error & { code?: unknown };
+    Object.setPrototypeOf(error, postgres.PostgresError.prototype);
+    error.name = 'PostgresError';
+    error.code = '42703';
+
+    app.get('/safe-error-log', (_req: Request, _res: Response, next: NextFunction) => {
+      next(error);
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).get('/safe-error-log').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
+
+    expect(response.status).toBe(500);
+    expect(logged).toContain('"event":"http_error"');
+    expect(logged).toContain('"errorName":"PostgresError"');
+    expect(logged).toContain('"statusCode":500');
+    expect(logged).toContain('"method":"GET"');
+    expect(logged).toContain('"diagnosticCode":"42703"');
+    expect(logged).not.toContain(secretLikeValue);
+    expect(logged).not.toContain('Query failed');
+    expect(logged).not.toContain('Error:');
+  });
+
+  it('should not log arbitrary non-SQLSTATE error codes', async () => {
+    const app = express();
+    const error = new Error('Sensitive diagnostic detail') as Error & { code?: unknown };
+    error.code = 'secret-value-that-is-not-a-sqlstate';
+
+    app.get('/invalid-error-code', (_req: Request, _res: Response, next: NextFunction) => {
+      next(error);
+    });
+    app.use(errorHandler);
+
+    await request(app).get('/invalid-error-code').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
+
+    expect(logged).not.toContain('secret-value-that-is-not-a-sqlstate');
+    expect(logged).not.toContain('Sensitive diagnostic detail');
+    expect(logged).not.toContain('"diagnosticCode"');
+  });
+
+  it('should not reflect an unknown client-error message in the response or logs', async () => {
+    const app = express();
+    const privateValue = 'ConfidentialTokenValue';
+    const error = new Error(`Bad request with private value ${privateValue}`) as Error & { statusCode?: number };
+    error.name = privateValue;
+    error.statusCode = 400;
+
+    app.get('/untrusted-client-error', (_req: Request, _res: Response, next: NextFunction) => {
+      next(error);
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).get('/untrusted-client-error').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'Bad Request' });
+    expect(response.text).not.toContain(privateValue);
+    expect(logged).not.toContain(privateValue);
+    expect(logged).not.toContain('Bad request with private value');
+  });
+
+  it('should not log short system codes as PostgreSQL SQLSTATE values', async () => {
+    const app = express();
+    const error = new Error('Connection failed') as Error & { code?: unknown };
+    error.code = 'EPIPE';
+
+    app.get('/system-code-error', (_req: Request, _res: Response, next: NextFunction) => {
+      next(error);
+    });
+    app.use(errorHandler);
+
+    await request(app).get('/system-code-error').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
+
+    expect(logged).not.toContain('"diagnosticCode"');
+    expect(logged).not.toContain('EPIPE');
+    expect(logged).not.toContain('Connection failed');
+  });
+
 });
