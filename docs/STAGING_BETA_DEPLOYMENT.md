@@ -389,51 +389,6 @@ The checkboxes below reflect the actual live staging evidence recorded on 2026-1
 - Authenticated cross-user Data API access, OAuth callback behavior, listing/profile mutation CSRF tests, the full environment-variable audit, fixture verification, and browser certificate inspection remain unverified.
 - **Do not mark staging/beta ready or close Issue #49 yet.** Once the remaining checks are completed, append their actual outcomes here rather than assuming success.
 
-### 5.7 Fresh connected read-only Storage audit — 2026-10-13
-
-**Target:** Confirmed staging Supabase project `xuhzhdjmgvqzjxijmksu`  
-**Performed by:** Connected read-only SQL audit  
-**Scope:** Current Storage configuration, policy shape, schema/migration markers, and aggregate integrity only. No Auth settings, policies, bucket configuration, rows, or objects were changed.
-
-#### Current integrity snapshot
-
-| Check | Observed result | Assessment |
-| --- | ---: | --- |
-| `public.listing_photos` rows | 4 | Current snapshot recorded |
-| Objects in `storage.objects` for `listing-photos` | 4 | Current snapshot recorded |
-| Photo rows matched to a Storage object by path | 4 of 4 | Pass — no current missing object |
-| Photo rows whose Storage object is missing | 0 | Pass — none observed |
-| Storage objects with no corresponding photo row | 0 | Pass — none observed |
-| `public.orphaned_storage_objects` rows | 0 | Pass — no cleanup failures currently registered |
-| Objects under `__security_probe__/` | 0 | Pass — no disposable security-probe object remains |
-| `profiles.website_url` exists in this staging database | Yes | This confirms staging schema only; it does not establish the schema state of the separate local database involved in Issue #87 |
-| Rows in `drizzle.__drizzle_migrations` | 8 | Consistent with the recorded staging migration history |
-
-This is a fresh aggregate snapshot. It confirms the present state and that the anonymous probe path is empty; it does not independently attribute any earlier state to an individual rejected GIF or oversized upload. Per-attempt before/after evidence, if required for final acceptance, remains open under Issue #61.
-
-#### Current bucket and policy inspection
-
-- `storage.objects` has RLS enabled.
-- Bucket `listing-photos` is public-read, limited to 5,242,880 bytes, and allows `image/jpeg`, `image/png`, and `image/webp`.
-- Four bucket-scoped policies are present: public SELECT scoped to published listings or the owner; authenticated INSERT scoped to the listing seller; and authenticated UPDATE/DELETE scoped to the listing seller.
-- Source review also found an explicit application ownership guard in `addPhotoToListing` and route middleware on `POST /listings/:id/photos`. This is static code evidence; a direct authenticated non-owner request or equivalent targeted passing integration test is still required before that endpoint-level check can be marked passed.
-
-#### Additional Auth configuration check still required
-
-The live Storage policies include `auth.role() = 'authenticated'` alongside the policy's `TO authenticated` role clause. Supabase currently marks `auth.role()` as deprecated. Supabase also documents that **Auth anonymous users use the `authenticated` Postgres role**, with `is_anonymous` in their JWT to distinguish them. The database currently contains zero anonymous Auth user records, but that does not prove the Anonymous Sign-Ins provider is disabled.
-
-Before closing the Storage security gate, confirm in the staging Supabase Dashboard under **Authentication → Sign In / Providers** whether Anonymous Sign-Ins is disabled. If enabled, explicitly test the application flow and review the owner-only policy so an anonymous Auth session cannot be mistaken for a normal seller. Do not change live policy/configuration as part of this verification step. If a policy change is needed, create a separate reviewed implementation Issue/migration rather than silently broadening this verification Issue.
-
-References: [Supabase Anonymous Sign-Ins](https://supabase.com/docs/guides/auth/auth-anonymous) and [Deprecated RLS features (`auth.role()`)](https://supabase.com/docs/guides/troubleshooting/deprecated-rls-features-Pm77Zs).
-
-#### Read-only Security Advisor note
-
-The fresh Supabase Security Advisor query returned:
-- `auth_leaked_password_protection` — WARN; the native leaked-password control remains plan-gated on the current Free plan and is tracked under Issue #62.
-- `rls_enabled_no_policy` — INFO for `public.orphaned_storage_objects`. A read-only privilege check found no SELECT/INSERT table privileges for either `anon` or `authenticated`, and the table currently has zero rows. This is evidence about the current permissions/state, not a claim that the Advisor finding disappeared.
-
-**Issue status:** Issue #61 and parent Issue #49 remain OPEN / NOT READY until the remaining operator-run upload/network checks, the Auth Anonymous Sign-Ins configuration check, and the other documented live staging requirements are evidenced.
-
 ---
 
 ## 6. Handoff to Product Specialist
@@ -572,6 +527,52 @@ The latest `listing_photos` row still has `created_at` and `updated_at` of `2026
 
 **Scope limitation:** no separate immediate snapshot was taken between the individual GIF and oversized attempts, so this supports an aggregate post-test consistency pass but does not independently isolate the effect of each request. The visible GIF and oversized error messages are recorded above; the original upload POST status/redirect chain for each attempt remains unverified.
 ---
+
+#### Fresh connected read-only Storage audit — 2026-10-13
+
+**Target:** Confirmed staging Supabase project `xuhzhdjmgvqzjxijmksu`  
+**Performed by:** Connected read-only SQL audit  
+**Scope:** Current Storage configuration, policy shape, schema/migration markers, and aggregate integrity only. No Auth settings, policies, bucket configuration, rows, or objects were changed.
+
+##### Current integrity snapshot
+
+| Check | Observed result | Assessment |
+| --- | ---: | --- |
+| `public.listing_photos` rows | 4 | Current snapshot recorded |
+| Objects in `storage.objects` for `listing-photos` | 4 | Current snapshot recorded |
+| Photo rows matched to a Storage object by path | 4 of 4 | Pass — no current missing object |
+| Photo rows whose Storage object is missing | 0 | Pass — none observed |
+| Storage objects with no corresponding photo row | 0 | Pass — none observed |
+| `public.orphaned_storage_objects` rows | 0 | Pass — no cleanup failures currently registered |
+| Objects under `__security_probe__/` | 0 | Pass — no disposable security-probe object remains |
+| `profiles.website_url` exists in this staging database | Yes | This confirms staging schema only; it does not establish the schema state of the separate local database involved in Issue #87 |
+| Rows in `drizzle.__drizzle_migrations` | 8 | Consistent with the recorded staging migration history |
+
+This is a fresh aggregate snapshot. It confirms the present state and that the anonymous probe path is empty; it does not independently attribute any earlier state to an individual rejected GIF or oversized upload. Per-attempt before/after evidence, if required for final acceptance, remains open under Issue #61.
+
+##### Current bucket and policy inspection
+
+- `storage.objects` has RLS enabled.
+- Bucket `listing-photos` is public-read, limited to 5,242,880 bytes, and allows `image/jpeg`, `image/png`, and `image/webp`.
+- Four bucket-scoped policies are present: public SELECT scoped to published listings or the owner; authenticated INSERT scoped to the listing seller; and authenticated UPDATE/DELETE scoped to the listing seller.
+- Source review also found an explicit application ownership guard in `addPhotoToListing` and route middleware on `POST /listings/:id/photos`. This is static code evidence; a direct authenticated non-owner request or equivalent targeted passing integration test is still required before that endpoint-level check can be marked passed.
+
+##### Additional Auth configuration check still required
+
+The live Storage policies include `auth.role() = 'authenticated'` alongside the policy's `TO authenticated` role clause. Supabase currently marks `auth.role()` as deprecated. Supabase also documents that **Auth anonymous users use the `authenticated` Postgres role**, with `is_anonymous` in their JWT to distinguish them. The database currently contains zero anonymous Auth user records, but that does not prove the Anonymous Sign-Ins provider is disabled.
+
+Before closing the Storage security gate, confirm in the staging Supabase Dashboard under **Authentication → Sign In / Providers** whether Anonymous Sign-Ins is disabled. If enabled, explicitly test the application flow and review the owner-only policy so an anonymous Auth session cannot be mistaken for a normal seller. Do not change live policy/configuration as part of this verification step. If a policy change is needed, create a separate reviewed implementation Issue/migration rather than silently broadening this verification Issue.
+
+References: [Supabase Anonymous Sign-Ins](https://supabase.com/docs/guides/auth/auth-anonymous) and [Deprecated RLS features (`auth.role()`)](https://supabase.com/docs/guides/troubleshooting/deprecated-rls-features-Pm77Zs).
+
+##### Read-only Security Advisor note
+
+The fresh Supabase Security Advisor query returned:
+- `auth_leaked_password_protection` — WARN; the native leaked-password control remains plan-gated on the current Free plan and is tracked under Issue #62.
+- `rls_enabled_no_policy` — INFO for `public.orphaned_storage_objects`. A read-only privilege check found no SELECT/INSERT table privileges for either `anon` or `authenticated`, and the table currently has zero rows. This is evidence about the current permissions/state, not a claim that the Advisor finding disappeared.
+
+**Issue status:** Issue #61 and parent Issue #49 remain OPEN / NOT READY until the remaining operator-run upload/network checks, the Auth Anonymous Sign-Ins configuration check, and the other documented live staging requirements are evidenced.
+
 
 ### 5.6 Auth security — leaked-password protection (2026-10-12)
 
