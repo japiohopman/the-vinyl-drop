@@ -9,7 +9,7 @@
 
 Preserve the history and resolution of the password-recovery failure, and track the still-unresolved credential-related browser Console output and development homepage database error in one place for the CLI agent and reviewers.
 
-This is an evidence log, not a claim that a root cause has been found. Confirmed observations, hypotheses, and outstanding work are separated below. Update this document as investigation and tests produce evidence.
+This is an evidence log, not a claim that every root cause has been found. The password-recovery failure is corrected and staging-verified; the credential-related Console output and homepage database-query root causes remain unresolved. Confirmed observations, hypotheses, and outstanding work are separated below.
 
 > **Security rule:** Never add passwords, access tokens, refresh tokens, recovery-cookie values, OTPs, token hashes, full recovery URLs, authorization headers, database connection strings, or other secrets to this document, issues, pull requests, screenshots, test output, or logs. Refer to credential names only.
 
@@ -90,7 +90,7 @@ The diagnostic steps below document the original investigation. The successful s
 
 1. Trace the request end-to-end when investigating any future regression: reset email request → callback → OTP/token verification → session cookie response → redirect → session middleware → reset POST → Supabase password update → cookie/session cleanup.
 2. Inspect the callback response status and redirect, whether it sets the expected cookies, cookie attributes, and whether the following POST sends them. Record only cookie **names and attributes**, never values.
-3. Inspect server-side state at the POST and the actual sanitized Supabase error. Determine why the session is missing despite cookie names being present in the request.
+3. The original diagnosis was to inspect server-side state at the POST and the sanitized Supabase error to determine why the session was missing despite cookie names being present. PR #81 corrected the missing-session path; the staging recovery retest passed.
 4. Verify the local environment's cookie flags, host, path, SameSite, and Secure behaviour. Do not change production configuration to debug a local flow.
 5. Keep recovery state cryptographically verified and bound to the authenticated user. A `type=recovery` query parameter, an ordinary login session, or a user-forged recovery cookie must not authorize a password change.
 6. Return safe, actionable errors to the user without reflecting tokens, passwords, cookie values, SQL, or stack traces.
@@ -183,8 +183,7 @@ Start with a read-only inspection and a concise root-cause report. Then propose 
 
 ## Evidence update — 2026-10-13 (PR #81 follow-up)
 
-This update records the current state without marking Issue #87 complete.
-The operator-confirmed staging password-update result below supersedes the earlier pending-manual-retest statements for the live password-update step only; it does not resolve the separate Console-source or DB-01 findings.
+This update records the successful staging recovery tests without marking Issue #87 complete. The manual email/callback/password-reset/new-password login and old-password rejection tests are passed; only the separate Console-source/credential-containment and DB-01 findings remain unresolved.
 
 ### AUTH-01 / AUTH-02 — Password recovery session
 
