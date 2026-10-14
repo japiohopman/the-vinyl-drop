@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { basename } from 'node:path';
 import * as schema from '../src/db/schema';
@@ -18,6 +19,23 @@ export type HomeFeedQueryStage =
   | 'listing-photos-query'
   | 'later-query'
   | 'unknown-query-stage';
+
+export type HomeFeedExecutionStage =
+  | 'transaction-not-started'
+  | 'setting-statement-timeout'
+  | 'setting-lock-timeout'
+  | 'setting-idle-timeout'
+  | 'constructing-drizzle-client'
+  | 'running-drizzle-probe'
+  | 'importing-listing-service'
+  | 'listing-service-imported'
+  | 'invoking-home-feed'
+  | 'home-feed-returned';
+
+/** Indicates whether the real home-feed function was entered. */
+export function hasHomeFeedInvocationStarted(stage: HomeFeedExecutionStage): boolean {
+  return stage === 'invoking-home-feed' || stage === 'home-feed-returned';
+}
 
 /**
  * Maps only an in-memory Drizzle query-attempt count to a fixed stage label.
@@ -150,6 +168,7 @@ async function main(): Promise<void> {
     schemaCheck: 'not-run',
     migrationHistoryCheck: 'not-run',
     homeFeedQuery: 'not-run',
+    drizzleProbe: 'not-run',
   };
   let failed = false;
   let migrationHistoryExists = false;
@@ -221,28 +240,61 @@ async function main(): Promise<void> {
     }
 
     let homeFeedQueryAttemptCount = 0;
+    let drizzleProbeQueryAttemptCount = 0;
+    let activeDiagnosticPhase: 'drizzle-probe' | 'home-feed' = 'drizzle-probe';
+    let homeFeedExecutionStage: HomeFeedExecutionStage = 'transaction-not-started';
     try {
-      // Count attempted Drizzle queries without retaining query text or parameters.
+      // Count attempts in memory only; never retain SQL text or parameters.
       const diagnosticLogger = {
         logQuery: () => {
-          homeFeedQueryAttemptCount += 1;
+          if (activeDiagnosticPhase === 'drizzle-probe') {
+            drizzleProbeQueryAttemptCount += 1;
+          } else {
+            homeFeedQueryAttemptCount += 1;
+          }
         },
       };
       const cards = await client.begin('read only', async (tx) => {
+        homeFeedExecutionStage = 'setting-statement-timeout';
         await tx.unsafe("SET LOCAL statement_timeout = '8000ms'");
+        homeFeedExecutionStage = 'setting-lock-timeout';
         await tx.unsafe("SET LOCAL lock_timeout = '2000ms'");
+        homeFeedExecutionStage = 'setting-idle-timeout';
         await tx.unsafe("SET LOCAL idle_in_transaction_session_timeout = '10000ms'");
+
+        homeFeedExecutionStage = 'constructing-drizzle-client';
         const diagnosticDb = drizzle(tx as never, { schema, logger: diagnosticLogger });
+
+        // Prove the Drizzle adapter can issue one harmless read-only query before
+        // importing or invoking the application listing service. Its result is discarded.
+        homeFeedExecutionStage = 'running-drizzle-probe';
+        await diagnosticDb.execute(sql.raw('select 1 as diagnostic_probe'));
+        report.drizzleProbe = 'passed';
+
+        activeDiagnosticPhase = 'home-feed';
+        homeFeedExecutionStage = 'importing-listing-service';
         const { getHomeFeedListings } = await import('../src/app/services/listingService');
-        return getHomeFeedListings(6, diagnosticDb as never);
+        homeFeedExecutionStage = 'listing-service-imported';
+
+        homeFeedExecutionStage = 'invoking-home-feed';
+        const result = await getHomeFeedListings(6, diagnosticDb as never);
+        homeFeedExecutionStage = 'home-feed-returned';
+        return result;
       });
 
       report.homeFeedQuery = 'passed';
       report.returnedListingCount = cards.length;
     } catch (error) {
       report.homeFeedQuery = 'failed';
-      report.homeFeedQueryAttemptCount = homeFeedQueryAttemptCount;
-      report.homeFeedLastQueryAttempt = getHomeFeedQueryStage(homeFeedQueryAttemptCount);
+      report.homeFeedExecutionStage = homeFeedExecutionStage;
+      if (homeFeedExecutionStage === 'running-drizzle-probe') {
+        report.drizzleProbe = 'failed';
+      }
+      report.drizzleProbeQueryAttemptCount = drizzleProbeQueryAttemptCount;
+      if (hasHomeFeedInvocationStarted(homeFeedExecutionStage)) {
+        report.homeFeedQueryAttemptCount = homeFeedQueryAttemptCount;
+        report.homeFeedLastQueryAttempt = getHomeFeedQueryStage(homeFeedQueryAttemptCount);
+      }
       report.homeFeedSqlState = getSafeSqlState(error) || 'unclassified';
       report.homeFeedErrorTypes = getSafeErrorTypeChain(error);
       report.homeFeedErrorLocations = getSafeErrorLocations(error);
