@@ -52,6 +52,45 @@ export function getSafeSqlState(error: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * Returns only allowlisted error type labels from a bounded cause chain.
+ * Never returns error messages, SQL, connection data, or arbitrary class names.
+ */
+export function getSafeErrorTypeChain(error: unknown): string[] {
+  const seen = new Set<unknown>();
+  const types: string[] = [];
+  let current: unknown = error;
+
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (
+      !current ||
+      (typeof current !== 'object' && typeof current !== 'function') ||
+      seen.has(current)
+    ) {
+      break;
+    }
+
+    seen.add(current);
+
+    if (current instanceof postgres.PostgresError || (current instanceof Error && current.name === 'PostgresError')) {
+      types.push('PostgresError');
+    } else if (current instanceof Error) {
+      const name = current.name;
+      types.push(
+        ['DrizzleQueryError', 'TypeError', 'ReferenceError', 'RangeError', 'SyntaxError', 'Error'].includes(name)
+          ? name
+          : 'OtherError'
+      );
+    } else {
+      types.push('NonErrorObject');
+    }
+
+    current = 'cause' in current ? (current as { cause?: unknown }).cause : undefined;
+  }
+
+  return types.length > 0 ? types : ['UnknownError'];
+}
+
 async function main(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
 

@@ -10,7 +10,7 @@ This is a separate, explicitly opt-in diagnostic for the **known staging Supabas
 - It uses the session pooler (port 5432). If DATABASE_URL currently uses the transaction pooler's port 6543, the diagnostic switches only the port while preserving the allowlisted staging host, database, user, and password. This avoids the Postgres.js transaction-pooler pipelining limitation for a multi-query transaction.
 - Every diagnostic query runs inside a PostgreSQL READ ONLY transaction with short statement, lock, and idle timeouts. There are no migration, update, insert, delete, DDL, or storage calls.
 - It checks whether public.profiles.website_url exists, whether Drizzle migration history is present and includes migration 0004 or later, then calls the application's real getHomeFeedListings(6) function within a read-only transaction.
-- Output contains only check statuses, booleans, the number of returned cards, and validated SQLSTATE codes. It does not print connection URLs, usernames, row values, cookies, tokens, raw error text, or query text.
+- Output contains only check statuses, booleans, the number of returned cards, validated SQLSTATE codes, and an allowlisted chain of generic error-type labels for a failed homepage query. It does not print connection URLs, usernames, row values, cookies, tokens, raw error text, arbitrary class names, or query text.
 
 The staging project reference allowed by the script is xuhzhdjmgvqzjxijmksu. Before running, verify in the Supabase dashboard that your local DATABASE_URL belongs to that staging project. Do not run this diagnostic against production.
 
