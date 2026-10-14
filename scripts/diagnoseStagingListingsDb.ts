@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { basename } from 'node:path';
 import * as schema from '../src/db/schema';
@@ -10,6 +11,55 @@ const STAGING_SUPABASE_PROJECT_REF = 'xuhzhdjmgvqzjxijmksu';
 const CONFIRMATION_ENV = 'TVD_CONFIRM_STAGING_READONLY_DB_DIAGNOSTIC';
 const REQUIRED_CONFIRMATION = 'CONFIRM_STAGING_READ_ONLY';
 const CA_PATH_ENV = 'TVD_SUPABASE_DB_CA_PATH';
+
+export type HomeFeedQueryStage =
+  | 'no-query-observed'
+  | 'count-query'
+  | 'listing-rows-query'
+  | 'listing-photos-query'
+  | 'later-query'
+  | 'unknown-query-stage';
+
+export type HomeFeedExecutionStage =
+  | 'transaction-not-started'
+  | 'constructing-drizzle-client'
+  | 'opening-read-only-transaction'
+  | 'setting-statement-timeout'
+  | 'setting-lock-timeout'
+  | 'setting-idle-timeout'
+  | 'running-drizzle-probe'
+  | 'importing-listing-service'
+  | 'listing-service-imported'
+  | 'invoking-home-feed'
+  | 'home-feed-returned';
+
+/** Indicates whether the real home-feed function was entered. */
+export function hasHomeFeedInvocationStarted(stage: HomeFeedExecutionStage): boolean {
+  return stage === 'invoking-home-feed' || stage === 'home-feed-returned';
+}
+
+/**
+ * Maps only an in-memory Drizzle query-attempt count to a fixed stage label.
+ * It never records SQL, query parameters, result rows, or error text.
+ */
+export function getHomeFeedQueryStage(queryAttemptCount: number): HomeFeedQueryStage {
+  if (!Number.isSafeInteger(queryAttemptCount) || queryAttemptCount < 0) {
+    return 'unknown-query-stage';
+  }
+
+  switch (queryAttemptCount) {
+    case 0:
+      return 'no-query-observed';
+    case 1:
+      return 'count-query';
+    case 2:
+      return 'listing-rows-query';
+    case 3:
+      return 'listing-photos-query';
+    default:
+      return 'later-query';
+  }
+}
 
 export function isApprovedStagingPoolerUrl(value: string | undefined): boolean {
   if (!value) return false;
@@ -105,8 +155,11 @@ async function main(): Promise<void> {
   const client = postgres(connectionUrl, {
     max: 1,
     connect_timeout: 8,
-    idle_timeout: 5,
-    max_lifetime: 30,
+    // This one-shot diagnostic has multiple bounded read-only transactions.
+    // Keep pool-level retirement from closing the connection midway through them;
+    // explicit statement/lock/transaction-idle timeouts below bound query activity.
+    idle_timeout: 15,
+    max_lifetime: 120,
     prepare: false,
     ssl: { ca: caCertificate, rejectUnauthorized: true },
     connection: { application_name: 'tvd-staging-readonly-listings-diagnostic' },
@@ -119,6 +172,7 @@ async function main(): Promise<void> {
     schemaCheck: 'not-run',
     migrationHistoryCheck: 'not-run',
     homeFeedQuery: 'not-run',
+    drizzleProbe: 'not-run',
   };
   let failed = false;
   let migrationHistoryExists = false;
@@ -189,20 +243,70 @@ async function main(): Promise<void> {
       failed = true;
     }
 
+    let homeFeedQueryAttemptCount = 0;
+    let drizzleProbeQueryAttemptCount = 0;
+    let activeDiagnosticPhase: 'ignored' | 'drizzle-probe' | 'home-feed' = 'ignored';
+    const executionState: { stage: HomeFeedExecutionStage } = { stage: 'transaction-not-started' };
     try {
-      const cards = await client.begin('read only', async (tx) => {
-        await tx.unsafe("SET LOCAL statement_timeout = '8000ms'");
-        await tx.unsafe("SET LOCAL lock_timeout = '2000ms'");
-        await tx.unsafe("SET LOCAL idle_in_transaction_session_timeout = '10000ms'");
-        const diagnosticDb = drizzle(tx as never, { schema });
+      // Count attempts in memory only; never retain SQL text or parameters.
+      const diagnosticLogger = {
+        logQuery: () => {
+          if (activeDiagnosticPhase === 'drizzle-probe') {
+            drizzleProbeQueryAttemptCount += 1;
+          } else if (activeDiagnosticPhase === 'home-feed') {
+            homeFeedQueryAttemptCount += 1;
+          }
+        },
+      };
+
+      // Drizzle's postgres-js adapter expects the root Sql client, not the
+      // transaction-scoped TransactionSql object. Start the read-only
+      // transaction through Drizzle so application queries stay inside it.
+      executionState.stage = 'constructing-drizzle-client';
+      const diagnosticDb = drizzle(client, { schema, logger: diagnosticLogger });
+
+      executionState.stage = 'opening-read-only-transaction';
+      const cards = await diagnosticDb.transaction(async (tx) => {
+        executionState.stage = 'setting-statement-timeout';
+        await tx.execute(sql.raw("SET LOCAL statement_timeout = '8000ms'"));
+        executionState.stage = 'setting-lock-timeout';
+        await tx.execute(sql.raw("SET LOCAL lock_timeout = '2000ms'"));
+        executionState.stage = 'setting-idle-timeout';
+        await tx.execute(sql.raw("SET LOCAL idle_in_transaction_session_timeout = '10000ms'"));
+
+        // Prove the Drizzle transaction can issue one harmless read-only query.
+        // Its result is discarded and setup queries are excluded from counters.
+        executionState.stage = 'running-drizzle-probe';
+        activeDiagnosticPhase = 'drizzle-probe';
+        await tx.execute(sql.raw('select 1 as diagnostic_probe'));
+        report.drizzleProbe = 'passed';
+        activeDiagnosticPhase = 'ignored';
+
+        executionState.stage = 'importing-listing-service';
         const { getHomeFeedListings } = await import('../src/app/services/listingService');
-        return getHomeFeedListings(6, diagnosticDb as never);
-      });
+        executionState.stage = 'listing-service-imported';
+
+        executionState.stage = 'invoking-home-feed';
+        activeDiagnosticPhase = 'home-feed';
+        const result = await getHomeFeedListings(6, tx as never);
+        activeDiagnosticPhase = 'ignored';
+        executionState.stage = 'home-feed-returned';
+        return result;
+      }, { accessMode: 'read only' });
 
       report.homeFeedQuery = 'passed';
       report.returnedListingCount = cards.length;
     } catch (error) {
       report.homeFeedQuery = 'failed';
+      report.homeFeedExecutionStage = executionState.stage;
+      if (executionState.stage === 'running-drizzle-probe') {
+        report.drizzleProbe = 'failed';
+      }
+      report.drizzleProbeQueryAttemptCount = drizzleProbeQueryAttemptCount;
+      if (hasHomeFeedInvocationStarted(executionState.stage)) {
+        report.homeFeedQueryAttemptCount = homeFeedQueryAttemptCount;
+        report.homeFeedLastQueryAttempt = getHomeFeedQueryStage(homeFeedQueryAttemptCount);
+      }
       report.homeFeedSqlState = getSafeSqlState(error) || 'unclassified';
       report.homeFeedErrorTypes = getSafeErrorTypeChain(error);
       report.homeFeedErrorLocations = getSafeErrorLocations(error);
