@@ -4,7 +4,7 @@ import { renderWithLayout } from '../utils/render';
 import { messagingService } from '../services/messagingService';
 
 export function messagingFeatureGuard(req: Request, res: Response, next: NextFunction): void {
-  const isEnabled = process.env.MESSAGING_ENABLED
+  const isEnabled = process.env.MESSAGING_ENABLED !== undefined
     ? process.env.MESSAGING_ENABLED.toLowerCase() === 'true' || process.env.MESSAGING_ENABLED === '1'
     : config.MESSAGING_ENABLED;
 

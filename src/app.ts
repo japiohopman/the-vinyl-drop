@@ -25,9 +25,7 @@ export function createApp(): Express {
   // Set current path and messaging feature state for EJS views navigation
   app.use((req, res, next) => {
     res.locals.currentPath = req.path;
-    res.locals.messagingEnabled = process.env.MESSAGING_ENABLED !== undefined
-      ? process.env.MESSAGING_ENABLED.toLowerCase() === 'true' || process.env.MESSAGING_ENABLED === '1'
-      : config.MESSAGING_ENABLED;
+    res.locals.messagingEnabled = config.MESSAGING_ENABLED;
     next();
   });
 

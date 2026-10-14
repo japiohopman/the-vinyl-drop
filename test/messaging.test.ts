@@ -168,6 +168,64 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       expect(res.status).toBe(302);
       expect(res.header.location).toContain('/auth/login');
     });
+
+    test('disabled feature guard performs 0 queries on conversations/messages tables', async () => {
+      process.env.MESSAGING_ENABLED = 'false';
+      const selectSpy = jest.spyOn(db, 'select');
+
+      const app = createApp();
+      await request(app).get('/messages');
+      await request(app).get(`/messages/00000000-0000-0000-0000-000000000000`);
+
+      expect(selectSpy).not.toHaveBeenCalled();
+      selectSpy.mockRestore();
+    });
+  });
+
+  describe('Service & Scoping Boundaries', () => {
+    test('reopening an archived conversation unarchives it for the buyer', async () => {
+      const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+
+      // Buyer archives conversation
+      await messagingService.archiveConversation(conv.id, buyerId);
+
+      let buyerInbox = await messagingService.getInboxForUser(buyerId);
+      expect(buyerInbox.some((item) => item.conversation.id === conv.id)).toBe(false);
+
+      // Buyer reopens conversation from listing detail
+      const reopened = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+      expect(reopened.id).toBe(conv.id);
+
+      buyerInbox = await messagingService.getInboxForUser(buyerId);
+      expect(buyerInbox.some((item) => item.conversation.id === conv.id)).toBe(true);
+    });
+
+    test('third party user receives non-enumerating 404 when accessing another user conversation ID', async () => {
+      const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+
+      await expect(messagingService.getConversationDetail(conv.id, thirdUserId)).rejects.toThrow(
+        /Conversation not found/
+      );
+      await expect(
+        messagingService.sendMessage(conv.id, thirdUserId, 'Sneaky message')
+      ).rejects.toThrow(/Conversation not found/);
+    });
+
+    test('validates message body length boundaries', async () => {
+      const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+
+      await expect(messagingService.sendMessage(conv.id, buyerId, '')).rejects.toThrow(
+        /Message body cannot be empty/
+      );
+      await expect(messagingService.sendMessage(conv.id, buyerId, '   ')).rejects.toThrow(
+        /Message body cannot be empty/
+      );
+
+      const hugeBody = 'a'.repeat(4001);
+      await expect(messagingService.sendMessage(conv.id, buyerId, hugeBody)).rejects.toThrow(
+        /Message body cannot exceed 4,000 characters/
+      );
+    });
   });
 
   describe('Service & Notification Hook Contracts', () => {
@@ -197,13 +255,13 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       await messagingService.archiveConversation(conv.id, sellerId);
 
       let sellerInbox = await messagingService.getInboxForUser(sellerId);
-      expect(sellerInbox.some((item: any) => item.conversation.id === conv.id)).toBe(false);
+      expect(sellerInbox.some((item) => item.conversation.id === conv.id)).toBe(false);
 
       // Buyer sends a new message
       await messagingService.sendMessage(conv.id, buyerId, 'New message unarchives seller thread!');
 
       sellerInbox = await messagingService.getInboxForUser(sellerId);
-      expect(sellerInbox.some((item: any) => item.conversation.id === conv.id)).toBe(true);
+      expect(sellerInbox.some((item) => item.conversation.id === conv.id)).toBe(true);
     });
   });
 });

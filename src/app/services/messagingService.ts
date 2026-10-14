@@ -33,6 +33,11 @@ export class MessagingService {
 
     const existing = await messagingRepository.findConversationByListingAndBuyer(listingId, currentUserId);
     if (existing) {
+      // Reopening an archived conversation clears archive state for the caller
+      if (existing.buyerArchivedAt !== null) {
+        await messagingRepository.setArchiveState(existing.id, 'buyer', false);
+        existing.buyerArchivedAt = null;
+      }
       return existing;
     }
 
