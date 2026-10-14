@@ -15,6 +15,8 @@ describe('remote listings DB diagnostic safety', () => {
   describe('hasHomeFeedInvocationStarted', () => {
     it.each([
       { stage: 'transaction-not-started', expected: false },
+      { stage: 'constructing-drizzle-client', expected: false },
+      { stage: 'opening-read-only-transaction', expected: false },
       { stage: 'setting-statement-timeout', expected: false },
       { stage: 'running-drizzle-probe', expected: false },
       { stage: 'importing-listing-service', expected: false },
