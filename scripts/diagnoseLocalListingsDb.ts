@@ -24,10 +24,32 @@ export function isLoopbackPostgresUrl(value: string | undefined): boolean {
  * Never return the driver's message, detail, query, or connection information.
  */
 export function getSafeSqlState(error: unknown): string | undefined {
-  if (!(error instanceof postgres.PostgresError)) return undefined;
+  // Drizzle wraps driver failures in an Error with the original postgres.js
+  // error in `cause`. Walk a short, cycle-safe cause chain so the diagnostic
+  // can report a validated SQLSTATE without exposing raw error text.
+  const seen = new Set<unknown>();
+  let current: unknown = error;
 
-  const code = (error as Error & { code?: unknown }).code;
-  return typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code) ? code : undefined;
+  for (let depth = 0; depth < 8; depth += 1) {
+    if (
+      !current ||
+      (typeof current !== 'object' && typeof current !== 'function') ||
+      seen.has(current)
+    ) {
+      return undefined;
+    }
+
+    seen.add(current);
+
+    if (current instanceof postgres.PostgresError) {
+      const code = (current as Error & { code?: unknown }).code;
+      return typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code) ? code : undefined;
+    }
+
+    current = 'cause' in current ? (current as { cause?: unknown }).cause : undefined;
+  }
+
+  return undefined;
 }
 
 async function main(): Promise<void> {

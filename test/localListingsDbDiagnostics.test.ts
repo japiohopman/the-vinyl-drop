@@ -32,6 +32,18 @@ describe('local listings DB diagnostic safety', () => {
       expect(getSafeSqlState(error)).toBe('42703');
     });
 
+    it('finds a validated SQLSTATE through a Drizzle-style cause wrapper', () => {
+      const postgresError = new Error('sensitive database message') as Error & { code?: unknown };
+      Object.setPrototypeOf(postgresError, postgres.PostgresError.prototype);
+      postgresError.code = '42703';
+
+      const wrappedError = Object.assign(new Error('wrapped query failure'), {
+        cause: postgresError,
+      });
+
+      expect(getSafeSqlState(wrappedError)).toBe('42703');
+    });
+
     it('does not expose non-Postgres errors or malformed codes', () => {
       const ordinaryError = Object.assign(new Error('private'), { code: 'EPIPE' });
       expect(getSafeSqlState(ordinaryError)).toBeUndefined();
@@ -41,6 +53,11 @@ describe('local listings DB diagnostic safety', () => {
       malformedPostgresError.code = '42!03';
 
       expect(getSafeSqlState(malformedPostgresError)).toBeUndefined();
+
+      const wrapperWithUntrustedCause = Object.assign(new Error('private'), {
+        cause: Object.assign(new Error('private cause'), { code: '42703' }),
+      });
+      expect(getSafeSqlState(wrapperWithUntrustedCause)).toBeUndefined();
     });
   });
 });
