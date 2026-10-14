@@ -1,5 +1,5 @@
 import postgres from 'postgres';
-import { getSafeErrorTypeChain, getSafeSqlState, isLoopbackPostgresUrl } from '../scripts/diagnoseLocalListingsDb';
+import { getSafeErrorLocations, getSafeErrorTypeChain, getSafeSqlState, isLoopbackPostgresUrl } from '../scripts/diagnoseLocalListingsDb';
 
 describe('local listings DB diagnostic safety', () => {
   describe('isLoopbackPostgresUrl', () => {
@@ -86,6 +86,33 @@ describe('local listings DB diagnostic safety', () => {
 
     it('labels a non-error value without printing its contents', () => {
       expect(getSafeErrorTypeChain('private query data')).toEqual(['UnknownError']);
+    });
+  });
+  
+  describe('getSafeErrorLocations', () => {
+    it('returns allowlisted source labels and positions without messages or paths', () => {
+      const error = new TypeError('secret message with query text');
+      error.stack = [
+        'TypeError: secret message with query text',
+        '    at searchListings (C:\\Users\\user\\repo\\src\\app\\repositories\\listingRepository.ts:135:24)',
+        '    at async getHomeFeedListings (C:\\Users\\user\\repo\\src\\app\\services\\listingService.ts:89:17)',
+        '    at run (C:\\Users\\user\\repo\\node_modules\\drizzle-orm\\utils.js:11:4)',
+      ].join('\n');
+
+      expect(getSafeErrorLocations(error)).toEqual([
+        { source: 'listingRepository', line: 135, column: 24 },
+        { source: 'listingService', line: 89, column: 17 },
+        { source: 'drizzle-orm', line: 11, column: 4 },
+      ]);
+      expect(JSON.stringify(getSafeErrorLocations(error))).not.toContain('Users');
+      expect(JSON.stringify(getSafeErrorLocations(error))).not.toContain('secret');
+    });
+
+    it('returns an empty list for errors without usable stack frames', () => {
+      expect(getSafeErrorLocations('private value')).toEqual([]);
+      const errorWithoutFrames = new Error('secret but no stack frame');
+      errorWithoutFrames.stack = 'Error: secret but no stack frame';
+      expect(getSafeErrorLocations(errorWithoutFrames)).toEqual([]);
     });
   });
 });

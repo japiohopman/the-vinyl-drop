@@ -4,7 +4,7 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { basename } from 'node:path';
 import * as schema from '../src/db/schema';
-import { getSafeErrorTypeChain, getSafeSqlState } from './diagnoseLocalListingsDb';
+import { getSafeErrorLocations, getSafeErrorTypeChain, getSafeSqlState } from './diagnoseLocalListingsDb';
 
 const STAGING_SUPABASE_PROJECT_REF = 'xuhzhdjmgvqzjxijmksu';
 const CONFIRMATION_ENV = 'TVD_CONFIRM_STAGING_READONLY_DB_DIAGNOSTIC';
@@ -205,6 +205,7 @@ async function main(): Promise<void> {
       report.homeFeedQuery = 'failed';
       report.homeFeedSqlState = getSafeSqlState(error) || 'unclassified';
       report.homeFeedErrorTypes = getSafeErrorTypeChain(error);
+      report.homeFeedErrorLocations = getSafeErrorLocations(error);
       failed = true;
     }
   } finally {
