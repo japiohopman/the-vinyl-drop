@@ -11,6 +11,37 @@ const CONFIRMATION_ENV = 'TVD_CONFIRM_STAGING_READONLY_DB_DIAGNOSTIC';
 const REQUIRED_CONFIRMATION = 'CONFIRM_STAGING_READ_ONLY';
 const CA_PATH_ENV = 'TVD_SUPABASE_DB_CA_PATH';
 
+export type HomeFeedQueryStage =
+  | 'no-query-observed'
+  | 'count-query'
+  | 'listing-rows-query'
+  | 'listing-photos-query'
+  | 'later-query'
+  | 'unknown-query-stage';
+
+/**
+ * Maps only an in-memory Drizzle query-attempt count to a fixed stage label.
+ * It never records SQL, query parameters, result rows, or error text.
+ */
+export function getHomeFeedQueryStage(queryAttemptCount: number): HomeFeedQueryStage {
+  if (!Number.isSafeInteger(queryAttemptCount) || queryAttemptCount < 0) {
+    return 'unknown-query-stage';
+  }
+
+  switch (queryAttemptCount) {
+    case 0:
+      return 'no-query-observed';
+    case 1:
+      return 'count-query';
+    case 2:
+      return 'listing-rows-query';
+    case 3:
+      return 'listing-photos-query';
+    default:
+      return 'later-query';
+  }
+}
+
 export function isApprovedStagingPoolerUrl(value: string | undefined): boolean {
   if (!value) return false;
 
@@ -189,12 +220,19 @@ async function main(): Promise<void> {
       failed = true;
     }
 
+    let homeFeedQueryAttemptCount = 0;
     try {
+      // Count attempted Drizzle queries without retaining query text or parameters.
+      const diagnosticLogger = {
+        logQuery: () => {
+          homeFeedQueryAttemptCount += 1;
+        },
+      };
       const cards = await client.begin('read only', async (tx) => {
         await tx.unsafe("SET LOCAL statement_timeout = '8000ms'");
         await tx.unsafe("SET LOCAL lock_timeout = '2000ms'");
         await tx.unsafe("SET LOCAL idle_in_transaction_session_timeout = '10000ms'");
-        const diagnosticDb = drizzle(tx as never, { schema });
+        const diagnosticDb = drizzle(tx as never, { schema, logger: diagnosticLogger });
         const { getHomeFeedListings } = await import('../src/app/services/listingService');
         return getHomeFeedListings(6, diagnosticDb as never);
       });
@@ -203,6 +241,8 @@ async function main(): Promise<void> {
       report.returnedListingCount = cards.length;
     } catch (error) {
       report.homeFeedQuery = 'failed';
+      report.homeFeedQueryAttemptCount = homeFeedQueryAttemptCount;
+      report.homeFeedLastQueryAttempt = getHomeFeedQueryStage(homeFeedQueryAttemptCount);
       report.homeFeedSqlState = getSafeSqlState(error) || 'unclassified';
       report.homeFeedErrorTypes = getSafeErrorTypeChain(error);
       report.homeFeedErrorLocations = getSafeErrorLocations(error);
