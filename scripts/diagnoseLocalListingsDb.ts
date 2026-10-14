@@ -91,6 +91,70 @@ export function getSafeErrorTypeChain(error: unknown): string[] {
   return types.length > 0 ? types : ['UnknownError'];
 }
 
+export type SafeErrorLocationSource =
+  | 'listingService'
+  | 'listingRepository'
+  | 'listingCardViewModel'
+  | 'dbSchema'
+  | 'drizzle-orm'
+  | 'postgres.js'
+  | 'node_modules'
+  | 'runtime';
+
+export interface SafeErrorLocation {
+  source: SafeErrorLocationSource;
+  line: number;
+  column: number;
+}
+
+/**
+ * Extract allowlisted source labels and positions from stack frames only.
+ * Error messages, function names, absolute paths, and SQL are never returned.
+ */
+export function getSafeErrorLocations(error: unknown): SafeErrorLocation[] {
+  if (!(error instanceof Error) || typeof error.stack !== 'string') return [];
+
+  const locations: SafeErrorLocation[] = [];
+  const seen = new Set<string>();
+
+  for (const rawFrame of error.stack.split('\n').slice(1, 25)) {
+    let frame = rawFrame.trim();
+    const openParen = frame.lastIndexOf('(');
+    if (openParen >= 0) frame = frame.slice(openParen + 1).replace(/\)?$/, '');
+    frame = frame.replace(/^at\s+/, '').replace(/^file:\/\/\//i, '');
+
+    const lastColon = frame.lastIndexOf(':');
+    const previousColon = frame.lastIndexOf(':', lastColon - 1);
+    if (lastColon < 0 || previousColon < 0) continue;
+
+    const lineText = frame.slice(previousColon + 1, lastColon);
+    const columnText = frame.slice(lastColon + 1);
+    if (!/^\d+$/.test(lineText) || !/^\d+$/.test(columnText)) continue;
+
+    const filePath = frame.slice(0, previousColon).replace(/\\/g, '/').toLowerCase();
+    const line = Number(lineText);
+    const column = Number(columnText);
+    if (!filePath || !Number.isSafeInteger(line) || line < 1 || !Number.isSafeInteger(column) || column < 1) continue;
+
+    let source: SafeErrorLocationSource = 'runtime';
+    if (filePath.includes('/src/app/services/listingservice.')) source = 'listingService';
+    else if (filePath.includes('/src/app/repositories/listingrepository.')) source = 'listingRepository';
+    else if (filePath.includes('/src/app/view-models/listingcardviewmodel.')) source = 'listingCardViewModel';
+    else if (filePath.includes('/src/db/schema/')) source = 'dbSchema';
+    else if (filePath.includes('/node_modules/drizzle-orm/')) source = 'drizzle-orm';
+    else if (filePath.includes('/node_modules/postgres/')) source = 'postgres.js';
+    else if (filePath.includes('/node_modules/')) source = 'node_modules';
+
+    const key = `${source}:${line}:${column}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    locations.push({ source, line, column });
+    if (locations.length >= 6) break;
+  }
+
+  return locations;
+}
+
 async function main(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
 
