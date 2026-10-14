@@ -10,6 +10,7 @@ import authRoutes from './authRoutes';
 import profileRoutes from './profileRoutes';
 import listingRoutes from './listingRoutes';
 import releaseRoutes from './releaseRoutes';
+import messagingRoutes from './messagingRoutes';
 
 const router = Router();
 
@@ -23,6 +24,7 @@ router.get('/community-rules', getCommunityRulesPage);
 router.use('/auth', authRoutes);
 router.use('/listings', listingRoutes);
 router.use('/releases', releaseRoutes);
+router.use('/messages', messagingRoutes);
 
 // Narrow route compatibility for the + DROP product navigation contract
 router.get('/drop/new', requireAuth, getSelectReleasePage);

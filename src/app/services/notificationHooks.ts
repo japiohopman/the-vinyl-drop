@@ -1,9 +1,11 @@
 export interface NotificationEvent {
-  type: 'comment.created' | 'favorite.created';
+  type: 'comment.created' | 'favorite.created' | 'message.created';
   actorId: string;
   recipientId: string;
   listingId: string;
   commentId?: string;
+  conversationId?: string;
+  messageId?: string;
   createdAt: Date;
 }
 

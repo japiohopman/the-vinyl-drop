@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import router from './app/routes';
 import { sessionMiddleware } from './app/middleware/auth';
 import { notFoundHandler, errorHandler } from './app/middleware/errorHandler';
+import { config } from './config/env';
 
 export function createApp(): Express {
   const app = express();
@@ -21,9 +22,12 @@ export function createApp(): Express {
   // Session middleware
   app.use(sessionMiddleware);
 
-  // Set current path for EJS views navigation state
+  // Set current path and messaging feature state for EJS views navigation
   app.use((req, res, next) => {
     res.locals.currentPath = req.path;
+    res.locals.messagingEnabled = process.env.MESSAGING_ENABLED !== undefined
+      ? process.env.MESSAGING_ENABLED.toLowerCase() === 'true' || process.env.MESSAGING_ENABLED === '1'
+      : config.MESSAGING_ENABLED;
     next();
   });
 

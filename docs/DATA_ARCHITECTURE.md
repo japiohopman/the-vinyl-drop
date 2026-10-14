@@ -139,10 +139,55 @@ Indexes:
 - `comments_author_idx` on `authorId`
 - `comments_created_at_idx` on `createdAt`
 
+### `conversations` (`src/db/schema/conversations.ts`)
+
+Private buyer/seller conversations linked to a record listing.
+
+Columns:
+- `id`: `uuid` (Primary Key, default `gen_random_uuid()`).
+- `listingId`: `uuid` (Not Null, FK -> `listings.id` NO ACTION).
+- `buyerId`: `uuid` (Not Null, FK -> `profiles.id` NO ACTION).
+- `buyerReadAt`: `timestamp with time zone` (Nullable).
+- `sellerReadAt`: `timestamp with time zone` (Nullable).
+- `buyerArchivedAt`: `timestamp with time zone` (Nullable).
+- `sellerArchivedAt`: `timestamp with time zone` (Nullable).
+- `createdAt`: `timestamp with time zone` (Not Null, default `now()`).
+- `updatedAt`: `timestamp with time zone` (Not Null, default `now()`).
+
+Constraints & Indexes:
+- Unique Index `conversations_listing_buyer_idx` on `(listingId, buyerId)`.
+- `conversations_listing_idx` on `listingId`.
+- `conversations_buyer_idx` on `buyerId`.
+- `conversations_updated_at_idx` on `updatedAt`.
+- Database trigger `check_conversation_validity`: Rejects self-conversations (`buyer_id = seller_id`) and conversations on non-published listings.
+- Client role privilege revocation: `REVOKE ALL ON conversations FROM anon, authenticated`.
+
+### `messages` (`src/db/schema/messages.ts`)
+
+Immutable plain-text messages inside private conversations.
+
+Columns:
+- `id`: `uuid` (Primary Key, default `gen_random_uuid()`).
+- `conversationId`: `uuid` (Not Null, FK -> `conversations.id` NO ACTION).
+- `senderId`: `uuid` (Not Null, FK -> `profiles.id` NO ACTION).
+- `body`: `text` (Not Null).
+- `createdAt`: `timestamp with time zone` (Not Null, default `now()`).
+
+Constraints & Indexes:
+- Check constraint `messages_body_length_check`: `length(trim(body)) > 0 AND length(body) <= 4000`.
+- Deterministic chronological retrieval index `messages_conversation_created_id_idx` on `(conversationId, createdAt, id)`.
+- `messages_sender_idx` on `senderId`.
+- Database trigger `check_message_sender_validity`: Rejects message sender who is neither the buyer nor the listing seller.
+- Client role privilege revocation: `REVOKE ALL ON messages FROM anon, authenticated`.
+
 ## Enums (`src/db/schema/enums.ts`)
 
 - `condition_grade_enum`: `'M'`, `'NM'`, `'VG+'`, `'VG'`, `'VG-'`, `'G+'`, `'G'`, `'F'`, `'P'`.
 - `listing_status_enum`: `'draft'`, `'published'`, `'reserved'`, `'sold'`, `'traded'`, `'archived'`.
+
+## Feature Flags (`src/config/env.ts`)
+
+- `MESSAGING_ENABLED`: Boolean fail-closed feature flag for private messaging routes and entry points. Defaults to `false` in staging/production unless explicitly enabled.
 
 ## Storage architecture
 
@@ -169,11 +214,11 @@ Middleware (`sessionMiddleware` and `requireAuth`) binds `req.user` and `req.pro
 ```
 HTTP Request
   └─> Route handler (`src/app/routes/`)
-        └─> Middleware (`sessionMiddleware`, `requireAuth`, `validateSameOrigin`)
+        └─> Middleware (`sessionMiddleware`, `requireAuth`, `messagingFeatureGuard`, `validateSameOrigin`)
               └─> Controller (`src/app/controllers/`)
                     └─> Validation (Zod schemas in `src/validators/`)
-                          └─> Service (`src/services/`)
-                                └─> Repository / Drizzle ORM (`src/db/`)
+                          └─> Service (`src/app/services/`)
+                                └─> Repository / Drizzle ORM (`src/app/repositories/` / `src/db/`)
                                       └─> View Model (`src/app/view-models/`)
                                             └─> EJS Template (`views/`)
 ```

@@ -1,0 +1,59 @@
+<div class="inbox-container" style="max-width: 900px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
+  <div class="inbox-header" style="margin-bottom: var(--space-6);">
+    <h1 style="font-family: var(--font-display); font-size: var(--font-size-2xl);">Inbox — Messages</h1>
+    <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">Private buyer & seller communications</p>
+  </div>
+
+  <% if (!summaries || summaries.length === 0) { %>
+    <div class="empty-inbox-state" style="padding: var(--space-8); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); text-align: center;">
+      <div style="font-size: 48px; margin-bottom: var(--space-3);">💬</div>
+      <h3 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-2);">No messages yet</h3>
+      <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); max-width: 450px; margin: 0 auto var(--space-4);">
+        When you reach out to a seller from a record listing or a buyer messages you, your private conversations will appear here.
+      </p>
+      <a href="/browse" class="btn btn-primary">Browse Record Drops</a>
+    </div>
+  <% } else { %>
+    <div class="inbox-list" style="display: flex; flex-direction: column; gap: var(--space-3);">
+      <% summaries.forEach(function(item) { %>
+        <div class="inbox-item" style="border: var(--border-thick); border-radius: var(--radius-sm); background: <%= item.unreadCount > 0 ? 'var(--color-white)' : 'var(--color-paper-muted)' %>; position: relative; transition: transform 0.1s ease;">
+          <a href="/messages/<%= item.conversation.id %>" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; padding: var(--space-4); text-decoration: none; color: inherit; gap: var(--space-3);">
+            <div style="flex: 1; min-width: 250px;">
+              <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1);">
+                <strong style="font-family: var(--font-display); font-size: var(--font-size-base); color: var(--color-ink);">
+                  <%= item.release.artist %> — <%= item.release.title %>
+                </strong>
+                <% if (item.unreadCount > 0) { %>
+                  <span style="font-family: var(--font-mono); font-size: var(--font-size-2xs); background: var(--color-rust-accessible); color: var(--color-white); padding: 2px 6px; border-radius: var(--radius-sm); font-weight: 700;">
+                    <%= item.unreadCount %> NEW
+                  </span>
+                <% } %>
+              </div>
+
+              <div style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); margin-bottom: var(--space-2);">
+                With @<%= item.otherParticipant.username %> (<%= item.otherParticipant.displayName || item.otherParticipant.username %>)
+              </div>
+
+              <% if (item.lastMessage) { %>
+                <div style="font-size: var(--font-size-sm); color: var(--color-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 500px;">
+                  <%= item.lastMessage.body %>
+                </div>
+              <% } else { %>
+                <div style="font-size: var(--font-size-sm); color: var(--color-ink-muted); font-style: italic;">
+                  Thread created. Send the first message!
+                </div>
+              <% } %>
+            </div>
+
+            <div style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2);">
+              <span><%= new Date(item.conversation.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) %></span>
+              <form action="/messages/<%= item.conversation.id %>/archive" method="POST" style="margin: 0;" onclick="event.stopPropagation();">
+                <button type="submit" class="btn btn-outline btn-xs" style="font-size: 10px; padding: 2px 6px;">Archive</button>
+              </form>
+            </div>
+          </a>
+        </div>
+      <% }); %>
+    </div>
+  <% } %>
+</div>
