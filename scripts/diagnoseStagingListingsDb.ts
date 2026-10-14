@@ -155,8 +155,11 @@ async function main(): Promise<void> {
   const client = postgres(connectionUrl, {
     max: 1,
     connect_timeout: 8,
-    idle_timeout: 5,
-    max_lifetime: 30,
+    // This one-shot diagnostic has multiple bounded read-only transactions.
+    // Keep pool-level retirement from closing the connection midway through them;
+    // explicit statement/lock/transaction-idle timeouts below bound query activity.
+    idle_timeout: 15,
+    max_lifetime: 120,
     prepare: false,
     ssl: { ca: caCertificate, rejectUnauthorized: true },
     connection: { application_name: 'tvd-staging-readonly-listings-diagnostic' },
