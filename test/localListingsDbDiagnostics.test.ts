@@ -110,7 +110,9 @@ describe('local listings DB diagnostic safety', () => {
 
     it('returns an empty list for errors without usable stack frames', () => {
       expect(getSafeErrorLocations('private value')).toEqual([]);
-      expect(getSafeErrorLocations(new Error('secret but no stack frame'))).toEqual([]);
+      const errorWithoutFrames = new Error('secret but no stack frame');
+      errorWithoutFrames.stack = 'Error: secret but no stack frame';
+      expect(getSafeErrorLocations(errorWithoutFrames)).toEqual([]);
     });
   });
 });
