@@ -1,6 +1,7 @@
 import {
   getApprovedStagingConnectionUrl,
   getHomeFeedQueryStage,
+  hasHomeFeedInvocationStarted,
   hasExplicitRemoteDiagnosticConfirmation,
   isApprovedStagingPoolerUrl,
 } from '../scripts/diagnoseStagingListingsDb';
@@ -11,6 +12,20 @@ const transactionPoolerUrl =
   ':password@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require';
 
 describe('remote listings DB diagnostic safety', () => {
+  describe('hasHomeFeedInvocationStarted', () => {
+    it.each([
+      { stage: 'transaction-not-started', expected: false },
+      { stage: 'setting-statement-timeout', expected: false },
+      { stage: 'running-drizzle-probe', expected: false },
+      { stage: 'importing-listing-service', expected: false },
+      { stage: 'listing-service-imported', expected: false },
+      { stage: 'invoking-home-feed', expected: true },
+      { stage: 'home-feed-returned', expected: true },
+    ] as const)('maps execution stage $stage to $expected', ({ stage, expected }) => {
+      expect(hasHomeFeedInvocationStarted(stage)).toBe(expected);
+    });
+  });
+
   describe('getHomeFeedQueryStage', () => {
     it.each([
       { count: 0, expected: 'no-query-observed' },
