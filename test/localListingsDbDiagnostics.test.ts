@@ -1,5 +1,5 @@
 import postgres from 'postgres';
-import { getSafeSqlState, isLoopbackPostgresUrl } from '../scripts/diagnoseLocalListingsDb';
+import { getSafeErrorTypeChain, getSafeSqlState, isLoopbackPostgresUrl } from '../scripts/diagnoseLocalListingsDb';
 
 describe('local listings DB diagnostic safety', () => {
   describe('isLoopbackPostgresUrl', () => {
@@ -58,6 +58,34 @@ describe('local listings DB diagnostic safety', () => {
         cause: Object.assign(new Error('private cause'), { code: '42703' }),
       });
       expect(getSafeSqlState(wrapperWithUntrustedCause)).toBeUndefined();
+    });
+  });
+  
+  describe('getSafeErrorTypeChain', () => {
+    it('returns only allowlisted type labels and follows wrapped causes', () => {
+      const postgresError = new Error('secret driver message') as Error & { code?: unknown };
+      Object.setPrototypeOf(postgresError, postgres.PostgresError.prototype);
+      postgresError.code = '42703';
+
+      const wrapper = Object.assign(new Error('secret wrapper message'), {
+        name: 'DrizzleQueryError',
+        cause: postgresError,
+      });
+
+      expect(getSafeErrorTypeChain(wrapper)).toEqual(['DrizzleQueryError', 'PostgresError']);
+    });
+
+    it('normalizes arbitrary error names and protects against cause cycles', () => {
+      const error = Object.assign(new Error('secret message'), {
+        name: 'postgres-password-in-error-name',
+      });
+      Object.defineProperty(error, 'cause', { value: error });
+
+      expect(getSafeErrorTypeChain(error)).toEqual(['OtherError']);
+    });
+
+    it('labels a non-error value without printing its contents', () => {
+      expect(getSafeErrorTypeChain('private query data')).toEqual(['UnknownError']);
     });
   });
 });
