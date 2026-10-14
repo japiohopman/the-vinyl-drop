@@ -12,6 +12,7 @@
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest --runInBand",
     "test:a11y": "tsx scripts/test-accessibility.ts",
     "db:diagnose:listings": "tsx scripts/diagnoseLocalListingsDb.ts",
+    "db:diagnose:listings:remote": "tsx scripts/diagnoseStagingListingsDb.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:verify": "tsx scripts/verify-migration.ts",
