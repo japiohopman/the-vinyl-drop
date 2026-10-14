@@ -1,5 +1,6 @@
 import {
   getApprovedStagingConnectionUrl,
+  getHomeFeedQueryStage,
   hasExplicitRemoteDiagnosticConfirmation,
   isApprovedStagingPoolerUrl,
 } from '../scripts/diagnoseStagingListingsDb';
@@ -10,6 +11,25 @@ const transactionPoolerUrl =
   ':password@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require';
 
 describe('remote listings DB diagnostic safety', () => {
+  describe('getHomeFeedQueryStage', () => {
+    it.each([
+      [0, 'no-query-observed'],
+      [1, 'count-query'],
+      [2, 'listing-rows-query'],
+      [3, 'listing-photos-query'],
+      [4, 'later-query'],
+      [12, 'later-query'],
+    ])('maps query-attempt count %i to the fixed label %s', (count, expected) => {
+      expect(getHomeFeedQueryStage(count)).toBe(expected);
+    });
+
+    it.each([-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+      'returns an unknown label for invalid query-attempt count %s',
+      (count) => {
+        expect(getHomeFeedQueryStage(count)).toBe('unknown-query-stage');
+      }
+    );
+  });
   describe('isApprovedStagingPoolerUrl', () => {
     it.each([
       transactionPoolerUrl,
