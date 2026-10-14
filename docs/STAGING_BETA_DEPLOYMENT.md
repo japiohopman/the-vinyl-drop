@@ -623,6 +623,8 @@ The owner confirmed that the **known-breached-password check on the normal stagi
 
 This is an operator-reported result, not a newly executed test in this documentation change. The confirmation available for this update did not include the exact test timestamp, deployed commit, copied response status/message, or a separate Auth-user-list snapshot, so those details are not inferred or fabricated here. No passwords, tokens, cookies, or other secrets are recorded.
 
+Before scheduling any further signup test, reconcile existing operator notes for the clean/unbreached-password scenario. Its absence from this update's evidence does not prove it was never performed. Only if no prior result exists should the owner decide whether to run that one-time human-operated check, since a successful signup may create a real staging Auth user.
+
 #### Human-operated staging verification after merge and deployment
 
 Do these checks only after the implementation has been human-reviewed, merged, and deployed to the confirmed staging target. Automated CI must not create real Auth accounts or mutate live Auth settings.
