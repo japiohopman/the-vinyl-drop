@@ -242,7 +242,7 @@ async function main(): Promise<void> {
     let homeFeedQueryAttemptCount = 0;
     let drizzleProbeQueryAttemptCount = 0;
     let activeDiagnosticPhase: 'drizzle-probe' | 'home-feed' = 'drizzle-probe';
-    let homeFeedExecutionStage: HomeFeedExecutionStage = 'transaction-not-started';
+    const executionState: { stage: HomeFeedExecutionStage } = { stage: 'transaction-not-started' };
     try {
       // Count attempts in memory only; never retain SQL text or parameters.
       const diagnosticLogger = {
@@ -255,30 +255,30 @@ async function main(): Promise<void> {
         },
       };
       const cards = await client.begin('read only', async (tx) => {
-        homeFeedExecutionStage = 'setting-statement-timeout';
+        executionState.stage = 'setting-statement-timeout';
         await tx.unsafe("SET LOCAL statement_timeout = '8000ms'");
-        homeFeedExecutionStage = 'setting-lock-timeout';
+        executionState.stage = 'setting-lock-timeout';
         await tx.unsafe("SET LOCAL lock_timeout = '2000ms'");
-        homeFeedExecutionStage = 'setting-idle-timeout';
+        executionState.stage = 'setting-idle-timeout';
         await tx.unsafe("SET LOCAL idle_in_transaction_session_timeout = '10000ms'");
 
-        homeFeedExecutionStage = 'constructing-drizzle-client';
+        executionState.stage = 'constructing-drizzle-client';
         const diagnosticDb = drizzle(tx as never, { schema, logger: diagnosticLogger });
 
         // Prove the Drizzle adapter can issue one harmless read-only query before
         // importing or invoking the application listing service. Its result is discarded.
-        homeFeedExecutionStage = 'running-drizzle-probe';
+        executionState.stage = 'running-drizzle-probe';
         await diagnosticDb.execute(sql.raw('select 1 as diagnostic_probe'));
         report.drizzleProbe = 'passed';
 
         activeDiagnosticPhase = 'home-feed';
-        homeFeedExecutionStage = 'importing-listing-service';
+        executionState.stage = 'importing-listing-service';
         const { getHomeFeedListings } = await import('../src/app/services/listingService');
-        homeFeedExecutionStage = 'listing-service-imported';
+        executionState.stage = 'listing-service-imported';
 
-        homeFeedExecutionStage = 'invoking-home-feed';
+        executionState.stage = 'invoking-home-feed';
         const result = await getHomeFeedListings(6, diagnosticDb as never);
-        homeFeedExecutionStage = 'home-feed-returned';
+        executionState.stage = 'home-feed-returned';
         return result;
       });
 
@@ -286,12 +286,12 @@ async function main(): Promise<void> {
       report.returnedListingCount = cards.length;
     } catch (error) {
       report.homeFeedQuery = 'failed';
-      report.homeFeedExecutionStage = homeFeedExecutionStage;
-      if (homeFeedExecutionStage === 'running-drizzle-probe') {
+      report.executionState.stage = homeFeedExecutionStage;
+      if (executionState.stage === 'running-drizzle-probe') {
         report.drizzleProbe = 'failed';
       }
       report.drizzleProbeQueryAttemptCount = drizzleProbeQueryAttemptCount;
-      if (hasHomeFeedInvocationStarted(homeFeedExecutionStage)) {
+      if (hasHomeFeedInvocationStarted(executionState.stage)) {
         report.homeFeedQueryAttemptCount = homeFeedQueryAttemptCount;
         report.homeFeedLastQueryAttempt = getHomeFeedQueryStage(homeFeedQueryAttemptCount);
       }
