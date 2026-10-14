@@ -286,7 +286,7 @@ async function main(): Promise<void> {
       report.returnedListingCount = cards.length;
     } catch (error) {
       report.homeFeedQuery = 'failed';
-      report.executionState.stage = homeFeedExecutionStage;
+      report.homeFeedExecutionStage = executionState.stage;
       if (executionState.stage === 'running-drizzle-probe') {
         report.drizzleProbe = 'failed';
       }
