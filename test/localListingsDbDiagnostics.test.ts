@@ -118,7 +118,7 @@ describe('local listings DB diagnostic safety', () => {
         ),
         '    at searchListings (C:\\repo\\src\\app\\repositories\\listingRepository.ts:135:24)',
         '    at getHomeFeedListings (C:\\repo\\src\\app\\services\\listingService.ts:89:17)',
-      ].join('\\n');
+      ].join('\n');
 
       const locations = getSafeErrorLocations(error);
       expect(locations.slice(0, 2)).toEqual([
