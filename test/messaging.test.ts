@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/pglite';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import * as dbModule from '../src/db';
+import * as authService from '../src/app/services/authService';
 import { listings, physicalCopies, profiles, releases } from '../src/db/schema';
 import { conversations } from '../src/db/schema/conversations';
 import { messages } from '../src/db/schema/messages';
@@ -16,6 +17,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
   let pg: PGlite;
   let db: any;
   let getDbSpy: jest.SpyInstance;
+  let getUserFromTokenSpy: jest.SpyInstance;
 
   const buyerId = '11111111-1111-4111-8111-111111111111';
   const sellerId = '22222222-2222-4222-8222-222222222222';
@@ -54,6 +56,13 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
 
     db = drizzle(pg);
     getDbSpy = jest.spyOn(dbModule, 'getDb').mockReturnValue(db);
+
+    getUserFromTokenSpy = jest.spyOn(authService, 'getUserFromToken').mockImplementation(async (token: string) => {
+      if (token === 'buyer-token') return { id: buyerId } as any;
+      if (token === 'seller-token') return { id: sellerId } as any;
+      if (token === 'third-token') return { id: thirdUserId } as any;
+      return null;
+    });
 
     // Seed test profiles
     await db.insert(profiles).values([
@@ -102,6 +111,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
 
   afterAll(async () => {
     getDbSpy.mockRestore();
+    getUserFromTokenSpy.mockRestore();
     if (pg) {
       await pg.close();
     }
@@ -186,6 +196,43 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
 
       expect(selectSpy).not.toHaveBeenCalled();
       selectSpy.mockRestore();
+      (config as any).MESSAGING_ENABLED = originalFlag;
+    });
+
+    test('requires CSRF same-origin headers for POST mutation routes when authenticated', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+
+      const app = createApp();
+      const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+
+      // Sending message without Origin or Referer fails with 403 when authenticated
+      const res = await request(app)
+        .post(`/messages/${conv.id}/send`)
+        .set('Cookie', [`sb-access-token=buyer-token`])
+        .send({ body: 'Test' });
+
+      expect(res.status).toBe(403);
+
+      (config as any).MESSAGING_ENABLED = originalFlag;
+    });
+
+    test('validates body type as string in send message controller', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+
+      const app = createApp();
+      const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+
+      // Passing non-string JSON body produces 400 Bad Request when authenticated and same-origin header present
+      const res = await request(app)
+        .post(`/messages/${conv.id}/send`)
+        .set('Cookie', [`sb-access-token=buyer-token`])
+        .set('Origin', 'http://localhost:3000')
+        .send({ body: { invalid: 'object' } });
+
+      expect(res.status).toBe(400);
+
       (config as any).MESSAGING_ENABLED = originalFlag;
     });
   });

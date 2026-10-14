@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { config } from '../../config/env';
 import { renderWithLayout } from '../utils/render';
 import { messagingService } from '../services/messagingService';
+import { ValidationError } from '../services/errors';
 
 export function messagingFeatureGuard(req: Request, res: Response, next: NextFunction): void {
   if (!config.MESSAGING_ENABLED) {
@@ -74,7 +75,11 @@ export async function postSendMessage(req: Request, res: Response, next: NextFun
   try {
     const userId = req.user!.id;
     const { conversationId } = req.params;
-    const { body } = req.body;
+    const { body } = req.body || {};
+
+    if (typeof body !== 'string') {
+      throw new ValidationError('Message body must be a text string');
+    }
 
     await messagingService.sendMessage(conversationId, userId, body);
     res.redirect(`/messages/${conversationId}`);
