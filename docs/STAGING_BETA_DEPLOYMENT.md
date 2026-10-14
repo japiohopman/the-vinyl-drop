@@ -617,12 +617,18 @@ This is an application-level compensating control, not the native Supabase featu
 
 The native `auth_leaked_password_protection` warning remains present on Free and is not cleared by this code. Under [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62), the owner must explicitly decide whether the app-route control and this direct-Auth limitation are acceptable for the invite-only beta. If not, scope a separately reviewed trusted server-managed signup design; do not silently broaden this implementation or change live Auth settings.
 
+#### Operator-reported signup test result — 2026-10-14
+
+The owner confirmed that the **known-breached-password check on the normal staging signup form was already run and passed before the latest label review**. Treat that scenario as completed; do not ask the owner to repeat it merely because an independent assistant session could not reach the staging URL.
+
+This is an operator-reported result, not a newly executed test in this documentation change. The confirmation available for this update did not include the exact test timestamp, deployed commit, copied response status/message, or a separate Auth-user-list snapshot, so those details are not inferred or fabricated here. No passwords, tokens, cookies, or other secrets are recorded.
+
 #### Human-operated staging verification after merge and deployment
 
 Do these checks only after the implementation has been human-reviewed, merged, and deployed to the confirmed staging target. Automated CI must not create real Auth accounts or mutate live Auth settings.
 
 1. **Confirm the target first.** Verify that the deployment is the staging app and its configured Supabase project reference is `xuhzhdjmgvqzjxijmksu`. Do not run these tests against production.
-2. **Known breached password.** Use a known breached test value (for example, `password`) on the normal signup form with a disposable test email and username. Expected: the form shows the safe rejection message. In the browser Network panel, confirm the signup request returns the validation response; do not copy cookies, authorization headers, or any password into the evidence. Confirm that no new Auth user was created by the rejected attempt.
+2. **Known breached password — operator-reported PASS (2026-10-14).** The owner confirms this staging signup check was already run and passed before the latest label review; see the dated note immediately above. Do not repeat it just because an independent session could not access staging. Historical low-level details (timestamp/deployed commit, response status, and separate Auth-user-list snapshot) were not retained in the current confirmation and must not be invented.
 3. **Password not present in the returned range.** Use a newly generated high-entropy test password and a deliberately disposable staging identity. Expected: the normal signup flow proceeds according to the staging email-confirmation configuration. Record that this was a deliberate human-operated smoke test. Do not reuse a real account password.
 4. **Failure handling.** Automated tests cover network errors, timeouts, non-success status, malformed data, and fail-closed behavior. Do not take HIBP offline or disrupt shared staging to simulate an outage; rely on isolated CI tests unless a separately approved staging fault-injection method exists.
 5. **Security Advisor.** Re-run the read-only Security Advisor check. Record the native `auth_leaked_password_protection` warning accurately as still present if the project remains on Free.
