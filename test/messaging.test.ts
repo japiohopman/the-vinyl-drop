@@ -207,31 +207,91 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
 
       // Sending message without Origin or Referer fails with 403 when authenticated
-      const res = await request(app)
+      const res1 = await request(app)
         .post(`/messages/${conv.id}/send`)
         .set('Cookie', [`sb-access-token=buyer-token`])
         .send({ body: 'Test' });
 
-      expect(res.status).toBe(403);
+      expect(res1.status).toBe(403);
+
+      // Sending message with foreign Origin fails with 403
+      const res2 = await request(app)
+        .post(`/messages/${conv.id}/send`)
+        .set('Cookie', [`sb-access-token=buyer-token`])
+        .set('Origin', 'http://attacker.com')
+        .send({ body: 'Test' });
+
+      expect(res2.status).toBe(403);
+
+      // Valid same-origin request succeeds with redirect
+      const res3 = await request(app)
+        .post(`/messages/${conv.id}/send`)
+        .set('Cookie', [`sb-access-token=buyer-token`])
+        .set('Origin', config.APP_BASE_URL)
+        .send({ body: 'Valid message' });
+
+      expect(res3.status).toBe(302);
+      expect(res3.header.location).toBe(`/messages/${conv.id}`);
 
       (config as any).MESSAGING_ENABLED = originalFlag;
     });
 
-    test('validates body type as string in send message controller', async () => {
+    test('returns non-enumerating 404 for third party user requesting another user conversation ID via HTTP route', async () => {
       const originalFlag = config.MESSAGING_ENABLED;
       (config as any).MESSAGING_ENABLED = true;
 
       const app = createApp();
       const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
 
-      // Passing non-string JSON body produces 400 Bad Request when authenticated and same-origin header present
-      const res = await request(app)
+      // Third party GET receives 404
+      const resGet = await request(app)
+        .get(`/messages/${conv.id}`)
+        .set('Cookie', [`sb-access-token=third-token`]);
+
+      expect(resGet.status).toBe(404);
+
+      // Third party POST send receives 404
+      const resPost = await request(app)
+        .post(`/messages/${conv.id}/send`)
+        .set('Cookie', [`sb-access-token=third-token`])
+        .set('Origin', config.APP_BASE_URL)
+        .send({ body: 'Attacker payload' });
+
+      expect(resPost.status).toBe(404);
+
+      (config as any).MESSAGING_ENABLED = originalFlag;
+    });
+
+    test('validates body type as string in send message controller and asserts no DB insertion on failure', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+
+      const app = createApp();
+      const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+
+      const countBeforeRows = await db.select().from(messages);
+      const countBefore = countBeforeRows.length;
+
+      // Passing non-string JSON body produces 400 Bad Request
+      const res1 = await request(app)
         .post(`/messages/${conv.id}/send`)
         .set('Cookie', [`sb-access-token=buyer-token`])
-        .set('Origin', 'http://localhost:3000')
+        .set('Origin', config.APP_BASE_URL)
         .send({ body: { invalid: 'object' } });
 
-      expect(res.status).toBe(400);
+      expect(res1.status).toBe(400);
+
+      // Passing array body produces 400 Bad Request
+      const res2 = await request(app)
+        .post(`/messages/${conv.id}/send`)
+        .set('Cookie', [`sb-access-token=buyer-token`])
+        .set('Origin', config.APP_BASE_URL)
+        .send({ body: ['invalid', 'array'] });
+
+      expect(res2.status).toBe(400);
+
+      const countAfterRows = await db.select().from(messages);
+      expect(countAfterRows.length).toBe(countBefore);
 
       (config as any).MESSAGING_ENABLED = originalFlag;
     });
