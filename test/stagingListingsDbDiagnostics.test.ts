@@ -13,13 +13,13 @@ const transactionPoolerUrl =
 describe('remote listings DB diagnostic safety', () => {
   describe('getHomeFeedQueryStage', () => {
     it.each([
-      [0, 'no-query-observed'],
-      [1, 'count-query'],
-      [2, 'listing-rows-query'],
-      [3, 'listing-photos-query'],
-      [4, 'later-query'],
-      [12, 'later-query'],
-    ])('maps query-attempt count %i to the fixed label %s', (count, expected) => {
+      { count: 0, expected: 'no-query-observed' },
+      { count: 1, expected: 'count-query' },
+      { count: 2, expected: 'listing-rows-query' },
+      { count: 3, expected: 'listing-photos-query' },
+      { count: 4, expected: 'later-query' },
+      { count: 12, expected: 'later-query' },
+    ])('maps query-attempt count $count to a fixed label', ({ count, expected }) => {
       expect(getHomeFeedQueryStage(count)).toBe(expected);
     });
 
