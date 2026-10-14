@@ -117,6 +117,8 @@ export function getSafeErrorLocations(error: unknown): SafeErrorLocation[] {
   const locations: SafeErrorLocation[] = [];
   const seen = new Set<string>();
 
+  // Inspect a bounded stack window, but do not stop at the first six frames:
+  // dependency/runtime frames can precede the application frame that matters.
   for (const rawFrame of error.stack.split('\n').slice(1, 25)) {
     let frame = rawFrame.trim();
     const openParen = frame.lastIndexOf('(');
@@ -149,10 +151,24 @@ export function getSafeErrorLocations(error: unknown): SafeErrorLocation[] {
     if (seen.has(key)) continue;
     seen.add(key);
     locations.push({ source, line, column });
-    if (locations.length >= 6) break;
   }
 
-  return locations;
+  // Prefer our own code when it appears deeper in the stack; keep all exposed
+  // values limited to fixed source labels and numeric positions.
+  const sourcePriority: Record<SafeErrorLocationSource, number> = {
+    listingRepository: 0,
+    listingService: 1,
+    listingCardViewModel: 2,
+    dbSchema: 3,
+    'drizzle-orm': 4,
+    'postgres.js': 5,
+    node_modules: 6,
+    runtime: 7,
+  };
+
+  return locations
+    .sort((a, b) => sourcePriority[a.source] - sourcePriority[b.source])
+    .slice(0, 6);
 }
 
 async function main(): Promise<void> {

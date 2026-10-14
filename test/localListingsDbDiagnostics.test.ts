@@ -108,6 +108,26 @@ describe('local listings DB diagnostic safety', () => {
       expect(JSON.stringify(getSafeErrorLocations(error))).not.toContain('secret');
     });
 
+    it('prioritizes application frames that appear after dependency frames', () => {
+      const error = new TypeError('secret message');
+      error.stack = [
+        'TypeError: secret message',
+        ...Array.from(
+          { length: 8 },
+          (_, index) => `    at dependency (C:\\repo\\node_modules\\example\\index.js:${index + 1}:2)`
+        ),
+        '    at searchListings (C:\\repo\\src\\app\\repositories\\listingRepository.ts:135:24)',
+        '    at getHomeFeedListings (C:\\repo\\src\\app\\services\\listingService.ts:89:17)',
+      ].join('\n');
+
+      const locations = getSafeErrorLocations(error);
+      expect(locations.slice(0, 2)).toEqual([
+        { source: 'listingRepository', line: 135, column: 24 },
+        { source: 'listingService', line: 89, column: 17 },
+      ]);
+      expect(JSON.stringify(locations)).not.toContain('C:\\repo');
+    });
+
     it('returns an empty list for errors without usable stack frames', () => {
       expect(getSafeErrorLocations('private value')).toEqual([]);
       const errorWithoutFrames = new Error('secret but no stack frame');
