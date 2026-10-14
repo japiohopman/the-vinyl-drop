@@ -14,6 +14,13 @@ export const envSchema = z
     APP_BASE_URL: z.string().optional(),
     ALLOWED_REDIRECT_URLS: z.string().optional(),
     RECOVERY_SIGNING_SECRET: z.string().optional(),
+    MESSAGING_ENABLED: z
+      .string()
+      .optional()
+      .transform((val) => {
+        if (val === undefined || val === '') return undefined;
+        return val.toLowerCase() === 'true' || val === '1';
+      }),
   })
   .superRefine((data, ctx) => {
     const isRuntime =
@@ -119,10 +126,11 @@ export const envSchema = z
     }
   });
 
-export type Env = Omit<z.infer<typeof envSchema>, 'APP_BASE_URL' | 'ALLOWED_REDIRECT_URLS'> & {
+export type Env = Omit<z.infer<typeof envSchema>, 'APP_BASE_URL' | 'ALLOWED_REDIRECT_URLS' | 'MESSAGING_ENABLED'> & {
   APP_BASE_URL: string;
   ALLOWED_REDIRECT_URLS: string;
   RECOVERY_SIGNING_SECRET: string;
+  MESSAGING_ENABLED: boolean;
 };
 
 export function validateEnv(envInput: Record<string, unknown> = process.env): Env {
@@ -151,6 +159,11 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
       ? 'development-only-recovery-signing-secret-key-32-bytes'
       : '');
 
+  const defaultMessagingEnabled =
+    result.data.MESSAGING_ENABLED !== undefined
+      ? result.data.MESSAGING_ENABLED
+      : result.data.NODE_ENV === 'development' || result.data.NODE_ENV === 'test';
+
   return {
     ...result.data,
     APP_BASE_URL: defaultAppBaseUrl,
@@ -158,6 +171,7 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
     RECOVERY_SIGNING_SECRET: defaultRecoverySigningSecret,
     SUPABASE_URL: result.data.SUPABASE_URL || 'https://example.supabase.co',
     SUPABASE_ANON_KEY: result.data.SUPABASE_ANON_KEY || 'mock-anon-key',
+    MESSAGING_ENABLED: defaultMessagingEnabled,
   };
 }
 

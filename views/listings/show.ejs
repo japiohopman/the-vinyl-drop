@@ -100,6 +100,21 @@
         </div>
       </div>
 
+      <!-- Message Seller Action Button for Non-Seller when Messaging Enabled -->
+      <% if (currentUser && !isSeller && listing.status === 'published' && typeof messagingEnabled !== 'undefined' && messagingEnabled) { %>
+        <div class="message-seller-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);">
+          <div>
+            <div style="font-family: var(--font-display); font-size: var(--font-size-md); font-weight: 700;">Interested in this record?</div>
+            <div style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">Send a private message directly to the seller</div>
+          </div>
+          <form action="/messages/listing/<%= listing.id %>" method="POST" style="margin: 0;">
+            <button type="submit" class="btn btn-primary">
+              💬 Message Seller
+            </button>
+          </form>
+        </div>
+      <% } %>
+
       <!-- Condition Grades -->
       <div class="condition-section">
         <h3 style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-3);">Condition Grading</h3>

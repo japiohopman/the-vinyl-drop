@@ -4,4 +4,12 @@ module.exports = {
   testMatch: ['**/test/**/*.test.ts'],
   clearMocks: true,
   verbose: true,
+  transform: {
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.typecheck.json',
+      },
+    ],
+  },
 };

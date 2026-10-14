@@ -2,6 +2,7 @@
   const activePath = typeof currentPath !== 'undefined' ? currentPath : '/';
   const user = typeof currentUser !== 'undefined' ? currentUser : null;
   const userProfile = typeof currentProfile !== 'undefined' ? currentProfile : null;
+  const isMessagingEnabled = typeof messagingEnabled !== 'undefined' ? messagingEnabled : false;
 %>
 <nav class="site-nav" aria-label="Primary Navigation">
   <button
@@ -33,6 +34,11 @@
     <li class="nav-item">
       <a href="/activity" class="nav-link<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>ACTIVITY</a>
     </li>
+    <% if (user && isMessagingEnabled) { %>
+      <li class="nav-item">
+        <a href="/messages" class="nav-link<%= activePath.startsWith('/messages') ? ' active' : '' %>"<%- activePath.startsWith('/messages') ? ' aria-current="page"' : '' %>>MESSAGES</a>
+      </li>
+    <% } %>
     <li class="nav-item">
       <a href="/profile" class="nav-link<%= activePath.startsWith('/profile') || activePath.startsWith('/profiles') ? ' active' : '' %>"<%- activePath.startsWith('/profile') || activePath.startsWith('/profiles') ? ' aria-current="page"' : '' %>><%= userProfile ? '@' + userProfile.username : 'YOU' %></a>
     </li>

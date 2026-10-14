@@ -89,7 +89,7 @@ export async function verifyMigrations(): Promise<void> {
     );
   }
 
-  // 1. Verify expected public tables (all 9 public tables including orphaned_storage_objects)
+  // 1. Verify expected public tables (all 11 public tables including conversations and messages)
   const tablesRes = await pg.query<{ table_name: string }>(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;`
   );
@@ -97,9 +97,11 @@ export async function verifyMigrations(): Promise<void> {
   const expectedTables = [
     'activity_events',
     'comments',
+    'conversations',
     'favorites',
     'listing_photos',
     'listings',
+    'messages',
     'orphaned_storage_objects',
     'physical_copies',
     'profiles',
@@ -141,6 +143,10 @@ export async function verifyMigrations(): Promise<void> {
     'activity_events_comment_id_comments_id_fk',
     'favorites_user_id_profiles_id_fk',
     'favorites_listing_id_listings_id_fk',
+    'conversations_listing_id_fkey',
+    'conversations_buyer_id_fkey',
+    'messages_conversation_id_fkey',
+    'messages_sender_id_fkey',
   ];
   for (const expectedFk of expectedFks) {
     if (!fkNames.includes(expectedFk)) {
@@ -155,6 +161,9 @@ export async function verifyMigrations(): Promise<void> {
   const checkNames = checkRes.rows.map((r) => r.conname);
   if (!checkNames.includes('listings_price_check')) {
     throw new Error("Missing expected check constraint 'listings_price_check' after migration execution");
+  }
+  if (!checkNames.includes('messages_body_length_check')) {
+    throw new Error("Missing expected check constraint 'messages_body_length_check' after migration execution");
   }
 
   // 5. Verify expected database indexes
@@ -188,6 +197,12 @@ export async function verifyMigrations(): Promise<void> {
     'favorites_user_listing_idx',
     'favorites_user_idx',
     'favorites_listing_idx',
+    'conversations_listing_buyer_idx',
+    'conversations_listing_idx',
+    'conversations_buyer_idx',
+    'conversations_updated_at_idx',
+    'messages_conversation_created_id_idx',
+    'messages_sender_idx',
   ];
   for (const expectedIndex of expectedIndexes) {
     if (!indexNames.includes(expectedIndex)) {
@@ -195,7 +210,18 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
-  // 6. Verify Row Level Security (RLS) is enabled on all 8 public tables
+  // 6. Verify triggers
+  const triggerRes = await pg.query<{ tgname: string }>(
+    `SELECT tgname FROM pg_trigger WHERE tgname IN ('trg_check_conversation_validity', 'trg_check_message_sender_validity');`
+  );
+  const triggerNames = triggerRes.rows.map((r) => r.tgname);
+  for (const expectedTrigger of ['trg_check_conversation_validity', 'trg_check_message_sender_validity']) {
+    if (!triggerNames.includes(expectedTrigger)) {
+      throw new Error(`Missing expected database trigger '${expectedTrigger}' after migration execution`);
+    }
+  }
+
+  // 7. Verify Row Level Security (RLS) is enabled on all 11 public tables
   const rlsRes = await pg.query<{ relname: string; relrowsecurity: boolean }>(
     `SELECT c.relname, c.relrowsecurity
      FROM pg_class c
@@ -213,7 +239,7 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
-  // 7. Verify Storage RLS enabled and policy details applied on storage.objects (from migration 0006)
+  // 8. Verify Storage RLS enabled and policy details applied on storage.objects (from migration 0006)
   const storageRlsRes = await pg.query<{ relrowsecurity: boolean }>(
     `SELECT c.relrowsecurity
      FROM pg_class c
@@ -344,22 +370,24 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
-  // 8. Verify orphaned_storage_objects client role privilege revocation
-  const anonPrivRes = await pg.query<{ has_privilege: boolean }>(
-    `SELECT has_table_privilege('anon', 'orphaned_storage_objects', 'SELECT, INSERT, UPDATE, DELETE') as has_privilege;`
-  );
-  const authPrivRes = await pg.query<{ has_privilege: boolean }>(
-    `SELECT has_table_privilege('authenticated', 'orphaned_storage_objects', 'SELECT, INSERT, UPDATE, DELETE') as has_privilege;`
-  );
-
-  if (anonPrivRes.rows[0].has_privilege || authPrivRes.rows[0].has_privilege) {
-    throw new Error(
-      "Table 'orphaned_storage_objects' must be internal-only, but client roles (anon/authenticated) hold table privileges"
+  // 9. Verify client role privilege revocation on internal private tables
+  for (const privateTable of ['orphaned_storage_objects', 'conversations', 'messages']) {
+    const anonPrivRes = await pg.query<{ has_privilege: boolean }>(
+      `SELECT has_table_privilege('anon', '${privateTable}', 'SELECT, INSERT, UPDATE, DELETE') as has_privilege;`
     );
+    const authPrivRes = await pg.query<{ has_privilege: boolean }>(
+      `SELECT has_table_privilege('authenticated', '${privateTable}', 'SELECT, INSERT, UPDATE, DELETE') as has_privilege;`
+    );
+
+    if (anonPrivRes.rows[0].has_privilege || authPrivRes.rows[0].has_privilege) {
+      throw new Error(
+        `Table '${privateTable}' must be internal-only, but client roles (anon/authenticated) hold table privileges`
+      );
+    }
   }
 
   console.log(
-    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} recorded migration entries, ${expectedTables.length} tables with RLS enabled, ${storagePoliciesRes.rows.length} Storage RLS policies on storage.objects, revoked client access on orphaned_storage_objects, 2 enums, ${fkNames.length} foreign key constraints, check constraints, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
+    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} recorded migration entries, ${expectedTables.length} tables with RLS enabled, ${storagePoliciesRes.rows.length} Storage RLS policies on storage.objects, revoked client access on private tables, 2 enums, ${fkNames.length} foreign key constraints, check constraints, 2 validation triggers, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
   );
 }
 
