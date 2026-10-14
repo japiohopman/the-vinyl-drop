@@ -22,10 +22,11 @@ export type HomeFeedQueryStage =
 
 export type HomeFeedExecutionStage =
   | 'transaction-not-started'
+  | 'constructing-drizzle-client'
+  | 'opening-read-only-transaction'
   | 'setting-statement-timeout'
   | 'setting-lock-timeout'
   | 'setting-idle-timeout'
-  | 'constructing-drizzle-client'
   | 'running-drizzle-probe'
   | 'importing-listing-service'
   | 'listing-service-imported'
@@ -241,7 +242,7 @@ async function main(): Promise<void> {
 
     let homeFeedQueryAttemptCount = 0;
     let drizzleProbeQueryAttemptCount = 0;
-    let activeDiagnosticPhase: 'drizzle-probe' | 'home-feed' = 'drizzle-probe';
+    let activeDiagnosticPhase: 'ignored' | 'drizzle-probe' | 'home-feed' = 'ignored';
     const executionState: { stage: HomeFeedExecutionStage } = { stage: 'transaction-not-started' };
     try {
       // Count attempts in memory only; never retain SQL text or parameters.
@@ -249,38 +250,46 @@ async function main(): Promise<void> {
         logQuery: () => {
           if (activeDiagnosticPhase === 'drizzle-probe') {
             drizzleProbeQueryAttemptCount += 1;
-          } else {
+          } else if (activeDiagnosticPhase === 'home-feed') {
             homeFeedQueryAttemptCount += 1;
           }
         },
       };
-      const cards = await client.begin('read only', async (tx) => {
+
+      // Drizzle's postgres-js adapter expects the root Sql client, not the
+      // transaction-scoped TransactionSql object. Start the read-only
+      // transaction through Drizzle so application queries stay inside it.
+      executionState.stage = 'constructing-drizzle-client';
+      const diagnosticDb = drizzle(client, { schema, logger: diagnosticLogger });
+
+      executionState.stage = 'opening-read-only-transaction';
+      const cards = await diagnosticDb.transaction(async (tx) => {
         executionState.stage = 'setting-statement-timeout';
-        await tx.unsafe("SET LOCAL statement_timeout = '8000ms'");
+        await tx.execute(sql.raw("SET LOCAL statement_timeout = '8000ms'"));
         executionState.stage = 'setting-lock-timeout';
-        await tx.unsafe("SET LOCAL lock_timeout = '2000ms'");
+        await tx.execute(sql.raw("SET LOCAL lock_timeout = '2000ms'"));
         executionState.stage = 'setting-idle-timeout';
-        await tx.unsafe("SET LOCAL idle_in_transaction_session_timeout = '10000ms'");
+        await tx.execute(sql.raw("SET LOCAL idle_in_transaction_session_timeout = '10000ms'"));
 
-        executionState.stage = 'constructing-drizzle-client';
-        const diagnosticDb = drizzle(tx as never, { schema, logger: diagnosticLogger });
-
-        // Prove the Drizzle adapter can issue one harmless read-only query before
-        // importing or invoking the application listing service. Its result is discarded.
+        // Prove the Drizzle transaction can issue one harmless read-only query.
+        // Its result is discarded and setup queries are excluded from counters.
         executionState.stage = 'running-drizzle-probe';
-        await diagnosticDb.execute(sql.raw('select 1 as diagnostic_probe'));
+        activeDiagnosticPhase = 'drizzle-probe';
+        await tx.execute(sql.raw('select 1 as diagnostic_probe'));
         report.drizzleProbe = 'passed';
+        activeDiagnosticPhase = 'ignored';
 
-        activeDiagnosticPhase = 'home-feed';
         executionState.stage = 'importing-listing-service';
         const { getHomeFeedListings } = await import('../src/app/services/listingService');
         executionState.stage = 'listing-service-imported';
 
         executionState.stage = 'invoking-home-feed';
-        const result = await getHomeFeedListings(6, diagnosticDb as never);
+        activeDiagnosticPhase = 'home-feed';
+        const result = await getHomeFeedListings(6, tx as never);
+        activeDiagnosticPhase = 'ignored';
         executionState.stage = 'home-feed-returned';
         return result;
-      });
+      }, { accessMode: 'read only' });
 
       report.homeFeedQuery = 'passed';
       report.returnedListingCount = cards.length;
