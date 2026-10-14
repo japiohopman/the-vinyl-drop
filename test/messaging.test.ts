@@ -7,6 +7,7 @@ import { listings, physicalCopies, profiles, releases } from '../src/db/schema';
 import { conversations } from '../src/db/schema/conversations';
 import { messages } from '../src/db/schema/messages';
 import { clearNotificationListeners, onNotification, NotificationEvent } from '../src/app/services/notificationHooks';
+import { config } from '../src/config/env';
 import { messagingService } from '../src/app/services/messagingService';
 import fs from 'fs';
 import path from 'path';
@@ -108,7 +109,6 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
 
   beforeEach(() => {
     clearNotificationListeners();
-    delete process.env.MESSAGING_ENABLED;
   });
 
   describe('Database Triggers & Guard Rules', () => {
@@ -151,26 +151,33 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
 
   describe('HTTP Route Scoping & Authorization Controls', () => {
     test('hides messaging routes when MESSAGING_ENABLED is false', async () => {
-      process.env.MESSAGING_ENABLED = 'false';
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = false;
 
       const app = createApp();
       const res = await request(app).get('/messages');
 
       expect(res.status).toBe(404);
+
+      (config as any).MESSAGING_ENABLED = originalFlag;
     });
 
     test('redirects unauthenticated requests when MESSAGING_ENABLED is true', async () => {
-      process.env.MESSAGING_ENABLED = 'true';
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
 
       const app = createApp();
       const res = await request(app).get('/messages');
 
       expect(res.status).toBe(302);
       expect(res.header.location).toContain('/auth/login');
+
+      (config as any).MESSAGING_ENABLED = originalFlag;
     });
 
     test('disabled feature guard performs 0 queries on conversations/messages tables', async () => {
-      process.env.MESSAGING_ENABLED = 'false';
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = false;
       const selectSpy = jest.spyOn(db, 'select');
 
       const app = createApp();
@@ -179,10 +186,44 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
 
       expect(selectSpy).not.toHaveBeenCalled();
       selectSpy.mockRestore();
+      (config as any).MESSAGING_ENABLED = originalFlag;
     });
   });
 
   describe('Service & Scoping Boundaries', () => {
+    test('concurrent conversation creation attempts safely reuse same thread', async () => {
+      const [c1, c2] = await Promise.all([
+        messagingService.getOrCreateConversation(publishedListingId, buyerId),
+        messagingService.getOrCreateConversation(publishedListingId, buyerId),
+      ]);
+      expect(c1.id).toBe(c2.id);
+    });
+
+    test('complete buyer/seller conversation flow (detail, send, read, archive)', async () => {
+      const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+
+      // Buyer sends message
+      const msg1 = await messagingService.sendMessage(conv.id, buyerId, 'Hello, is this available?');
+      expect(msg1.body).toBe('Hello, is this available?');
+
+      // Seller views detail
+      const sellerDetail = await messagingService.getConversationDetail(conv.id, sellerId);
+      expect(sellerDetail.userRole).toBe('seller');
+      expect(sellerDetail.messages.length).toBeGreaterThanOrEqual(1);
+
+      // Seller replies
+      const msg2 = await messagingService.sendMessage(conv.id, sellerId, 'Yes, still available!');
+      expect(msg2.body).toBe('Yes, still available!');
+
+      // Buyer marks read
+      await messagingService.markAsRead(conv.id, buyerId);
+
+      // Seller archives
+      await messagingService.archiveConversation(conv.id, sellerId);
+      const sellerInbox = await messagingService.getInboxForUser(sellerId);
+      expect(sellerInbox.some((item) => item.conversation.id === conv.id)).toBe(false);
+    });
+
     test('reopening an archived conversation unarchives it for the buyer', async () => {
       const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
 
@@ -209,6 +250,12 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       await expect(
         messagingService.sendMessage(conv.id, thirdUserId, 'Sneaky message')
       ).rejects.toThrow(/Conversation not found/);
+      await expect(
+        messagingService.markAsRead(conv.id, thirdUserId)
+      ).rejects.toThrow(/Conversation not found/);
+      await expect(
+        messagingService.archiveConversation(conv.id, thirdUserId)
+      ).rejects.toThrow(/Conversation not found/);
     });
 
     test('validates message body length boundaries', async () => {
@@ -225,6 +272,10 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       await expect(messagingService.sendMessage(conv.id, buyerId, hugeBody)).rejects.toThrow(
         /Message body cannot exceed 4,000 characters/
       );
+
+      const maxValidBody = 'a'.repeat(4000);
+      const validMsg = await messagingService.sendMessage(conv.id, buyerId, maxValidBody);
+      expect(validMsg.body.length).toBe(4000);
     });
   });
 
