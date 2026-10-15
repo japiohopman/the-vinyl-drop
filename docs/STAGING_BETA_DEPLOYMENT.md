@@ -630,30 +630,46 @@ The application code does not send the raw password or full SHA-1 hash to HIBP a
 
 This is an application-level compensating control, not the native Supabase feature. A direct request to the project's Supabase Auth signup API could bypass the Express signup guard. This is an **architecture-based bypass risk**; no live direct-Auth request was performed. Supabase's [Before User Created hook](https://supabase.com/docs/guides/auth/auth-hooks/before-user-created-hook) accepts user data and metadata but does not receive the submitted password, so it cannot perform this HIBP password comparison centrally. Therefore, the app-level check protects the normal The Vinyl Drop signup route; it must not be represented as project-wide enforcement for every possible Auth/API path.
 
-The native `auth_leaked_password_protection` warning remains present on Free and is not cleared by this code. Under [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62), the owner must explicitly decide whether the app-route control and this direct-Auth limitation are acceptable for the invite-only beta. If not, scope a separately reviewed trusted server-managed signup design; do not silently broaden this implementation or change live Auth settings.
+The native `auth_leaked_password_protection` warning remains present on Free and is not cleared by this code. The owner has accepted the application-level control and documented direct-Auth limitation only for an initial, manually controlled bug-finding pilot of at most five personally known friends; see [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62). This bounded decision does not mark the native control enabled or complete the overall staging gate [#49](https://github.com/japiohopman/the-vinyl-drop/issues/49). Track technical bypass remediation in [#118](https://github.com/japiohopman/the-vinyl-drop/issues/118) before expanding the cohort, and keep the separate private-messaging `search_path` warning tracked in [#119](https://github.com/japiohopman/the-vinyl-drop/issues/119). Do not upgrade billing or change live Auth settings as part of this decision.
 
-#### Operator-reported signup test result — 2026-10-14
+#### Owner-confirmed staging auth evidence and bounded pilot decision — 2026-10-15
 
-The owner confirmed that the **known-breached-password check on the normal staging signup form was already run and passed before the latest label review**. Treat that scenario as completed; do not ask the owner to repeat it merely because an independent assistant session could not reach the staging URL.
+This section supersedes the older operator-test instructions immediately above for the owner-confirmed scenarios it explicitly records. It consolidates existing results; **it does not claim that this documentation change ran a new live test**.
 
-This is an operator-reported result, not a newly executed test in this documentation change. The confirmation available for this update did not include the exact test timestamp, deployed commit, copied response status/message, or a separate Auth-user-list snapshot, so those details are not inferred or fabricated here. No passwords, tokens, cookies, or other secrets are recorded.
+**Staging target and implementation context**
+- Staging URL: `https://the-vinyl-drop-staging.onrender.com`.
+- PR #116 is merged to `main` as `62ab4f559126a0a6b58d81021d02211752221457`; Render staging was independently confirmed LIVE on that merge commit.
+- The results below are owner-confirmed staging observations, not newly executed tests in this documentation update. Exact request timestamps, raw responses, and intermediate callback URLs are not invented when they were not retained.
 
-Before scheduling any further signup test, reconcile existing operator notes for the clean/unbreached-password scenario. Its absence from this update's evidence does not prove it was never performed. Only if no prior result exists should the owner decide whether to run that one-time human-operated check, since a successful signup may create a real staging Auth user.
+**Owner-confirmed outcomes**
 
-#### Human-operated staging verification after merge and deployment
+| Scenario | Recorded outcome | Evidence boundary |
+| :--- | :--- | :--- |
+| Normal staging signup form — known-breached password | The owner confirms this check was already run and passed; the app-owned signup path rejects the known-breached password. | PASS — owner-reported. Do not ask to repeat it. This is not proof that a direct Supabase Auth/API request is protected. |
+| Signup confirmation | The owner received the confirmation email, followed its link, and reached an authenticated profile page for the same account (Logout visible). | PASS — owner-confirmed screenshots and test report; #109 records the implementation/deployment review. Do not request a new account or repeat the flow. |
+| Password recovery and new-password sign-in | The owner confirms recovery email delivery and callback, rejection of a known-breached new password, acceptance of a strong new password, rejection of the old password, and successful sign-in with the new password. | PASS — owner-reported sequence recorded under [Issue #79](https://github.com/japiohopman/the-vinyl-drop/issues/79) / merged [PR #81](https://github.com/japiohopman/the-vinyl-drop/pull/81). Do not repeat the recovery flow. |
+| HIBP lookup failure handling and non-match behavior | Automated tests cover HIBP network/timeout, non-success, malformed/empty responses, prefix-only lookup, suffix matching, and fail-closed behavior. No exact, separate live clean-password/HIBP non-match result is claimed in this record. | Automated implementation coverage is distinct from live staging evidence. Do not invent a live result or create another account merely to complete this documentation. |
 
-Do these checks only after the implementation has been human-reviewed, merged, and deployed to the confirmed staging target. Automated CI must not create real Auth accounts or mutate live Auth settings.
+No passwords, full hashes, recovery tokens, token hashes, cookies, API keys, real tester addresses, or full recovery URLs are stored here.
 
-1. **Confirm the target first.** Verify that the deployment is the staging app and its configured Supabase project reference is `xuhzhdjmgvqzjxijmksu`. Do not run these tests against production.
-2. **Known breached password — operator-reported PASS (2026-10-14).** The owner confirms this staging signup check was already run and passed before the latest label review; see the dated note immediately above. Do not repeat it just because an independent session could not access staging. Historical low-level details (timestamp/deployed commit, response status, and separate Auth-user-list snapshot) were not retained in the current confirmation and must not be invented.
-3. **Password not present in the returned range.** Use a newly generated high-entropy test password and a deliberately disposable staging identity. Expected: the normal signup flow proceeds according to the staging email-confirmation configuration. Record that this was a deliberate human-operated smoke test. Do not reuse a real account password.
-4. **Failure handling.** Automated tests cover network errors, timeouts, non-success status, malformed data, and fail-closed behavior. Do not take HIBP offline or disrupt shared staging to simulate an outage; rely on isolated CI tests unless a separately approved staging fault-injection method exists.
-5. **Security Advisor.** Re-run the read-only Security Advisor check. Record the native `auth_leaked_password_protection` warning accurately as still present if the project remains on Free.
-6. **Record evidence.** In Issue #62, record the staging deployment/commit, timestamp, observed success/error messages, whether the rejected attempt created an Auth user, the clean-password outcome, and the Security Advisor result. Never include passwords, tokens, session cookies, API keys, or other secrets.
+**Current Supabase Security Advisor snapshot — 2026-10-15**
 
-#### Verification and release gate
+A fresh read-only advisor query for the confirmed staging project reported:
 
-- No Supabase plan upgrade is part of this mitigation.
-- Do not modify production Auth settings.
-- Human-controlled staging evidence and the owner's explicit residual-risk decision belong to [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62).
-- Keep [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) open and external beta invitations blocked until the full staging gate is evidenced and accepted.
+| Finding | Current result | Treatment |
+| :--- | :--- | :--- |
+| `auth_leaked_password_protection` | WARN — Leaked Password Protection Disabled | Remains present on Free. The app-level HIBP guard is a compensating control only for application-owned password paths; it does not clear this native warning. |
+| `function_search_path_mutable` | WARN — two functions: `public.check_conversation_validity` and `public.check_message_sender_validity` | Tracked separately in [Issue #119](https://github.com/japiohopman/the-vinyl-drop/issues/119). Keep private messaging disabled until the finding is fixed and staging migration/verification is complete. |
+| `rls_enabled_no_policy` | INFO — `public.conversations`, `public.messages`, and `public.orphaned_storage_objects` | Separate from the two WARN findings. The current messaging migration enables RLS and revokes `anon`/`authenticated` privileges on conversations/messages; verify effective grants during the remaining staging Data API audit rather than treating this INFO alone as either a vulnerability or proof of safety. |
+
+**Owner risk decision and release boundary**
+
+The owner explicitly accepts the application-level HIBP control and documented direct Supabase Auth/API bypass limitation **only for an initial, manually controlled pilot of no more than five personally known friends, for bug-finding**. This is not acceptance for a larger cohort, public waitlist, or general availability.
+
+- [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62) records the bounded decision and remains open until this documentation is merged and the Issue links to the resulting evidence.
+- [Issue #118](https://github.com/japiohopman/the-vinyl-drop/issues/118) tracks technical investigation/remediation of the direct Auth/API bypass and must be completed and reviewed before cohort expansion.
+- [Issue #119](https://github.com/japiohopman/the-vinyl-drop/issues/119) tracks the independent private-messaging trigger-function search-path warning.
+- [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) remains OPEN / NOT READY until its other staging checks are evidenced: staging target/seed identity, OAuth callback/redirect, live browser CSRF for listing/profile mutations, environment-variable audit, browser TLS/certificate review, and remaining authenticated Data API verification.
+- Before the five-friend pilot begins, complete the applicable staging gate checks and the minimum privacy/data-handling prerequisites in [Issue #88](https://github.com/japiohopman/the-vinyl-drop/issues/88). The decision does not enable public waitlist collection, waive the staging gate, authorize production changes, or imply that the native Supabase warning has cleared.
+
+No new Auth user, mailbox, live setting, database record, DNS/SMTP setting, billing setting, or production state was created or changed by this documentation work.
