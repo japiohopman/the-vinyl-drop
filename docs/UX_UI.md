@@ -52,7 +52,8 @@ Custom properties defined in `public/css/style.css`:
 - Paper background: `#F3EFE7`
 - Ink text/borders: `#151515`
 - White surface: `#FFFDF8`
-- Rust accent: `#C94B2C`
+- Infrared / 90s pink accent (CSS token currently named `--color-rust`): `#f60f4b`
+- Darker infrared for accessible text links: `#d6003b`
 - Deep green accent: `#30463D`
 
 Color palette tokens are verified against automated accessibility contrast rules for text readability.
@@ -66,6 +67,10 @@ Typography stack defined in system styles:
 - **Metadata / Catalog Values:** `IBM Plex Mono` monospace for catalogue numbers, release years, prices, and condition grades.
 
 Typography choices prioritize legibility, fast web font delivery, and catalog structure.
+
+## Email templates
+
+Transactional Supabase Auth emails should carry this same identity rather than introduce a separate visual system: paper background, ink typography and borders, infrared pink action accents, and the `THE VINYL DROP` wordmark/tagline. Email clients cannot be assumed to support the website's CSS or custom fonts, so templates use inline styles, system-font fallbacks, simple table layout, square-edged high-contrast actions, and a visible text wordmark that remains readable when the logo image is blocked. Drafts and application notes live in [`docs/email-templates/`](./email-templates/). Auth URL/token variables are functional contracts and must not change as a side effect of visual styling.
 
 ## Responsive strategy
 
