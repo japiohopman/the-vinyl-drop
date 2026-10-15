@@ -260,6 +260,7 @@ describe('Authentication & Session Handling', () => {
       const emailRedirectTo = new URL(signupOptions.emailRedirectTo);
       expect(emailRedirectTo.origin).toBe(new URL(config.APP_BASE_URL).origin);
       expect(emailRedirectTo.pathname).toBe('/auth/callback');
+      expect(isAllowedRedirectUrl(emailRedirectTo.toString())).toBe(true);
       expect(emailRedirectTo.searchParams.get('next')).toBe('/profile');
       expect(signupOptions.data).toEqual({ username: 'new_digger', display_name: 'new_digger' });
       expect(res.header.location).toBe('/profile');
@@ -311,6 +312,7 @@ describe('Authentication & Session Handling', () => {
       const emailRedirectTo = new URL(signupOptions.emailRedirectTo);
       expect(emailRedirectTo.origin).toBe(new URL(config.APP_BASE_URL).origin);
       expect(emailRedirectTo.pathname).toBe('/auth/callback');
+      expect(isAllowedRedirectUrl(emailRedirectTo.toString())).toBe(true);
       expect(emailRedirectTo.searchParams.get('next')).toBe('/browse?genre=jazz');
       expect(signupOptions.data).toEqual({ username: 'unconfirmed_digger', display_name: 'unconfirmed_digger' });
       expect(createProfileSpy).toHaveBeenCalledWith(
