@@ -58,6 +58,19 @@ Staging infrastructure utilizes a dedicated, standalone Supabase project:
    - Redirect URL whitelist configured in Supabase Dashboard (Auth -> URL Configuration):
      - `https://the-vinyl-drop-staging.onrender.com/auth/callback`
      - `http://localhost:3000/auth/callback` (for local dev testing)
+
+### 3.1 Signup Confirmation Email → Application Callback (Issues #109 and #82)
+
+When `POST /auth/signup` calls Supabase Auth, the server passes an explicit `options.emailRedirectTo` built from `APP_BASE_URL` and the same-origin `/auth/callback` route. The requested post-confirmation destination is normalized through `sanitizeRedirectUrl`, defaults to `/profile`, and is encoded into the callback's `next` query parameter. The callback itself must remain on the configured application origin; form input must never choose the callback host.
+
+For the custom Supabase **Confirm Sign Up** template, the link contract is:
+
+```html
+<a href="{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email">Confirm email address</a>
+```
+
+Apply/test this template in staging only after the code that sets `emailRedirectTo` has been deployed. In Supabase Auth → URL Configuration, confirm the correct environment's `/auth/callback` destination is allowed. Then check the relevant test account in Auth before submitting any new signup; open the received email, verify it reaches `/auth/callback` with `token_hash`, `type=email`, and the encoded `next`, and confirm the callback creates a signed-in session and redirects to the safe destination. Do not put real token values in logs, screenshots, or Issues. This manual staging test is intentionally not run from CI, which uses mocked Auth clients.
+
 3. **Supabase Storage (`listing-photos` bucket) — CONFIGURATION VERIFIED; END-TO-END CHECKS IN PROGRESS:**
    - Live verification on 2026-10-12 confirms the staging bucket exists, is public, has a 5 MiB file-size limit, and allows only `image/webp`, `image/jpeg`, and `image/png`.
    - Live verification confirms the four expected policies exist on `storage.objects`: scoped SELECT for published/owner listings; authenticated seller INSERT, UPDATE, and DELETE.

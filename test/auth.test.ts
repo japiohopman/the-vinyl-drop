@@ -255,6 +255,14 @@ describe('Authentication & Session Handling', () => {
 
       expect(res.status).toBe(302);
       expect(mockIsPasswordPwned).toHaveBeenCalledWith('securepassword123');
+
+      const signupOptions = mockSupabase.auth.signUp.mock.calls[0][0].options;
+      const emailRedirectTo = new URL(signupOptions.emailRedirectTo);
+      expect(emailRedirectTo.origin).toBe(new URL(config.APP_BASE_URL).origin);
+      expect(emailRedirectTo.pathname).toBe('/auth/callback');
+      expect(isAllowedRedirectUrl(emailRedirectTo.toString())).toBe(true);
+      expect(emailRedirectTo.searchParams.get('next')).toBe('/profile');
+      expect(signupOptions.data).toEqual({ username: 'new_digger', display_name: 'new_digger' });
       expect(res.header.location).toBe('/profile');
       expect(res.header['set-cookie']).toBeDefined();
       const cookieHeader = res.header['set-cookie'];
@@ -289,7 +297,7 @@ describe('Authentication & Session Handling', () => {
 
       const app = createApp();
       const res = await request(app)
-        .post('/auth/signup')
+        .post('/auth/signup?next=%2Fbrowse%3Fgenre%3Djazz')
         .set('Origin', 'http://localhost:3000')
         .send({
           username: 'unconfirmed_digger',
@@ -299,6 +307,14 @@ describe('Authentication & Session Handling', () => {
 
       expect(res.status).toBe(200);
       expect(res.text).toContain('Please check your email to confirm your account');
+
+      const signupOptions = mockSupabase.auth.signUp.mock.calls[0][0].options;
+      const emailRedirectTo = new URL(signupOptions.emailRedirectTo);
+      expect(emailRedirectTo.origin).toBe(new URL(config.APP_BASE_URL).origin);
+      expect(emailRedirectTo.pathname).toBe('/auth/callback');
+      expect(isAllowedRedirectUrl(emailRedirectTo.toString())).toBe(true);
+      expect(emailRedirectTo.searchParams.get('next')).toBe('/browse?genre=jazz');
+      expect(signupOptions.data).toEqual({ username: 'unconfirmed_digger', display_name: 'unconfirmed_digger' });
       expect(createProfileSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           id: mockUser.id,

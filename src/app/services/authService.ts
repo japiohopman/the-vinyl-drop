@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { getSupabaseClient } from '../../lib/supabase';
 import { findProfileById, findProfileByUsername, createProfile } from '../repositories/profileRepository';
 import { Profile } from '../../db/schema/profiles';
-import { SignUpInput, LoginInput } from '../../validators/auth';
+import { SignUpInput, LoginInput, sanitizeRedirectUrl } from '../../validators/auth';
 import { config } from '../../config/env';
 import { getDb } from '../../db';
 import { isPasswordPwned } from './pwnedPasswordService';
@@ -24,6 +24,8 @@ export interface AuthOptions {
   res?: Response;
   supabase?: SupabaseClient;
   dbOverride?: DbInstance;
+  /** Safe in-app destination after email confirmation; defaults to /profile. */
+  signupNextUrl?: string;
 }
 
 /**
@@ -123,10 +125,14 @@ export async function signUp(input: SignUpInput, options?: AuthOptions): Promise
     };
   }
 
+  const callbackUrl = new URL('/auth/callback', config.APP_BASE_URL);
+  callbackUrl.searchParams.set('next', sanitizeRedirectUrl(options?.signupNextUrl, '/profile'));
+
   const { data, error } = await supabase.auth.signUp({
     email: input.email,
     password: input.password,
     options: {
+      emailRedirectTo: callbackUrl.toString(),
       data: {
         username: input.username,
         display_name: input.displayName || input.username,
