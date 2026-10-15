@@ -71,7 +71,7 @@ export async function postSignUp(req: Request, res: Response, next: NextFunction
       return;
     }
 
-    const authResult = await signUp(result.data, { req, res });
+    const authResult = await signUp(result.data, { req, res, signupNextUrl: nextUrl });
 
     if (authResult.error || !authResult.user) {
       const form: FormViewModel = {
