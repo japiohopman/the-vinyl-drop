@@ -484,7 +484,7 @@ export async function verifyMigrations(): Promise<void> {
   if (!wrongEmail.error) throw new Error('Signup approval was accepted for a different email address');
 
   const expiredApprovalId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-  await pg.query("INSERT INTO private.password_checked_signup_approvals (approval_id, email_normalized, expires_at) VALUES ($1::uuid, $2, now() - INTERVAL '1 minute');", [expiredApprovalId, 'expired@example.com']);
+  await pg.query("INSERT INTO private.password_checked_signup_approvals (approval_id, email_normalized, created_at, expires_at) VALUES ($1::uuid, $2, now() - INTERVAL '10 minutes', now() - INTERVAL '5 minutes');", [expiredApprovalId, 'expired@example.com']);
   const expiredApproval = await runSignupHook(emailSignupEvent('expired@example.com', expiredApprovalId));
   if (!expiredApproval.error) throw new Error('An expired signup approval was accepted');
 
