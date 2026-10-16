@@ -275,6 +275,7 @@ describe('Authentication & Session Handling', () => {
       const mockUser = {
         id: '55555555-5555-5555-5555-555555555555',
         email: 'unconfirmed@example.com',
+        identities: [{ id: 'id-1', user_id: '55555555-5555-5555-5555-555555555555' }],
       };
 
       mockSupabase.auth.signUp.mockResolvedValue({
@@ -322,6 +323,77 @@ describe('Authentication & Session Handling', () => {
         }),
         undefined
       );
+    });
+
+    it('POST /auth/signup should handle obfuscated duplicate-signup response (empty identities) without creating a profile or exposing account existence', async () => {
+      // Supabase obfuscated duplicate-signup result: user object returned, but identities array is []
+      const obfuscatedUser = {
+        id: 'obfuscated-uuid-12345',
+        email: 'existing_account@example.com',
+        identities: [],
+      };
+
+      mockSupabase.auth.signUp.mockResolvedValue({
+        data: {
+          user: obfuscatedUser,
+          session: null,
+        },
+        error: null,
+      });
+
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+      const createProfileSpy = jest.spyOn(profileRepository, 'createProfile');
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/auth/signup')
+        .set('Origin', 'http://localhost:3000')
+        .send({
+          username: 'jaapJeKentHem',
+          email: 'existing_account@example.com',
+          password: 'securepassword123',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Please check your email to confirm your account');
+      expect(res.text).not.toContain('already exists');
+      expect(createProfileSpy).not.toHaveBeenCalled();
+    });
+
+    it('POST /auth/signup should reject duplicate username across case variants', async () => {
+      const existingProfile: Profile = {
+        id: '11111111-1111-1111-1111-111111111111',
+        username: 'jaapJeKentHem',
+        displayName: 'Jaap',
+        avatarUrl: null,
+        websiteUrl: null,
+        bio: null,
+        location: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Mock repository returning existing profile for case variant
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockImplementation(async (username: string) => {
+        if (username.toLowerCase() === 'jaapjekenthem') {
+          return existingProfile;
+        }
+        return null;
+      });
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/auth/signup')
+        .set('Origin', 'http://localhost:3000')
+        .send({
+          username: 'JaapJeKentHem', // Case variant of jaapJeKentHem
+          email: 'newuser@example.com',
+          password: 'securepassword123',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Username is already taken');
+      expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
     });
 
     it('sessionMiddleware should refresh session using refresh_token when access_token is expired or missing', async () => {

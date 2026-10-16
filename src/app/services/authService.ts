@@ -149,6 +149,16 @@ export async function signUp(input: SignUpInput, options?: AuthOptions): Promise
     };
   }
 
+  // Detect Supabase's obfuscated duplicate-signup response where data.user exists but identities is empty
+  if (data.user.identities && data.user.identities.length === 0) {
+    return {
+      user: data.user,
+      session: null,
+      profile: null,
+      requiresEmailConfirmation: true,
+    };
+  }
+
   const profile = await ensureProfileForUser(data.user, input.username, options?.dbOverride);
 
   return {

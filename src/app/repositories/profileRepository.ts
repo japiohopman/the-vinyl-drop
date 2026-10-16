@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { profiles, Profile, NewProfile } from '../../db/schema/profiles';
 
@@ -12,7 +12,11 @@ export async function findProfileById(id: string, dbOverride?: DbInstance): Prom
 
 export async function findProfileByUsername(username: string, dbOverride?: DbInstance): Promise<Profile | null> {
   const database = dbOverride || getDb();
-  const results = await database.select().from(profiles).where(eq(profiles.username, username)).limit(1);
+  const results = await database
+    .select()
+    .from(profiles)
+    .where(eq(sql`LOWER(${profiles.username})`, username.toLowerCase()))
+    .limit(1);
   return results[0] || null;
 }
 

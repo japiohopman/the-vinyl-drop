@@ -44,7 +44,7 @@ export async function updateProfile(
   }
 
   // If username is changing, verify it is not already taken by another user
-  if (input.username && input.username !== existingProfile.username) {
+  if (input.username && input.username.toLowerCase() !== existingProfile.username.toLowerCase()) {
     const usernameOccupant = await findProfileByUsername(input.username, dbOverride);
     if (usernameOccupant && usernameOccupant.id !== targetUserId) {
       throw new ValidationError('Username is already taken');

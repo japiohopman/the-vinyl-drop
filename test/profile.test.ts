@@ -7,6 +7,10 @@ import * as listingService from '../src/app/services/listingService';
 import { updateProfile, AuthorizationError } from '../src/app/services/profileService';
 import * as profileService from '../src/app/services/profileService';
 import { Profile } from '../src/db/schema/profiles';
+import { PGlite } from '@electric-sql/pglite';
+import { drizzle } from 'drizzle-orm/pglite';
+import { migrate } from 'drizzle-orm/pglite/migrator';
+import path from 'path';
 
 jest.mock('../src/app/services/listingService');
 
@@ -317,6 +321,76 @@ describe('Profile Foundation & Server-Side Ownership', () => {
           username: 'hacked_username',
         })
       ).rejects.toThrow(AuthorizationError);
+    });
+
+    it('updateProfile service should throw ValidationError when attempting to change username to a case-variant of an existing occupant', async () => {
+      const existingBobProfile: Profile = {
+        id: mockUserBob.id,
+        username: 'bob_vinyl',
+        displayName: 'Bob',
+        avatarUrl: null,
+        websiteUrl: null,
+        bio: null,
+        location: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockImplementation(async (username: string) => {
+        if (username.toLowerCase() === 'bob_vinyl') {
+          return existingBobProfile;
+        }
+        return null;
+      });
+
+      // Alice tries to rename her handle to "BOB_VINYL" (case-variant of bob_vinyl)
+      await expect(
+        updateProfile(mockUserAlice.id, mockUserAlice.id, {
+          username: 'BOB_VINYL',
+        })
+      ).rejects.toThrow('Username is already taken');
+    });
+  });
+
+  describe('Database Boundary Invariant (profiles_username_lower_idx)', () => {
+    it('should enforce case-insensitive unique constraint at the database boundary via profiles_username_lower_idx', async () => {
+      const pg = new PGlite();
+      await pg.exec(`
+        CREATE SCHEMA IF NOT EXISTS auth;
+        CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+        BEGIN
+          RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+        EXCEPTION WHEN OTHERS THEN
+          RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql STABLE;
+      `);
+
+      const drizzleDir = path.join(process.cwd(), 'drizzle');
+      const db = drizzle(pg);
+      await migrate(db, { migrationsFolder: drizzleDir });
+
+      const user1Id = '11111111-1111-1111-1111-111111111111';
+      const user2Id = '22222222-2222-2222-2222-222222222222';
+
+      // Insert first profile
+      await pg.query(
+        `INSERT INTO profiles (id, username, display_name) VALUES ($1, $2, $3);`,
+        [user1Id, 'jaapJeKentHem', 'Jaap']
+      );
+
+      // Attempting to insert second profile with case-variant username 'JaapJeKentHem' must throw unique constraint error
+      try {
+        await expect(
+          pg.query(
+            `INSERT INTO profiles (id, username, display_name) VALUES ($1, $2, $3);`,
+            [user2Id, 'JaapJeKentHem', 'Jaap Duplicate']
+          )
+        ).rejects.toThrow();
+      } finally {
+        await pg.close();
+      }
     });
   });
 });

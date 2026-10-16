@@ -147,7 +147,7 @@ export async function searchListings(
 
   // Filter seller username
   if (params.sellerUsername) {
-    conditions.push(eq(profiles.username, params.sellerUsername));
+    conditions.push(eq(sql`LOWER(${profiles.username})`, params.sellerUsername.toLowerCase()));
   }
 
   // Keyword text search (PostgreSQL ILIKE over release artist, title, label, cat#, and description)
