@@ -5,6 +5,7 @@ import {
   extractGoverningIssue,
   generateRelayCommentBody,
   runChatgptReviewRelay,
+  extractWorkflowRunPullRequestNumbers,
   fetchAllCommentsPaginated,
   ensureLabelProvisioned,
   RawPullRequest,
@@ -287,6 +288,21 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       const triggerEnd = workflow.indexOf('concurrency:', triggerStart);
       const pullRequestTrigger = workflow.slice(triggerStart, triggerEnd);
       expect(pullRequestTrigger).toContain('      - edited');
+      const workflowRunTrigger = workflow.slice(
+        workflow.indexOf('  workflow_run:'),
+        workflow.indexOf('concurrency:')
+      );
+      expect(workflowRunTrigger).toContain('      - CI');
+      expect(workflowRunTrigger).toContain('      - Phase Safety Gate');
+      expect(workflowRunTrigger).toContain('      - completed');
+    });
+
+    it('extracts distinct pull requests from workflow-completion events', () => {
+      expect(extractWorkflowRunPullRequestNumbers({
+        workflow_run: { pull_requests: [{ number: 42 }, { number: 42 }, { number: 139 }] },
+      })).toEqual([42, 139]);
+      expect(extractWorkflowRunPullRequestNumbers({ workflow_run: { pull_requests: [] } })).toEqual([]);
+      expect(extractWorkflowRunPullRequestNumbers({ workflow_run: {} })).toEqual([]);
     });
   });
 
