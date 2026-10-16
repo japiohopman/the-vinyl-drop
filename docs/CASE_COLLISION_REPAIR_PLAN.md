@@ -80,6 +80,13 @@ SELECT
   (SELECT COUNT(*) FROM public.listing_photos lp
    JOIN public.listings l ON l.id = lp.listing_id
    WHERE l.seller_id = p.id) AS photos_on_owned_listings,
+  (SELECT COUNT(*) FROM public.orphaned_storage_objects oso
+   JOIN public.listings l ON l.id = oso.listing_id
+   WHERE l.seller_id = p.id) AS orphaned_storage_records_on_owned_listings,
+  (SELECT COUNT(*) FROM storage.objects so
+   JOIN public.listing_photos lp ON lp.storage_path = so.name
+   JOIN public.listings l ON l.id = lp.listing_id
+   WHERE so.bucket_id = 'listing-photos' AND l.seller_id = p.id) AS storage_objects_for_owned_listing_photos,
 
   (SELECT COUNT(*) FROM public.comments c
    WHERE c.author_id = p.id) AS authored_comment_count,
@@ -126,7 +133,7 @@ WHERE LOWER(p.username) IN (
 ORDER BY LOWER(p.username), p.id;
 ```
 
-The inventory explicitly covers the current schema's profile dependencies: `listings.seller_id`, `physical_copies.owner_id`, `comments.author_id`, `favorites.user_id`, `activity_events.actor_id`, `conversations.buyer_id`, and `messages.sender_id`, plus artifacts reached through listings and conversations (including listing photos, comments, favorites, activity events, and messages).
+The inventory explicitly covers the current schema's profile dependencies: `listings.seller_id`, `physical_copies.owner_id`, `comments.author_id`, `favorites.user_id`, `activity_events.actor_id`, `conversations.buyer_id`, and `messages.sender_id`, plus artifacts reached through listings and conversations (including listing photos, storage objects tied to those photos, orphaned-storage records still tied to those listings, comments, favorites, activity events, and messages. Orphaned-storage records with a null `listing_id` cannot be attributed to a profile by this join; do not assume they are absent if their count is not shown. If a live cleanup is proposed, separately inventory such records and storage paths before any change.
 
 ## 3. Human-reviewed decision process
 
