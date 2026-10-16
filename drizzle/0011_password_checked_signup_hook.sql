@@ -24,6 +24,16 @@ ALTER TABLE private.password_checked_signup_approvals ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 REVOKE ALL ON TABLE private.password_checked_signup_approvals FROM PUBLIC, anon, authenticated, supabase_auth_admin;
 --> statement-breakpoint
+GRANT SELECT ON TABLE private.password_checked_signup_approvals TO supabase_auth_admin;
+--> statement-breakpoint
+GRANT UPDATE (consumed_at) ON TABLE private.password_checked_signup_approvals TO supabase_auth_admin;
+--> statement-breakpoint
+CREATE POLICY password_checked_signup_hook_read
+  ON private.password_checked_signup_approvals FOR SELECT TO supabase_auth_admin USING (true);
+--> statement-breakpoint
+CREATE POLICY password_checked_signup_hook_consume
+  ON private.password_checked_signup_approvals FOR UPDATE TO supabase_auth_admin USING (true) WITH CHECK (true);
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS password_checked_signup_approvals_pending_expiry_idx
   ON private.password_checked_signup_approvals (expires_at)
   WHERE consumed_at IS NULL;
@@ -31,7 +41,7 @@ CREATE INDEX IF NOT EXISTS password_checked_signup_approvals_pending_expiry_idx
 CREATE OR REPLACE FUNCTION private.enforce_password_checked_signup(event jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = ''
 AS $$
 DECLARE
