@@ -27,9 +27,18 @@ export interface RawPullRequest {
 }
 
 export interface RawCheckRun {
+  id?: number;
   name: string;
   status: 'queued' | 'in_progress' | 'completed' | string;
   conclusion?: 'success' | 'failure' | 'neutral' | 'cancelled' | 'timed_out' | 'action_required' | string | null;
+  head_sha?: string | null;
+  created_at?: string | null;
+  started_at?: string | null;
+  app?: {
+    id?: number | null;
+    slug?: string | null;
+    name?: string | null;
+  } | null;
 }
 
 export interface EligibilityResult {
@@ -120,30 +129,100 @@ export function evaluatePrEligibility(pr: RawPullRequest): EligibilityResult {
 }
 
 /**
- * Summarizes the state of check runs for a commit ref.
+ * Returns the timestamp used to order repeat executions of the same check.
+ * GitHub's creation time takes precedence; IDs and response order are safe
+ * deterministic fallbacks when timestamps are omitted.
  */
-export function summarizeCheckState(checkRuns: RawCheckRun[]): CheckStateSummary {
-  if (!checkRuns || checkRuns.length === 0) {
+function checkRunTimestamp(run: RawCheckRun): number | null {
+  const value = run.created_at ?? run.started_at;
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+function isLaterCheckRun(
+  candidate: RawCheckRun,
+  candidateIndex: number,
+  current: RawCheckRun,
+  currentIndex: number
+): boolean {
+  const candidateTime = checkRunTimestamp(candidate);
+  const currentTime = checkRunTimestamp(current);
+
+  if (candidateTime !== null && currentTime !== null && candidateTime !== currentTime) {
+    return candidateTime > currentTime;
+  }
+  if (candidate.id !== undefined && current.id !== undefined && candidate.id !== current.id) {
+    return candidate.id > current.id;
+  }
+  if (candidateTime !== null && currentTime === null) return true;
+  if (candidateTime === null && currentTime !== null) return false;
+
+  // Only use API response order as the final tie-breaker when metadata is absent/equal.
+  return candidateIndex > currentIndex;
+}
+
+/**
+ * Keeps only the latest run for each check identity and the exact PR head.
+ * A check identity is its normalized name plus the GitHub App that created it.
+ */
+function latestCheckRuns(checkRuns: RawCheckRun[], currentHeadSha?: string): RawCheckRun[] {
+  const latestByIdentity = new Map<string, { run: RawCheckRun; index: number }>();
+
+  checkRuns.forEach((run, index) => {
+    // When a head is supplied, missing or mismatched SHAs are not current-head evidence.
+    if (currentHeadSha && run.head_sha !== currentHeadSha) return;
+
+    const appIdentity = run.app?.id != null
+      ? String(run.app.id)
+      : run.app?.slug ?? run.app?.name ?? 'unknown-app';
+    const identity = `${run.name.toLowerCase()}::${appIdentity.toLowerCase()}`;
+    const previous = latestByIdentity.get(identity);
+
+    if (!previous || isLaterCheckRun(run, index, previous.run, previous.index)) {
+      latestByIdentity.set(identity, { run, index });
+    }
+  });
+
+  return Array.from(latestByIdentity.values(), ({ run }) => run);
+}
+
+/**
+ * Summarizes only the latest check execution per identity for the current PR head.
+ * Historical failures from superseded executions cannot keep the relay in FAILURE.
+ */
+export function summarizeCheckState(checkRuns: RawCheckRun[], currentHeadSha?: string): CheckStateSummary {
+  const currentRuns = latestCheckRuns(checkRuns || [], currentHeadSha);
+  if (currentRuns.length === 0) {
     return {
       overallState: 'NO_CHECKS',
       ciState: 'NOT_FOUND',
       safetyGateState: 'NOT_FOUND',
-      summaryText: 'No check runs reported.',
+      summaryText: 'No check runs reported for the current PR head.',
     };
   }
 
-  let ciRun: RawCheckRun | undefined;
-  let safetyGateRun: RawCheckRun | undefined;
+  const latestMatchingRun = (
+    predicate: (run: RawCheckRun) => boolean
+  ): RawCheckRun | undefined => {
+    let latest: { run: RawCheckRun; index: number } | undefined;
+    for (const [index, run] of currentRuns.entries()) {
+      if (!predicate(run)) continue;
+      if (!latest || isLaterCheckRun(run, index, latest.run, latest.index)) {
+        latest = { run, index };
+      }
+    }
+    return latest?.run;
+  };
 
-  for (const run of checkRuns) {
-    const nameLower = run.name.toLowerCase();
-    if (nameLower.includes('ci') || nameLower.includes('build-and-test') || nameLower.includes('build')) {
-      ciRun = run;
-    }
-    if (nameLower.includes('safety gate') || nameLower.includes('validate-safety-gate') || nameLower.includes('pr contract')) {
-      safetyGateRun = run;
-    }
-  }
+  const ciRun = latestMatchingRun((run) => {
+    const name = run.name.toLowerCase();
+    return name.includes('ci') || name.includes('build-and-test') || name.includes('build');
+  });
+  const safetyGateRun = latestMatchingRun((run) => {
+    const name = run.name.toLowerCase();
+    return name.includes('safety gate') || name.includes('validate-safety-gate') || name.includes('pr contract');
+  });
 
   const parseRunState = (run?: RawCheckRun): 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NOT_FOUND' => {
     if (!run) return 'NOT_FOUND';
@@ -155,27 +234,24 @@ export function summarizeCheckState(checkRuns: RawCheckRun[]): CheckStateSummary
   const ciState = parseRunState(ciRun);
   const safetyGateState = ciStateToGateState(parseRunState(safetyGateRun));
 
-  let overallState: 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NO_CHECKS' = 'SUCCESS';
-
-  const hasFailure = checkRuns.some(
-    (r) => r.status === 'completed' && ['failure', 'timed_out', 'action_required', 'cancelled'].includes(r.conclusion || '')
+  const hasFailure = currentRuns.some(
+    (run) => run.status === 'completed' && run.conclusion !== 'success' && run.conclusion !== 'neutral'
   );
-  const hasPending = checkRuns.some((r) => r.status !== 'completed');
+  const hasPending = currentRuns.some((run) => run.status !== 'completed');
 
-  if (hasFailure) {
+  // CI and the Phase Safety Gate are required status signals; missing either is not a pass.
+  let overallState: 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NO_CHECKS';
+  if (hasFailure || ciState === 'NOT_FOUND' || safetyGateState === 'NOT_FOUND') {
     overallState = 'FAILURE';
   } else if (hasPending) {
     overallState = 'PENDING';
+  } else {
+    overallState = 'SUCCESS';
   }
 
   const summaryText = `CI: ${ciState}, Safety Gate: ${safetyGateState}, Overall: ${overallState}`;
 
-  return {
-    overallState,
-    ciState,
-    safetyGateState,
-    summaryText,
-  };
+  return { overallState, ciState, safetyGateState, summaryText };
 }
 
 function ciStateToGateState(state: 'SUCCESS' | 'FAILURE' | 'PENDING' | 'NOT_FOUND'): 'PASSED' | 'FAILED' | 'PENDING' | 'NOT_FOUND' {
@@ -470,7 +546,7 @@ export async function runChatgptReviewRelay(options: RelayOptions): Promise<Rela
     const checksRes = await fetchFn(checksUrl, { headers });
     if (checksRes.ok) {
       const data = (await checksRes.json()) as { check_runs: RawCheckRun[] };
-      checkSummary = summarizeCheckState(data.check_runs || []);
+      checkSummary = summarizeCheckState(data.check_runs || [], pullRequest.head.sha);
     } else {
       checkSummary = summarizeCheckState([]);
     }
