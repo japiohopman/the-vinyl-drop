@@ -1,6 +1,8 @@
 -- Migration: 0011_password_checked_signup_hook.sql
 -- Email signup requires a short-lived one-time approval issued after the app HIBP check.
--- Configure this as Supabase Auth's Before User Created hook only after authorized staging migration.
+-- The Before User Created event has no password; approval cannot be bound to Auth's password here.
+-- Unresolved rollout risk (#118): this hook does not enforce the breached-password policy.
+-- Keep rollout gated on password-binding remediation and separate staging authorization.
 
 CREATE SCHEMA IF NOT EXISTS private;
 --> statement-breakpoint
@@ -65,6 +67,8 @@ BEGIN
     v_approval_id := NULL;
   END;
   IF v_approval_id IS NOT NULL AND v_email <> '' THEN
+    -- This validates approval possession for an email only. A valid unused approval
+    -- could authorize a different password; expiry and single use do not prevent that.
     UPDATE private.password_checked_signup_approvals
       SET consumed_at = pg_catalog.clock_timestamp()
       WHERE approval_id = v_approval_id AND email_normalized = v_email

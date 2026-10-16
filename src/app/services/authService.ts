@@ -128,8 +128,8 @@ export async function signUp(input: SignUpInput, options?: AuthOptions): Promise
   }
 
   // The approval is issued only after the HIBP check above succeeds. Supabase's
-  // Before User Created hook consumes it atomically to reject direct email signups
-  // that bypass this application-owned password-security check.
+  // Before User Created hook consumes it atomically for the matching email, but
+  // cannot bind it to the password Auth receives. The bypass risk remains (#118).
   let signupApprovalId: string | undefined;
   if (config.SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED) {
     signupApprovalId = randomUUID();

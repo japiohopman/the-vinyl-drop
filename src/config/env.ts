@@ -170,7 +170,8 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
       : result.data.NODE_ENV === 'development' || result.data.NODE_ENV === 'test';
 
   // Never switch live signup behavior merely because source was deployed. Staging
-  // and production stay off until migration 0011 and the Auth hook are separately approved.
+  // and production stay off pending password-binding remediation (#118) and
+  // separate approval of migration 0011 and the Auth hook.
   const defaultSignupPasswordCheckApprovalEnabled =
     result.data.SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED !== undefined
       ? result.data.SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED
