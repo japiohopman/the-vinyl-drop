@@ -85,6 +85,13 @@
       "when": 1792181700000,
       "tag": "0011_password_checked_signup_hook",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792186500000,
+      "tag": "0012_pin_messaging_trigger_search_path",
+      "breakpoints": true
     }
   ]
 }
