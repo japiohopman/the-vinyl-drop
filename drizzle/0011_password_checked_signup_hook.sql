@@ -32,7 +32,9 @@ CREATE POLICY password_checked_signup_hook_read
   ON private.password_checked_signup_approvals FOR SELECT TO supabase_auth_admin USING (true);
 --> statement-breakpoint
 CREATE POLICY password_checked_signup_hook_consume
-  ON private.password_checked_signup_approvals FOR UPDATE TO supabase_auth_admin USING (true) WITH CHECK (true);
+  ON private.password_checked_signup_approvals FOR UPDATE TO supabase_auth_admin
+  USING (consumed_at IS NULL AND expires_at > pg_catalog.clock_timestamp())
+  WITH CHECK (consumed_at IS NOT NULL);
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS password_checked_signup_approvals_pending_expiry_idx
   ON private.password_checked_signup_approvals (expires_at)
