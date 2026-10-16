@@ -1,4 +1,5 @@
 import { User, Session, SupabaseClient, EmailOtpType } from '@supabase/supabase-js';
+import { randomUUID } from 'crypto';
 import { Request, Response } from 'express';
 import { getSupabaseClient } from '../../lib/supabase';
 import { findProfileById, findProfileByUsername, createProfile } from '../repositories/profileRepository';
@@ -7,6 +8,7 @@ import { SignUpInput, LoginInput, sanitizeRedirectUrl } from '../../validators/a
 import { config } from '../../config/env';
 import { getDb } from '../../db';
 import { isPasswordPwned } from './pwnedPasswordService';
+import { createPasswordCheckedSignupApproval } from '../repositories/signupApprovalRepository';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -125,6 +127,24 @@ export async function signUp(input: SignUpInput, options?: AuthOptions): Promise
     };
   }
 
+  // The approval is issued only after the HIBP check above succeeds. Supabase's
+  // Before User Created hook consumes it atomically to reject direct email signups
+  // that bypass this application-owned password-security check.
+  let signupApprovalId: string | undefined;
+  if (config.SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED) {
+    signupApprovalId = randomUUID();
+    try {
+      await createPasswordCheckedSignupApproval(signupApprovalId, input.email, options?.dbOverride);
+    } catch {
+      return {
+        user: null,
+        session: null,
+        profile: null,
+        error: 'Account creation is temporarily unavailable. Please try again in a moment.',
+      };
+    }
+  }
+
   const callbackUrl = new URL('/auth/callback', config.APP_BASE_URL);
   callbackUrl.searchParams.set('next', sanitizeRedirectUrl(options?.signupNextUrl, '/profile'));
 
@@ -136,6 +156,7 @@ export async function signUp(input: SignUpInput, options?: AuthOptions): Promise
       data: {
         username: input.username,
         display_name: input.displayName || input.username,
+        ...(signupApprovalId ? { signup_approval_id: signupApprovalId } : {}),
       },
     },
   });

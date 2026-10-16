@@ -10,12 +10,20 @@ import crypto from 'crypto';
 import { generateRecoveryToken } from '../src/app/middleware/auth';
 import { config } from '../src/config/env';
 import { isPasswordPwned } from '../src/app/services/pwnedPasswordService';
+import { createPasswordCheckedSignupApproval } from '../src/app/repositories/signupApprovalRepository';
 
 jest.mock('../src/app/services/pwnedPasswordService', () => ({
   isPasswordPwned: jest.fn(),
 }));
 
+jest.mock('../src/app/repositories/signupApprovalRepository', () => ({
+  createPasswordCheckedSignupApproval: jest.fn(),
+}));
+
 const mockIsPasswordPwned = isPasswordPwned as jest.MockedFunction<typeof isPasswordPwned>;
+const mockCreatePasswordCheckedSignupApproval = createPasswordCheckedSignupApproval as jest.MockedFunction<
+  typeof createPasswordCheckedSignupApproval
+>;
 
 describe('Authentication & Session Handling', () => {
   describe('Redirect URL Allow-List Validation', () => {
@@ -115,6 +123,7 @@ describe('Authentication & Session Handling', () => {
     beforeEach(() => {
       jest.clearAllMocks();
       mockIsPasswordPwned.mockResolvedValue(false);
+      mockCreatePasswordCheckedSignupApproval.mockResolvedValue(undefined);
 
       mockSupabase = {
         auth: {
@@ -192,6 +201,22 @@ describe('Authentication & Session Handling', () => {
       expect(supabaseSignUpSpy).not.toHaveBeenCalled();
     });
 
+    it('POST /auth/signup should fail closed when checked-signup approval persistence is unavailable', async () => {
+      mockCreatePasswordCheckedSignupApproval.mockRejectedValue(new Error('private database detail'));
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/auth/signup')
+        .set('Origin', 'http://localhost:3000')
+        .send({ username: 'approval_digger', email: 'approval@example.com', password: 'securepassword123' });
+
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('Account creation is temporarily unavailable. Please try again in a moment.');
+      expect(res.text).not.toContain('private database detail');
+      expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
+    });
+
     it('POST /auth/signup should fail closed when the password lookup is unavailable', async () => {
       const submittedPassword = 'temporary-strong-test-password';
       mockIsPasswordPwned.mockRejectedValue(new Error('private lookup detail'));
@@ -262,7 +287,20 @@ describe('Authentication & Session Handling', () => {
       expect(emailRedirectTo.pathname).toBe('/auth/callback');
       expect(isAllowedRedirectUrl(emailRedirectTo.toString())).toBe(true);
       expect(emailRedirectTo.searchParams.get('next')).toBe('/profile');
-      expect(signupOptions.data).toEqual({ username: 'new_digger', display_name: 'new_digger' });
+      expect(signupOptions.data).toEqual({
+        username: 'new_digger',
+        display_name: 'new_digger',
+        signup_approval_id: expect.any(String),
+      });
+      expect(signupOptions.data.signup_approval_id).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(mockCreatePasswordCheckedSignupApproval).toHaveBeenCalledWith(
+        signupOptions.data.signup_approval_id,
+        'newuser@example.com',
+        undefined
+      );
+      expect(mockCreatePasswordCheckedSignupApproval.mock.invocationCallOrder[0]).toBeLessThan(
+        mockSupabase.auth.signUp.mock.invocationCallOrder[0]
+      );
       expect(res.header.location).toBe('/profile');
       expect(res.header['set-cookie']).toBeDefined();
       const cookieHeader = res.header['set-cookie'];
@@ -315,7 +353,11 @@ describe('Authentication & Session Handling', () => {
       expect(emailRedirectTo.pathname).toBe('/auth/callback');
       expect(isAllowedRedirectUrl(emailRedirectTo.toString())).toBe(true);
       expect(emailRedirectTo.searchParams.get('next')).toBe('/browse?genre=jazz');
-      expect(signupOptions.data).toEqual({ username: 'unconfirmed_digger', display_name: 'unconfirmed_digger' });
+      expect(signupOptions.data).toEqual({
+        username: 'unconfirmed_digger',
+        display_name: 'unconfirmed_digger',
+        signup_approval_id: expect.any(String),
+      });
       expect(createProfileSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           id: mockUser.id,
