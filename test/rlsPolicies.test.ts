@@ -261,26 +261,21 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
       ).rejects.toThrow();
     });
 
-    it('should prevent User B from updating their listing to reassign physical_copy_id to User A physical copy', async () => {
+    it('should deny direct Data API listing creation before any ownership reassignment can occur', async () => {
       const userBListingId = '96666666-6666-4666-8666-666666666666';
 
-      // 1. User B creates a listing for their own physical copy (copyBId)
-      await pg.query(
-        `INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${userBListingId}', '${copyBId}', '${userB}', 'published');`
-      );
-
-      // 2. User B attempts to update physical_copy_id to User A's physical copy (copyAId)
+      // The Data API is read-only even for an authenticated user creating a
+      // listing for their own copy; application writes use server-side Drizzle.
       await expect(
-        pg.query(`UPDATE listings SET physical_copy_id = '${copyAId}' WHERE id = '${userBListingId}';`)
+        pg.query(
+          `INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${userBListingId}', '${copyBId}', '${userB}', 'published');`
+        )
       ).rejects.toThrow();
 
-      // 3. Verify physical_copy_id remains copyBId
-      const listingRes = await pg.query<ListingRow>(
-        `SELECT id, physical_copy_id, seller_id FROM listings WHERE id = '${userBListingId}';`
+      const listingRes = await pg.query<IdRow>(
+        `SELECT id FROM listings WHERE id = '${userBListingId}';`
       );
-      expect(listingRes.rows.length).toBe(1);
-      expect(listingRes.rows[0].physical_copy_id).toBe(copyBId);
-      expect(listingRes.rows[0].seller_id).toBe(userB);
+      expect(listingRes.rows.length).toBe(0);
     });
 
     it('should prevent User B from forging activity events via Data API', async () => {
