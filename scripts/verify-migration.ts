@@ -530,6 +530,12 @@ export async function verifyMigrationUpgrade(): Promise<void> {
 
   // Bootstrap auth schema and auth.uid() stub
   await pg.exec(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+        CREATE ROLE supabase_auth_admin NOLOGIN;
+      END IF;
+    END $$;
+
     CREATE SCHEMA IF NOT EXISTS auth;
     CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
     BEGIN
