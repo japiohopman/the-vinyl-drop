@@ -1,20 +1,27 @@
-import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
-export const profiles = pgTable('profiles', {
-  /**
-   * Profile primary key representing the Supabase Auth user UUID (auth.users.id).
-   * Strictly requires a provided user UUID on profile creation without a random default.
-   */
-  id: uuid('id').primaryKey(),
-  username: text('username').notNull().unique(),
-  displayName: text('display_name'),
-  avatarUrl: text('avatar_url'),
-  websiteUrl: text('website_url'),
-  bio: text('bio'),
-  location: text('location'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const profiles = pgTable(
+  'profiles',
+  {
+    /**
+     * Profile primary key representing the Supabase Auth user UUID (auth.users.id).
+     * Strictly requires a provided user UUID on profile creation without a random default.
+     */
+    id: uuid('id').primaryKey(),
+    username: text('username').notNull().unique(),
+    displayName: text('display_name'),
+    avatarUrl: text('avatar_url'),
+    websiteUrl: text('website_url'),
+    bio: text('bio'),
+    location: text('location'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('profiles_username_lower_idx').on(sql`lower(${table.username})`),
+  ]
+);
 
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;

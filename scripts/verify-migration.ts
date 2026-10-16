@@ -185,6 +185,7 @@ export async function verifyMigrations(): Promise<void> {
     'listings_price_idx',
     'listings_created_at_idx',
     'listings_active_physical_copy_idx',
+    'profiles_username_lower_idx',
     'releases_artist_idx',
     'releases_title_idx',
     'releases_label_idx',
