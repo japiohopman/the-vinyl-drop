@@ -356,6 +356,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
   describe('Database Boundary Invariant (profiles_username_lower_idx)', () => {
     it('should enforce case-insensitive unique constraint at the database boundary via profiles_username_lower_idx', async () => {
       const pg = new PGlite();
+      await pg.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
       await pg.exec(`
         CREATE SCHEMA IF NOT EXISTS auth;
         CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$

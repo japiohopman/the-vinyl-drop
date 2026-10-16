@@ -11,6 +11,12 @@ export async function verifyMigrations(): Promise<void> {
 
   // Bootstrap auth and storage schemas, auth.uid(), auth.role(), and storage.foldername() stubs for local/PGlite migration verification
   await pg.exec(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+        CREATE ROLE supabase_auth_admin NOLOGIN;
+      END IF;
+    END $$;
+
     CREATE SCHEMA IF NOT EXISTS auth;
     CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
     BEGIN
@@ -432,8 +438,88 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
+  // 9. Verify the private one-time approval contract for Supabase Auth's Before User Created hook.
+  const approvalFunctionRes = await pg.query<{ security_definer: boolean; empty_search_path: boolean }>(
+    "SELECT p.prosecdef AS security_definer, COALESCE(p.proconfig @> ARRAY['search_path=\"\"'], false) AS empty_search_path FROM pg_proc p WHERE p.oid = to_regprocedure('private.enforce_password_checked_signup(jsonb)');"
+  );
+  if (
+    approvalFunctionRes.rows.length !== 1 ||
+    approvalFunctionRes.rows[0].security_definer ||
+    !approvalFunctionRes.rows[0].empty_search_path
+  ) {
+    throw new Error('Signup hook must use SECURITY INVOKER and pin search_path to the empty path');
+  }
+
+  const authHookPrivilegeRes = await pg.query<{
+    schema_usage: boolean;
+    can_execute: boolean;
+    can_select: boolean;
+    can_update_consumed: boolean;
+    can_update_created_at: boolean;
+    can_insert: boolean;
+    can_delete: boolean;
+  }>(
+    "SELECT has_schema_privilege('supabase_auth_admin', 'private', 'USAGE') AS schema_usage, has_function_privilege('supabase_auth_admin', 'private.enforce_password_checked_signup(jsonb)', 'EXECUTE') AS can_execute, has_table_privilege('supabase_auth_admin', 'private.password_checked_signup_approvals', 'SELECT') AS can_select, has_column_privilege('supabase_auth_admin', 'private.password_checked_signup_approvals', 'consumed_at', 'UPDATE') AS can_update_consumed, has_column_privilege('supabase_auth_admin', 'private.password_checked_signup_approvals', 'created_at', 'UPDATE') AS can_update_created_at, has_table_privilege('supabase_auth_admin', 'private.password_checked_signup_approvals', 'INSERT') AS can_insert, has_table_privilege('supabase_auth_admin', 'private.password_checked_signup_approvals', 'DELETE') AS can_delete;"
+  );
+  const hookPrivileges = authHookPrivilegeRes.rows[0];
+  if (
+    !hookPrivileges?.schema_usage || !hookPrivileges.can_execute || !hookPrivileges.can_select ||
+    !hookPrivileges.can_update_consumed || hookPrivileges.can_update_created_at ||
+    hookPrivileges.can_insert || hookPrivileges.can_delete
+  ) {
+    throw new Error('Supabase Auth admin has incorrect privileges for the private signup approval hook');
+  }
+
+  const deniedPrivateAccessRes = await pg.query<{ role_name: string; schema_usage: boolean; can_select: boolean; can_insert: boolean; can_update: boolean; can_delete: boolean }>(
+    "SELECT role_name, has_schema_privilege(role_name, 'private', 'USAGE') AS schema_usage, has_table_privilege(role_name, 'private.password_checked_signup_approvals', 'SELECT') AS can_select, has_table_privilege(role_name, 'private.password_checked_signup_approvals', 'INSERT') AS can_insert, has_table_privilege(role_name, 'private.password_checked_signup_approvals', 'UPDATE') AS can_update, has_table_privilege(role_name, 'private.password_checked_signup_approvals', 'DELETE') AS can_delete FROM unnest(ARRAY['anon', 'authenticated']) AS roles(role_name);"
+  );
+  if (deniedPrivateAccessRes.rows.length !== 2 || deniedPrivateAccessRes.rows.some((row) => row.schema_usage || row.can_select || row.can_insert || row.can_update || row.can_delete)) {
+    throw new Error('The private signup-approval schema/table is accessible to anon or authenticated roles');
+  }
+
+  const runSignupHook = async (event: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    await pg.exec('SET ROLE supabase_auth_admin;');
+    try {
+      const response = await pg.query<{ decision: unknown }>(
+        "SELECT private.enforce_password_checked_signup($1::jsonb) AS decision;",
+        [JSON.stringify(event)]
+      );
+      const decision = response.rows[0]?.decision;
+      return (typeof decision === 'string' ? JSON.parse(decision) : decision) as Record<string, unknown>;
+    } finally {
+      await pg.exec('RESET ROLE;');
+    }
+  };
+  const emailSignupEvent = (email: string, approvalId?: string): Record<string, unknown> => ({
+    user: { email, app_metadata: { provider: 'email' }, user_metadata: approvalId ? { signup_approval_id: approvalId } : {} },
+  });
+
+  const validApprovalId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  await pg.query("INSERT INTO private.password_checked_signup_approvals (approval_id, email_normalized, expires_at) VALUES ($1::uuid, $2, now() + INTERVAL '5 minutes');", [validApprovalId, 'checked@example.com']);
+  const allowedEmailSignup = await runSignupHook(emailSignupEvent('CHECKED@example.com', validApprovalId));
+  if (allowedEmailSignup.error) throw new Error('A valid, unexpired, matching one-time signup approval was rejected');
+  const replayedApproval = await runSignupHook(emailSignupEvent('checked@example.com', validApprovalId));
+  if (!replayedApproval.error) throw new Error('A consumed signup approval was replayed successfully');
+  const directEmailSignup = await runSignupHook(emailSignupEvent('direct@example.com'));
+  if (!directEmailSignup.error) throw new Error('Direct email signup without an app-issued approval was not rejected');
+
+  const wrongEmailApprovalId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  await pg.query("INSERT INTO private.password_checked_signup_approvals (approval_id, email_normalized, expires_at) VALUES ($1::uuid, $2, now() + INTERVAL '5 minutes');", [wrongEmailApprovalId, 'approved@example.com']);
+  const wrongEmail = await runSignupHook(emailSignupEvent('other@example.com', wrongEmailApprovalId));
+  if (!wrongEmail.error) throw new Error('Signup approval was accepted for a different email address');
+
+  const expiredApprovalId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  await pg.query("INSERT INTO private.password_checked_signup_approvals (approval_id, email_normalized, created_at, expires_at) VALUES ($1::uuid, $2, now() - INTERVAL '10 minutes', now() - INTERVAL '5 minutes');", [expiredApprovalId, 'expired@example.com']);
+  const expiredApproval = await runSignupHook(emailSignupEvent('expired@example.com', expiredApprovalId));
+  if (!expiredApproval.error) throw new Error('An expired signup approval was accepted');
+
+  const allowedGoogleOAuth = await runSignupHook({ user: { email: 'oauth@example.com', app_metadata: { provider: 'google' }, user_metadata: {} } });
+  if (allowedGoogleOAuth.error) throw new Error('Google OAuth signup without a password was incorrectly blocked by the password hook');
+  const unknownProvider = await runSignupHook({ user: { email: 'unknown@example.com', app_metadata: { provider: 'other-provider' }, user_metadata: {} } });
+  if (!unknownProvider.error) throw new Error('An unapproved Auth provider bypassed the signup hook');
+
   console.log(
-    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} migrations, RLS on ${expectedTables.length} application tables, ${storagePoliciesRes.rows.length} Storage RLS policies, no client Data API INSERT/UPDATE/DELETE grants, expected read-only SELECT grants, 2 enums, ${fkNames.length} foreign key constraints, check constraints, 2 validation triggers, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
+    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} migrations, RLS on ${expectedTables.length} application tables, ${storagePoliciesRes.rows.length} Storage RLS policies, no client Data API INSERT/UPDATE/DELETE grants, expected read-only SELECT grants, 2 enums, ${fkNames.length} foreign key constraints, check constraints, 2 validation triggers, one-time Auth signup approval contract, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
   );
 }
 
@@ -444,6 +530,12 @@ export async function verifyMigrationUpgrade(): Promise<void> {
 
   // Bootstrap auth schema and auth.uid() stub
   await pg.exec(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+        CREATE ROLE supabase_auth_admin NOLOGIN;
+      END IF;
+    END $$;
+
     CREATE SCHEMA IF NOT EXISTS auth;
     CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
     BEGIN

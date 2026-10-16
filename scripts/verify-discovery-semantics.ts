@@ -11,6 +11,8 @@ async function main() {
   console.log('🔄 Running discovery semantics verification against isolated PGlite engine...');
 
   const pglite = new PGlite();
+  // Supabase provides this internal role; the isolated PGlite database does not.
+  await pglite.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
 
   // Bootstrap auth schema and auth.uid() stub for PGlite execution
   await pglite.exec(`

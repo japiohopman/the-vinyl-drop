@@ -89,6 +89,7 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
 
   beforeAll(async () => {
     pg = new PGlite();
+    await pg.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
 
     // Setup Supabase auth schema and auth.uid() function for isolated test runner
     await pg.exec(`

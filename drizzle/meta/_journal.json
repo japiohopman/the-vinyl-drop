@@ -78,6 +78,13 @@
       "when": 1792179000000,
       "tag": "0010_supabase_data_api_read_only",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792181700000,
+      "tag": "0011_password_checked_signup_hook",
+      "breakpoints": true
     }
   ]
 }

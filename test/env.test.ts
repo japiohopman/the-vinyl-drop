@@ -17,6 +17,27 @@ describe('Environment Validation', () => {
     expect(env.NODE_ENV).toBe('test');
   });
 
+  it('enables checked-signup approval by default only in tests; runtime modes require opt-in', () => {
+    expect(validateEnv({ NODE_ENV: 'test' }).SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED).toBe(true);
+    expect(validateEnv({
+      NODE_ENV: 'development',
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/development_db',
+      SUPABASE_URL: 'https://development-project.supabase.co',
+      SUPABASE_ANON_KEY: 'some-development-key',
+    }).SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED).toBe(false);
+    const staging = {
+      NODE_ENV: 'staging',
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+      SUPABASE_URL: 'https://staging-project.supabase.co',
+      SUPABASE_ANON_KEY: 'some-staging-key',
+      APP_BASE_URL: 'https://staging.vinyldrop.onrender.com',
+      ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+      RECOVERY_SIGNING_SECRET: 'custom-staging-recovery-secret-key-32-bytes',
+    };
+    expect(validateEnv(staging).SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED).toBe(false);
+    expect(validateEnv({ ...staging, SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: 'true' }).SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED).toBe(true);
+  });
+
   it('should reject PORT 0 (below min 1)', () => {
     expect(() => validateEnv({ PORT: '0', NODE_ENV: 'test' })).toThrow(
       'Invalid environment configuration'

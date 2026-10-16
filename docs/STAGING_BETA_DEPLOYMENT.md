@@ -667,6 +667,18 @@ No new Auth user, mailbox, live setting, database record, DNS/SMTP setting, bill
 
 ---
 
+#### Free-plan remediation design — one-time checked-signup approval hook (source change, 2026-10-16)
+
+The free-plan design does not attempt to read the password from the Supabase hook. The official [Before User Created hook](https://supabase.com/docs/guides/auth/auth-hooks/before-user-created-hook) receives the pending user and metadata, but not the submitted password. Instead, The Vinyl Drop checks the password with HIBP first and then, only in protected mode, writes a random one-time approval row tied to the normalized email and expiring after five minutes. The approval UUID is sent as `user_metadata.signup_approval_id` in the application's existing Supabase `signUp()` request.
+
+The private hook function `private.enforce_password_checked_signup(jsonb)` consumes that approval atomically. A direct email/password Auth signup request without a valid, unexpired, matching and unused approval is rejected. The table is in a non-public `private` schema with no access for `anon` or `authenticated`; the `SECURITY INVOKER` function pins an empty `search_path`, and row-level policies grant `supabase_auth_admin` only SELECT access plus UPDATE permission on the `consumed_at` column. Anonymous and authenticated API roles have no access. The application fails closed if it cannot persist an approval. No raw password or HIBP hash is stored or sent to the hook. Google OAuth signup remains allowed because the provider supplies the authentication credential; unknown providers fail closed.
+
+**This migration and hook are not active in staging just because this source PR is merged.** Migration `0011_password_checked_signup_hook.sql` must be applied only after migrations `0009` and `0010` have been separately reviewed/authorized in the Issue #49 staging gate. Then configure **Supabase Auth → Hooks → Before User Created** to call `private.enforce_password_checked_signup` with function URI `pg-functions://postgres/private/enforce_password_checked_signup`. Only after that succeeds should the owner set Render staging `SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED=true`. The code default is false in staging/production so deployment cannot silently change signup behavior ahead of the approved cutover. If protected mode is enabled while the approval table is absent or unavailable, app signup fails before calling Supabase Auth.
+
+The human-operated staging verification after approved cutover must confirm the existing breached-password rejection, a non-breached password through the normal email-confirmation path, rejection of a direct email/password Auth signup without approval, and continued Google OAuth behavior. Isolated tests cover replay, expiry, wrong-email matching, and provider behavior. Do not create Auth users or change live hooks/settings from CI. This source change does **not** clear the native `auth_leaked_password_protection` Security Advisor warning. The Before User Created hook covers new email signups; it does not enforce the HIBP check on later password updates by already-authenticated users. Keep #118 and #49 open until separately authorized staging configuration and runtime evidence are complete.
+
+---
+
 ### 5.7 Live Authenticated CSRF Verification — Listing & Profile Mutations (2026-10-16)
 
 **Target:** [Staging site](https://the-vinyl-drop-staging.onrender.com)  
