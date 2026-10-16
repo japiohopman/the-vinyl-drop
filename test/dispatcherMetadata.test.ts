@@ -1,5 +1,22 @@
 import { describe, expect, test } from '@jest/globals';
-import { parseIssueMetadata } from '../.github/scripts/dispatcher-metadata.cjs';
+
+// The shared parser is CommonJS because actions/github-script loads it with require.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { parseIssueMetadata } = require('../.github/scripts/dispatcher-metadata.cjs') as {
+  parseIssueMetadata: (issue: {
+    number: number;
+    title?: string;
+    body?: string | null;
+    state?: string;
+    labels?: Array<string | { name: string }>;
+  }) => {
+    isDispatchReady: boolean;
+    readinessProblem: string | null;
+    primarySpecialist?: string;
+    secondarySpecialist?: string;
+    dependencies: number[];
+  };
+};
 
 function issue(body: string, labels: Array<string | { name: string }> = []) {
   return parseIssueMetadata({ number: 128, title: 'metadata parser test', state: 'open', body, labels });
