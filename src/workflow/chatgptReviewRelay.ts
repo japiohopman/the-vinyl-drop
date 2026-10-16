@@ -235,7 +235,7 @@ export function summarizeCheckState(checkRuns: RawCheckRun[], currentHeadSha?: s
   const safetyGateState = ciStateToGateState(parseRunState(safetyGateRun));
 
   const hasFailure = currentRuns.some(
-    (run) => run.status === 'completed' && run.conclusion !== 'success' && run.conclusion !== 'neutral'
+    (run) => run.status === 'completed' && ['failure', 'timed_out', 'action_required', 'cancelled', 'startup_failure'].includes(run.conclusion || '')
   );
   const hasPending = currentRuns.some((run) => run.status !== 'completed');
 
