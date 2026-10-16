@@ -7,12 +7,6 @@ interface IdRow {
   id: string;
 }
 
-interface ListingRow {
-  id: string;
-  physical_copy_id: string;
-  seller_id: string;
-}
-
 describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)', () => {
   let pg: PGlite;
 
@@ -28,6 +22,70 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
 
   const copyDraftAId = '88888888-8888-4888-8888-888888888888';
   const listingDraftId = '99999999-9999-4999-8999-999999999999';
+
+  it('grants the Supabase Data API only explicitly approved SELECT access', async () => {
+    const appTables = [
+      'activity_events',
+      'comments',
+      'conversations',
+      'favorites',
+      'listing_photos',
+      'listings',
+      'messages',
+      'orphaned_storage_objects',
+      'physical_copies',
+      'profiles',
+      'releases',
+    ];
+
+    for (const role of ['anon', 'authenticated']) {
+      for (const table of appTables) {
+        for (const privilege of ['INSERT', 'UPDATE', 'DELETE']) {
+          const result = await pg.query<{ allowed: boolean }>(
+            `SELECT has_table_privilege('${role}', 'public.${table}', '${privilege}') AS allowed;`
+          );
+          expect(result.rows[0].allowed).toBe(false);
+        }
+      }
+    }
+
+    const publicReadTables = [
+      'activity_events',
+      'comments',
+      'listing_photos',
+      'listings',
+      'physical_copies',
+      'profiles',
+      'releases',
+    ];
+
+    for (const table of publicReadTables) {
+      for (const role of ['anon', 'authenticated']) {
+        const result = await pg.query<{ allowed: boolean }>(
+          `SELECT has_table_privilege('${role}', 'public.${table}', 'SELECT') AS allowed;`
+        );
+        expect(result.rows[0].allowed).toBe(true);
+      }
+    }
+
+    const authenticatedFavorites = await pg.query<{ allowed: boolean }>(
+      `SELECT has_table_privilege('authenticated', 'public.favorites', 'SELECT') AS allowed;`
+    );
+    const anonymousFavorites = await pg.query<{ allowed: boolean }>(
+      `SELECT has_table_privilege('anon', 'public.favorites', 'SELECT') AS allowed;`
+    );
+    expect(authenticatedFavorites.rows[0].allowed).toBe(true);
+    expect(anonymousFavorites.rows[0].allowed).toBe(false);
+
+    for (const table of ['conversations', 'messages', 'orphaned_storage_objects']) {
+      for (const role of ['anon', 'authenticated']) {
+        const result = await pg.query<{ allowed: boolean }>(
+          `SELECT has_table_privilege('${role}', 'public.${table}', 'SELECT') AS allowed;`
+        );
+        expect(result.rows[0].allowed).toBe(false);
+      }
+    }
+  });
 
   beforeAll(async () => {
     pg = new PGlite();
@@ -197,26 +255,21 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
       ).rejects.toThrow();
     });
 
-    it('should prevent User B from updating their listing to reassign physical_copy_id to User A physical copy', async () => {
+    it('should deny direct Data API listing creation before any ownership reassignment can occur', async () => {
       const userBListingId = '96666666-6666-4666-8666-666666666666';
 
-      // 1. User B creates a listing for their own physical copy (copyBId)
-      await pg.query(
-        `INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${userBListingId}', '${copyBId}', '${userB}', 'published');`
-      );
-
-      // 2. User B attempts to update physical_copy_id to User A's physical copy (copyAId)
+      // The Data API is read-only even for an authenticated user creating a
+      // listing for their own copy; application writes use server-side Drizzle.
       await expect(
-        pg.query(`UPDATE listings SET physical_copy_id = '${copyAId}' WHERE id = '${userBListingId}';`)
+        pg.query(
+          `INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${userBListingId}', '${copyBId}', '${userB}', 'published');`
+        )
       ).rejects.toThrow();
 
-      // 3. Verify physical_copy_id remains copyBId
-      const listingRes = await pg.query<ListingRow>(
-        `SELECT id, physical_copy_id, seller_id FROM listings WHERE id = '${userBListingId}';`
+      const listingRes = await pg.query<IdRow>(
+        `SELECT id FROM listings WHERE id = '${userBListingId}';`
       );
-      expect(listingRes.rows.length).toBe(1);
-      expect(listingRes.rows[0].physical_copy_id).toBe(copyBId);
-      expect(listingRes.rows[0].seller_id).toBe(userB);
+      expect(listingRes.rows.length).toBe(0);
     });
 
     it('should prevent User B from forging activity events via Data API', async () => {
@@ -253,12 +306,19 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
       expect(userAActivity.rows.length).toBe(0);
     });
 
-    it('should prevent User B from updating or deleting User A profile or listing', async () => {
-      const updateResult = await pg.query(`UPDATE profiles SET display_name = 'Hacked A' WHERE id = '${userA}';`);
-      expect(updateResult.affectedRows).toBe(0);
+    it('should deny direct Data API UPDATE and DELETE even for a non-owner', async () => {
+      await expect(
+        pg.query(`UPDATE profiles SET display_name = 'Hacked A' WHERE id = '${userA}';`)
+      ).rejects.toThrow();
 
-      const deleteResult = await pg.query(`DELETE FROM listings WHERE id = '${listingPublishedId}';`);
-      expect(deleteResult.affectedRows).toBe(0);
+      await expect(
+        pg.query(`DELETE FROM listings WHERE id = '${listingPublishedId}';`)
+      ).rejects.toThrow();
+
+      const profile = await pg.query<{ display_name: string }>(
+        `SELECT display_name FROM profiles WHERE id = '${userA}';`
+      );
+      expect(profile.rows[0].display_name).toBe('User A');
     });
   });
 
@@ -287,31 +347,50 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
       expect(userAActivity.rows.length).toBe(1);
     });
 
-    it('should allow User A to create a listing for their own physical copy', async () => {
+    it('should deny direct Data API INSERT even when the authenticated user owns the copy', async () => {
       const newListingId = '94444444-4444-4444-8444-444444444444';
-      await pg.query(`INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${newListingId}', '${copyDraftAId}', '${userA}', 'draft');`);
+
+      await expect(
+        pg.query(`INSERT INTO listings (id, physical_copy_id, seller_id, status) VALUES ('${newListingId}', '${copyDraftAId}', '${userA}', 'draft');`)
+      ).rejects.toThrow();
 
       const res = await pg.query<IdRow>(`SELECT id FROM listings WHERE id = '${newListingId}';`);
-      expect(res.rows.length).toBe(1);
+      expect(res.rows.length).toBe(0);
     });
 
-    it('should allow User A to update their own profile and listing', async () => {
-      const updateProfile = await pg.query(`UPDATE profiles SET display_name = 'User A Updated' WHERE id = '${userA}';`);
-      expect(updateProfile.affectedRows).toBe(1);
+    it('should deny direct Data API UPDATE even when the authenticated user owns the profile and listing', async () => {
+      await expect(
+        pg.query(`UPDATE profiles SET display_name = 'User A Updated' WHERE id = '${userA}';`)
+      ).rejects.toThrow();
 
-      const updateListing = await pg.query(`UPDATE listings SET price = 4500 WHERE id = '${listingPublishedId}';`);
-      expect(updateListing.affectedRows).toBe(1);
+      await expect(
+        pg.query(`UPDATE listings SET price = 4500 WHERE id = '${listingPublishedId}';`)
+      ).rejects.toThrow();
+
+      const profile = await pg.query<{ display_name: string }>(
+        `SELECT display_name FROM profiles WHERE id = '${userA}';`
+      );
+      expect(profile.rows[0].display_name).toBe('User A');
+
+      const listing = await pg.query<{ price: number }>(
+        `SELECT price FROM listings WHERE id = '${listingPublishedId}';`
+      );
+      expect(listing.rows[0].price).toBe(4000);
     });
 
-    it('should allow User A to delete and re-insert their own favorite', async () => {
+    it('should deny direct Data API INSERT and DELETE on favorites while retaining owner reads', async () => {
       const favId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-      const deleteFav = await pg.query(`DELETE FROM favorites WHERE id = '${favId}';`);
-      expect(deleteFav.affectedRows).toBe(1);
+
+      await expect(
+        pg.query(`DELETE FROM favorites WHERE id = '${favId}';`)
+      ).rejects.toThrow();
 
       const newFavId = '95555555-5555-4555-8555-555555555555';
-      await pg.query(`INSERT INTO favorites (id, user_id, listing_id) VALUES ('${newFavId}', '${userA}', '${listingPublishedId}');`);
+      await expect(
+        pg.query(`INSERT INTO favorites (id, user_id, listing_id) VALUES ('${newFavId}', '${userA}', '${listingPublishedId}');`)
+      ).rejects.toThrow();
 
-      const selectFav = await pg.query<IdRow>(`SELECT id FROM favorites WHERE id = '${newFavId}';`);
+      const selectFav = await pg.query<IdRow>(`SELECT id FROM favorites WHERE id = '${favId}';`);
       expect(selectFav.rows.length).toBe(1);
     });
   });

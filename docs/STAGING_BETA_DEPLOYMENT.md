@@ -80,18 +80,28 @@ Apply/test this template in staging only after the code that sets `emailRedirect
 
 ### 3.1 Least-Privilege Data API Access Matrix
 
-The application's backend server uses Express/EJS and Drizzle ORM connecting via direct PostgreSQL / Session Pooler connection (`DATABASE_URL`), operating as table superuser/owner (bypassing RLS). Because Supabase exposes PostgreSQL public schema tables through the PostgREST Data API (accessible via `SUPABASE_ANON_KEY` or client JWTs), **Row Level Security (RLS) and explicit role privileges are enforced** on all eight public tables via `drizzle/0005_enforce_least_privilege_rls.sql`:
+The application is a server-rendered Express/EJS site. Application data writes go through server-side services and Drizzle using `DATABASE_URL`; browser code does not need direct Supabase Data API write access. Supabase Auth and Storage remain separate services and are not affected by this table-grant restriction.
 
-| Table Name | SELECT Access Policy | INSERT Access Policy | UPDATE Access Policy | DELETE Access Policy | Granted Roles |
-| --- | --- | --- | --- | --- | --- |
-| **`profiles`** | **Public:** `true` (Anyone can view profiles) | **Owner:** `auth.uid() = id` | **Owner:** `auth.uid() = id` | **Owner:** `auth.uid() = id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
-| **`releases`** | **Public:** `true` (Catalogue is public) | **Denied for Data API:** Server-managed only | **Denied for Data API:** Server-managed only | **Denied:** Default deny | `anon` (SELECT), `authenticated` (SELECT) |
-| **`physical_copies`** | **Public / Owner:** `owner_id = auth.uid() OR EXISTS (SELECT 1 FROM listings WHERE physical_copy_id = physical_copies.id AND status = 'published')` | **Owner:** `auth.uid() = owner_id` | **Owner:** `auth.uid() = owner_id` | **Owner:** `auth.uid() = owner_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
-| **`listings`** | **Public / Seller:** `status = 'published' OR seller_id = auth.uid()` | **Seller & Copy Owner:** `auth.uid() = seller_id AND EXISTS (SELECT 1 FROM physical_copies WHERE id = listings.physical_copy_id AND owner_id = auth.uid())` | **Seller & Copy Owner:** `auth.uid() = seller_id AND EXISTS (SELECT 1 FROM physical_copies WHERE id = listings.physical_copy_id AND owner_id = auth.uid())` | **Seller:** `auth.uid() = seller_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
-| **`listing_photos`** | **Public / Seller:** Attached listing is published or owned by `auth.uid()` | **Seller:** `auth.uid()` matches attached listing's `seller_id` | **Seller:** `auth.uid()` matches attached listing's `seller_id` | **Seller:** `auth.uid()` matches attached listing's `seller_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
-| **`comments`** | **Public / Seller:** Attached listing is published or owned by `auth.uid()` | **Author:** `auth.uid() = author_id` on readable/published listing | **Author:** `auth.uid() = author_id` on readable/published listing | **Author:** `auth.uid() = author_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
-| **`activity_events`** | **Public / Actor:** `event_type IN ('listing.published', 'comment.created') OR (event_type = 'favorite.created' AND actor_id = auth.uid())` | **Denied for Data API:** Server-managed only | **Denied:** Default deny | **Denied for Data API:** Server-managed only | `anon` (SELECT), `authenticated` (SELECT) |
-| **`favorites`** | **Owner Only:** `user_id = auth.uid()` (Strictly private) | **Owner:** `auth.uid() = user_id` on published listing | **Denied:** Default deny | **Owner:** `auth.uid() = user_id` | `authenticated` (SELECT, INSERT, DELETE); `anon` has NO grants |
+Migration `0005_enforce_least_privilege_rls.sql` establishes row-level policies. The pending append-only migration `0010_supabase_data_api_read_only.sql` adds a stronger table-privilege boundary: even an authenticated JWT cannot use the Supabase Data API to INSERT, UPDATE, or DELETE application rows. The existing RLS policies remain as defense in depth, but the roles below receive only the stated SELECT permissions.
+
+| Table | SELECT through Supabase Data API | INSERT / UPDATE / DELETE through Supabase Data API | Intended application write path |
+| --- | --- | --- | --- |
+| `profiles` | Public SELECT, filtered by table policy | **Denied by table privileges** | Express profile service + Drizzle |
+| `releases` | Public catalogue SELECT | **Denied by table privileges** | Server-side catalogue service + Drizzle |
+| `physical_copies` | Published/owner rows, filtered by RLS | **Denied by table privileges** | Express listing workflow + Drizzle |
+| `listings` | Published/owner rows, filtered by RLS | **Denied by table privileges** | Express listing workflow + Drizzle |
+| `listing_photos` | Published/owner listing rows, filtered by RLS | **Denied by table privileges** | Express upload workflow + Drizzle; bytes use Supabase Storage |
+| `comments` | Comments on readable listings, filtered by RLS | **Denied by table privileges** | Express comment service + Drizzle |
+| `activity_events` | Public events and permitted actor-scoped events, filtered by RLS | **Denied by table privileges** | Server-managed activity service + Drizzle |
+| `favorites` | Authenticated owner-only SELECT; no `anon` SELECT grant | **Denied by table privileges** | Express favorites service + Drizzle |
+| `conversations`, `messages` | No client Data API access | **Denied; no client table grants** | Server-side participant-scoped messaging services + Drizzle |
+| `orphaned_storage_objects` | No client Data API access | **Denied; no client table grants** | Server-side storage cleanup only |
+
+The migration deliberately revokes table privileges granted to `PUBLIC`, `anon`, and `authenticated` on the listed application tables, then grants back only the approved SELECT permissions. It does not remove RLS policies or alter grants on Supabase-managed Auth/Storage tables.
+
+**Deployment boundary:** migration 0010 is source-controlled but must not be applied to staging as part of this PR. The human-owned release gate [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) still controls live schema changes, and [Issue #127](https://github.com/japiohopman/the-vinyl-drop/issues/127) tracks the still-unapplied migration 0009. Drizzle applies pending migrations in sequence; do not apply 0010 until the earlier migration and the overall staging gate have been reviewed and explicitly authorized.
+
+The live cross-user PATCH investigation is tracked in [Issue #133](https://github.com/japiohopman/the-vinyl-drop/issues/133). The previously reported PowerShell row count was later found to be unreliable for an empty JSON array on Windows PowerShell 5.1. Because the original raw HTTP response body was not captured, that attempt is **inconclusive**: do not claim either an RLS bypass or a passing live write-denial test from it. This migration is preventative least-privilege hardening, not proof of the original request's root cause. Re-evaluate the actual effective grants only after an approved staging migration.
 
 ### 3.2 Storage Object Access & Storage RLS Policy Specification
 
@@ -199,17 +209,10 @@ Confirm that the active project reference in the Supabase Dashboard matches `STA
 6. Restrict **Allowed MIME types**: `image/webp`, `image/jpeg`, `image/png`.
 7. Save bucket.
 
-#### Step 3 — Reconcile Storage Policies and Apply Database Migrations
-1. Confirm the four policies in Section 3.2 exist in the staging Supabase Dashboard under `storage.objects`, with SELECT targeted to `public` and INSERT/UPDATE/DELETE targeted to `authenticated`.
-2. Execute the version-controlled Drizzle migrations against the confirmed staging database:
-
-   ```bash
-   DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:migrate
-   ```
-
-   Migration `0006` applies its policy DDL only when the current role owns `storage.objects`; otherwise it validates the four pre-provisioned policies and skips managed-table DDL only if they match. It fails with a clear error if they do not match. Migration `0007` then creates the private `orphaned_storage_objects` tracking table.
-
-3. `npm run db:verify` runs the migration verifier against an isolated in-memory PGlite database; it is not a live staging database check. Verify the live state in the Supabase SQL Editor with read-only queries:
+#### Step 3 — Reconcile Storage Policies; Use the Gated Migration Procedure
+1. Confirm the four policies in Section 3.2 exist in the intended staging Supabase project under `storage.objects`, with SELECT targeted to `public` and INSERT/UPDATE/DELETE targeted to `authenticated`.
+2. **Do not run `npm run db:migrate` from this setup checklist.** That command applies every pending migration in journal order—not only migrations `0006` and `0007`—and can also apply migrations `0009` and `0010`. Use the gated procedure in [Section 3.4](#34-human-runbook-staging-rls-migration-application--live-data-api-verification) only after Issue [#49](https://github.com/japiohopman/the-vinyl-drop/issues/49) explicitly authorizes the exact staging operation and migration `0009` in Issue [#127](https://github.com/japiohopman/the-vinyl-drop/issues/127) has been separately reviewed and authorized. Migration `0006` applies its Storage policy DDL only when the current role owns `storage.objects`; otherwise it validates the four pre-provisioned policies and skips managed-table DDL only if they match. Migration `0007` creates the private `orphaned_storage_objects` tracking table.
+3. `npm run db:verify` runs the migration verifier against an isolated in-memory PGlite database; it is not a live staging database check. Verify live state only with the read-only queries below after the separately gated procedure has been approved and completed:
 
    ```sql
    SELECT policyname, roles, cmd
@@ -234,57 +237,45 @@ Confirm that the active project reference in the Supabase Dashboard matches `STA
 
 ### 3.4 Human Runbook: Staging RLS Migration Application & Live Data API Verification
 
-*Notice: This runbook is a human-only operational guide. Do NOT execute live database migrations, dashboard policy edits, or database resets from automated CI sessions.*
+*Human-only operational guidance. Do not apply live database migrations, edit Dashboard policies, reset databases, or issue write probes as part of CI or ordinary review work.*
 
-#### Step 1 — Review and Apply SQL Migration to Reserved Staging Project
-1. Obtain the staging database connection string (`DATABASE_URL`) from staging environment configuration.
-2. Execute the version-controlled Drizzle migration against the staging PostgreSQL database:
-   ```bash
-   DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:migrate
+#### Step 1 — Preconditions for any staging migration
+
+Do **not** run a staging migration until all of the following are true:
+
+1. The human-owned staging/release gate [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) has been reviewed and explicitly authorizes the specific operation.
+2. [Issue #127](https://github.com/japiohopman/the-vinyl-drop/issues/127)'s migration `0009_case_insensitive_usernames.sql` is separately reviewed and authorized. Drizzle applies pending migrations in sequence; adding migration 0010 does not permit skipping migration 0009.
+3. The operator confirms the exact staging project and database host against the approved `STAGING_DB_PROJECT_REF`, `STAGING_DB_HOST`, and `DATABASE_URL`.
+4. The operator has a clear, bounded plan for the exact migration and its read-only post-checks.
+
+The pull request that adds migration 0010 is source code only. It must not run or authorize a live staging migration.
+
+#### Step 2 — Apply and verify only after explicit authorization
+
+After the prerequisites above are met and the owner explicitly approves the live operation:
+
+1. Review the pending migration list and check the existing username-collision inventory immediately before applying the guarded migration 0009.
+2. Run the version-controlled migration command against the confirmed staging PostgreSQL connection only:
+   ```powershell
+   npm run db:migrate
    ```
-3. Run database verification script to confirm all 8 tables have RLS enabled:
-   ```bash
-   DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:verify
-   ```
+3. Run `npm run db:verify` for the isolated PGlite migration test. **This is an in-memory test, not a live staging database check.**
+4. Run a separate read-only staging SQL audit to confirm the migration history, RLS state, and effective `information_schema.table_privileges` / `has_table_privilege` results for `anon` and `authenticated` across all 11 application tables.
 
-#### Step 2 — Verify PostgREST / Supabase Data API Security Boundaries via CURL
-Run the following curl verification commands against the staging Supabase Data API endpoint (`https://[STAGING_REF].supabase.co/rest/v1/`):
+#### Step 3 — Verify the intended read-only Data API boundary
 
-1. **Anonymous Read Check (Public Tables Allowed, Favorites Denied):**
-   ```bash
-   # Should return 200 OK with public listings
-   curl -i -X GET "https://[STAGING_REF].supabase.co/rest/v1/listings?select=id,status" \
-     -H "apikey: [SUPABASE_ANON_KEY]"
+After migration 0010 has been separately approved and applied, use **read-only checks** to verify:
 
-   # Should return 401 Unauthorized or 403 Forbidden (anon table grant revoked on favorites)
-   curl -i -X GET "https://[STAGING_REF].supabase.co/rest/v1/favorites" \
-     -H "apikey: [SUPABASE_ANON_KEY]"
-   ```
+- Public browse tables (`profiles`, `releases`, `physical_copies`, `listings`, `listing_photos`, `comments`, and `activity_events`) retain SELECT access where documented.
+- `favorites` has SELECT access for `authenticated`, but not for `anon`.
+- `conversations`, `messages`, and `orphaned_storage_objects` have no client SELECT access.
+- Neither `anon` nor `authenticated` has INSERT, UPDATE, or DELETE table privileges on any application table.
 
-2. **Anonymous Write Check (MUST BE DENIED):**
-   ```bash
-   # Should return 401 Unauthorized or 403 Forbidden
-   curl -i -X POST "https://[STAGING_REF].supabase.co/rest/v1/profiles" \
-     -H "apikey: [SUPABASE_ANON_KEY]" \
-     -H "Content-Type: application/json" \
-     -d '{"id":"00000000-0000-0000-0000-000000000000","username":"attacker"}'
-   ```
+A public listing GET can be used as a harmless Data API smoke check. Do **not** repeat the earlier live profile PATCH, send test writes, or edit a profile merely to prove denial. The prior Windows PowerShell result was inconclusive because its empty-array parser can miscount `[]`; preserve that limitation in the evidence rather than inventing a result. The unresolved discrepancy and evidence are tracked in [Issue #133](https://github.com/japiohopman/the-vinyl-drop/issues/133).
 
-3. **Authenticated Cross-User Tampering Check (MUST BE DENIED BY RLS):**
-   ```bash
-   # Attempting to modify User A's profile as User B (using User B JWT)
-   curl -i -X PATCH "https://[STAGING_REF].supabase.co/rest/v1/profiles?id=eq.[USER_A_UUID]" \
-     -H "apikey: [SUPABASE_ANON_KEY]" \
-     -H "Authorization: Bearer [USER_B_JWT]" \
-     -H "Content-Type: application/json" \
-     -d '{"display_name":"Hacked Name"}'
-   # Should affect 0 rows (204 No Content with 0 affected rows or 403 Forbidden)
-   ```
+#### Step 4 — If verification does not match the contract
 
-#### Step 3 — Safety Recovery Procedure
-If an issue occurs during migration application on staging:
-1. Re-run `npm run db:migrate` or connect via `psql` to check `pg_stat_activity` if connection pooling locks occur.
-2. If policies need adjustment, prepare a new version-controlled Drizzle migration SQL file in `drizzle/` (e.g. `0006_*.sql`). Do NOT perform ad-hoc edits in the Supabase Dashboard.
+Stop. Do not modify live policies directly in the Supabase Dashboard, do not roll forward with additional migrations, and do not retry mutation requests. Record the exact read-only finding with secrets and personal data redacted, then update the owner-controlled release gate before any further live action.
 
 ### 3.5 Human Runbook: Staging Password Recovery & Reset Flow Setup & Verification (Issue #79)
 

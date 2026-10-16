@@ -71,6 +71,13 @@
       "when": 1791900000000,
       "tag": "0009_case_insensitive_usernames",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792179000000,
+      "tag": "0010_supabase_data_api_read_only",
+      "breakpoints": true
     }
   ]
 }

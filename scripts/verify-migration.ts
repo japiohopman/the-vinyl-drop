@@ -371,24 +371,69 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
-  // 9. Verify client role privilege revocation on internal private tables
-  for (const privateTable of ['orphaned_storage_objects', 'conversations', 'messages']) {
-    const anonPrivRes = await pg.query<{ has_privilege: boolean }>(
-      `SELECT has_table_privilege('anon', '${privateTable}', 'SELECT, INSERT, UPDATE, DELETE') as has_privilege;`
-    );
-    const authPrivRes = await pg.query<{ has_privilege: boolean }>(
-      `SELECT has_table_privilege('authenticated', '${privateTable}', 'SELECT, INSERT, UPDATE, DELETE') as has_privilege;`
-    );
+  // 9. Verify that Supabase Data API roles are read-only on every application table.
+  // The Express/Drizzle server is the sole application data-write path.
+  for (const table of expectedTables) {
+    for (const role of ['anon', 'authenticated']) {
+      for (const privilege of ['INSERT', 'UPDATE', 'DELETE']) {
+        const result = await pg.query<{ has_privilege: boolean }>(
+          `SELECT has_table_privilege('${role}', '${table}', '${privilege}') AS has_privilege;`
+        );
 
-    if (anonPrivRes.rows[0].has_privilege || authPrivRes.rows[0].has_privilege) {
-      throw new Error(
-        `Table '${privateTable}' must be internal-only, but client roles (anon/authenticated) hold table privileges`
+        if (result.rows[0].has_privilege) {
+          throw new Error(
+            `Table '${table}' must not grant ${privilege} to Supabase Data API role '${role}'`
+          );
+        }
+      }
+    }
+  }
+
+  const publicReadTables = [
+    'activity_events',
+    'comments',
+    'listing_photos',
+    'listings',
+    'physical_copies',
+    'profiles',
+    'releases',
+  ];
+  for (const table of publicReadTables) {
+    for (const role of ['anon', 'authenticated']) {
+      const result = await pg.query<{ has_privilege: boolean }>(
+        `SELECT has_table_privilege('${role}', '${table}', 'SELECT') AS has_privilege;`
       );
+      if (!result.rows[0].has_privilege) {
+        throw new Error(`Expected SELECT access for '${role}' on public-read table '${table}'`);
+      }
+    }
+  }
+
+  const authenticatedFavorites = await pg.query<{ has_privilege: boolean }>(
+    `SELECT has_table_privilege('authenticated', 'favorites', 'SELECT') AS has_privilege;`
+  );
+  const anonymousFavorites = await pg.query<{ has_privilege: boolean }>(
+    `SELECT has_table_privilege('anon', 'favorites', 'SELECT') AS has_privilege;`
+  );
+  if (!authenticatedFavorites.rows[0].has_privilege || anonymousFavorites.rows[0].has_privilege) {
+    throw new Error('Expected authenticated-only SELECT access to favorites');
+  }
+
+  for (const privateTable of ['orphaned_storage_objects', 'conversations', 'messages']) {
+    for (const role of ['anon', 'authenticated']) {
+      const result = await pg.query<{ has_privilege: boolean }>(
+        `SELECT has_table_privilege('${role}', '${privateTable}', 'SELECT') AS has_privilege;`
+      );
+      if (result.rows[0].has_privilege) {
+        throw new Error(
+          `Private table '${privateTable}' must not grant SELECT to Supabase Data API role '${role}'`
+        );
+      }
     }
   }
 
   console.log(
-    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} recorded migration entries, ${expectedTables.length} tables with RLS enabled, ${storagePoliciesRes.rows.length} Storage RLS policies on storage.objects, revoked client access on private tables, 2 enums, ${fkNames.length} foreign key constraints, check constraints, 2 validation triggers, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
+    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} migrations, RLS on ${expectedTables.length} application tables, ${storagePoliciesRes.rows.length} Storage RLS policies, no client Data API INSERT/UPDATE/DELETE grants, expected read-only SELECT grants, 2 enums, ${fkNames.length} foreign key constraints, check constraints, 2 validation triggers, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
   );
 }
 
