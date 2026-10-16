@@ -228,6 +228,148 @@ export async function verifyMigrations(): Promise<void> {
     }
   }
 
+  // 6a. Verify messaging trigger functions pin search_path and qualify every lookup.
+  const messagingFunctionsRes = await pg.query<{
+    proname: string;
+    empty_search_path: boolean;
+    function_body: string;
+  }>(
+    `SELECT p.proname,
+            COALESCE(p.proconfig @> ARRAY['search_path=""'], false) AS empty_search_path,
+            p.prosrc AS function_body
+     FROM pg_proc p
+     JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proname IN ('check_conversation_validity', 'check_message_sender_validity')
+     ORDER BY p.proname;`
+  );
+  if (messagingFunctionsRes.rows.length !== 2) {
+    throw new Error(`Expected both public messaging trigger functions, found ${messagingFunctionsRes.rows.length}`);
+  }
+  for (const fn of messagingFunctionsRes.rows) {
+    if (!fn.empty_search_path) {
+      throw new Error(`Messaging trigger function '${fn.proname}' must pin search_path to the empty path`);
+    }
+    const qualifiedReferences = fn.proname === 'check_conversation_validity'
+      ? ['public.listings', 'public.listing_status']
+      : ['public.conversations', 'public.listings'];
+    for (const reference of qualifiedReferences) {
+      if (!fn.function_body.includes(reference)) {
+        throw new Error(`Messaging trigger function '${fn.proname}' does not schema-qualify '${reference}'`);
+      }
+    }
+  }
+
+  // 6b. Exercise the existing trigger behavior against isolated migration fixtures.
+  // The fixture rows are written by the isolated verifier's database owner, not a live role.
+  const messagingFixture = {
+    sellerId: 'd1111111-1111-4111-8111-111111111111',
+    buyerId: 'd2222222-2222-4222-8222-222222222222',
+    outsiderId: 'd3333333-3333-4333-8333-333333333333',
+    releaseId: 'd4444444-4444-4444-8444-444444444444',
+    publishedCopyId: 'd5555555-5555-4555-8555-555555555555',
+    draftCopyId: 'd6666666-6666-4666-8666-666666666666',
+    publishedListingId: 'd7777777-7777-4777-8777-777777777777',
+    draftListingId: 'd8888888-8888-4888-8888-888888888888',
+    conversationId: 'd9999999-9999-4999-8999-999999999999',
+  };
+  await pg.query(
+    `INSERT INTO public.profiles (id, username, display_name)
+     VALUES ($1::uuid, 'trigger_seller', 'Trigger Seller'),
+            ($2::uuid, 'trigger_buyer', 'Trigger Buyer'),
+            ($3::uuid, 'trigger_outsider', 'Trigger Outsider');`,
+    [messagingFixture.sellerId, messagingFixture.buyerId, messagingFixture.outsiderId]
+  );
+  await pg.query(
+    `INSERT INTO public.releases (id, artist, title, label, release_year)
+     VALUES ($1::uuid, 'Trigger Test', 'Search Path LP', 'Test Label', 2001);`,
+    [messagingFixture.releaseId]
+  );
+  await pg.query(
+    `INSERT INTO public.physical_copies (id, release_id, owner_id, media_condition, sleeve_condition)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, 'NM', 'NM'),
+            ($4::uuid, $2::uuid, $3::uuid, 'VG+', 'VG+');`,
+    [messagingFixture.publishedCopyId, messagingFixture.releaseId, messagingFixture.sellerId,
+     messagingFixture.draftCopyId]
+  );
+  await pg.query(
+    `INSERT INTO public.listings (id, physical_copy_id, seller_id, price, currency, status)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, 2500, 'EUR', 'published'),
+            ($4::uuid, $5::uuid, $3::uuid, 2000, 'EUR', 'draft');`,
+    [messagingFixture.publishedListingId, messagingFixture.publishedCopyId, messagingFixture.sellerId,
+     messagingFixture.draftListingId, messagingFixture.draftCopyId]
+  );
+
+  const expectTriggerRejection = async (
+    label: string,
+    query: string,
+    params: unknown[],
+    expectedMessage: string
+  ): Promise<void> => {
+    try {
+      await pg.query(query, params);
+    } catch (error) {
+      if (!String(error).includes(expectedMessage)) {
+        throw new Error(`${label} failed for an unexpected reason: ${String(error)}`);
+      }
+      return;
+    }
+    throw new Error(`${label} unexpectedly succeeded`);
+  };
+
+  await pg.query(
+    `INSERT INTO public.conversations (id, listing_id, buyer_id)
+     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
+    [messagingFixture.conversationId, messagingFixture.publishedListingId, messagingFixture.buyerId]
+  );
+  await expectTriggerRejection(
+    'Seller opening a conversation on their own listing',
+    `INSERT INTO public.conversations (id, listing_id, buyer_id)
+     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
+    ['da111111-1111-4111-8111-111111111111', messagingFixture.publishedListingId, messagingFixture.sellerId],
+    'cannot start a conversation on their own listing'
+  );
+  await expectTriggerRejection(
+    'Conversation on a draft listing',
+    `INSERT INTO public.conversations (id, listing_id, buyer_id)
+     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
+    ['da222222-2222-4222-8222-222222222222', messagingFixture.draftListingId, messagingFixture.buyerId],
+    'Conversations can only be started on published listings'
+  );
+  await expectTriggerRejection(
+    'Conversation for a nonexistent listing',
+    `INSERT INTO public.conversations (id, listing_id, buyer_id)
+     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
+    ['da333333-3333-4333-8333-333333333333', 'da444444-4444-4444-8444-444444444444', messagingFixture.buyerId],
+    'does not exist'
+  );
+
+  await pg.query(
+    `INSERT INTO public.messages (id, conversation_id, sender_id, body)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, 'valid buyer message'),
+            ($4::uuid, $2::uuid, $5::uuid, 'valid seller message');`,
+    ['db111111-1111-4111-8111-111111111111', messagingFixture.conversationId, messagingFixture.buyerId,
+     'db222222-2222-4222-8222-222222222222', messagingFixture.sellerId]
+  );
+  await expectTriggerRejection(
+    'Message from a non-participant',
+    `INSERT INTO public.messages (id, conversation_id, sender_id, body)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, 'unauthorized message');`,
+    ['db333333-3333-4333-8333-333333333333', messagingFixture.conversationId, messagingFixture.outsiderId],
+    'neither buyer nor seller'
+  );
+  const conversationCount = await pg.query<{ count: number }>(
+    `SELECT count(*)::int AS count FROM public.conversations WHERE id = $1::uuid;`,
+    [messagingFixture.conversationId]
+  );
+  const messageCount = await pg.query<{ count: number }>(
+    `SELECT count(*)::int AS count FROM public.messages WHERE conversation_id = $1::uuid;`,
+    [messagingFixture.conversationId]
+  );
+  if (conversationCount.rows[0].count !== 1 || messageCount.rows[0].count !== 2) {
+    throw new Error('Messaging trigger regression checks left unexpected conversation/message rows');
+  }
+
   // 7. Verify Row Level Security (RLS) is enabled on all 11 public tables
   const rlsRes = await pg.query<{ relname: string; relrowsecurity: boolean }>(
     `SELECT c.relname, c.relrowsecurity
