@@ -147,7 +147,23 @@ The inventory explicitly covers the current schema's profile dependencies: `list
 
 ## 4. Current verification status
 
-- The repository CI suite can validate schema migrations in an isolated in-memory PostgreSQL engine; this does not inventory live data.
-- The existing case-colliding profile rows have **not** been independently correlated to `auth.users` in this PR.
-- A human-operated, read-only run of Queries A–C against the intended target environment remains outstanding before the migration can be considered safe to apply.
-- No existing accounts, profiles, listings, or other data should be changed as part of this PR.
+### Staging read-only inventory — 2026-10-16
+
+The following read-only queries were executed against the staging Supabase project. No rows were inserted, updated, deleted, or repaired.
+
+- **Collision query:** one case-insensitive collision group remains, containing two profile rows.
+- **Auth correlation:** one row has no matching `auth.users` row and no `auth.identities` row; the other row matches a non-deleted Auth user with one Auth identity. This makes the unmatched row a likely orphan profile, but is not permission to delete it.
+- **Dependent records:** both profile rows have zero owned listings, physical copies, associated listing-photo rows, orphaned-storage records linked through owned listings, authored comments, comments on owned listings, user-created favorites, favorites on owned listings, activity events counted through the inspected actor/listing/comment relationships, buyer conversations, conversations on owned listings, sent messages, messages in buyer conversations, and messages in seller conversations.
+- **Storage cross-check:** staging contains four objects in the `listing-photos` bucket and four `listing_photos` rows; all four database paths have exact storage-object matches. The `orphaned_storage_objects` table has zero rows, including zero rows without a listing reference. Neither colliding profile owns a listing or listing-photo row.
+- **Profile/Auth totals:** four profile rows and three `auth.users` rows; one profile row has no corresponding Auth user.
+- **Index state:** `profiles_username_lower_idx` does not currently exist in staging. The case-insensitive collision query still returns one group, so the proposed unique index must not be applied yet.
+- **Foreign-key safety:** profile references include cascading relationships (activity events, comments, favorites, listings, physical copies) and `NO ACTION` relationships (conversations and messages). These were counted before proposing any repair; a future operation must repeat the inventory immediately before it runs.
+
+### What this evidence permits
+
+1. The read-only inventory requirement has been completed for staging and is recorded here without publishing profile IDs or email addresses.
+2. The unmatched row is a strong candidate for an orphan profile, with no dependent application records found by the checks above. Any deletion or rename remains a separate human-approved data change; no such change was made.
+3. Before migration `0009_case_insensitive_usernames.sql` can be applied to staging, the collision must be resolved through an explicitly approved repair, Query A must be rerun and return no rows, and the existing release gate must authorize the migration.
+4. This dated snapshot is not a guarantee that data remains unchanged. Repeat read-only queries immediately before any future approved migration.
+
+The repository CI suite validates schema migrations in an isolated in-memory PostgreSQL engine; it does not inventory live data. No staging migration, deployment, or existing account/profile/listing change was performed as part of this inventory.
