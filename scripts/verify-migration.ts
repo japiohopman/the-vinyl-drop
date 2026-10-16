@@ -661,7 +661,7 @@ export async function verifyMigrations(): Promise<void> {
   if (!unknownProvider.error) throw new Error('An unapproved Auth provider bypassed the signup hook');
 
   console.log(
-    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} migrations, RLS on ${expectedTables.length} application tables, ${storagePoliciesRes.rows.length} Storage RLS policies, no client Data API INSERT/UPDATE/DELETE grants, expected read-only SELECT grants, 2 enums, ${fkNames.length} foreign key constraints, check constraints, 2 validation triggers, one-time Auth signup approval contract, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
+    `✅ Fresh migration verification successful! Verified ${migrationHistory.rows.length} migrations, RLS on ${expectedTables.length} application tables, ${storagePoliciesRes.rows.length} Storage RLS policies, no client Data API INSERT/UPDATE/DELETE grants, expected read-only SELECT grants, 2 enums, ${fkNames.length} foreign key constraints, check constraints, 2 validation triggers, one-time Auth signup approval contract, search_path-pinned messaging trigger functions with valid/invalid conversation and message checks, and ${indexNames.length} indexes applied cleanly via Drizzle migrator.`
   );
 }
 
