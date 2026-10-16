@@ -444,7 +444,7 @@ The checkboxes below are reconciled against the owner-confirmed staging evidence
 | CSRF test, staging Origin + deliberately invalid form | HTTP 400 from form validation | Pass; request passed the same-origin gate |
 | Registration/login/logout UI flow | Operator reported no errors | Pass for manual UI smoke test |
 
-#### Remaining blockers and scope limits
+#### Remaining blockers and scope limits — reconciled 2026-10-16
 
 - The staging Supabase Storage bucket, policies, and upload-integrity checks are configured and verified. The operator confirmed a public image URL loaded in an incognito browser without authentication on 2026-10-12. The rejected GIF/oversized-file checks, actual-route non-owner denial, and Storage object/data-integrity evidence are complete and recorded in closed [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61) and PRs #96–#99. Do not treat these completed checks as remaining blockers or repeat them absent new contradictory evidence.
 - The native Supabase Security Advisor warning `auth_leaked_password_protection` remains because the organization is on Free. See [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62) for the compensating control and residual-risk decision.
