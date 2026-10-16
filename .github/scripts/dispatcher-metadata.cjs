@@ -6,17 +6,17 @@ const FIELD_LABELS = '(?:dispatch\\s+readiness|readiness|primary(?:\\s+specialis
 
 function normalizeLine(line) {
   return line
-    .replace(/^\\s{0,3}#{1,6}\\s+/, '')
-    .replace(/\\*\\*/g, '')
-    .replace(/`/g, '')
-    .replace(/^\\s*>\\s?/, '')
+    .replace(/^\s{0,3}#{1,6}\s+/, '')
+    .replace(/\*\*/g, '')
+    .replace(/[\u0060]/g, '')
+    .replace(/^\s*>\s?/, '')
     .trim();
 }
 
 function normalizeValue(value) {
   return String(value ?? '')
-    .replace(/^\\s*[\\`"'*]+/, '')
-    .replace(/[\\`"'*]+\\s*$/, '')
+    .replace(/^\s*["'*]+/, '')
+    .replace(/["'*]+\s*$/, '')
     .trim()
     .replace(/[.!]+$/, '')
     .trim();
@@ -31,7 +31,7 @@ function normalizeValue(value) {
  * accidentally make an issue dispatchable.
  */
 function findField(body, labelPattern) {
-  const lines = String(body ?? '').split(/\\r?\\n/).map(normalizeLine);
+  const lines = String(body ?? '').split(/\r?\n/).map(normalizeLine);
   const fieldLine = new RegExp('^(?:' + labelPattern + ')\\s*(?::\\s*(.*))?$', 'i');
   const anyFieldLine = new RegExp('^' + FIELD_LABELS + '\\s*(?::.*)?$', 'i');
 
@@ -62,8 +62,8 @@ function findField(body, labelPattern) {
 
 function parseIssueMetadata(issue) {
   const body = issue.body || '';
-  const labels = (issue.labels || []).map((label) => (typeof label === 'string' ? label : label.name).toLowerCase());
-  const hasReadyLabel = labels.some((label) => ['dispatch-ready', 'ready-for-dispatch', 'ready'].includes(label));
+  const labelNames = (issue.labels || []).map((label) => typeof label === 'string' ? label : label.name);
+  const hasReadyLabel = labelNames.some((label) => ['dispatch-ready', 'ready-for-dispatch', 'ready'].includes(String(label || '').toLowerCase()));
 
   const readiness = findField(body, '(?:dispatch\\s+readiness|readiness)');
   let isDispatchReady = hasReadyLabel;
@@ -73,9 +73,11 @@ function parseIssueMetadata(issue) {
     const value = readiness.value.toLowerCase();
     if (READY_VALUES.has(value)) {
       isDispatchReady = true;
-    } else if (NOT_READY_VALUES.has(value) || value === '') {
+    } else if (NOT_READY_VALUES.has(value)) {
       isDispatchReady = false;
-      readinessProblem = value ? null : 'Dispatch Readiness field has no value.';
+    } else if (value === '') {
+      isDispatchReady = false;
+      readinessProblem = 'Dispatch Readiness field has no value.';
     } else {
       isDispatchReady = false;
       readinessProblem = 'Unsupported Dispatch Readiness value "' + readiness.value + '". Expected READY, DISPATCH-READY, READY-FOR-DISPATCH, NOT READY, or BLOCKED.';
@@ -89,16 +91,16 @@ function parseIssueMetadata(issue) {
   const secondary = findField(body, 'secondary(?:\\s+specialist)?');
 
   let priority = 3;
-  const priorityMatch = body.match(/\\*\\*(?:Priority|P)\\*\\*:\\s*(?:P)?(\\d+)/i) || body.match(/Priority:\\s*(?:P)?(\\d+)/i);
+  const priorityMatch = body.match(/\*\*(?:Priority|P)\*\*:\s*(?:P)?(\d+)/i) || body.match(/Priority:\s*(?:P)?(\d+)/i);
   if (priorityMatch) {
     const parsedPriority = Number.parseInt(priorityMatch[1], 10);
     if (Number.isInteger(parsedPriority) && parsedPriority >= 1) priority = parsedPriority;
   }
 
   const dependencies = [];
-  const dependencyMatch = body.match(/###\\s*Dependencies[\\s\\S]*?(?=\\n##|$)/i) || body.match(/(?:Depends\\s+on|Dependencies):\\s*([^\\r\\n]+)/i);
+  const dependencyMatch = body.match(/###\s*Dependencies[\s\S]*?(?=\n##|$)/i) || body.match(/(?:Depends\s+on|Dependencies):\s*([^\r\n]+)/i);
   if (dependencyMatch) {
-    for (const match of dependencyMatch[0].matchAll(/#(\\d+)/g)) {
+    for (const match of dependencyMatch[0].matchAll(/#(\d+)/g)) {
       const number = Number.parseInt(match[1], 10);
       if (Number.isInteger(number) && number !== issue.number && !dependencies.includes(number)) {
         dependencies.push(number);
@@ -111,7 +113,7 @@ function parseIssueMetadata(issue) {
     title: issue.title,
     body,
     state: issue.state,
-    labels: (issue.labels || []).map((label) => typeof label === 'string' ? label : label.name),
+    labels: labelNames,
     primarySpecialist: primary.found && primary.value ? primary.value : undefined,
     secondarySpecialist: secondary.found && secondary.value ? secondary.value : undefined,
     priority,
