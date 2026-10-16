@@ -1,9 +1,11 @@
+import * as fs from 'fs';
 import {
   evaluatePrEligibility,
   summarizeCheckState,
   extractGoverningIssue,
   generateRelayCommentBody,
   runChatgptReviewRelay,
+  extractWorkflowRunPullRequestNumbers,
   fetchAllCommentsPaginated,
   ensureLabelProvisioned,
   RawPullRequest,
@@ -279,9 +281,34 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
     });
   });
 
+  describe('Workflow Event Contract', () => {
+    it('refreshes the relay on pull request edits so body changes are processed', () => {
+      const workflow = fs.readFileSync('.github/workflows/chatgpt-review-relay.yml', 'utf8');
+      const triggerStart = workflow.indexOf('pull_request_target:');
+      const triggerEnd = workflow.indexOf('concurrency:', triggerStart);
+      const pullRequestTrigger = workflow.slice(triggerStart, triggerEnd);
+      expect(pullRequestTrigger).toContain('      - edited');
+      const workflowRunTrigger = workflow.slice(
+        workflow.indexOf('  workflow_run:'),
+        workflow.indexOf('concurrency:')
+      );
+      expect(workflowRunTrigger).toContain('      - CI');
+      expect(workflowRunTrigger).toContain('      - Phase Safety Gate');
+      expect(workflowRunTrigger).toContain('      - completed');
+    });
+
+    it('extracts distinct pull requests from workflow-completion events', () => {
+      expect(extractWorkflowRunPullRequestNumbers({
+        workflow_run: { pull_requests: [{ number: 42 }, { number: 42 }, { number: 139 }] },
+      })).toEqual([42, 139]);
+      expect(extractWorkflowRunPullRequestNumbers({ workflow_run: { pull_requests: [] } })).toEqual([]);
+      expect(extractWorkflowRunPullRequestNumbers({ workflow_run: {} })).toEqual([]);
+    });
+  });
+
   describe('Check State Summarization', () => {
-    it('should handle empty check runs', () => {
-      const summary = summarizeCheckState([]);
+    it('keeps missing current-head check results distinct from success', () => {
+      const summary = summarizeCheckState([], 'current-head');
       expect(summary.overallState).toBe('NO_CHECKS');
       expect(summary.ciState).toBe('NOT_FOUND');
       expect(summary.safetyGateState).toBe('NOT_FOUND');
@@ -300,7 +327,7 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
 
     it('should report PENDING if any check run is in progress', () => {
       const runs: RawCheckRun[] = [
-        { name: 'CI / build-and-test', status: 'in_progress' },
+        { name: 'CI / build-and-test', status: 'in_progress', conclusion: null },
         { name: 'PR Contract & Safety Gate Validation', status: 'completed', conclusion: 'success' },
       ];
       const summary = summarizeCheckState(runs);
@@ -309,7 +336,7 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       expect(summary.safetyGateState).toBe('PASSED');
     });
 
-    it('should report FAILURE if any check run failed', () => {
+    it('should report FAILURE if the latest CI check failed', () => {
       const runs: RawCheckRun[] = [
         { name: 'CI / build-and-test', status: 'completed', conclusion: 'failure' },
         { name: 'PR Contract & Safety Gate Validation', status: 'completed', conclusion: 'success' },
@@ -317,6 +344,74 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       const summary = summarizeCheckState(runs);
       expect(summary.overallState).toBe('FAILURE');
       expect(summary.ciState).toBe('FAILURE');
+    });
+
+    it('does not treat a non-required skipped check as a failure when required signals pass', () => {
+      const runs: RawCheckRun[] = [
+        { name: 'CI / build-and-test', status: 'completed', conclusion: 'success' },
+        { name: 'PR Contract & Safety Gate Validation', status: 'completed', conclusion: 'success' },
+        { name: 'Optional preview deployment', status: 'completed', conclusion: 'skipped' },
+      ];
+      const summary = summarizeCheckState(runs);
+      expect(summary.overallState).toBe('SUCCESS');
+      expect(summary.ciState).toBe('SUCCESS');
+      expect(summary.safetyGateState).toBe('PASSED');
+    });
+
+    it('lets a newer success supersede an older failure for the same check identity, independent of array order', () => {
+      const failed: RawCheckRun = {
+        id: 100,
+        name: 'CI / build-and-test',
+        status: 'completed',
+        conclusion: 'failure',
+        created_at: '2026-10-16T10:00:00Z',
+        head_sha: 'current-head',
+        app: { id: 1 },
+      };
+      const succeeded: RawCheckRun = {
+        id: 101,
+        name: 'CI / build-and-test',
+        status: 'completed',
+        conclusion: 'success',
+        created_at: '2026-10-16T10:05:00Z',
+        head_sha: 'current-head',
+        app: { id: 1 },
+      };
+      const safetyGate: RawCheckRun = {
+        id: 102,
+        name: 'PR Contract & Safety Gate Validation',
+        status: 'completed',
+        conclusion: 'success',
+        created_at: '2026-10-16T10:04:00Z',
+        head_sha: 'current-head',
+        app: { id: 1 },
+      };
+
+      for (const runs of [[failed, succeeded, safetyGate], [succeeded, failed, safetyGate]]) {
+        const summary = summarizeCheckState(runs, 'current-head');
+        expect(summary.overallState).toBe('SUCCESS');
+        expect(summary.ciState).toBe('SUCCESS');
+      }
+    });
+
+    it('ignores checks that are not attached to the current PR head', () => {
+      const runs: RawCheckRun[] = [
+        { id: 100, name: 'CI / build-and-test', status: 'completed', conclusion: 'failure', created_at: '2026-10-16T10:00:00Z', head_sha: 'old-head', app: { id: 1 } },
+        { id: 101, name: 'PR Contract & Safety Gate Validation', status: 'completed', conclusion: 'success', created_at: '2026-10-16T10:00:00Z', app: { id: 1 } },
+      ];
+      const summary = summarizeCheckState(runs, 'current-head');
+      expect(summary.overallState).toBe('NO_CHECKS');
+      expect(summary.ciState).toBe('NOT_FOUND');
+    });
+
+    it('fails closed when a current-head result is missing a required CI or Safety Gate check', () => {
+      const runs: RawCheckRun[] = [
+        { name: 'CI / build-and-test', status: 'completed', conclusion: 'success', head_sha: 'current-head' },
+      ];
+      const summary = summarizeCheckState(runs, 'current-head');
+      expect(summary.overallState).toBe('FAILURE');
+      expect(summary.ciState).toBe('SUCCESS');
+      expect(summary.safetyGateState).toBe('NOT_FOUND');
     });
   });
 
@@ -440,7 +535,10 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
             ok: true,
             status: 200,
             json: async () => ({
-              check_runs: [{ name: 'CI', status: 'completed', conclusion: 'success' }],
+              check_runs: [
+                { name: 'CI / build-and-test', status: 'completed', conclusion: 'success', head_sha: validPr.head.sha },
+                { name: 'PR Contract & Safety Gate Validation', status: 'completed', conclusion: 'success', head_sha: validPr.head.sha },
+              ],
             }),
           } as Response);
         }
@@ -465,6 +563,53 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       expect(result.labelUpdated).toBe(true);
       expect(result.commentAction).toBe('CREATED');
       expect(result.checkSummary?.ciState).toBe('SUCCESS');
+    });
+
+    it('updates the governing issue in the relay comment when the PR body is edited', async () => {
+      const editedPr: RawPullRequest = {
+        ...validPr,
+        body: 'Corrected PR contract after editing. Refs #26',
+        labels: [{ name: CHATGPT_REVIEW_LABEL }],
+      };
+      const existingComment = { id: 778, body: `${CHATGPT_REVIEW_RELAY_MARKER} | **Governing Issue** | #25 |` };
+
+      const mockFetch = jest.fn((input: string | URL | Request, init?: RequestInit) => {
+        const urlStr = String(input);
+        const method = init?.method || 'GET';
+
+        if (urlStr.includes(`/labels/${CHATGPT_REVIEW_LABEL}`) && method === 'GET') {
+          return Promise.resolve({ ok: true, status: 200 } as Response);
+        }
+        if (urlStr.includes('/check-runs') && method === 'GET') {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ check_runs: [
+              { name: 'CI / build-and-test', status: 'completed', conclusion: 'success', head_sha: editedPr.head.sha },
+              { name: 'PR Contract & Safety Gate Validation', status: 'completed', conclusion: 'success', head_sha: editedPr.head.sha },
+            ] }),
+          } as Response);
+        }
+        if (urlStr.includes('/comments') && method === 'GET') {
+          return Promise.resolve({ ok: true, status: 200, json: async () => [existingComment] } as Response);
+        }
+        if (urlStr.includes('/comments/778') && method === 'PATCH') {
+          const payload = JSON.parse(String(init?.body || '{}')) as { body: string };
+          expect(payload.body).toContain('| **Governing Issue** | #26 |');
+          return Promise.resolve({ ok: true, status: 200, json: async () => ({ id: 778 }) } as Response);
+        }
+
+        return Promise.reject(new Error(`Unexpected API call: ${urlStr} (${method})`));
+      });
+
+      const result = await runChatgptReviewRelay({
+        repository,
+        pullRequest: editedPr,
+        customFetch: mockFetch as unknown as typeof fetch,
+      });
+
+      expect(result.commentAction).toBe('UPDATED');
+      expect(mockFetch.mock.calls.some((call) => String(call[0]).includes('/comments/778') && call[1]?.method === 'PATCH')).toBe(true);
     });
 
     it('should find existing comment on page 2 and update idempotently without duplicating', async () => {
