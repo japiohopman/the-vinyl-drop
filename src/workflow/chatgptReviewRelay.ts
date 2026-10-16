@@ -602,6 +602,23 @@ export async function runChatgptReviewRelay(options: RelayOptions): Promise<Rela
   };
 }
 
+/**
+ * Extracts unique pull-request numbers from the payload attached to a workflow_run event.
+ * Ordinary push/build runs have no associated PR and should not mutate any relay state.
+ */
+export function extractWorkflowRunPullRequestNumbers(eventData: unknown): number[] {
+  if (!eventData || typeof eventData !== 'object') return [];
+  const workflowRun = (eventData as {
+    workflow_run?: { pull_requests?: Array<{ number?: number | null }> | null };
+  }).workflow_run;
+  if (!Array.isArray(workflowRun?.pull_requests)) return [];
+
+  const numbers = workflowRun.pull_requests
+    .map((pullRequest) => pullRequest.number)
+    .filter((number): number is number => Number.isInteger(number) && (number as number) > 0);
+  return [...new Set(numbers)];
+}
+
 export async function runCliMain(): Promise<void> {
   const repo = process.env.GITHUB_REPOSITORY;
   const token = process.env.GITHUB_TOKEN;
@@ -612,23 +629,51 @@ export async function runCliMain(): Promise<void> {
     process.exit(1);
   }
 
-  const eventData = JSON.parse(fs.readFileSync(eventPath, 'utf-8'));
-  const pullRequest = eventData.pull_request as RawPullRequest;
+  const eventData = JSON.parse(fs.readFileSync(eventPath, 'utf-8')) as {
+    pull_request?: RawPullRequest;
+    workflow_run?: { pull_requests?: Array<{ number?: number | null }> | null };
+  };
+  const pullRequests: RawPullRequest[] = [];
 
-  if (!pullRequest) {
-    console.error('No pull_request found in GITHUB_EVENT_PATH payload.');
-    process.exit(1);
+  if (eventData.pull_request) {
+    pullRequests.push(eventData.pull_request);
+  } else {
+    const pullRequestNumbers = extractWorkflowRunPullRequestNumbers(eventData);
+    if (pullRequestNumbers.length === 0) {
+      console.log('Workflow run has no associated pull requests; no relay refresh is required.');
+      return;
+    }
+
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'VinylDrop-ChatGPTReviewRelay',
+    };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    for (const number of pullRequestNumbers) {
+      const response = await globalThis.fetch(
+        `https://api.github.com/repos/${repo}/pulls/${number}`,
+        { headers }
+      );
+      if (!response.ok) {
+        console.error(`Failed to fetch current PR #${number} for workflow-run refresh: status ${response.status}`);
+        process.exit(1);
+      }
+      pullRequests.push(await response.json() as RawPullRequest);
+    }
   }
 
-  const result = await runChatgptReviewRelay({
-    repository: repo,
-    pullRequest,
-    token,
-  });
+  for (const pullRequest of pullRequests) {
+    const result = await runChatgptReviewRelay({
+      repository: repo,
+      pullRequest,
+      token,
+    });
 
-  console.log('ChatGPT Review Relay result:', JSON.stringify(result, null, 2));
-  if (result.errors && result.errors.length > 0) {
-    console.error('Relay encountered errors:', result.errors);
-    process.exit(1);
+    console.log('ChatGPT Review Relay result:', JSON.stringify(result, null, 2));
+    if (result.errors && result.errors.length > 0) {
+      console.error('Relay encountered errors:', result.errors);
+      process.exit(1);
+    }
   }
 }
