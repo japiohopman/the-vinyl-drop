@@ -17,8 +17,14 @@ describe('Environment Validation', () => {
     expect(env.NODE_ENV).toBe('test');
   });
 
-  it('keeps checked-signup approval disabled on staging until opt-in and enabled in tests by default', () => {
+  it('enables checked-signup approval by default only in tests; runtime modes require opt-in', () => {
     expect(validateEnv({ NODE_ENV: 'test' }).SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED).toBe(true);
+    expect(validateEnv({
+      NODE_ENV: 'development',
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/development_db',
+      SUPABASE_URL: 'https://development-project.supabase.co',
+      SUPABASE_ANON_KEY: 'some-development-key',
+    }).SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED).toBe(false);
     const staging = {
       NODE_ENV: 'staging',
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
