@@ -4,6 +4,13 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import fs from 'fs';
 import path from 'path';
 
+/**
+ * Applies all journaled Drizzle migrations to an isolated in-memory PGlite database
+ * and verifies migration history, schema constraints, RLS policies, and client grants.
+ * Reads migrations from the working directory's `drizzle` folder; does not connect
+ * to or verify a live Supabase database.
+ * @throws If migration files are missing, migration execution fails, or a verified invariant is violated.
+ */
 export async function verifyMigrations(): Promise<void> {
   console.log('🔄 Verifying database migrations via Drizzle migrator against isolated in-memory PostgreSQL engine...');
 
