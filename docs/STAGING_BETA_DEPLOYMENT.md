@@ -209,17 +209,10 @@ Confirm that the active project reference in the Supabase Dashboard matches `STA
 6. Restrict **Allowed MIME types**: `image/webp`, `image/jpeg`, `image/png`.
 7. Save bucket.
 
-#### Step 3 — Reconcile Storage Policies and Apply Database Migrations
-1. Confirm the four policies in Section 3.2 exist in the staging Supabase Dashboard under `storage.objects`, with SELECT targeted to `public` and INSERT/UPDATE/DELETE targeted to `authenticated`.
-2. Execute the version-controlled Drizzle migrations against the confirmed staging database:
-
-   ```bash
-   DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:migrate
-   ```
-
-   Migration `0006` applies its policy DDL only when the current role owns `storage.objects`; otherwise it validates the four pre-provisioned policies and skips managed-table DDL only if they match. It fails with a clear error if they do not match. Migration `0007` then creates the private `orphaned_storage_objects` tracking table.
-
-3. `npm run db:verify` runs the migration verifier against an isolated in-memory PGlite database; it is not a live staging database check. Verify the live state in the Supabase SQL Editor with read-only queries:
+#### Step 3 — Reconcile Storage Policies; Use the Gated Migration Procedure
+1. Confirm the four policies in Section 3.2 exist in the intended staging Supabase project under `storage.objects`, with SELECT targeted to `public` and INSERT/UPDATE/DELETE targeted to `authenticated`.
+2. **Do not run `npm run db:migrate` from this setup checklist.** That command applies every pending migration in journal order—not only migrations `0006` and `0007)—and can also apply migrations `0009` and `0010`. Use the gated procedure in [Section 3.4](#34-human-runbook-staging-rls-migration-application--live-data-api-verification) only after Issue [#49](https://github.com/japiohopman/the-vinyl-drop/issues/49) explicitly authorizes the exact staging operation and migration `0009` in Issue [#127](https://github.com/japiohopman/the-vinyl-drop/issues/127) has been separately reviewed and authorized. Migration `0006` applies its Storage policy DDL only when the current role owns `storage.objects`; otherwise it validates the four pre-provisioned policies and skips managed-table DDL only if they match. Migration `0007` creates the private `orphaned_storage_objects` tracking table.
+3. `npm run db:verify` runs the migration verifier against an isolated in-memory PGlite database; it is not a live staging database check. Verify live state only with the read-only queries below after the separately gated procedure has been approved and completed:
 
    ```sql
    SELECT policyname, roles, cmd
