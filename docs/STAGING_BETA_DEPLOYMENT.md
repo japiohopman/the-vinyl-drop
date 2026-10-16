@@ -244,57 +244,45 @@ Confirm that the active project reference in the Supabase Dashboard matches `STA
 
 ### 3.4 Human Runbook: Staging RLS Migration Application & Live Data API Verification
 
-*Notice: This runbook is a human-only operational guide. Do NOT execute live database migrations, dashboard policy edits, or database resets from automated CI sessions.*
+*Human-only operational guidance. Do not apply live database migrations, edit Dashboard policies, reset databases, or issue write probes as part of CI or ordinary review work.*
 
-#### Step 1 — Review and Apply SQL Migration to Reserved Staging Project
-1. Obtain the staging database connection string (`DATABASE_URL`) from staging environment configuration.
-2. Execute the version-controlled Drizzle migration against the staging PostgreSQL database:
-   ```bash
-   DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:migrate
+#### Step 1 — Preconditions for any staging migration
+
+Do **not** run a staging migration until all of the following are true:
+
+1. The human-owned staging/release gate [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) has been reviewed and explicitly authorizes the specific operation.
+2. [Issue #127](https://github.com/japiohopman/the-vinyl-drop/issues/127)'s migration `0009_case_insensitive_usernames.sql` is separately reviewed and authorized. Drizzle applies pending migrations in sequence; adding migration 0010 does not permit skipping migration 0009.
+3. The operator confirms the exact staging project and database host against the approved `STAGING_DB_PROJECT_REF`, `STAGING_DB_HOST`, and `DATABASE_URL`.
+4. The operator has a clear, bounded plan for the exact migration and its read-only post-checks.
+
+The pull request that adds migration 0010 is source code only. It must not run or authorize a live staging migration.
+
+#### Step 2 — Apply and verify only after explicit authorization
+
+After the prerequisites above are met and the owner explicitly approves the live operation:
+
+1. Review the pending migration list and check the existing username-collision inventory immediately before applying the guarded migration 0009.
+2. Run the version-controlled migration command against the confirmed staging PostgreSQL connection only:
+   ```powershell
+   npm run db:migrate
    ```
-3. Run database verification script to confirm all 8 tables have RLS enabled:
-   ```bash
-   DATABASE_URL="postgres://postgres:[PASSWORD]@[STAGING_HOST]:5432/postgres" npm run db:verify
-   ```
+3. Run `npm run db:verify` for the isolated PGlite migration test. **This is an in-memory test, not a live staging database check.**
+4. Run a separate read-only staging SQL audit to confirm the migration history, RLS state, and effective `information_schema.table_privileges` / `has_table_privilege` results for `anon` and `authenticated` across all 11 application tables.
 
-#### Step 2 — Verify PostgREST / Supabase Data API Security Boundaries via CURL
-Run the following curl verification commands against the staging Supabase Data API endpoint (`https://[STAGING_REF].supabase.co/rest/v1/`):
+#### Step 3 — Verify the intended read-only Data API boundary
 
-1. **Anonymous Read Check (Public Tables Allowed, Favorites Denied):**
-   ```bash
-   # Should return 200 OK with public listings
-   curl -i -X GET "https://[STAGING_REF].supabase.co/rest/v1/listings?select=id,status" \
-     -H "apikey: [SUPABASE_ANON_KEY]"
+After migration 0010 has been separately approved and applied, use **read-only checks** to verify:
 
-   # Should return 401 Unauthorized or 403 Forbidden (anon table grant revoked on favorites)
-   curl -i -X GET "https://[STAGING_REF].supabase.co/rest/v1/favorites" \
-     -H "apikey: [SUPABASE_ANON_KEY]"
-   ```
+- Public browse tables (`profiles`, `releases`, `physical_copies`, `listings`, `listing_photos`, `comments`, and `activity_events`) retain SELECT access where documented.
+- `favorites` has SELECT access for `authenticated`, but not for `anon`.
+- `conversations`, `messages`, and `orphaned_storage_objects` have no client SELECT access.
+- Neither `anon` nor `authenticated` has INSERT, UPDATE, or DELETE table privileges on any application table.
 
-2. **Anonymous Write Check (MUST BE DENIED):**
-   ```bash
-   # Should return 401 Unauthorized or 403 Forbidden
-   curl -i -X POST "https://[STAGING_REF].supabase.co/rest/v1/profiles" \
-     -H "apikey: [SUPABASE_ANON_KEY]" \
-     -H "Content-Type: application/json" \
-     -d '{"id":"00000000-0000-0000-0000-000000000000","username":"attacker"}'
-   ```
+A public listing GET can be used as a harmless Data API smoke check. Do **not** repeat the earlier live profile PATCH, send test writes, or edit a profile merely to prove denial. The prior Windows PowerShell result was inconclusive because its empty-array parser can miscount `[]`; preserve that limitation in the evidence rather than inventing a result. The unresolved discrepancy and evidence are tracked in [Issue #133](https://github.com/japiohopman/the-vinyl-drop/issues/133).
 
-3. **Authenticated Cross-User Tampering Check (MUST BE DENIED BY RLS):**
-   ```bash
-   # Attempting to modify User A's profile as User B (using User B JWT)
-   curl -i -X PATCH "https://[STAGING_REF].supabase.co/rest/v1/profiles?id=eq.[USER_A_UUID]" \
-     -H "apikey: [SUPABASE_ANON_KEY]" \
-     -H "Authorization: Bearer [USER_B_JWT]" \
-     -H "Content-Type: application/json" \
-     -d '{"display_name":"Hacked Name"}'
-   # Should affect 0 rows (204 No Content with 0 affected rows or 403 Forbidden)
-   ```
+#### Step 4 — If verification does not match the contract
 
-#### Step 3 — Safety Recovery Procedure
-If an issue occurs during migration application on staging:
-1. Re-run `npm run db:migrate` or connect via `psql` to check `pg_stat_activity` if connection pooling locks occur.
-2. If policies need adjustment, prepare a new version-controlled Drizzle migration SQL file in `drizzle/` (e.g. `0006_*.sql`). Do NOT perform ad-hoc edits in the Supabase Dashboard.
+Stop. Do not modify live policies directly in the Supabase Dashboard, do not roll forward with additional migrations, and do not retry mutation requests. Record the exact read-only finding with secrets and personal data redacted, then update the owner-controlled release gate before any further live action.
 
 ### 3.5 Human Runbook: Staging Password Recovery & Reset Flow Setup & Verification (Issue #79)
 
