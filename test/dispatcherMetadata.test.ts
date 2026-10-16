@@ -37,7 +37,7 @@ Secondary Specialist: Architecture Specialist
     expect(parsed.secondarySpecialist).toBe('Architecture Specialist');
   });
 
-  test.each([
+  test.each<[string, string, string]>([
     ['**Dispatch Readiness:** READY', '**Primary Specialist:** Verification Specialist', '**Secondary Specialist:** Architecture Specialist'],
     ['**Dispatch Readiness**: READY', '**Primary Specialist**: Verification Specialist', '**Secondary Specialist**: Architecture Specialist'],
     ['Readiness: READY', 'Primary Specialist: Verification Specialist', 'Secondary Specialist: Architecture Specialist'],
