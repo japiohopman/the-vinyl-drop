@@ -92,6 +92,11 @@ export async function ensureProfileForUser(
   return newProfile;
 }
 
+/**
+ * Checks username availability and password breaches before signing up through Supabase.
+ * Persists a one-time signup approval when enabled, then ensures the user's profile
+ * and returns the auth result, email-confirmation requirement, or signup error.
+ */
 export async function signUp(input: SignUpInput, options?: AuthOptions): Promise<AuthResult> {
   const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
 

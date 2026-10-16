@@ -138,6 +138,10 @@ export type Env = Omit<z.infer<typeof envSchema>, 'APP_BASE_URL' | 'ALLOWED_REDI
   SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: boolean;
 };
 
+/**
+ * Validates environment values and applies mode-specific defaults.
+ * Throws when configuration is invalid; signup approvals default to enabled only in tests.
+ */
 export function validateEnv(envInput: Record<string, unknown> = process.env): Env {
   const result = envSchema.safeParse(envInput);
 

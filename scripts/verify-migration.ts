@@ -4,6 +4,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import fs from 'fs';
 import path from 'path';
 
+/** Applies all migrations in isolated PGlite and checks schema, privileges, and signup approval enforcement. */
 export async function verifyMigrations(): Promise<void> {
   console.log('🔄 Verifying database migrations via Drizzle migrator against isolated in-memory PostgreSQL engine...');
 
@@ -523,6 +524,7 @@ export async function verifyMigrations(): Promise<void> {
   );
 }
 
+/** Verifies the legacy-to-canonical schema upgrade preserves seeded data in isolated PGlite. */
 export async function verifyMigrationUpgrade(): Promise<void> {
   console.log('🔄 Verifying migration upgrade path from legacy 0000 schema to 0001 canonical schema...');
 

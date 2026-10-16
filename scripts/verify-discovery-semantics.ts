@@ -7,6 +7,7 @@ import * as listingRepository from '../src/app/repositories/listingRepository';
 import * as commentRepository from '../src/app/repositories/commentRepository';
 import { getSellerPublishedListings } from '../src/app/services/listingService';
 
+/** Verifies discovery filters, sorting, pagination, and comment bounds in isolated PGlite. */
 async function main() {
   console.log('🔄 Running discovery semantics verification against isolated PGlite engine...');
 
