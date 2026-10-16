@@ -199,6 +199,7 @@ describe('Authentication & Session Handling', () => {
       expect(res.text).toContain('This password appears in known data breaches. Please choose a different password.');
       expect(res.text).not.toContain(submittedPassword);
       expect(supabaseSignUpSpy).not.toHaveBeenCalled();
+      expect(mockCreatePasswordCheckedSignupApproval).not.toHaveBeenCalled();
     });
 
     it('POST /auth/signup should fail closed when checked-signup approval persistence is unavailable', async () => {
@@ -238,6 +239,7 @@ describe('Authentication & Session Handling', () => {
       expect(res.text).not.toContain(submittedPassword);
       expect(res.text).not.toContain('private lookup detail');
       expect(supabaseSignUpSpy).not.toHaveBeenCalled();
+      expect(mockCreatePasswordCheckedSignupApproval).not.toHaveBeenCalled();
     });
 
     it('POST /auth/signup should create user and set session cookies on immediate session', async () => {
