@@ -28,6 +28,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check out trusted main-branch parser
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: main
+          persist-credentials: false
+
       - name: Run Authoritative Trusted Dispatcher
         uses: actions/github-script@v7
         env:
@@ -44,6 +50,7 @@ jobs:
             const targetIssueNum = (process.env.ISSUE_NUMBER || '').trim();
             const dryRun = process.env.DRY_RUN !== 'false';
             const julesApiKey = process.env.JULES_API_KEY || '';
+            const { parseIssueMetadata } = require('./.github/scripts/dispatcher-metadata.cjs');
 
             core.info(`Running preflight selector for repository: ${repository}`);
             core.info(`Mode: ${dryRun ? 'DRY RUN' : 'LIVE DISPATCH'}`);
@@ -104,66 +111,8 @@ jobs:
               return;
             }
 
-            // Helper to parse metadata
-            function parseMetadata(issue) {
-              const body = issue.body || '';
-              const labels = (issue.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
-              const hasReadyLabel = labels.some((l) => ['dispatch-ready', 'ready-for-dispatch', 'ready'].includes(l.toLowerCase()));
-
-              const readinessMatch = body.match(/(?:###\s*(?:Dispatch\s*)?Readiness|\*\*Readiness\*\*|Readiness:)\s*[:\r\n]*\s*([^\r\n]+)/i);
-              let isDispatchReady = hasReadyLabel;
-              if (readinessMatch) {
-                const value = readinessMatch[1].trim().toLowerCase();
-                if (['ready', 'dispatch-ready', 'ready-for-dispatch'].includes(value)) {
-                  isDispatchReady = true;
-                } else if (value.includes('not ready') || value.includes('unready') || value.includes('false')) {
-                  isDispatchReady = false;
-                }
-              }
-
-              let primarySpecialist;
-              const primaryMatch = body.match(/\*\*Primary\s*(?:Specialist)?\*\*:\s*([^\r\n]+)/i) || body.match(/Primary\s*(?:Specialist)?:\s*([^\r\n]+)/i);
-              if (primaryMatch) primarySpecialist = primaryMatch[1].trim();
-
-              let secondarySpecialist;
-              const secondaryMatch = body.match(/\*\*Secondary\s*(?:Specialist)?\*\*:\s*([^\r\n]+)/i) || body.match(/Secondary\s*(?:Specialist)?:\s*([^\r\n]+)/i);
-              if (secondaryMatch) secondarySpecialist = secondaryMatch[1].trim();
-
-              let priority = 3;
-              const prioMatch = body.match(/\*\*(?:Priority|P)\*\*:\s*(?:P)?(\d+)/i) || body.match(/Priority:\s*(?:P)?(\d+)/i);
-              if (prioMatch) {
-                const p = parseInt(prioMatch[1], 10);
-                if (!isNaN(p) && p >= 1) priority = p;
-              }
-
-              const dependencies = [];
-              const depMatch = body.match(/###\s*Dependencies[\s\S]*?(?=\n##|$)/i) || body.match(/(?:Depends\s+on|Dependencies):\s*([^\r\n]+)/i);
-              if (depMatch) {
-                const depText = depMatch[0];
-                const matches = depText.matchAll(/#(\d+)/g);
-                for (const m of matches) {
-                  const num = parseInt(m[1], 10);
-                  if (!isNaN(num) && num !== issue.number && !dependencies.includes(num)) {
-                    dependencies.push(num);
-                  }
-                }
-              }
-
-              return {
-                issueNumber: issue.number,
-                title: issue.title,
-                body,
-                state: issue.state,
-                labels,
-                primarySpecialist,
-                secondarySpecialist,
-                priority,
-                dependencies,
-                isDispatchReady,
-              };
-            }
-
-            const parsedCandidates = rawIssues.map(parseMetadata);
+            // Use the shared parser covered by deterministic Jest regression tests.
+            const parsedCandidates = rawIssues.map(parseIssueMetadata);
             // Sort deterministically: Priority ascending, then Issue Number ascending
             parsedCandidates.sort((a, b) => (a.priority !== b.priority ? a.priority - b.priority : a.issueNumber - b.issueNumber));
 
@@ -214,6 +163,10 @@ jobs:
             for (const candidate of parsedCandidates) {
               if (candidate.state !== 'open') {
                 errors.push(`Issue #${candidate.issueNumber} is not open.`);
+                continue;
+              }
+              if (candidate.readinessProblem) {
+                errors.push(`Issue #${candidate.issueNumber} has invalid dispatch readiness metadata: ${candidate.readinessProblem}`);
                 continue;
               }
               if (!candidate.isDispatchReady) {

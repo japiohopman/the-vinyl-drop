@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { createRequire } from 'node:module';
 
 export interface DispatcherOptions {
   repository: string;
@@ -72,6 +73,13 @@ export async function runJulesDispatcher(options: DispatcherOptions): Promise<Pr
   const scriptCode = extractWorkflowScript();
   const [repoOwner, repoName] = options.repository.split('/');
   const fetchFn = options.customFetch || globalThis.fetch;
+  const requireFromRepoRoot = createRequire(path.resolve(process.cwd(), 'package.json'));
+  const requireWorkflowModule = (modulePath: string) => {
+    if (modulePath !== './.github/scripts/dispatcher-metadata.cjs') {
+      throw new Error(`Unexpected workflow module request: ${modulePath}`);
+    }
+    return requireFromRepoRoot(modulePath);
+  };
 
   const infoLogs: string[] = [];
   const failedErrors: string[] = [];
@@ -155,6 +163,7 @@ export async function runJulesDispatcher(options: DispatcherOptions): Promise<Pr
     'core',
     'process',
     'fetch',
+    'require',
     `
     return (async () => {
       ${scriptCode}
@@ -168,7 +177,8 @@ export async function runJulesDispatcher(options: DispatcherOptions): Promise<Pr
       mockContext,
       mockCore,
       processMock,
-      fetchFn
+      fetchFn,
+      requireWorkflowModule
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
