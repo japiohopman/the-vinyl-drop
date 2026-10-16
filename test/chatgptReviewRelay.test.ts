@@ -330,6 +330,18 @@ describe('ChatGPT Review Relay — Single Production Script Tests', () => {
       expect(summary.ciState).toBe('FAILURE');
     });
 
+    it('does not treat a non-required skipped check as a failure when required signals pass', () => {
+      const runs: RawCheckRun[] = [
+        { name: 'CI / build-and-test', status: 'completed', conclusion: 'success' },
+        { name: 'PR Contract & Safety Gate Validation', status: 'completed', conclusion: 'success' },
+        { name: 'Optional preview deployment', status: 'completed', conclusion: 'skipped' },
+      ];
+      const summary = summarizeCheckState(runs);
+      expect(summary.overallState).toBe('SUCCESS');
+      expect(summary.ciState).toBe('SUCCESS');
+      expect(summary.safetyGateState).toBe('PASSED');
+    });
+
     it('lets a newer success supersede an older failure for the same check identity, independent of array order', () => {
       const failed: RawCheckRun = {
         id: 100,
