@@ -174,7 +174,7 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
   const defaultSignupPasswordCheckApprovalEnabled =
     result.data.SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED !== undefined
       ? result.data.SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED
-      : result.data.NODE_ENV === 'development' || result.data.NODE_ENV === 'test';
+      : result.data.NODE_ENV === 'test';
 
   return {
     ...result.data,
