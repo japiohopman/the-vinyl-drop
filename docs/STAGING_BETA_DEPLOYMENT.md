@@ -373,7 +373,7 @@ The checkboxes below reflect the actual live staging evidence recorded on 2026-1
 - [ ] **7b. Auth/OAuth callback and redirect:** The callback/redirect flow was not independently verified in this session.
 - [ ] **8. Storage access & media upload:** Bucket settings, all four Storage policies, and migrations `0006`/`0007` are verified live. A direct public photo URL was opened successfully in an unauthenticated incognito browser on 2026-10-12. Remaining upload authorization, invalid-file, and data-integrity checks are tracked in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
 - [x] **9a. CSRF/Same-Origin check on `POST /auth/login`:** External Origin returned HTTP 403; missing Origin/Referer returned HTTP 403; the staging Origin reached form validation and returned HTTP 400 for deliberately invalid form data.
-- [ ] **9b. CSRF/Same-Origin on listing/profile mutations:** The `POST /listings/new` and `POST /profile/edit` paths still need their own verification.
+- [x] **9b. CSRF/Same-Origin on listing/profile mutations:** Both `POST /profile/edit` and `POST /listings` verified live against staging on 2026-10-16. Both rejected mismatched Origin (`https://attacker.invalid`) and missing Origin/Referer with HTTP 403 before reaching mutation handlers. Baseline and post-check GET requests confirmed valid active session and zero mutations. See Section 5.7.
 - [ ] **10. Supabase Auth leaked-password protection:** the native `auth_leaked_password_protection` control is unavailable on the current Free plan; the Security Advisor warning remains. Issue #62 tracks the application-level compensating control, its direct-Auth limitation, and the human risk decision.
 
 ### 5.1 Live Verification Log — 2026-10-11
@@ -401,7 +401,7 @@ The checkboxes below reflect the actual live staging evidence recorded on 2026-1
 
 - The staging Supabase Storage bucket, policies, and migrations are now configured and verified. The operator confirmed a public image URL loaded in an incognito browser without authentication on 2026-10-12. Remaining upload authorization, unsupported-file, and failed-upload data-integrity checks are tracked in [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61).
 - The native Supabase Security Advisor warning `auth_leaked_password_protection` remains because the organization is on Free. See [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62) for the compensating control and residual-risk decision.
-- Authenticated cross-user Data API access, OAuth callback behavior, listing/profile mutation CSRF tests, the full environment-variable audit, fixture verification, and browser certificate inspection remain unverified.
+- Authenticated cross-user Data API access, OAuth callback behavior, the full environment-variable audit, fixture verification, and browser certificate inspection remain unverified. Listing/profile mutation CSRF tests were verified live on 2026-10-16 (Section 5.7).
 - **Do not mark staging/beta ready or close Issue #49 yet.** Once the remaining checks are completed, append their actual outcomes here rather than assuming success.
 
 ---
@@ -669,7 +669,38 @@ The owner explicitly accepts the application-level HIBP control and documented d
 - [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62) records the bounded decision and remains open until this documentation is merged and the Issue links to the resulting evidence.
 - [Issue #118](https://github.com/japiohopman/the-vinyl-drop/issues/118) tracks technical investigation/remediation of the direct Auth/API bypass and must be completed and reviewed before cohort expansion.
 - [Issue #119](https://github.com/japiohopman/the-vinyl-drop/issues/119) tracks the independent private-messaging trigger-function search-path warning.
-- [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) remains OPEN / NOT READY until its other staging checks are evidenced: staging target/seed identity, OAuth callback/redirect, live browser CSRF for listing/profile mutations, environment-variable audit, browser TLS/certificate review, and remaining authenticated Data API verification.
+- [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) remains OPEN / NOT READY until its other staging checks are evidenced: staging target/seed identity, OAuth callback/redirect, environment-variable audit, browser TLS/certificate review, and remaining authenticated Data API verification. (Live authenticated CSRF verification for listing/profile mutations is verified; see Section 5.7).
 - Before the five-friend pilot begins, complete the applicable staging gate checks and the minimum privacy/data-handling prerequisites in [Issue #88](https://github.com/japiohopman/the-vinyl-drop/issues/88). The decision does not enable public waitlist collection, waive the staging gate, authorize production changes, or imply that the native Supabase warning has cleared.
 
 No new Auth user, mailbox, live setting, database record, DNS/SMTP setting, billing setting, or production state was created or changed by this documentation work.
+
+---
+
+### 5.7 Live Authenticated CSRF Verification — Listing & Profile Mutations (2026-10-16)
+
+**Target:** [Staging site](https://the-vinyl-drop-staging.onrender.com)  
+**Timestamp:** 2026-10-16 14:12 UTC  
+**Performed by:** Automated in-memory session runner reusing the operator's active staging Firefox session (`sb-access-token`, `sb-refresh-token`).  
+**Privacy Boundary:** Session tokens and cookies were processed purely in memory and never logged, written to files, output to terminal, or disclosed.  
+**Scope:** Authenticated `POST /profile/edit` and `POST /listings` mutation routes under mismatched `Origin` and omitted `Origin`/`Referer` headers.
+
+#### Baseline Session & State Verification
+- `GET /profile/edit`: returned `HTTP 200 OK` with the edit profile form for user `@jaap` (confirmed valid, authenticated staging session; not redirected to login).
+- `GET /listings`: returned `HTTP 200 OK` (seller listings dashboard baseline captured).
+
+#### Live Negative CSRF Test Results
+
+| # | Endpoint | Test Case | Header Configuration | Observed HTTP Status | Response Body | Assessment |
+| :-: | :--- | :--- | :--- | :-: | :--- | :--- |
+| 1 | `POST /profile/edit` | Mismatched Origin | `Origin: https://attacker.invalid` | **HTTP 403 Forbidden** | `{"error":"CSRF Forbidden: Origin mismatch"}` | **PASS** — Rejected at `validateSameOrigin` before mutation handler |
+| 2 | `POST /profile/edit` | Missing Origin & Referer | `Origin` and `Referer` absent | **HTTP 403 Forbidden** | `{"error":"CSRF Forbidden: Missing Origin and Referer headers"}` | **PASS** — Rejected at `validateSameOrigin` before mutation handler |
+| 3 | `POST /listings` | Mismatched Origin | `Origin: https://attacker.invalid` | **HTTP 403 Forbidden** | `{"error":"CSRF Forbidden: Origin mismatch"}` | **PASS** — Rejected at `validateSameOrigin` before mutation handler |
+| 4 | `POST /listings` | Missing Origin & Referer | `Origin` and `Referer` absent | **HTTP 403 Forbidden** | `{"error":"CSRF Forbidden: Missing Origin and Referer headers"}` | **PASS** — Rejected at `validateSameOrigin` before mutation handler |
+
+#### Post-Test Non-Mutation Confirmation
+- `GET /profile/edit`: returned `HTTP 200 OK`. The profile form HTML and values were identical before and after probes (confirmed 0 profile changes occurred).
+- `GET /listings`: returned `HTTP 200 OK`. The listings dashboard HTML and inventory were identical before and after probes (confirmed 0 listings created).
+- No database records, listings, or user profile fields were altered.
+
+**Conclusion:** All four negative CSRF test cases passed cleanly against the live staging application. Both protected mutation routes enforce same-origin verification and fail closed before executing mutation handlers.
+
