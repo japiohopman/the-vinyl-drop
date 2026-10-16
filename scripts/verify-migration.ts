@@ -439,18 +439,35 @@ export async function verifyMigrations(): Promise<void> {
   }
 
   // 9. Verify the private one-time approval contract for Supabase Auth's Before User Created hook.
-  const approvalFunctionRes = await pg.query<{ security_definer: boolean }>(
-    "SELECT p.prosecdef AS security_definer FROM pg_proc p WHERE p.oid = to_regprocedure('private.enforce_password_checked_signup(jsonb)');"
+  const approvalFunctionRes = await pg.query<{ security_definer: boolean; empty_search_path: boolean }>(
+    "SELECT p.prosecdef AS security_definer, COALESCE(p.proconfig @> ARRAY['search_path=\"\"'], false) AS empty_search_path FROM pg_proc p WHERE p.oid = to_regprocedure('private.enforce_password_checked_signup(jsonb)');"
   );
-  if (approvalFunctionRes.rows.length !== 1 || !approvalFunctionRes.rows[0].security_definer) {
-    throw new Error('Missing SECURITY DEFINER private.enforce_password_checked_signup(jsonb) hook function');
+  if (
+    approvalFunctionRes.rows.length !== 1 ||
+    approvalFunctionRes.rows[0].security_definer ||
+    !approvalFunctionRes.rows[0].empty_search_path
+  ) {
+    throw new Error('Signup hook must use SECURITY INVOKER and pin search_path to the empty path');
   }
 
-  const authHookPrivilegeRes = await pg.query<{ schema_usage: boolean; can_execute: boolean }>(
-    "SELECT has_schema_privilege('supabase_auth_admin', 'private', 'USAGE') AS schema_usage, has_function_privilege('supabase_auth_admin', 'private.enforce_password_checked_signup(jsonb)', 'EXECUTE') AS can_execute;"
+  const authHookPrivilegeRes = await pg.query<{
+    schema_usage: boolean;
+    can_execute: boolean;
+    can_select: boolean;
+    can_update_consumed: boolean;
+    can_update_created_at: boolean;
+    can_insert: boolean;
+    can_delete: boolean;
+  }>(
+    "SELECT has_schema_privilege('supabase_auth_admin', 'private', 'USAGE') AS schema_usage, has_function_privilege('supabase_auth_admin', 'private.enforce_password_checked_signup(jsonb)', 'EXECUTE') AS can_execute, has_table_privilege('supabase_auth_admin', 'private.password_checked_signup_approvals', 'SELECT') AS can_select, has_column_privilege('supabase_auth_admin', 'private.password_checked_signup_approvals', 'consumed_at', 'UPDATE') AS can_update_consumed, has_column_privilege('supabase_auth_admin', 'private.password_checked_signup_approvals', 'created_at', 'UPDATE') AS can_update_created_at, has_table_privilege('supabase_auth_admin', 'private.password_checked_signup_approvals', 'INSERT') AS can_insert, has_table_privilege('supabase_auth_admin', 'private.password_checked_signup_approvals', 'DELETE') AS can_delete;"
   );
-  if (!authHookPrivilegeRes.rows[0]?.schema_usage || !authHookPrivilegeRes.rows[0]?.can_execute) {
-    throw new Error('Supabase Auth admin role cannot invoke the checked-signup hook function');
+  const hookPrivileges = authHookPrivilegeRes.rows[0];
+  if (
+    !hookPrivileges?.schema_usage || !hookPrivileges.can_execute || !hookPrivileges.can_select ||
+    !hookPrivileges.can_update_consumed || hookPrivileges.can_update_created_at ||
+    hookPrivileges.can_insert || hookPrivileges.can_delete
+  ) {
+    throw new Error('Supabase Auth admin has incorrect privileges for the private signup approval hook');
   }
 
   const deniedPrivateAccessRes = await pg.query<{ role_name: string; schema_usage: boolean; can_select: boolean; can_insert: boolean; can_update: boolean; can_delete: boolean }>(
@@ -461,9 +478,17 @@ export async function verifyMigrations(): Promise<void> {
   }
 
   const runSignupHook = async (event: Record<string, unknown>): Promise<Record<string, unknown>> => {
-    const response = await pg.query<{ decision: unknown }>("SELECT private.enforce_password_checked_signup($1::jsonb) AS decision;", [JSON.stringify(event)]);
-    const decision = response.rows[0]?.decision;
-    return (typeof decision === 'string' ? JSON.parse(decision) : decision) as Record<string, unknown>;
+    await pg.exec('SET ROLE supabase_auth_admin;');
+    try {
+      const response = await pg.query<{ decision: unknown }>(
+        "SELECT private.enforce_password_checked_signup($1::jsonb) AS decision;",
+        [JSON.stringify(event)]
+      );
+      const decision = response.rows[0]?.decision;
+      return (typeof decision === 'string' ? JSON.parse(decision) : decision) as Record<string, unknown>;
+    } finally {
+      await pg.exec('RESET ROLE;');
+    }
   };
   const emailSignupEvent = (email: string, approvalId?: string): Record<string, unknown> => ({
     user: { email, app_metadata: { provider: 'email' }, user_metadata: approvalId ? { signup_approval_id: approvalId } : {} },
