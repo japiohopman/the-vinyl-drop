@@ -7,12 +7,6 @@ interface IdRow {
   id: string;
 }
 
-interface ListingRow {
-  id: string;
-  physical_copy_id: string;
-  seller_id: string;
-}
-
 describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)', () => {
   let pg: PGlite;
 
