@@ -80,18 +80,28 @@ Apply/test this template in staging only after the code that sets `emailRedirect
 
 ### 3.1 Least-Privilege Data API Access Matrix
 
-The application's backend server uses Express/EJS and Drizzle ORM connecting via direct PostgreSQL / Session Pooler connection (`DATABASE_URL`), operating as table superuser/owner (bypassing RLS). Because Supabase exposes PostgreSQL public schema tables through the PostgREST Data API (accessible via `SUPABASE_ANON_KEY` or client JWTs), **Row Level Security (RLS) and explicit role privileges are enforced** on all eight public tables via `drizzle/0005_enforce_least_privilege_rls.sql`:
+The application is a server-rendered Express/EJS site. Application data writes go through server-side services and Drizzle using `DATABASE_URL`; browser code does not need direct Supabase Data API write access. Supabase Auth and Storage remain separate services and are not affected by this table-grant restriction.
 
-| Table Name | SELECT Access Policy | INSERT Access Policy | UPDATE Access Policy | DELETE Access Policy | Granted Roles |
-| --- | --- | --- | --- | --- | --- |
-| **`profiles`** | **Public:** `true` (Anyone can view profiles) | **Owner:** `auth.uid() = id` | **Owner:** `auth.uid() = id` | **Owner:** `auth.uid() = id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
-| **`releases`** | **Public:** `true` (Catalogue is public) | **Denied for Data API:** Server-managed only | **Denied for Data API:** Server-managed only | **Denied:** Default deny | `anon` (SELECT), `authenticated` (SELECT) |
-| **`physical_copies`** | **Public / Owner:** `owner_id = auth.uid() OR EXISTS (SELECT 1 FROM listings WHERE physical_copy_id = physical_copies.id AND status = 'published')` | **Owner:** `auth.uid() = owner_id` | **Owner:** `auth.uid() = owner_id` | **Owner:** `auth.uid() = owner_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
-| **`listings`** | **Public / Seller:** `status = 'published' OR seller_id = auth.uid()` | **Seller & Copy Owner:** `auth.uid() = seller_id AND EXISTS (SELECT 1 FROM physical_copies WHERE id = listings.physical_copy_id AND owner_id = auth.uid())` | **Seller & Copy Owner:** `auth.uid() = seller_id AND EXISTS (SELECT 1 FROM physical_copies WHERE id = listings.physical_copy_id AND owner_id = auth.uid())` | **Seller:** `auth.uid() = seller_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
-| **`listing_photos`** | **Public / Seller:** Attached listing is published or owned by `auth.uid()` | **Seller:** `auth.uid()` matches attached listing's `seller_id` | **Seller:** `auth.uid()` matches attached listing's `seller_id` | **Seller:** `auth.uid()` matches attached listing's `seller_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
-| **`comments`** | **Public / Seller:** Attached listing is published or owned by `auth.uid()` | **Author:** `auth.uid() = author_id` on readable/published listing | **Author:** `auth.uid() = author_id` on readable/published listing | **Author:** `auth.uid() = author_id` | `anon` (SELECT), `authenticated` (SELECT, INSERT, UPDATE, DELETE) |
-| **`activity_events`** | **Public / Actor:** `event_type IN ('listing.published', 'comment.created') OR (event_type = 'favorite.created' AND actor_id = auth.uid())` | **Denied for Data API:** Server-managed only | **Denied:** Default deny | **Denied for Data API:** Server-managed only | `anon` (SELECT), `authenticated` (SELECT) |
-| **`favorites`** | **Owner Only:** `user_id = auth.uid()` (Strictly private) | **Owner:** `auth.uid() = user_id` on published listing | **Denied:** Default deny | **Owner:** `auth.uid() = user_id` | `authenticated` (SELECT, INSERT, DELETE); `anon` has NO grants |
+Migration `0005_enforce_least_privilege_rls.sql` establishes row-level policies. The pending append-only migration `0010_supabase_data_api_read_only.sql` adds a stronger table-privilege boundary: even an authenticated JWT cannot use the Supabase Data API to INSERT, UPDATE, or DELETE application rows. The existing RLS policies remain as defense in depth, but the roles below receive only the stated SELECT permissions.
+
+| Table | SELECT through Supabase Data API | INSERT / UPDATE / DELETE through Supabase Data API | Intended application write path |
+| --- | --- | --- | --- |
+| `profiles` | Public SELECT, filtered by table policy | **Denied by table privileges** | Express profile service + Drizzle |
+| `releases` | Public catalogue SELECT | **Denied by table privileges** | Server-side catalogue service + Drizzle |
+| `physical_copies` | Published/owner rows, filtered by RLS | **Denied by table privileges** | Express listing workflow + Drizzle |
+| `listings` | Published/owner rows, filtered by RLS | **Denied by table privileges** | Express listing workflow + Drizzle |
+| `listing_photos` | Published/owner listing rows, filtered by RLS | **Denied by table privileges** | Express upload workflow + Drizzle; bytes use Supabase Storage |
+| `comments` | Comments on readable listings, filtered by RLS | **Denied by table privileges** | Express comment service + Drizzle |
+| `activity_events` | Public events and permitted actor-scoped events, filtered by RLS | **Denied by table privileges** | Server-managed activity service + Drizzle |
+| `favorites` | Authenticated owner-only SELECT; no `anon` SELECT grant | **Denied by table privileges** | Express favorites service + Drizzle |
+| `conversations`, `messages` | No client Data API access | **Denied; no client table grants** | Server-side participant-scoped messaging services + Drizzle |
+| `orphaned_storage_objects` | No client Data API access | **Denied; no client table grants** | Server-side storage cleanup only |
+
+The migration deliberately revokes table privileges granted to `PUBLIC`, `anon`, and `authenticated` on the listed application tables, then grants back only the approved SELECT permissions. It does not remove RLS policies or alter grants on Supabase-managed Auth/Storage tables.
+
+**Deployment boundary:** migration 0010 is source-controlled but must not be applied to staging as part of this PR. The human-owned release gate [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) still controls live schema changes, and [Issue #127](https://github.com/japiohopman/the-vinyl-drop/issues/127) tracks the still-unapplied migration 0009. Drizzle applies pending migrations in sequence; do not apply 0010 until the earlier migration and the overall staging gate have been reviewed and explicitly authorized.
+
+The live cross-user PATCH investigation is tracked in [Issue #133](https://github.com/japiohopman/the-vinyl-drop/issues/133). The previously reported PowerShell row count was later found to be unreliable for an empty JSON array on Windows PowerShell 5.1. Because the original raw HTTP response body was not captured, that attempt is **inconclusive**: do not claim either an RLS bypass or a passing live write-denial test from it. This migration is preventative least-privilege hardening, not proof of the original request's root cause. Re-evaluate the actual effective grants only after an approved staging migration.
 
 ### 3.2 Storage Object Access & Storage RLS Policy Specification
 
