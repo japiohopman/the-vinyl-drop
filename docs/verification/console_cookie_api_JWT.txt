@@ -1,0 +1,200 @@
+SUPABASE_ANON_KEY (publieke API-key; geen service_role): ^V
+Plak alleen sb-access-token (invoer is verborgen): *
+JWT-validatie niet geslaagd (HTTP 400). Test afgebroken.
+At line:68 char:9
++         throw "JWT-validatie niet geslaagd (HTTP $($auth.StatusCode)) ...
++         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (JWT-validatie n...est afgebroken.:String) [], RuntimeException
+    + FullyQualifiedErrorId : JWT-validatie niet geslaagd (HTTP 400). Test afgebroken.
+ 
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> $ErrorActionPreference = 'Stop'
+>> 
+>> $baseUrl = 'https://xuhzhdjmgvqzjxijmksu.supabase.co'
+>> $anonKey = Read-Host 'SUPABASE_ANON_KEY (publieke API-key; geen service_role)'
+>> $secureJwt = Read-Host 'Plak alleen sb-access-token (invoer is verborgen)' -AsSecureString
+>> 
+>> $jwtPtr = [IntPtr]::Zero
+>> $jwt = $null
+>> $client = $null
+>> 
+>> try {
+>>     $jwtPtr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureJwt)
+>>     $jwt = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($jwtPtr)
+>>     Add-Type -AssemblyName System.Net.Http
+>>     $client = New-Object System.Net.Http.HttpClient
+>>     $client.DefaultRequestHeaders.Add('apikey', $anonKey)
+>>     $client.DefaultRequestHeaders.Authorization =
+>>         [System.Net.Http.Headers.AuthenticationHeaderValue]::new('Bearer', $jwt)
+>> 
+>>     function Invoke-StageApi {
+>>         param(
+>>             [ValidateSet('GET', 'PATCH')][string]$Method,
+>>             [string]$Path,
+>>             [string]$JsonBody
+>>         )
+>> 
+>>         $httpMethod = if ($Method -eq 'GET') {
+>>             [System.Net.Http.HttpMethod]::Get
+>>         } else {
+>>             [System.Net.Http.HttpMethod]::Patch
+>>         }
+>> 
+>>         $request = [System.Net.Http.HttpRequestMessage]::new(
+>>             $httpMethod,
+>>             [Uri]::new("$baseUrl$Path")
+>>         )
+>>         $response = $null
+>> 
+>>         try {
+>>             if ($Method -eq 'PATCH') {
+>>                 [void]$request.Headers.TryAddWithoutValidation(
+>>                     'Prefer', 'return=representation'
+>>                 )
+>>                 $request.Content = [System.Net.Http.StringContent]::new(
+>>                     $JsonBody,
+>>                     [System.Text.Encoding]::UTF8,
+>>                     'application/json'
+>>                 )
+>>             }
+>> 
+>>             $response = $client.SendAsync($request).GetAwaiter().GetResult()
+>>             $content = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+>> 
+>>             return [pscustomobject]@{
+>>                 StatusCode = [int]$response.StatusCode
+>>                 Content    = $content
+>>             }
+>>         }
+>>         finally {
+>>             if ($null -ne $response) { $response.Dispose() }
+>>             $request.Dispose()
+>>         }
+>>     }
+>> 
+>>     # 1. Valideer de bestaande JWT zonder gebruikersgegevens af te drukken.
+>>     $auth = Invoke-StageApi -Method GET -Path '/auth/v1/user'
+>>     if ($auth.StatusCode -ne 200) {
+>>         throw "JWT-validatie niet geslaagd (HTTP $($auth.StatusCode)). Test afgebroken."
+>>     }
+>> 
+>>     $authUser = $auth.Content | ConvertFrom-Json
+>> 
+>>     # 2. Vind het eigen profiel aan de hand van de Auth-user-ID.
+>>     $ownResult = Invoke-StageApi -Method GET -Path (
+>>         "/rest/v1/profiles?select=id,username&id=eq.$($authUser.id)"
+>>     )
+>>     if ($ownResult.StatusCode -ne 200) {
+>>         throw "Eigen profiel kon niet worden gecontroleerd (HTTP $($ownResult.StatusCode))."
+>>     }
+>> 
+>>     $ownRows = @($ownResult.Content | ConvertFrom-Json)
+>>     if ($ownRows.Count -ne 1) {
+>>         throw 'Geen eenduidig eigen profiel gevonden. Er is niets bijgewerkt.'
+>>     }
+>>     $own = $ownRows[0]
+>> 
+>>     Write-Host "Ingelogd profiel: $($own.username)"
+>> 
+>>     # 3. Kies een ander, bestaand stagingprofiel.
+>>     $targetUsername = Read-Host 'Username van een ANDERE bestaande staginggebruiker'
+>>     if ($targetUsername -eq $own.username) {
+>>         throw 'Kies een ander profiel. Er is niets bijgewerkt.'
+>>     }
+>> 
+>>     $filter = [Uri]::EscapeDataString("eq.$targetUsername")
+>>     $targetPath = "/rest/v1/profiles?select=id,username,bio,updated_at&username=$filter"
+>> 
+>>     $beforeResult = Invoke-StageApi -Method GET -Path $targetPath
+>>     if ($beforeResult.StatusCode -ne 200) {
+>>         throw "Doelprofiel kon niet worden gelezen (HTTP $($beforeResult.StatusCode))."
+>>     }
+>> 
+>>     $beforeRows = @($beforeResult.Content | ConvertFrom-Json)
+>>     if ($beforeRows.Count -ne 1) {
+>>         throw 'Doelprofiel niet uniek gevonden. Er is niets bijgewerkt.'
+>>     }
+>>     $target = $beforeRows[0]
+>> 
+>>     if ($target.id -eq $own.id) {
+>>         throw 'Doelprofiel is hetzelfde als het ingelogde profiel. Test afgebroken.'
+>>     }
+>> 
+>>     $before = ConvertTo-Json -Compress -InputObject @(
+>>         $target.id, $target.username, $target.bio, $target.updated_at
+>>     )
+>> 
+>>     # 4. Negatieve test: probeer alleen dezelfde username terug te schrijven.
+>>     $patchPath = "/rest/v1/profiles?id=eq.$($target.id)&select=id,username,bio,updated_at"
+>>     $patchBody = ConvertTo-Json -Compress -InputObject @{
+>>         username = [string]$target.username
+>>     }
+>> 
+>>     $patch = Invoke-StageApi -Method PATCH -Path $patchPath -JsonBody $patchBody
+>> 
+>>     $returnedRows = @()
+>>     if (-not [string]::IsNullOrWhiteSpace($patch.Content)) {
+>>         $returnedRows = @($patch.Content | ConvertFrom-Json)
+>>     }
+>> 
+>>     # 5. Controleer of de doelgegevens exact gelijk zijn gebleven.
+>>     $afterResult = Invoke-StageApi -Method GET -Path $targetPath
+>>     if ($afterResult.StatusCode -ne 200) {
+>>         throw "Nacontrole mislukt (HTTP $($afterResult.StatusCode)). Bewaar de status en stop."
+>>     }
+>> 
+>>     $afterRows = @($afterResult.Content | ConvertFrom-Json)
+>>     if ($afterRows.Count -ne 1) {
+>>         throw 'Doelprofiel ontbreekt na de test; direct nader onderzoek nodig.'
+>>     }
+>>     $afterTarget = $afterRows[0]
+>> 
+>>     $after = ConvertTo-Json -Compress -InputObject @(
+>>         $afterTarget.id, $afterTarget.username, $afterTarget.bio, $afterTarget.updated_at
+>>     )
+>>     $unchanged = ($before -ceq $after)
+>> 
+>>     Write-Host ''
+>>     Write-Host "Doelprofiel: $($target.username)"
+>>     Write-Host "PATCH HTTP-status: $($patch.StatusCode)"
+>>     Write-Host "Geretourneerde doelrijen: $($returnedRows.Count)"
+>>     Write-Host "Doelgegevens ongewijzigd: $unchanged"
+>> 
+>>     if (
+>>         $patch.StatusCode -eq 200 -and
+>>         $returnedRows.Count -eq 0 -and
+>>         $unchanged
+>>     ) {
+>>         Write-Host 'RESULTAAT: PASS — RLS heeft de doelrij niet beschikbaar gemaakt voor de update.'
+>>     }
+>>     elseif (
+>>         $patch.StatusCode -eq 403 -and
+>>         $returnedRows.Count -eq 0 -and
+>>         $unchanged
+>>     ) {
+>>         Write-Host 'RESULTAAT: VERZOEK GEWEIGERD — doelgegevens onveranderd; HTTP 403 nader registreren.'
+>>     }
+>>     else {
+>>         Write-Host 'RESULTAAT: NIET AUTOMATISCH GOEDGEKEURD — bekijk status en nacontrole.'
+>>         Write-Host 'Bij een geretourneerde rij of gewijzigde gegevens: stop en wijzig niets verder.'
+>>     }
+>> }
+>> finally {
+>>     if ($null -ne $client) {
+>>         $client.DefaultRequestHeaders.Authorization = $null
+>>         $client.Dispose()
+>>     }
+>> 
+>>     $jwt = $null
+>>     $anonKey = $null
+>>     if ($jwtPtr -ne [IntPtr]::Zero) {
+>>         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($jwtPtr)
+>>     }
+>>     if ($null -ne $secureJwt) {
+>>         $secureJwt.Dispose()
+>>     }
+>> }
+>> 
+SUPABASE_ANON_KEY (publieke API-key; geen service_role): *
+Plak alleen sb-access-token (invoer is verborgen): ********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************
+Ingelogd profiel: jaap
+Username van een ANDERE bestaande staginggebruiker: 
