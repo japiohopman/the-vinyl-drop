@@ -424,44 +424,36 @@ Safety rules:
 
 ---
 
-## Current project state
+## Current project state — 2026-10-16
 
-Phase 0 — Product and Architecture Foundation is complete and merged to \`main\`.
+The project has progressed beyond the original Phase 0 / Phase 1 foundation plan. The current operational phase is **Prelaunch / Beta readiness**, including a human-owned staging gate and security follow-ups. The dated status below is a snapshot; always verify the linked Issues and current PR/workflow state before acting.
 
-Phase 0 established:
-- product vision;
-- MVP boundary;
-- domain model;
-- data architecture;
-- technical architecture;
-- UX/UI direction;
-- security/privacy baseline;
-- page/route map;
-- Issue strategy;
-- agentic workflow;
-- architectural decisions.
+### Beta cohort and timeline
 
-No application implementation was part of Phase 0.
+- The owner clarifies that the **maximum-five-friends group was only the initial, manually controlled beta test group**, not the lasting target size of the beta.
+- The owner reports that beta readiness was expected around **2026-10-08**; that target has passed. Treat the release plan as overdue and re-evaluate the launch path now. Do not turn an initial pilot boundary into an indefinite cohort cap or leave follow-up work queued behind an unspecified future pilot wrap-up.
+- The remaining security/staging/privacy gates still apply. A missed target date is a reason to re-prioritize and resolve blockers, not permission to bypass them.
 
-The next implementation phase is:
+### Current release and security gates
 
-**Phase 1 — Repository and Agentic Workflow Foundation**
+- **Issue #49 — staging/beta gate:** OPEN / NOT READY while the authenticated cross-user Supabase Data API authorization discrepancy remains unresolved. Issue [#133](https://github.com/japiohopman/the-vinyl-drop/issues/133) is inconclusive: the old PowerShell PATCH result is neither proof of a bypass nor proof of denial. Do not repeat that live mutation request merely to reproduce it.
+- **PR #134 / Issue #135 — least-privilege Data API mitigation:** source-level migration `0010` and isolated checks are proposed; they are not a live staging change. Migration `0009` in [Issue #127](https://github.com/japiohopman/the-vinyl-drop/issues/127) and `0010` must be separately reviewed and explicitly authorized in sequence under #49 before either is applied to staging.
+- **Issue #62 — leaked-password finding:** CLOSED only for the recorded residual-risk decision for the initial five-friend bug-finding pilot. The native Supabase `auth_leaked_password_protection` warning remains on the Free plan; never say it is cleared.
+- **Issue #118 — direct Supabase Auth signup bypass:** IMMEDIATE RELEASE BLOCKER before expanding beyond the initial group, enabling broad invitations, or claiming general beta availability. Investigate and implement the source-level solution now; do not defer solely because the first pilot is described as future work. No live Auth probe or setting change without separate explicit owner authorization.
+- **Issue #88:** applicable privacy/data-handling prerequisites must be satisfied before inviting external testers. **Issue #119:** resolve the private-messaging trigger search-path finding before enabling private messaging. The owner reported restoring staging `MESSAGING_ENABLED=false` after its controlled test.
+- **Issue #48 — invite-only onboarding / waitlist:** not ready to dispatch until its stated prerequisites and the staging gate are resolved. Do not introduce public waitlist collection as a substitute for a verified beta path.
 
-Expected responsibilities:
-- Node/TypeScript application bootstrap;
-- lint/test/build commands;
-- initial Express/EJS shell;
-- GitHub Issue templates;
-- PR template;
-- specialist agent files;
-- Jules selector/dispatcher;
-- CI;
-- phase safety gate;
-- review relay;
-- stale-session cleanup;
-- this context contract wired into repository guidance.
+### Operational interpretation rules
 
----
+- Distinguish **product target**, **temporary pilot boundary**, **security release gate**, and **historical target date**. They are not interchangeable.
+- When a date passes, mark it overdue and update priority/status. Never repeat stale wording that implies the old date is still in the future.
+- Treat the latest owner instruction and current GitHub Issue/PR evidence as authoritative. Update both this context file and the relevant issue/runbook when a decision changes.
+- Do not repeat already completed owner-run tests without a specific new reason.
+- Do not apply live migrations, edit live Supabase/Render settings, create Auth users, repeat live mutation probes, or change production without the exact separate owner authorization required by the governing Issue.
+
+### Phase 0 foundation — historical record
+
+Phase 0 — Product and Architecture Foundation was completed and merged to `main`. It established the product vision, MVP boundary, domain/data/technical architecture, UX direction, security/privacy baseline, route map, Issue strategy, and agentic workflow. **The old note saying Phase 1 is the next implementation phase is historical and no longer describes the current project state.**
 
 ## Jules Phase 0 review notes
 
