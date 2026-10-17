@@ -139,6 +139,7 @@ async function run() {
       for (const title of validImageCards) {
         const card = page.locator('[data-listing-id]').filter({ hasText: title });
         const img = card.locator('.listing-card-image');
+
         const isLoaded = await img.evaluate((el) => {
           const image = el as unknown as { complete: boolean; naturalWidth: number };
           return image.complete && image.naturalWidth > 0;
@@ -197,6 +198,7 @@ async function run() {
       for (const title of validImageCards) {
         const card = page.locator('[data-listing-id]').filter({ hasText: title });
         const img = card.locator('.listing-card-image');
+
         const isLoaded = await img.evaluate((el) => {
           const image = el as unknown as { complete: boolean; naturalWidth: number };
           return image.complete && image.naturalWidth > 0;
