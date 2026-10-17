@@ -134,7 +134,7 @@ async function run() {
       const gridCardCount = await gridCards.count();
       assert.equal(gridCardCount, 5, `Expected 5 listing cards in grid mode, found ${gridCardCount}`);
 
-      // Verify artwork loads successfully on valid image cards
+      // Verify artwork loads successfully on valid image cards in Grid mode
       const validImageCards = ['The White Album (Light Art)', 'The Black Album (Dark Art)', 'Sgt. Pepper (Busy Art)'];
       for (const title of validImageCards) {
         const card = page.locator('[data-listing-id]').filter({ hasText: title });
@@ -143,14 +143,14 @@ async function run() {
           const image = el as unknown as { complete: boolean; naturalWidth: number };
           return image.complete && image.naturalWidth > 0;
         });
-        assert.ok(isLoaded, `Artwork image failed to load for card: ${title}`);
+        assert.ok(isLoaded, `Artwork image failed to load in Grid mode for card: ${title}`);
 
         // Invariant: Artwork isn't cropped (object-fit: contain)
         const objectFit = await img.evaluate((el) => {
           const win = (globalThis as unknown as { window: { getComputedStyle: (e: unknown) => { objectFit: string } } }).window;
           return win.getComputedStyle(el).objectFit;
         });
-        assert.equal(objectFit, 'contain', `Artwork must use object-fit: contain to prevent cropping on ${title}`);
+        assert.equal(objectFit, 'contain', `Artwork must use object-fit: contain to prevent cropping in Grid mode on ${title}`);
       }
 
       for (let i = 0; i < gridCardCount; i++) {
@@ -168,7 +168,7 @@ async function run() {
         assert.ok(imgLinkBox, `Image link bounding box must exist in Grid mode for card ${i}`);
         assert.ok(badgeBox, `Badge container overlay bounding box MUST exist in Grid mode for card ${i}`);
 
-        // Invariant 2: Artwork link fills the media frame
+        // Invariant 2: Artwork link fills the media frame in Grid mode
         assert.ok(Math.abs(imgLinkBox.width - mediaBox.width) < 2, `Image link width (${imgLinkBox.width}) must fill media frame width (${mediaBox.width}) in Grid mode at ${vp.width}px`);
         assert.ok(Math.abs(imgLinkBox.height - mediaBox.height) < 2, `Image link height (${imgLinkBox.height}) must fill media frame height (${mediaBox.height}) in Grid mode at ${vp.width}px`);
 
@@ -189,33 +189,58 @@ async function run() {
       const viewportWidthList = await page.evaluate(() => (globalThis as unknown as { document: { documentElement: { clientWidth: number } } }).document.documentElement.clientWidth);
       assert.ok(scrollWidthList <= viewportWidthList, `Horizontal overflow detected in List mode at ${vp.width}px! (${scrollWidthList} > ${viewportWidthList})`);
 
-      // Invariant 4: List conditions are NOT overlaid inside the media frame; they belong in listing-card-meta
       const listCards = page.locator('.listing-card');
       const listCardCount = await listCards.count();
       assert.equal(listCardCount, 5, `Expected 5 listing cards in list mode, found ${listCardCount}`);
 
+      // Verify artwork loads successfully, object-fit: contain is preserved, and image link fills media frame in List mode
+      for (const title of validImageCards) {
+        const card = page.locator('[data-listing-id]').filter({ hasText: title });
+        const img = card.locator('.listing-card-image');
+        const isLoaded = await img.evaluate((el) => {
+          const image = el as unknown as { complete: boolean; naturalWidth: number };
+          return image.complete && image.naturalWidth > 0;
+        });
+        assert.ok(isLoaded, `Artwork image failed to load in List mode for card: ${title}`);
+
+        const objectFit = await img.evaluate((el) => {
+          const win = (globalThis as unknown as { window: { getComputedStyle: (e: unknown) => { objectFit: string } } }).window;
+          return win.getComputedStyle(el).objectFit;
+        });
+        assert.equal(objectFit, 'contain', `Artwork must use object-fit: contain to prevent cropping in List mode on ${title}`);
+      }
+
       for (let i = 0; i < listCardCount; i++) {
         const card = listCards.nth(i);
         const media = card.locator('.listing-card-media');
+        const imgLink = card.locator('.listing-card-image-link');
         const mediaBadgeContainer = card.locator('.listing-card-media .listing-card-badge-container');
         const listConditionContainer = card.locator('.listing-card-list-condition');
         const titleHeader = card.locator('.listing-card-header');
         const bodySection = card.locator('.listing-card-body');
 
+        const mediaBox = await media.boundingBox();
+        const imgLinkBox = await imgLink.boundingBox();
+        const bodyBox = await bodySection.boundingBox();
+        const titleBox = await titleHeader.boundingBox();
+
+        assert.ok(mediaBox, `Media bounding box must exist in List mode for card ${i}`);
+        assert.ok(imgLinkBox, `Image link bounding box must exist in List mode for card ${i}`);
+        assert.ok(bodyBox, `Body section bounding box must exist in List mode for card ${i}`);
+        assert.ok(titleBox, `Title header bounding box must exist in List mode for card ${i}`);
+
+        // Invariant 2: Image link fills the compact media frame in List mode
+        assert.ok(Math.abs(imgLinkBox.width - mediaBox.width) < 2, `Image link width (${imgLinkBox.width}) must fill media frame width (${mediaBox.width}) in List mode at ${vp.width}px`);
+        assert.ok(Math.abs(imgLinkBox.height - mediaBox.height) < 2, `Image link height (${imgLinkBox.height}) must fill media frame height (${mediaBox.height}) in List mode at ${vp.width}px`);
+
+        // Invariant 4: List conditions are NOT overlaid inside the media frame; they belong in listing-card-meta
         const mediaBadgeCount = await mediaBadgeContainer.count();
         const listConditionCount = await listConditionContainer.count();
 
         assert.equal(mediaBadgeCount, 0, 'In List mode, condition badges must NOT be inside .listing-card-media');
         assert.equal(listConditionCount, 1, 'In List mode, condition badges must render inside .listing-card-list-condition');
 
-        // Geometric non-overlap assertions for List mode
-        const mediaBox = await media.boundingBox();
-        const bodyBox = await bodySection.boundingBox();
-        const titleBox = await titleHeader.boundingBox();
-
-        assert.ok(mediaBox && bodyBox && titleBox, `List mode element bounding boxes must exist for card ${i}`);
-
-        // Media artwork is on the left; body content section is positioned to its right
+        // Geometric non-overlap assertions for List mode: Media artwork is on the left; body content section is positioned to its right
         assert.ok(bodyBox.x >= (mediaBox.x + mediaBox.width - 2), `Body section x (${bodyBox.x}) must be to the right of media frame (${mediaBox.x + mediaBox.width}) in List mode`);
       }
 
