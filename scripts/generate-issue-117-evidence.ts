@@ -12,9 +12,9 @@ import { listingPhotos } from '../src/db/schema/listingPhotos';
 import { createApp } from '../src/app';
 import { chromium } from '@playwright/test';
 
-// Deterministic test SVG images served via Express static middleware from public/assets/svg/
-const lightArtPath = 'assets/svg/round-star.svg';
-const darkArtPath = 'assets/svg/user.svg';
+// Deterministic cover art SVG/WebP assets under public/assets/ served via Express static middleware
+const lightArtPath = 'assets/test-light-cover.svg';
+const darkArtPath = 'assets/test-dark-cover.svg';
 const busyArtPath = 'assets/test-cover.webp';
 
 async function run() {
@@ -124,7 +124,6 @@ async function run() {
       // GRID MODE VERIFICATION & LAYOUT ASSERTIONS
       // ==========================================
       await page.goto(`http://localhost:${port}/browse?view=grid`, { waitUntil: 'networkidle' });
-      await page.waitForTimeout(500);
 
       // Invariant 1: No horizontal overflow
       const scrollWidthGrid = await page.evaluate(() => (globalThis as unknown as { document: { documentElement: { scrollWidth: number } } }).document.documentElement.scrollWidth);
@@ -183,7 +182,6 @@ async function run() {
       // LIST MODE VERIFICATION & LAYOUT ASSERTIONS
       // ==========================================
       await page.goto(`http://localhost:${port}/browse?view=list`, { waitUntil: 'networkidle' });
-      await page.waitForTimeout(500);
 
       // Invariant 1: No horizontal overflow in List mode
       const scrollWidthList = await page.evaluate(() => (globalThis as unknown as { document: { documentElement: { scrollWidth: number } } }).document.documentElement.scrollWidth);
@@ -213,30 +211,38 @@ async function run() {
     }
 
     // =========================================================================
-    // BROKEN IMAGE & MISSING IMAGE DOM FALLBACK VISIBILITY ASSERTIONS
+    // REAL BROKEN IMAGE HTTP FAILURE & DOM FALLBACK ASSERTIONS
     // =========================================================================
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await context.newPage();
-    await page.goto(`http://localhost:${port}/browse?view=grid`, { waitUntil: 'networkidle' });
 
-    // 1. Broken image fallback assertion (onerror triggered)
-    const brokenCard = page.locator('[data-listing-id]').filter({ hasText: 'Broken Image Test' });
-    const brokenImg = brokenCard.locator('.listing-card-image');
-    // Wait for img onerror event handler to execute
-    await brokenImg.evaluate((el) => {
-      const img = el as unknown as { complete: boolean; naturalWidth: number; dispatchEvent: (e: unknown) => void };
-      if (!img.complete || img.naturalWidth === 0) {
-        img.dispatchEvent(new Event('error'));
+    // Monitor actual 404 network response for broken image request
+    let failedImageResponseStatus = 0;
+    page.on('response', (response) => {
+      if (response.url().includes('non-existent-file.jpg')) {
+        failedImageResponseStatus = response.status();
       }
     });
-    await page.waitForTimeout(200);
 
-    const brokenCardFallback = brokenCard.locator('.listing-card-image-fallback');
-    const isBrokenFallbackVisible = await brokenCardFallback.isVisible();
-    assert.equal(isBrokenFallbackVisible, true, 'Broken image fallback must be visible in the DOM upon image onerror failure');
-    console.log(`[Broken Image Assertion] Fallback visible on error: ${isBrokenFallbackVisible}`);
+    await page.goto(`http://localhost:${port}/browse?view=grid`, { waitUntil: 'load' });
 
-    // 2. Missing image fallback assertion (no imageUrl provided)
+    const brokenCard = page.locator('[data-listing-id]').filter({ hasText: 'Broken Image Test' });
+    const brokenImg = brokenCard.locator('.listing-card-image');
+    const brokenFallback = brokenCard.locator('.listing-card-image-fallback');
+
+    // Wait for the browser to issue the image request, receive 404, and trigger onerror fallback
+    await brokenFallback.waitFor({ state: 'visible', timeout: 5000 });
+
+    assert.equal(failedImageResponseStatus, 404, 'Browser must issue real network request for broken image and receive HTTP 404 status');
+
+    const isBrokenImgHidden = await brokenImg.evaluate((el) => (el as unknown as { style: { display: string } }).style.display === 'none');
+    assert.equal(isBrokenImgHidden, true, 'Broken image element must be hidden via style.display="none" after browser onerror triggers');
+
+    const isBrokenFallbackVisible = await brokenFallback.isVisible();
+    assert.equal(isBrokenFallbackVisible, true, 'Broken image fallback must be naturally visible in DOM upon actual image load failure');
+    console.log(`[Real Broken Image Assertion] Network status: ${failedImageResponseStatus}, Fallback visible: ${isBrokenFallbackVisible}`);
+
+    // Missing image fallback assertion (no imageUrl provided)
     const noImageCard = page.locator('[data-listing-id]').filter({ hasText: 'No Image Fallback Test' });
     const noImageFallback = noImageCard.locator('.listing-card-image-fallback');
     const isMissingFallbackVisible = await noImageFallback.isVisible();
