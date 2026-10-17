@@ -355,6 +355,14 @@ When the implementation is correct:
 
 The \`@Jules\` mention is a delivery mechanism; the GitHub Issue remains the execution authority and the PR remains the active review/continuation contract.
 
+
+### Repeated owner corrections become durable rules
+
+- If the owner has already repeated the same instruction three times and must raise it again, treat that as a process failure, not as another one-off reminder.
+- Turn the repeated instruction into a clear, durable rule in this `CHATGPT.md` file, and update the relevant GitHub Issue or PR instructions when that is where the work is being directed.
+- When an instruction is meant for Jules on an existing PR, editing the PR description alone may not create visible timeline activity or notify Jules. Put the authoritative instruction in the PR body, add a separate `@Jules` timeline comment when renewed attention is needed, and provide the owner a direct link to the exact comment/section so it is easy to find.
+- In the chat reply, confirm what was recorded and link the exact GitHub location. Do not claim an instruction is visible to Jules until the resulting PR body/comment has been verified.
+
 ---
 
 ## Specialist roles
