@@ -1,3 +1,5 @@
+import path from 'path';
+import ejs from 'ejs';
 import { formatPrice, buildListingImageAlt, buildListingCardViewModel } from '../src/app/view-models/listingCardViewModel';
 import { formatZodFormErrors, demoListingFormSchema } from '../src/app/view-models/formViewModel';
 
@@ -73,6 +75,66 @@ describe('UI Primitives View Models and Helpers', () => {
       });
 
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Listing Card Template Rendering', () => {
+    const templatePath = path.resolve(__dirname, '../views/partials/listing-card.ejs');
+
+    it('should render grid mode listing card with full square media link and overlay badge container', async () => {
+      const html = await ejs.renderFile(templatePath, {
+        listing: {
+          id: 'test-1',
+          title: 'A Love Supreme',
+          artist: 'John Coltrane',
+          imageUrl: 'https://example.com/cover.jpg',
+          mediaCondition: 'NM',
+          sleeveCondition: 'VG+',
+        },
+        mode: 'grid',
+      });
+
+      expect(html).toContain('class="listing-card "');
+      expect(html).toContain('class="listing-card-media"');
+      expect(html).toContain('class="listing-card-image-link"');
+      expect(html).toContain('class="listing-card-badge-container"');
+      expect(html).toContain('condition-badge-group');
+      expect(html).toContain('NM');
+      expect(html).toContain('VG+');
+    });
+
+    it('should render list mode without badge overlay in media frame', async () => {
+      const html = await ejs.renderFile(templatePath, {
+        listing: {
+          id: 'test-2',
+          title: 'Blue Train',
+          artist: 'John Coltrane',
+          imageUrl: 'https://example.com/blue.jpg',
+          mediaCondition: 'M',
+          sleeveCondition: 'M',
+        },
+        mode: 'list',
+      });
+
+      expect(html).toContain('listing-card-list-mode');
+      expect(html).toContain('class="listing-card-image-link"');
+      expect(html).not.toContain('class="listing-card-badge-container"');
+      expect(html).toContain('class="listing-card-list-condition"');
+    });
+
+    it('should render fallback when imageUrl is missing', async () => {
+      const html = await ejs.renderFile(templatePath, {
+        listing: {
+          id: 'test-3',
+          title: 'Giant Steps',
+          artist: 'John Coltrane',
+          imageUrl: '',
+        },
+        mode: 'grid',
+      });
+
+      expect(html).toContain('class="listing-card-image-fallback"');
+      expect(html).toContain('Vinyl Record');
     });
   });
 });
