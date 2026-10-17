@@ -10,7 +10,14 @@ import { physicalCopies } from '../src/db/schema/physicalCopies';
 import { listings } from '../src/db/schema/listings';
 import { listingPhotos } from '../src/db/schema/listingPhotos';
 import { createApp } from '../src/app';
-import { chromium } from '@playwright/test';
+import { chromium, expect, type Locator } from '@playwright/test';
+
+async function assertLoadedImage(image: Locator, expectedSrc: string) {
+  await expect.poll(() => image.evaluate((el) => {
+    const img = el as unknown as { src: string; complete: boolean; naturalWidth: number };
+    return { src: img.src, complete: img.complete, hasPixels: img.naturalWidth > 0 };
+  })).toEqual({ src: expectedSrc, complete: true, hasPixels: true });
+}
 
 async function run() {
   console.log('Seeding PGlite verification DB for Issue #65 detail page artwork...');
@@ -149,12 +156,20 @@ async function run() {
     status: 'published',
   }).returning();
 
-  await db.insert(listingPhotos).values({
-    listingId: lst3.id,
-    storagePath: 'assets/broken-photo-2.webp',
-    displayOrder: 0,
-    altText: 'Broken photo on Blue Train',
-  });
+  await db.insert(listingPhotos).values([
+    {
+      listingId: lst3.id,
+      storagePath: 'assets/broken-photo-2.webp',
+      displayOrder: 0,
+      altText: 'Broken photo on Blue Train',
+    },
+    {
+      listingId: lst3.id,
+      storagePath: 'assets/test-cover.webp',
+      displayOrder: 1,
+      altText: 'Working photo on Blue Train',
+    },
+  ]);
 
   // 4. Listing with NO seller photo AND broken release artwork -> placeholder fallback
   const [rel4] = await db.insert(releases).values({
@@ -220,14 +235,8 @@ async function run() {
       });
       assert.equal(objectFit, 'contain', `Main detail photo must use object-fit: contain at ${vp.width}px`);
 
-      // Assert initial image decode/load success
-      const isInitialLoaded = await mainImg.evaluate((el) => {
-        const image = el as unknown as { complete: boolean; naturalWidth: number };
-        return image.complete && image.naturalWidth > 0;
-      });
-      assert.ok(isInitialLoaded, 'Initial main image must be completely loaded and decoded');
-
-      // Verify initial main image src and alt
+      // Verify the exact initial seller photo URL and successful load
+      await assertLoadedImage(mainImg, `http://localhost:${port}/assets/test-cover.webp`);
       const initialAlt = await mainImg.getAttribute('alt');
       assert.equal(initialAlt, 'Front sleeve photo of A Love Supreme');
 
@@ -247,31 +256,21 @@ async function run() {
       assert.equal(secondAriaCurrent, 'true', 'Second thumbnail button must have aria-current="true" when activated via keyboard');
 
       // Assert main image src, alt, and decode success after thumbnail selection
-      const updatedSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
+      await assertLoadedImage(mainImg, `http://localhost:${port}/assets/test-dark-cover.svg`);
       const updatedAlt = await mainImg.getAttribute('alt');
-      assert.ok(updatedSrc.includes('assets/test-dark-cover.svg'), 'Main image src must update to second thumbnail URL');
       assert.equal(updatedAlt, 'Gatefold inner photo of A Love Supreme', 'Main image alt text must update to match selected thumbnail');
-
-      const isUpdatedLoaded = await mainImg.evaluate((el) => {
-        const image = el as unknown as { complete: boolean; naturalWidth: number };
-        return image.complete && image.naturalWidth > 0;
-      });
-      assert.ok(isUpdatedLoaded, 'Main image after thumbnail activation must be completely loaded and decoded');
 
       // Now click third thumbnail (broken seller photo) to verify re-armed fallback triggering
       await thumbBtns.nth(2).click();
-      await page.waitForFunction(() => {
-        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
-        return img && img.src.includes('test-light-cover.svg');
-      }, { timeout: 5000 });
+      await assertLoadedImage(mainImg, `http://localhost:${port}/assets/test-light-cover.svg`);
+      assert.equal(await mainImg.getAttribute('alt'), 'Album cover artwork for A Love Supreme by John Coltrane');
+      assert.equal(await page.locator('.thumbnail-btn.selected, .thumbnail-btn[aria-current="true"]').count(), 0, 'No seller thumbnail may remain selected when release artwork is displayed');
 
-      const rearmedSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
-      assert.ok(rearmedSrc.includes('test-light-cover.svg'), 'Clicking broken thumbnail must trigger re-armed fallback to release artwork');
-
-      const isThirdSelected = await thumbBtns.nth(2).evaluate((el) => el.classList.contains('selected'));
-      const thirdAriaCurrent = await thumbBtns.nth(2).getAttribute('aria-current');
-      assert.ok(isThirdSelected, 'Third thumbnail button must remain selected after fallback');
-      assert.equal(thirdAriaCurrent, 'true', 'Third thumbnail button must keep aria-current="true" after fallback');
+      // Selecting a valid seller photo after fallback must restore its source and selection
+      await thumbBtns.nth(0).click();
+      await assertLoadedImage(mainImg, `http://localhost:${port}/assets/test-cover.webp`);
+      assert.equal(await mainImg.getAttribute('alt'), 'Front sleeve photo of A Love Supreme');
+      assert.equal(await thumbBtns.nth(0).getAttribute('aria-current'), 'true');
 
       await page.screenshot({ path: path.join(outputDir, `listing-detail-${vp.name}.png`), fullPage: true });
       await context.close();
@@ -285,21 +284,8 @@ async function run() {
       await page.goto(`http://localhost:${port}/listings/${lst2.id}`, { waitUntil: 'domcontentloaded' });
       const mainImg = page.locator('#main-photo-img');
 
-      await page.waitForFunction(() => {
-        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
-        return img && img.src.includes('test-light-cover.svg');
-      }, { timeout: 5000 });
-
-      const currentSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
-      const currentAlt = await mainImg.getAttribute('alt');
-      assert.ok(currentSrc.includes('test-light-cover.svg'), 'Broken seller photo must fall back to valid release artwork URL');
-      assert.equal(currentAlt, 'Catalog cover artwork for Giant Steps', 'Alt text must update to release artwork alt text');
-
-      const isReleaseArtLoaded = await mainImg.evaluate((el) => {
-        const image = el as unknown as { complete: boolean; naturalWidth: number };
-        return image.complete && image.naturalWidth > 0;
-      });
-      assert.ok(isReleaseArtLoaded, 'Fallback release artwork must load and decode successfully (naturalWidth > 0)');
+      await assertLoadedImage(mainImg, `http://localhost:${port}/assets/test-light-cover.svg`);
+      assert.equal(await mainImg.getAttribute('alt'), 'Album cover artwork for Giant Steps by John Coltrane', 'Fallback must reset alt text to the default');
 
       await context.close();
     }
@@ -312,15 +298,19 @@ async function run() {
       await page.goto(`http://localhost:${port}/listings/${lst3.id}`, { waitUntil: 'domcontentloaded' });
       const mainImg = page.locator('#main-photo-img');
 
-      await page.waitForFunction(() => {
-        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
-        return img && img.src.includes('vinyl-placeholder.svg');
-      }, { timeout: 5000 });
+      await assertLoadedImage(mainImg, `http://localhost:${port}/assets/vinyl-placeholder.svg`);
+      assert.equal(await mainImg.getAttribute('alt'), 'Album cover artwork for Blue Train by John Coltrane', 'Fallback must reset alt text to the default');
+      assert.equal(await page.locator('.thumbnail-btn.selected, .thumbnail-btn[aria-current="true"]').count(), 0);
 
-      const currentSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
-      const currentAlt = await mainImg.getAttribute('alt');
-      assert.ok(currentSrc.includes('vinyl-placeholder.svg'), 'Broken seller photo + broken release art must fall back to vinyl placeholder');
-      assert.equal(currentAlt, 'Default vinyl placeholder for Blue Train', 'Alt text must update to placeholder alt text');
+      // The placeholder disables onerror; selecting another photo must re-arm it.
+      await page.locator('.thumbnail-btn').nth(1).click();
+      await assertLoadedImage(mainImg, `http://localhost:${port}/assets/test-cover.webp`);
+      assert.equal(await mainImg.getAttribute('alt'), 'Working photo on Blue Train');
+      assert.equal(await page.locator('.thumbnail-btn').nth(1).getAttribute('aria-current'), 'true');
+      await page.locator('.thumbnail-btn').nth(0).click();
+      await assertLoadedImage(mainImg, `http://localhost:${port}/assets/vinyl-placeholder.svg`);
+      assert.equal(await mainImg.getAttribute('alt'), 'Album cover artwork for Blue Train by John Coltrane');
+      assert.equal(await page.locator('.thumbnail-btn.selected, .thumbnail-btn[aria-current="true"]').count(), 0);
 
       await page.screenshot({ path: path.join(outputDir, 'broken-photo-fallback-verification.png'), fullPage: true });
       await context.close();
@@ -334,13 +324,8 @@ async function run() {
       await page.goto(`http://localhost:${port}/listings/${lst4.id}`, { waitUntil: 'domcontentloaded' });
       const mainImg = page.locator('#main-photo-img');
 
-      await page.waitForFunction(() => {
-        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
-        return img && img.src.includes('vinyl-placeholder.svg');
-      }, { timeout: 5000 });
-
-      const currentSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
-      assert.ok(currentSrc.includes('vinyl-placeholder.svg'), 'No seller photo + broken release art must fall back directly to vinyl placeholder');
+      await assertLoadedImage(mainImg, `http://localhost:${port}/assets/vinyl-placeholder.svg`);
+      assert.equal(await mainImg.getAttribute('alt'), 'Album cover artwork for My Favorite Things by John Coltrane');
 
       await context.close();
     }
