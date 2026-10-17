@@ -134,17 +134,26 @@ async function run() {
       const gridCardCount = await gridCards.count();
       assert.equal(gridCardCount, 5, `Expected 5 listing cards in grid mode, found ${gridCardCount}`);
 
-      // Verify artwork loads successfully on valid image cards in Grid mode
+      // Verify artwork lazy loads and decodes successfully on valid image cards in Grid mode
       const validImageCards = ['The White Album (Light Art)', 'The Black Album (Dark Art)', 'Sgt. Pepper (Busy Art)'];
       for (const title of validImageCards) {
         const card = page.locator('[data-listing-id]').filter({ hasText: title });
         const img = card.locator('.listing-card-image');
 
+        // Explicitly scroll lazy-loaded image into view and await browser image decode/load
+        await img.scrollIntoViewIfNeeded();
+        await img.evaluate(async (el) => {
+          const image = el as unknown as { complete: boolean; decode: () => Promise<void> };
+          if ('decode' in image && typeof image.decode === 'function') {
+            await image.decode();
+          }
+        });
+
         const isLoaded = await img.evaluate((el) => {
           const image = el as unknown as { complete: boolean; naturalWidth: number };
           return image.complete && image.naturalWidth > 0;
         });
-        assert.ok(isLoaded, `Artwork image failed to load in Grid mode for card: ${title}`);
+        assert.ok(isLoaded, `Artwork image failed to load/decode in Grid mode for card: ${title}`);
 
         // Invariant: Artwork isn't cropped (object-fit: contain)
         const objectFit = await img.evaluate((el) => {
@@ -194,16 +203,25 @@ async function run() {
       const listCardCount = await listCards.count();
       assert.equal(listCardCount, 5, `Expected 5 listing cards in list mode, found ${listCardCount}`);
 
-      // Verify artwork loads successfully, object-fit: contain is preserved, and image link fills media frame in List mode
+      // Verify artwork lazy loads and decodes successfully in List mode
       for (const title of validImageCards) {
         const card = page.locator('[data-listing-id]').filter({ hasText: title });
         const img = card.locator('.listing-card-image');
+
+        // Explicitly scroll lazy-loaded image into view and await browser image decode/load
+        await img.scrollIntoViewIfNeeded();
+        await img.evaluate(async (el) => {
+          const image = el as unknown as { complete: boolean; decode: () => Promise<void> };
+          if ('decode' in image && typeof image.decode === 'function') {
+            await image.decode();
+          }
+        });
 
         const isLoaded = await img.evaluate((el) => {
           const image = el as unknown as { complete: boolean; naturalWidth: number };
           return image.complete && image.naturalWidth > 0;
         });
-        assert.ok(isLoaded, `Artwork image failed to load in List mode for card: ${title}`);
+        assert.ok(isLoaded, `Artwork image failed to load/decode in List mode for card: ${title}`);
 
         const objectFit = await img.evaluate((el) => {
           const win = (globalThis as unknown as { window: { getComputedStyle: (e: unknown) => { objectFit: string } } }).window;
