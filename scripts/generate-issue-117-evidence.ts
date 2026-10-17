@@ -163,17 +163,18 @@ async function run() {
         const imgLinkBox = await imgLink.boundingBox();
         const badgeBox = await badgeContainer.boundingBox();
 
-        assert.ok(mediaBox && imgLinkBox, 'Media and image link bounding boxes must exist in Grid mode');
+        // Throwing assertion: media, image link, AND badge container bounding boxes MUST exist in Grid mode
+        assert.ok(mediaBox, `Media bounding box must exist in Grid mode for card ${i}`);
+        assert.ok(imgLinkBox, `Image link bounding box must exist in Grid mode for card ${i}`);
+        assert.ok(badgeBox, `Badge container overlay bounding box MUST exist in Grid mode for card ${i}`);
 
         // Invariant 2: Artwork link fills the media frame
-        assert.ok(Math.abs(imgLinkBox!.width - mediaBox!.width) < 2, `Image link width (${imgLinkBox!.width}) must fill media frame width (${mediaBox!.width}) in Grid mode at ${vp.width}px`);
-        assert.ok(Math.abs(imgLinkBox!.height - mediaBox!.height) < 2, `Image link height (${imgLinkBox!.height}) must fill media frame height (${mediaBox!.height}) in Grid mode at ${vp.width}px`);
+        assert.ok(Math.abs(imgLinkBox.width - mediaBox.width) < 2, `Image link width (${imgLinkBox.width}) must fill media frame width (${mediaBox.width}) in Grid mode at ${vp.width}px`);
+        assert.ok(Math.abs(imgLinkBox.height - mediaBox.height) < 2, `Image link height (${imgLinkBox.height}) must fill media frame height (${mediaBox.height}) in Grid mode at ${vp.width}px`);
 
-        // Invariant 3: Grid badges stay anchored within the media frame bounds
-        if (badgeBox && mediaBox) {
-          assert.ok(badgeBox.x >= mediaBox.x && (badgeBox.x + badgeBox.width) <= (mediaBox.x + mediaBox.width + 2), `Grid badge overlay right edge (${badgeBox.x + badgeBox.width}) must stay inside media frame (${mediaBox.x + mediaBox.width})`);
-          assert.ok(badgeBox.y >= mediaBox.y && (badgeBox.y + badgeBox.height) <= (mediaBox.y + mediaBox.height + 2), `Grid badge overlay bottom edge (${badgeBox.y + badgeBox.height}) must stay inside media frame (${mediaBox.y + mediaBox.height})`);
-        }
+        // Invariant 3: Grid badges stay anchored strictly within the media frame bounds
+        assert.ok(badgeBox.x >= mediaBox.x && (badgeBox.x + badgeBox.width) <= (mediaBox.x + mediaBox.width + 2), `Grid badge overlay right edge (${badgeBox.x + badgeBox.width}) must stay inside media frame (${mediaBox.x + mediaBox.width})`);
+        assert.ok(badgeBox.y >= mediaBox.y && (badgeBox.y + badgeBox.height) <= (mediaBox.y + mediaBox.height + 2), `Grid badge overlay bottom edge (${badgeBox.y + badgeBox.height}) must stay inside media frame (${mediaBox.y + mediaBox.height})`);
       }
 
       await page.screenshot({ path: path.join(outputDir, `browse-grid-${vp.name}.png`), fullPage: true });
@@ -195,14 +196,27 @@ async function run() {
 
       for (let i = 0; i < listCardCount; i++) {
         const card = listCards.nth(i);
+        const media = card.locator('.listing-card-media');
         const mediaBadgeContainer = card.locator('.listing-card-media .listing-card-badge-container');
         const listConditionContainer = card.locator('.listing-card-list-condition');
+        const titleHeader = card.locator('.listing-card-header');
+        const bodySection = card.locator('.listing-card-body');
 
         const mediaBadgeCount = await mediaBadgeContainer.count();
         const listConditionCount = await listConditionContainer.count();
 
         assert.equal(mediaBadgeCount, 0, 'In List mode, condition badges must NOT be inside .listing-card-media');
         assert.equal(listConditionCount, 1, 'In List mode, condition badges must render inside .listing-card-list-condition');
+
+        // Geometric non-overlap assertions for List mode
+        const mediaBox = await media.boundingBox();
+        const bodyBox = await bodySection.boundingBox();
+        const titleBox = await titleHeader.boundingBox();
+
+        assert.ok(mediaBox && bodyBox && titleBox, `List mode element bounding boxes must exist for card ${i}`);
+
+        // Media artwork is on the left; body content section is positioned to its right
+        assert.ok(bodyBox.x >= (mediaBox.x + mediaBox.width - 2), `Body section x (${bodyBox.x}) must be to the right of media frame (${mediaBox.x + mediaBox.width}) in List mode`);
       }
 
       await page.screenshot({ path: path.join(outputDir, `browse-list-${vp.name}.png`), fullPage: true });
