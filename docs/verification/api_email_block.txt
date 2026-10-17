@@ -1,0 +1,311 @@
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> c:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop\check-staging-db-target.ps1
+CONTROLE GESLAAGD
+Actieve Drizzle-configuratie: DATABASE_DIRECT_URL
+Databasehost: aws-0-eu-west-1.pooler.supabase.com
+Projectreferentie en host komen overeen. Alleen de effectieve configuratie en .env zijn gelezen; geen databaseverbinding geopend en niets gewijzigd.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop>
+Nagedacht gedurende 22s
+
+Goed! ✅ Dit is een geslaagde staging-doelcontrole. Het script bevestigt dat DATABASE_DIRECT_URL naar de verwachte Supabase-stagingdatabase verwijst.
+
+    Projectreferentie en databasehost komen overeen.
+
+    Er is geen databaseverbinding geopend.
+
+    Er is niets gewijzigd.
+
+Maar let op: dit controleert de databaseconfiguratie, niet de signup-hook.
+
+Ik zie nog een belangrijk detail in je eerdere PowerShell-uitvoer: bij de vraag om de publieke API-key staat geen ingevoerde waarde. Omdat de code daarna regel voor regel is uitgevoerd, kan de aanvraag die HTTP 403 opleverde zonder geldige API-key zijn verstuurd. Die 403 kunnen we dus niet als geslaagde beveiligingstest tellen.
+Eerst één controle
+
+Open Supabase → Authentication → Users en zoek naar:
+
+direct-hook-test-20261017-075137@example.com
+
+Bestaat deze gebruiker? Maak of verwijder niets; controleer alleen of hij in de lijst staat.
+
+Daarna voeren we het gecorrigeerde bestand check-direct-auth-signup-hook.ps1 als één geheel uit. Dat voorkomt de PowerShell-fouten van de vorige poging en laat ons controleren of de weigering daadwerkelijk door de hook komt.
+nee heb alleen de 3 email hier staan die ik heb aangemaakt. heb ik boven in de chat ook gezet.
+Nagedacht gedurende 34s
+
+Je hebt gelijk, sorry! Je had al verteld dat je drie testaccounts hebt aangemaakt. Ik had je niet opnieuw naar dezelfde controle moeten laten kijken.
+
+Goed nieuws: het synthetische testadres direct-hook-test-20261017-075137@example.com staat niet bij je drie gebruikers. We hoeven voor die poging dus geen testaccount op te ruimen. Ik heb dit ook genoteerd bij Issue #118.
+
+De HTTP 403 blijft wel onbeslist: we hebben de precieze foutmelding niet kunnen uitlezen.
+Laten we nu test 2 afronden
+
+Open de staging-aanmeldpagina en gebruik voor deze test een nieuw e-mailadres-alias van een mailbox die jij beheert. Als je Gmail gebruikt, kun je bijvoorbeeld +hibptest20261017 vóór @gmail.com zetten. Dat komt in dezelfde mailbox terecht, maar is voor Supabase een ander e-mailadres.
+
+Gebruik voor het wachtwoord de testwaarde password123.
+
+De gewenste uitkomst is de expliciete melding:
+
+This password appears in known data breaches. Please choose a different password.
+
+Als je die melding ziet, is test 2 geslaagd. Controleer bij onverwachte acceptatie wel of er een gebruiker is aangemaakt.
+
+Daarna doen we test 3 met het gecorrigeerde script, zodat we de HTTP-foutmelding wél kunnen uitlezen. De publieke staging-key voer je alleen in PowerShell in — deel hem niet hier in de chat.
+dus japiehopman+hibptest20261017@gmail.com deze testen?
+
+Ja, precies! Dat Gmail-alias is geschikt voor deze test. E-mails die naar japiohopman+hibptest20261017@gmail.com worden verstuurd, komen normaal gesproken in dezelfde Gmail-inbox terecht als je gewone adres.
+
+Vul op The Vinyl Drop staging het volgende in:
+
+    Username: hibp_test_20261017
+
+    E-mailadres: japiohopman+hibptest20261017@gmail.com
+
+    Wachtwoord: password123
+
+Gebruik dit wachtwoord uitsluitend voor deze test, nooit voor je echte account.
+
+Verwachte uitkomst: de app weigert de registratie met de melding:
+
+This password appears in known data breaches. Please choose a different password.
+
+Krijg je die melding, stuur me dan even de bevestiging. Krijg je een andere melding of lijkt de registratie te slagen, stop dan en laat me weten wat je ziet; dan controleren we eerst wat er is gebeurd.
+
+dat lukt me niet! Sign Up — The Vinyl Drop
+
+    This password appears in known data breaches. Please choose a different password.
+
+Nagedacht gedurende 20s
+
+Jawel, dit is gelukt! 😄 Je hebt precies bewezen wat we met test 2 wilden controleren.
+
+Je ziet de juiste foutmelding:
+
+    This password appears in known data breaches. Please choose a different password.
+
+Dat betekent:
+
+    ✅ De wachtwoordcontrole via Have I Been Pwned werkt op staging.
+
+    ✅ The Vinyl Drop weigert het onveilige wachtwoord.
+
+    ✅ Volgens de huidige code gebeurt dit vóórdat Supabase Auth wordt aangeroepen; deze geweigerde poging hoort dus geen account aan te maken.
+
+Ik heb test 2 als geslaagd vastgelegd in Issue #118 en Issue #49. Je hoeft deze test niet opnieuw te doen.
+Nog één belangrijke beveiligingstest
+
+Nu controleren we of iemand de wachtwoordcontrole kan omzeilen door rechtstreeks naar Supabase Auth te gaan, zonder de applicatie te gebruiken.
+
+De eerste PowerShell-poging gaf HTTP 403, maar we konden de precieze reden niet uitlezen. Daarom is test 3 nog niet geslaagd verklaard.
+
+Je hoeft niets meer te doen met het aanmeldformulier. De volgende stap is de directe Auth-test met een gecorrigeerd PowerShell-script dat de foutmelding goed uitleest. Daarna kunnen we vaststellen of de nieuwe Supabase-hook de aanvraag daadwerkelijk blokkeert.
+let's GO
+Nagedacht gedurende 12s
+
+Let's go! 💪 Test 2 is binnen. Nu gaan we bewijzen dat de Supabase-hook ook een rechtstreekse aanmelding blokkeert.
+
+Ik heb het gecorrigeerde PowerShell-script klaargezet. Het leest de HTTP-response uit vóórdat die wordt opgeruimd en voert de controle als één geheel uit.
+Stap 1 — download het script
+
+Download check-direct-auth-signup-hook.ps1
+
+Sla het bestand op in je projectmap:
+
+C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop
+Stap 2 — voer het uit
+
+Je zit al in de juiste PowerShell-map. Voer deze opdracht uit:
+
+.\check-direct-auth-signup-hook.ps1
+
+Het script vraagt je om twee dingen:
+
+1. De publieke staging API-key
+
+Gebruik de publieke anon- of publishable-key van het Supabase-project xuhzhdjmgvqzjxijmksu. Gebruik nooit een service_role- of secret key. Plak de volledige key in PowerShell en druk op Enter. Deel hem niet in de chat.
+
+2. Een nieuw testadres dat jij beheert
+
+Gebruik bijvoorbeeld dit Gmail-alias:
+
+japiohopman+directhook20261017@gmail.com
+
+Het script genereert zelf een tijdelijk wachtwoord en verstuurt één rechtstreekse aanvraag naar Supabase Auth, zonder signup_approval_id. Daarmee testen we precies de beveiligingsgrens die de hook moet bewaken.
+Stap 3 — bekijk de uitslag
+
+De gewenste uitslag is:
+
+PASS — Before User Created-hook heeft de aanvraag geweigerd
+De servermelding moet aangeven dat de aanmelding de wachtwoordbeveiligingscontrole van The Vinyl Drop moet doorlopen.
+
+Krijg je ONBESLIST, dan bekijken we de foutmelding. Krijg je FAIL, voer de aanvraag dan niet opnieuw uit: controleer eerst in Supabase → Authentication → Users of het testadres toch een gebruiker heeft opgeleverd.
+
+Stuur me daarna de regels HTTP-status, Servermelding en PASS of ONBESLIST/FAIL. Dan leggen we het echte resultaat vast in Issue #118 en werken we de staging-releasechecklist bij.
+check-direct-auth-signup-hook.ps1Code
+Vul een VERS staging-testadres in dat je beheert (geen bestaand account): japiohopman+directhook20261017@gmail.com
+
+HTTP-status: 403
+Staging-test-email: japiohopman+directhook20261017@gmail.com
+Servermelding: Email sign-up must use The Vinyl Drop password-security check.
+PASS: de Before User Created-hook heeft de directe aanmelding zonder goedkeuring geweigerd.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop>
+Nagedacht gedurende 2m 55s
+
+YES! Test 3 is geslaagd! 🎉 Dit is precies het bewijs dat we nodig hadden.
+
+De rechtstreekse aanvraag naar Supabase Auth is met HTTP 403 geweigerd, met exact de verwachte foutmelding:
+
+    Email sign-up must use The Vinyl Drop password-security check.
+
+Dat is veel sterker bewijs dan alleen een algemene 403: de respons bevestigt dat de aanvraag zonder goedkeuring door de beveiligingscontrole is tegengehouden.
+De drie signup-controles
+
+Test
+	
+
+Resultaat
+
+1. Normale aanmelding met een goed wachtwoord via The Vinyl Drop
+	
+
+GESLAAGD
+
+2. Bekend gelekt wachtwoord via The Vinyl Drop
+	
+
+GESLAAGD
+
+3. Rechtstreekse Supabase Auth-aanmelding zonder goedkeuring
+	
+
+GESLAAGD
+
+Perfect! De beveiliging tegen rechtstreekse aanmeldingen werkt zoals bedoeld. 🎉
+
+De belangrijkste regel uit je PowerShell-uitvoer is:
+
+Email sign-up must use The Vinyl Drop password-security check.
+
+De hook heeft dus niet zomaar een generieke fout teruggegeven: de server heeft expliciet aangegeven dat de aanmelding via de wachtwoordbeveiligingscontrole van The Vinyl Drop moet verlopen.
+Wat is nu afgerond?
+
+Test 1 — Normale aanmelding
+GESLAAGD
+
+Een goed wachtwoord wordt geaccepteerd via de applicatie.
+
+Test 2 — Gelekte wachtwoorden
+GESLAAGD
+
+De applicatie weigert het bekende gelekte testwachtwoord.
+
+Test 3 — Rechtstreekse Supabase Auth
+GESLAAGD
+
+HTTP 403 met de exacte foutmelding van de signup-hook.
+Ik heb ook de documentatie bijgewerkt
+
+    Issue #118 — Signupbeveiliging: de drie runtime-tests staan nu op geslaagd.
+
+    Issue #49 — Staging release gate: de actuele beveiligingsstatus is bijgewerkt.
+
+    PR #140 — Staging runbook: ik heb de verouderde status aangepast en een nieuwe sectie 5.9 toegevoegd met de testresultaten.
+
+PR #140 staat nog open en is niet gemerged. De nieuwe documentatiecommit is faa78ad75bb9f7ac628a39175dda1b6565bab236. Ik heb gecontroleerd dat de PR-branch ten opzichte van de actuele basis alleen docs/STAGING_BETA_DEPLOYMENT.md wijzigt. De nieuwe CI-run is nog bezig; die moet eerst slagen voordat de PR klaar is voor menselijke review.
+
+Belangrijk: Issue #49 blijft open. De native Supabase-waarschuwing voor gelekte wachtwoorden staat nog op het Free-plan en private messaging blijft uitgeschakeld met MESSAGING_ENABLED=false. De tests zijn geslaagd, maar dat betekent nog niet dat alle releasevoorwaarden zijn afgerond.
+
+Je hoeft deze drie signup-tests niet opnieuw te doen. We hebben nu concreet runtimebewijs voor de nieuwe beveiliging.
+
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> # Alleen het bestaande antwoord uitlezen; er wordt niets verstuurd.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> if ($null -eq $HttpResponse) {
+>>     Write-Host 'Geen bewaard HTTP-response-object gevonden.'
+>>     return
+>> }
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> 
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> $ResponseText = ''
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> 
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> if ($HttpResponse -is [System.Net.Http.HttpResponseMessage]) {
+>>     $ResponseText = $HttpResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+>> }
+ParentContainsErrorRecordException: 
+Line |
+   2 |      $ResponseText = $HttpResponse.Content.ReadAsStringAsync().GetAwai …
+     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Exception calling "ReadAsStringAsync" with "0" argument(s): "Cannot access a disposed object.
+Object name: 'System.Net.Http.DecompressionHandler+GZipDecompressedContent'."
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> elseif ($HttpResponse.PSObject.Methods.Name -contains 'GetResponseStream') {
+>>     $Stream = $HttpResponse.GetResponseStream()
+>>     if ($null -ne $Stream) {
+>>         $Reader = New-Object System.IO.StreamReader($Stream)
+>>         try {
+>>             $ResponseText = $Reader.ReadToEnd()
+>>         }
+>>         finally {
+>>             $Reader.Dispose()
+>>         }
+>>     }
+>> }
+elseif: The term 'elseif' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> 
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> $Result = $null
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> try {
+>>     $Result = $ResponseText | ConvertFrom-Json -ErrorAction Stop
+>> }
+>> catch {}
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> 
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> $Message = $null
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> 
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> if ($Result.msg) {
+>>     $Message = [string]$Result.msg
+>> }
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> elseif ($Result.message) {
+>>     $Message = [string]$Result.message
+>> }
+elseif: The term 'elseif' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> elseif ($Result.error -is [string]) {
+>>     $Message = [string]$Result.error
+>> }
+elseif: The term 'elseif' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> elseif ($Result.error -and $Result.error.message) {
+>>     $Message = [string]$Result.error.message
+>> }
+elseif: The term 'elseif' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> elseif ($Result.error_description) {
+>>     $Message = [string]$Result.error_description
+>> }
+elseif: The term 'elseif' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> 
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> Write-Host "HTTP-status: $StatusCode"
+HTTP-status: 403
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> 
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> if ($Message) {
+>>     Write-Host "Servermelding: $Message"
+>> }
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> else {
+>>     Write-Host 'De foutmelding kon niet veilig uit de bekende velden worden gelezen.'
+>> }
+else: The term 'else' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> 
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> if ($Message -like '*Email sign-up must use The Vinyl Drop password-security check*') {
+>>     Write-Host 'PASS: de verwachte signup-hook heeft de aanvraag geweigerd.' -ForegroundColor Green
+>> }
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> else {
+>>     Write-Host 'RESULTAAT: ONBESLIST — we moeten de weigering nog verklaren.' -ForegroundColor Yellow
+>> }^C
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> c:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop\check-staging-db-target.ps1
+CONTROLE GESLAAGD
+Actieve Drizzle-configuratie: DATABASE_DIRECT_URL
+Databasehost: aws-0-eu-west-1.pooler.supabase.com
+Projectreferentie en host komen overeen. Alleen de effectieve configuratie en .env zijn gelezen; geen databaseverbinding geopend en niets gewijzigd.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> .\check-direct-auth-signup-hook.ps1
+Plak de PUBLIEKE staging anon/publishable API-key: ******0.Gf****1s
+Vul een VERS staging-testadres in dat je beheert (geen bestaand account): japiohopman+directhook20261017@gmail.com
+
+HTTP-status: 403
+Staging-test-email: japiohopman+directhook20261017@gmail.com
+Servermelding: Email sign-up must use The Vinyl Drop password-security check.
+PASS: de Before User Created-hook heeft de directe aanmelding zonder goedkeuring geweigerd.
+PS C:\Users\Gebruiker\Documents\GitHub\the-vinyl-drop> 
