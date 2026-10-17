@@ -4,6 +4,16 @@ This document specifies the environment taxonomy, hosting provider evaluation, i
 
 *Verification Date: October 2026*
 
+## Latest staging Auth-hook runtime status — 2026-10-17 (authoritative)
+
+**This status supersedes earlier notes below that said the Auth hook/Render flag or runtime tests were still outstanding.** The earlier notes are retained as dated history and rollout instructions; do not interpret them as the current state.
+
+- Render staging service `the-vinyl-drop-staging` has `SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED=true`; deployment [`dep-db9h4tbrjlhs73eqbm40`](https://dashboard.render.com/web/srv-db5chp0473hc73alsib0/deploys/dep-db9h4tbrjlhs73eqbm40) is Live on [commit `0297e54d4c4b12f1a839e8580bd8f57a7a8ef7e7`](https://github.com/japiohopman/the-vinyl-drop/commit/0297e54d4c4b12f1a839e8580bd8f57a7a8ef7e7), the then-current `main` SHA.
+- Owner dashboard screenshot confirms Supabase Authentication → Hooks → Before User Created is **ENABLED**, using Postgres function `private.enforce_password_checked_signup`.
+- **Manual runtime acceptance passed:** (1) normal application signup with an acceptable password; (2) application signup rejected the known-breached test password with `This password appears in known data breaches. Please choose a different password.`; (3) direct `/auth/v1/signup` with no one-time approval was rejected with HTTP 403 and exact hook message `Email sign-up must use The Vinyl Drop password-security check.`.
+- The first direct-Auth attempt returned HTTP 403 but its response body was lost to a PowerShell script error. It is superseded by the later corrected PowerShell attempt that captured the exact expected hook message.
+- Keep `MESSAGING_ENABLED=false`. The native Supabase `auth_leaked_password_protection` WARN remains on the Free plan. Parent [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49) remains **OPEN / NOT READY** pending its other release gates and human maintainer review/merge of [PR #140](https://github.com/japiohopman/the-vinyl-drop/pull/140). These application-level controls do not clear the native Security Advisor warning.
+
 ---
 
 ## 1. Environment Taxonomy & Data Separation
@@ -245,7 +255,7 @@ The source tree now contains four sequential security migrations:
 | --- | --- | --- | --- |
 | `0009_case_insensitive_usernames.sql` | [#127](https://github.com/japiohopman/the-vinyl-drop/issues/127) | Enforce case-insensitive username uniqueness | **Applied and verified 2026-10-16** |
 | `0010_supabase_data_api_read_only.sql` | [#135](https://github.com/japiohopman/the-vinyl-drop/issues/135), [PR #134](https://github.com/japiohopman/the-vinyl-drop/pull/134) | Remove client Data API INSERT/UPDATE/DELETE privileges | **Applied and verified 2026-10-16** |
-| `0011_password_checked_signup_hook.sql` | [#118](https://github.com/japiohopman/the-vinyl-drop/issues/118), [PR #136](https://github.com/japiohopman/the-vinyl-drop/pull/136) | Install the private one-time signup-approval table and Before User Created function | **SQL applied and DB objects verified 2026-10-16; Auth hook not configured** |
+| `0011_password_checked_signup_hook.sql` | [#118](https://github.com/japiohopman/the-vinyl-drop/issues/118), [PR #136](https://github.com/japiohopman/the-vinyl-drop/pull/136) | Install the private one-time signup-approval table and Before User Created function | **SQL applied and DB objects verified 2026-10-16; Auth hook enabled and all three manual runtime checks passed 2026-10-17** |
 | `0012_pin_messaging_trigger_search_path.sql` | [#119](https://github.com/japiohopman/the-vinyl-drop/issues/119), [PR #138](https://github.com/japiohopman/the-vinyl-drop/pull/138) | Pin both messaging trigger functions to an empty `search_path` and qualify references | **Applied and verified 2026-10-16; messaging remains disabled** |
 
 A source PR merge is not evidence that its migration ran. The status table above records the observed staging state as of 2026-10-16: migrations 0009–0012 are already applied and verified. The preflight and execution instructions below are retained as a reusable procedure for any future authorized staging migration; do not rerun `npm run db:migrate` just to reproduce this completed operation. Drizzle applies every pending journal entry in order, and `npm run db:migrate` is not a command for choosing a single migration. Before any future use, identify every migration that will run and obtain explicit owner approval for that exact set.
@@ -319,6 +329,8 @@ These checks must return existing objects and the expected privilege results; an
 A harmless public-listing GET may be used as a read-only Data API smoke check after approval. **Do not repeat the earlier live profile PATCH or send test writes** merely to prove denial. The earlier PowerShell result is inconclusive because an empty JSON array could be miscounted and its raw response body was not retained. Track that discrepancy in [Issue #133](https://github.com/japiohopman/the-vinyl-drop/issues/133); neither the migration nor this SQL inventory retrospectively proves its root cause.
 
 #### Step 4 — Configure and verify the signup hook (Issue #118)
+
+**Current status as of 2026-10-17: COMPLETED on staging.** The hook is enabled, the Render flag is live, and all three manual runtime acceptance checks passed; see the authoritative status at the top of this document and Section 5.9. The sequence below is retained as an auditable rollout procedure for future environments/configurations and must not be repeated on staging merely to reproduce the completed operation.
 
 Perform this only after migration `0011` is confirmed applied and separately authorized. Migration `0012` is a separate messaging-trigger hardening migration and does not need to be active to configure the signup hook; however, messaging must remain disabled until `0012` is applied and verified.
 
@@ -449,8 +461,30 @@ The checkboxes below are reconciled against the owner-confirmed staging evidence
 - The staging Supabase Storage bucket, policies, and upload-integrity checks are configured and verified. The operator confirmed a public image URL loaded in an incognito browser without authentication on 2026-10-12. The rejected GIF/oversized-file checks, actual-route non-owner denial, and Storage object/data-integrity evidence are complete and recorded in closed [Issue #61](https://github.com/japiohopman/the-vinyl-drop/issues/61) and PRs #96–#99. Do not treat these completed checks as remaining blockers or repeat them absent new contradictory evidence.
 - The native Supabase Security Advisor warning `auth_leaked_password_protection` remains because the organization is on Free. See [Issue #62](https://github.com/japiohopman/the-vinyl-drop/issues/62) for the compensating control and residual-risk decision.
 - Migration 0010 is applied in staging. A read-only effective-grant audit confirms `anon` and `authenticated` have no INSERT, UPDATE, or DELETE privileges on the 11 target application tables, including `profiles`. The historical cross-user PATCH discrepancy in [Issue #133](https://github.com/japiohopman/the-vinyl-drop/issues/133) remains **root-cause inconclusive**, because the original response body was not retained and no matching request-level log record was available. On 2026-10-17 the owner accepted this historical uncertainty as residual risk in light of the active least-privilege mitigation; #133 is closed on that limited basis. Do not repeat the mutation probe.
-- Migrations 0009–0012 are applied and verified in staging under the owner authorization recorded in [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49). The database objects for the signup hook exist, but Supabase Auth → Before User Created has not been configured. The migration operation did not change Render's `SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED` flag, and its current effective deployed value has not been independently verified by the Render connector; verify/configure it only as part of the separately authorized cutover, after the Auth hook is configured. Private messaging remains disabled; the native `auth_leaked_password_protection` WARN remains.
-- **Do not mark staging/beta ready or close Issue #49 yet.** The historical #133 discrepancy is still unresolved, and the separately authorized Auth-hook/Render cutover and controlled signup verification remain outstanding under [Issue #118](https://github.com/japiohopman/the-vinyl-drop/issues/118).
+- Migrations 0009–0012 are applied and verified in staging under the owner authorization recorded in [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49). Since this 2026-10-16 database check, the Before User Created hook was enabled, the Render staging flag was set to `true` and deployed Live, and all three manual signup-hook runtime checks passed on 2026-10-17 (see Section 5.9). Private messaging remains disabled; the native `auth_leaked_password_protection` WARN remains.
+- **Do not mark staging/beta ready or close Issue #49 yet.** The historical #133 root cause remains inconclusive, with the residual uncertainty accepted by the owner on a limited basis; do not repeat the PATCH. The signup-hook runtime acceptance is complete, but PR #140 still needs human maintainer review/merge, Issue #119's messaging rollout decision remains separate, and the remaining parent release gates must be reviewed.
+
+
+### 5.9 Live Auth Hook Runtime Verification — 2026-10-17
+
+**Target:** The Vinyl Drop staging app and Supabase staging Auth project `xuhzhdjmgvqzjxijmksu`  
+**Render deployment:** [`dep-db9h4tbrjlhs73eqbm40`](https://dashboard.render.com/web/srv-db5chp0473hc73alsib0/deploys/dep-db9h4tbrjlhs73eqbm40), Live on commit [`0297e54d4c4b12f1a839e8580bd8f57a7a8ef7e7`](https://github.com/japiohopman/the-vinyl-drop/commit/0297e54d4c4b12f1a839e8580bd8f57a7a8ef7e7)  
+**Configuration evidence:** owner screenshot shows Before User Created **ENABLED**, type Postgres function, schema `private`, function `enforce_password_checked_signup`; staging Render flag `SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED=true`.
+
+| Check | Observed result | Assessment |
+| --- | --- | --- |
+| Normal application email/password signup with acceptable password | Owner confirmed the account signup happy path succeeded after cutover. | Pass — operator-reported manual runtime result |
+| Application signup with a known-breached test password | UI returned `This password appears in known data breaches. Please choose a different password.` | Pass — application HIBP check rejected the password before calling Supabase Auth |
+| Direct Supabase Auth `POST /auth/v1/signup` without `signup_approval_id` | Corrected PowerShell probe returned HTTP 403 and `Email sign-up must use The Vinyl Drop password-security check.` | Pass — the exact Before User Created hook error was captured |
+
+**First direct-Auth probe note:** an earlier attempt also returned HTTP 403 but a PowerShell exception occurred before its response body could be read. That attempt is inconclusive on its own and is superseded by the corrected probe above. The corrected response includes the expected hook-specific message.
+
+**Security and scope notes:**
+- No test passwords, API keys, session tokens, or full Auth response payloads are recorded here.
+- The direct signup denial happens before the new Auth user is inserted; the expected hook-specific error confirms the policy was enforced rather than an unrelated generic 403.
+- The native Supabase `auth_leaked_password_protection` WARN remains on the Free plan; this custom hook is not a replacement for clearing that platform warning.
+- Keep `MESSAGING_ENABLED=false`; do not expand the beta cohort or close parent Issue #49 until the remaining release gate and human review are complete.
+- Evidence and current runtime status are also recorded in [Issue #118](https://github.com/japiohopman/the-vinyl-drop/issues/118) and [Issue #49](https://github.com/japiohopman/the-vinyl-drop/issues/49).
 
 ---
 
@@ -797,7 +831,7 @@ This confirms the preventative least-privilege boundary is active in staging. It
 - `supabase_auth_admin` has schema USAGE and SELECT on the approval table; its UPDATE grant is restricted to the `consumed_at` column. It cannot update `email_normalized`, INSERT, or DELETE approval rows.
 - `private.enforce_password_checked_signup(jsonb)` is SECURITY INVOKER with an empty `search_path`. EXECUTE is denied to `anon` and `authenticated` and granted to `supabase_auth_admin`.
 
-**Separate runtime configuration is still outstanding:** this migration operation did not configure Supabase Auth → Hooks → Before User Created or change Render's `SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED` flag. Do not enable the flag until the hook has been configured and the operation is separately authorized under #49. Issue #118 remains open pending runtime proof.
+**Snapshot as of the database post-check on 2026-10-16 (superseded by Section 5.9):** at that time, this database-only migration operation had not configured the Supabase Auth hook or changed Render settings. The owner separately enabled the Before User Created hook and set `SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED=true` on staging on 2026-10-17; all three manual runtime acceptance checks then passed. See [Issue #118](https://github.com/japiohopman/the-vinyl-drop/issues/118).
 
 #### Messaging trigger hardening after migration 0012
 
