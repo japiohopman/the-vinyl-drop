@@ -45,14 +45,14 @@ async function run() {
     displayName: 'Jazz Vault Collector',
   });
 
-  // 1. Listing with multiple photos
+  // 1. Listing with multiple photos and VALID release artwork
   const [rel1] = await db.insert(releases).values({
     title: 'A Love Supreme',
     artist: 'John Coltrane',
     label: 'Impulse!',
     releaseYear: 1965,
     format: 'LP, Album',
-    coverArtUrl: 'https://example.com/a-love-supreme-cover.jpg',
+    coverArtUrl: '/assets/test-light-cover.svg',
   }).returning();
 
   const [pc1] = await db.insert(physicalCopies).values({
@@ -84,16 +84,22 @@ async function run() {
       displayOrder: 1,
       altText: 'Gatefold inner photo of A Love Supreme',
     },
+    {
+      listingId: lst1.id,
+      storagePath: 'assets/broken-thumbnail.webp',
+      displayOrder: 2,
+      altText: 'Broken seller photo',
+    },
   ]);
 
-  // 2. Listing with broken photo URL AND broken coverArtUrl falling back to local vinyl placeholder
+  // 2. Listing with broken seller photo AND valid release artwork (/assets/test-light-cover.svg)
   const [rel2] = await db.insert(releases).values({
-    title: 'Blue Train',
+    title: 'Giant Steps',
     artist: 'John Coltrane',
-    label: 'Blue Note',
-    releaseYear: 1957,
-    format: '12" Vinyl',
-    coverArtUrl: '/assets/broken-release-art.jpg',
+    label: 'Atlantic',
+    releaseYear: 1960,
+    format: 'LP',
+    coverArtUrl: '/assets/test-light-cover.svg',
   }).returning();
 
   const [pc2] = await db.insert(physicalCopies).values({
@@ -113,10 +119,67 @@ async function run() {
 
   await db.insert(listingPhotos).values({
     listingId: lst2.id,
-    storagePath: 'assets/broken-photo.webp',
+    storagePath: 'assets/broken-photo-1.webp',
     displayOrder: 0,
-    altText: 'Broken photo',
+    altText: 'Broken photo on Giant Steps',
   });
+
+  // 3. Listing with broken seller photo AND broken release artwork -> placeholder fallback
+  const [rel3] = await db.insert(releases).values({
+    title: 'Blue Train',
+    artist: 'John Coltrane',
+    label: 'Blue Note',
+    releaseYear: 1957,
+    format: '12" Vinyl',
+    coverArtUrl: '/assets/broken-release-art.jpg',
+  }).returning();
+
+  const [pc3] = await db.insert(physicalCopies).values({
+    releaseId: rel3.id,
+    ownerId: sellerId,
+    mediaCondition: 'VG+',
+    sleeveCondition: 'VG',
+  }).returning();
+
+  const [lst3] = await db.insert(listings).values({
+    physicalCopyId: pc3.id,
+    sellerId: sellerId,
+    price: 4500,
+    currency: 'EUR',
+    status: 'published',
+  }).returning();
+
+  await db.insert(listingPhotos).values({
+    listingId: lst3.id,
+    storagePath: 'assets/broken-photo-2.webp',
+    displayOrder: 0,
+    altText: 'Broken photo on Blue Train',
+  });
+
+  // 4. Listing with NO seller photo AND broken release artwork -> placeholder fallback
+  const [rel4] = await db.insert(releases).values({
+    title: 'My Favorite Things',
+    artist: 'John Coltrane',
+    label: 'Atlantic',
+    releaseYear: 1961,
+    format: 'LP',
+    coverArtUrl: '/assets/broken-release-art.jpg',
+  }).returning();
+
+  const [pc4] = await db.insert(physicalCopies).values({
+    releaseId: rel4.id,
+    ownerId: sellerId,
+    mediaCondition: 'VG+',
+    sleeveCondition: 'VG',
+  }).returning();
+
+  const [lst4] = await db.insert(listings).values({
+    physicalCopyId: pc4.id,
+    sellerId: sellerId,
+    price: 3000,
+    currency: 'EUR',
+    status: 'published',
+  }).returning();
 
   setOverrideDb(db);
 
@@ -135,12 +198,12 @@ async function run() {
       { name: 'desktop-1280px', width: 1280, height: 900 },
     ];
 
-    // Verify detail page multi-photo selection, layout, and overflow across viewports
+    // Case 1: Verify detail page multi-photo selection, layout, and overflow across viewports
     for (const vp of viewports) {
       const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
       const page = await context.newPage();
 
-      await page.goto(`http://localhost:${port}/listings/${lst1.id}`, { waitUntil: 'networkidle' });
+      await page.goto(`http://localhost:${port}/listings/${lst1.id}`, { waitUntil: 'domcontentloaded' });
 
       // Invariant: No horizontal document overflow
       const scrollWidth = await page.evaluate(() => (globalThis as unknown as { document: { documentElement: { scrollWidth: number } } }).document.documentElement.scrollWidth);
@@ -171,7 +234,7 @@ async function run() {
       // Interact with thumbnail gallery via keyboard activation (Enter key)
       const thumbBtns = page.locator('.thumbnail-btn');
       const thumbCount = await thumbBtns.count();
-      assert.equal(thumbCount, 2, 'Expected 2 thumbnail buttons for lst1');
+      assert.equal(thumbCount, 3, 'Expected 3 thumbnail buttons for lst1');
 
       // Focus and press Enter on second thumbnail
       await thumbBtns.nth(1).focus();
@@ -195,27 +258,92 @@ async function run() {
       });
       assert.ok(isUpdatedLoaded, 'Main image after thumbnail activation must be completely loaded and decoded');
 
+      // Now click third thumbnail (broken seller photo) to verify re-armed fallback triggering
+      await thumbBtns.nth(2).click();
+      await page.waitForFunction(() => {
+        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
+        return img && img.src.includes('test-light-cover.svg');
+      }, { timeout: 5000 });
+
+      const rearmedSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
+      assert.ok(rearmedSrc.includes('test-light-cover.svg'), 'Clicking broken thumbnail must trigger re-armed fallback to release artwork');
+
+      const isThirdSelected = await thumbBtns.nth(2).evaluate((el) => el.classList.contains('selected'));
+      const thirdAriaCurrent = await thumbBtns.nth(2).getAttribute('aria-current');
+      assert.ok(isThirdSelected, 'Third thumbnail button must remain selected after fallback');
+      assert.equal(thirdAriaCurrent, 'true', 'Third thumbnail button must keep aria-current="true" after fallback');
+
       await page.screenshot({ path: path.join(outputDir, `listing-detail-${vp.name}.png`), fullPage: true });
       await context.close();
     }
 
-    // Verify broken image onerror fallback chain on detail page
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-    const page = await context.newPage();
+    // Case 2: Broken seller photo -> VALID release artwork -> successful load path
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const page = await context.newPage();
 
-    await page.goto(`http://localhost:${port}/listings/${lst2.id}`, { waitUntil: 'load' });
-    const mainImg = page.locator('#main-photo-img');
+      await page.goto(`http://localhost:${port}/listings/${lst2.id}`, { waitUntil: 'domcontentloaded' });
+      const mainImg = page.locator('#main-photo-img');
 
-    // Wait for onerror fallback to switch src to secondary cover art or placeholder
-    await page.waitForFunction(() => {
-      const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
-      return img && (img.src.includes('test-light-cover.svg') || img.src.includes('vinyl-placeholder.svg'));
-    }, { timeout: 5000 });
+      await page.waitForFunction(() => {
+        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
+        return img && img.src.includes('test-light-cover.svg');
+      }, { timeout: 5000 });
 
-    const currentSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
-    assert.ok(currentSrc.includes('test-light-cover.svg') || currentSrc.includes('vinyl-placeholder.svg'), 'Image fallback must trigger and update src');
+      const currentSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
+      const currentAlt = await mainImg.getAttribute('alt');
+      assert.ok(currentSrc.includes('test-light-cover.svg'), 'Broken seller photo must fall back to valid release artwork URL');
+      assert.equal(currentAlt, 'Catalog cover artwork for Giant Steps', 'Alt text must update to release artwork alt text');
 
-    await page.screenshot({ path: path.join(outputDir, 'broken-photo-fallback-verification.png'), fullPage: true });
+      const isReleaseArtLoaded = await mainImg.evaluate((el) => {
+        const image = el as unknown as { complete: boolean; naturalWidth: number };
+        return image.complete && image.naturalWidth > 0;
+      });
+      assert.ok(isReleaseArtLoaded, 'Fallback release artwork must load and decode successfully (naturalWidth > 0)');
+
+      await context.close();
+    }
+
+    // Case 3: Broken seller photo -> BROKEN release artwork -> placeholder fallback path
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const page = await context.newPage();
+
+      await page.goto(`http://localhost:${port}/listings/${lst3.id}`, { waitUntil: 'domcontentloaded' });
+      const mainImg = page.locator('#main-photo-img');
+
+      await page.waitForFunction(() => {
+        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
+        return img && img.src.includes('vinyl-placeholder.svg');
+      }, { timeout: 5000 });
+
+      const currentSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
+      const currentAlt = await mainImg.getAttribute('alt');
+      assert.ok(currentSrc.includes('vinyl-placeholder.svg'), 'Broken seller photo + broken release art must fall back to vinyl placeholder');
+      assert.equal(currentAlt, 'Default vinyl placeholder for Blue Train', 'Alt text must update to placeholder alt text');
+
+      await page.screenshot({ path: path.join(outputDir, 'broken-photo-fallback-verification.png'), fullPage: true });
+      await context.close();
+    }
+
+    // Case 4: No seller photo + BROKEN release artwork -> placeholder fallback path
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const page = await context.newPage();
+
+      await page.goto(`http://localhost:${port}/listings/${lst4.id}`, { waitUntil: 'domcontentloaded' });
+      const mainImg = page.locator('#main-photo-img');
+
+      await page.waitForFunction(() => {
+        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
+        return img && img.src.includes('vinyl-placeholder.svg');
+      }, { timeout: 5000 });
+
+      const currentSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
+      assert.ok(currentSrc.includes('vinyl-placeholder.svg'), 'No seller photo + broken release art must fall back directly to vinyl placeholder');
+
+      await context.close();
+    }
 
     await browser.close();
     server.close();

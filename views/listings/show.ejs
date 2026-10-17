@@ -1,3 +1,32 @@
+<script>
+  function handleImageFallback(img) {
+    if (!img) return;
+    const sec = img.getAttribute('data-secondary-fallback');
+    const secAlt = img.getAttribute('data-secondary-alt');
+    const plc = img.getAttribute('data-placeholder') || '/assets/vinyl-placeholder.svg';
+    const plcAlt = img.getAttribute('data-placeholder-alt');
+
+    if (img.src.endsWith(plc) || img.src === plc) {
+      img.onerror = null;
+      return;
+    }
+
+    if (sec && sec !== plc && !img.src.endsWith(sec) && img.src !== sec) {
+      img.onerror = function() {
+        img.onerror = null;
+        img.src = plc;
+        if (plcAlt) img.alt = plcAlt;
+      };
+      img.src = sec;
+      if (secAlt) img.alt = secAlt;
+    } else {
+      img.onerror = null;
+      img.src = plc;
+      if (plcAlt) img.alt = plcAlt;
+    }
+  }
+</script>
+
 <div class="listing-detail-container" style="max-width: 1080px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
   <nav class="breadcrumb-nav" aria-label="Breadcrumb" style="margin-bottom: var(--space-6);">
     <a href="/browse" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: underline;">
@@ -19,11 +48,12 @@
             src="<%= photos[0].publicUrl %>"
             alt="<%= photos[0].altText || defaultAlt %>"
             style="width: 100%; height: 100%; object-fit: contain; display: block;"
+            referrerpolicy="no-referrer"
             data-secondary-fallback="<%= secondaryFallbackUrl %>"
             data-secondary-alt="<%= secondaryFallbackAlt %>"
             data-placeholder="/assets/vinyl-placeholder.svg"
             data-placeholder-alt="<%= placeholderAlt %>"
-            onerror="this.onerror=null; const sec=this.getAttribute('data-secondary-fallback'); const secAlt=this.getAttribute('data-secondary-alt'); const plc=this.getAttribute('data-placeholder'); const plcAlt=this.getAttribute('data-placeholder-alt'); if (sec && this.src !== sec) { this.onerror=function(){ this.onerror=null; this.src=plc; if (plcAlt) this.alt=plcAlt; }; this.src=sec; if (secAlt) this.alt=secAlt; } else { this.src=plc; if (plcAlt) this.alt=plcAlt; }"
+            onerror="if (typeof handleImageFallback === 'function') { handleImageFallback(this); } else { this.onerror=null; this.src='/assets/vinyl-placeholder.svg'; }"
           />
         <% } else if (release && release.coverArtUrl) { %>
           <img
@@ -58,7 +88,11 @@
               data-alt-text="<%= thumbAlt %>"
               onclick="
                 const mainImg = document.getElementById('main-photo-img');
-                if (mainImg) { mainImg.src = this.getAttribute('data-public-url'); mainImg.alt = this.getAttribute('data-alt-text'); }
+                if (mainImg) {
+                  if (typeof handleImageFallback === 'function') { mainImg.onerror = function() { handleImageFallback(this); }; }
+                  mainImg.src = this.getAttribute('data-public-url');
+                  mainImg.alt = this.getAttribute('data-alt-text');
+                }
                 document.querySelectorAll('.thumbnail-btn').forEach(btn => { btn.classList.remove('selected'); btn.setAttribute('aria-current', 'false'); });
                 this.classList.add('selected');
                 this.setAttribute('aria-current', 'true');
