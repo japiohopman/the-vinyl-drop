@@ -5,7 +5,7 @@
 > - Maintained by ChatGPT as durable project memory across chat sessions.
 > - Jules and other implementation agents must treat this file as **read-only** and must not edit or mutate it.
 > - This file is **advisory context only**. It is not an execution queue, task database, dispatch contract, or substitute for source code.
-> - A GitHub Issue is the authoritative execution contract for implementation work.
+> - GitHub Issues are the owner/ChatGPT planning and acceptance record. Once a PR exists, all actionable continuation/review instructions for Jules must be written in that PR's body and explicitly address `@Jules`; do not use Issue comments as Jules' instruction channel.
 > - Specialist contracts under \`.github/agents/\`, repository rules, source code, tests, and explicit Issue scope take precedence over this file.
 > - Chat history and model memory are optional context; fresh sessions must reconstruct facts from the repository and assigned Issue rather than relying on conversation memory.
 
@@ -286,20 +286,19 @@ Shared EJS partials should include reusable presentation such as:
 
 ## Agentic workflow
 
-### Execution authority
+### Execution authority and delivery channel
 
-**GitHub Issue = execution contract.**
+**GitHub Issue = planning and acceptance record for Jaap + ChatGPT.**
 
-The Issue defines:
-- goal;
-- scope;
-- acceptance criteria;
-- constraints;
-- verification;
-- specialist routing;
-- dependencies when applicable.
+Use Issues to track product goals, scope boundaries, acceptance criteria, decisions, dependencies, and status. Issues help us plan and remember the work; do not place actionable Jules review/continuation instructions in Issue bodies or comments.
 
-Documentation describes the architecture and roadmap but never acts as the execution queue.
+**Active PR body = operational instruction surface for Jules.**
+
+Once a PR exists, put every actionable instruction for Jules in the existing PR body under a clearly labelled section such as `Review instructions for Jules`, explicitly addressing `@Jules`. Include exact required changes, verification steps, current head SHA when relevant, status (normally `NOT READY` while blockers remain), and explicit out-of-scope boundaries.
+
+Do not rely on issue comments or chat text as the delivery channel for active PR instructions. If a fresh notification is needed, add a separate `@Jules` timeline comment on that same PR that directs Jules to the updated body section; the comment is only a visible prompt, not a substitute for the body.
+
+Documentation describes architecture and roadmap. Issues are for our planning/tracking; the current PR body carries the active implementation/review instructions for Jules.
 
 ### Human / ChatGPT / Jules boundary
 
@@ -353,15 +352,16 @@ When the implementation is correct:
 - keep the exact Phase Safety Gate headings and Definition of Done contract intact;
 - the human, not Jules, performs the final merge.
 
-The \`@Jules\` mention is a delivery mechanism; the GitHub Issue remains the execution authority and the PR remains the active review/continuation contract.
+The \`@Jules\` mention is a delivery mechanism. The Issue remains the planning/acceptance record for Jaap + ChatGPT; the active PR body is the operational instruction surface for Jules.
 
 
 ### Repeated owner corrections become durable rules
 
 - If the owner has already repeated the same instruction three times and must raise it again, treat that as a process failure, not as another one-off reminder.
-- Turn the repeated instruction into a clear, durable rule in this `CHATGPT.md` file, and update the relevant GitHub Issue or PR instructions when that is where the work is being directed.
-- When an instruction is meant for Jules on an existing PR, editing the PR description alone may not create visible timeline activity or notify Jules. Put the authoritative instruction in the PR body, add a separate `@Jules` timeline comment when renewed attention is needed, and provide the owner a direct link to the exact comment/section so it is easy to find.
-- In the chat reply, confirm what was recorded and link the exact GitHub location. Do not claim an instruction is visible to Jules until the resulting PR body/comment has been verified.
+- Turn the repeated instruction into a clear, durable rule in this `CHATGPT.md` file.
+- For active Jules work, record actionable instructions in the active PR body under a clearly labelled `@Jules` review/continuation section—not in the Issue. Issues are our planning, product-decision, and tracking space.
+- Editing the PR body alone may not create visible timeline activity or notify Jules. When renewed attention is needed, add a separate `@Jules` comment on that same PR which points Jules to the updated body section; never substitute an Issue comment for that PR notification.
+- In the chat reply, provide the direct PR link (and exact comment link when one was added). Do not claim an instruction is visible to Jules until the resulting PR body/comment has been verified.
 
 ---
 
