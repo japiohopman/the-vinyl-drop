@@ -391,7 +391,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
   });
 
   describe('Listing Detail View & Authorization Boundaries (GET /listings/:id)', () => {
-    it('should render public listing detail page for published listings with object-fit: cover for artwork', async () => {
+    it('should render public listing detail page for published listings with object-fit: contain for artwork', async () => {
       (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
       (commentService.getListingComments as jest.Mock).mockResolvedValue([mockComment]);
 
@@ -405,7 +405,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('Is this an original US Mono pressing?');
       expect(res.text).toContain('Sign in to post a comment');
       expect(res.text).toContain('id="main-photo-img"');
-      expect(res.text).toContain('style="width: 100%; height: 100%; object-fit: cover; display: block;"');
+      expect(res.text).toContain('style="width: 100%; height: 100%; object-fit: contain; display: block;"');
     });
 
     it('should render multi-stage onerror fallback logic and verify local placeholder asset presence', async () => {
@@ -446,7 +446,9 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
 
       expect(res.status).toBe(200);
       expect(res.text).toContain('data-secondary-fallback="https://example.com/cover-art.jpg"');
+      expect(res.text).toContain('data-secondary-alt="Catalog cover artwork for Blue Train"');
       expect(res.text).toContain('data-placeholder="/assets/vinyl-placeholder.svg"');
+      expect(res.text).toContain('data-placeholder-alt="Default vinyl placeholder for Blue Train"');
       expect(res.text).toContain('this.onerror=null;');
       expect(res.text).toContain('class="thumbnail-btn selected"');
       expect(res.text).toContain('aria-current="true"');
@@ -476,7 +478,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.status).toBe(200);
       expect(res.text).toContain('src="https://example.com/cover-art.jpg"');
       expect(res.text).toContain('id="main-photo-img"');
-      expect(res.text).toContain('onerror="this.onerror=null; this.src=\'/assets/vinyl-placeholder.svg\';"');
+      expect(res.text).toContain('data-placeholder-alt="Default vinyl placeholder for Blue Train"');
     });
 
     it('should render local vinyl placeholder when both photos and release.coverArtUrl are missing', async () => {

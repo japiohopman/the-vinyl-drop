@@ -9,6 +9,8 @@
     <!-- Left Column: Photo Gallery -->
     <% const defaultAlt = `Album cover artwork for ${release.title} by ${release.artist}`; %>
     <% const secondaryFallbackUrl = (release && release.coverArtUrl) ? release.coverArtUrl : '/assets/vinyl-placeholder.svg'; %>
+    <% const secondaryFallbackAlt = (release && release.coverArtUrl) ? `Catalog cover artwork for ${release.title}` : `Default vinyl placeholder for ${release.title}`; %>
+    <% const placeholderAlt = `Default vinyl placeholder for ${release.title}`; %>
     <div class="listing-gallery-section">
       <div class="primary-photo-wrapper" style="border: var(--border-thick); border-radius: var(--radius-md); overflow: hidden; background: var(--color-paper-muted); aspect-ratio: 1/1; position: relative; display: flex; align-items: center; justify-content: center;">
         <% if (photos && photos.length > 0) { %>
@@ -16,26 +18,30 @@
             id="main-photo-img"
             src="<%= photos[0].publicUrl %>"
             alt="<%= photos[0].altText || defaultAlt %>"
-            style="width: 100%; height: 100%; object-fit: cover; display: block;"
+            style="width: 100%; height: 100%; object-fit: contain; display: block;"
             data-secondary-fallback="<%= secondaryFallbackUrl %>"
+            data-secondary-alt="<%= secondaryFallbackAlt %>"
             data-placeholder="/assets/vinyl-placeholder.svg"
-            onerror="this.onerror=null; const sec=this.getAttribute('data-secondary-fallback'); const plc=this.getAttribute('data-placeholder'); if (sec && this.src !== sec) { this.onerror=function(){ this.onerror=null; this.src=plc; }; this.src=sec; } else { this.src=plc; }"
+            data-placeholder-alt="<%= placeholderAlt %>"
+            onerror="this.onerror=null; const sec=this.getAttribute('data-secondary-fallback'); const secAlt=this.getAttribute('data-secondary-alt'); const plc=this.getAttribute('data-placeholder'); const plcAlt=this.getAttribute('data-placeholder-alt'); if (sec && this.src !== sec) { this.onerror=function(){ this.onerror=null; this.src=plc; if (plcAlt) this.alt=plcAlt; }; this.src=sec; if (secAlt) this.alt=secAlt; } else { this.src=plc; if (plcAlt) this.alt=plcAlt; }"
           />
         <% } else if (release && release.coverArtUrl) { %>
           <img
             id="main-photo-img"
             src="<%= release.coverArtUrl %>"
             alt="<%= defaultAlt %>"
-            style="width: 100%; height: 100%; object-fit: cover; display: block;"
+            style="width: 100%; height: 100%; object-fit: contain; display: block;"
             referrerpolicy="no-referrer"
-            onerror="this.onerror=null; this.src='/assets/vinyl-placeholder.svg';"
+            data-placeholder="/assets/vinyl-placeholder.svg"
+            data-placeholder-alt="<%= placeholderAlt %>"
+            onerror="this.onerror=null; this.src='/assets/vinyl-placeholder.svg'; const plcAlt=this.getAttribute('data-placeholder-alt'); if (plcAlt) this.alt=plcAlt;"
           />
         <% } else { %>
           <img
             id="main-photo-img"
             src="/assets/vinyl-placeholder.svg"
             alt="<%= defaultAlt %>"
-            style="width: 100%; height: 100%; object-fit: cover; display: block;"
+            style="width: 100%; height: 100%; object-fit: contain; display: block;"
           />
         <% } %>
       </div>
@@ -59,7 +65,7 @@
               "
               style="width: 64px; height: 64px; border: var(--border-thick); border-radius: var(--radius-sm); overflow: hidden; padding: 0; cursor: pointer; flex-shrink: 0; background: var(--color-paper-muted); aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;"
             >
-              <img src="<%= photo.publicUrl %>" alt="Thumbnail <%= index + 1 %>" style="width: 100%; height: 100%; object-fit: cover;">
+              <img src="<%= photo.publicUrl %>" alt="Thumbnail <%= index + 1 %>" style="width: 100%; height: 100%; object-fit: contain;">
             </button>
           <% }); %>
         </div>

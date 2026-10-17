@@ -86,14 +86,14 @@ async function run() {
     },
   ]);
 
-  // 2. Listing with broken photo URL falling back to coverArtUrl
+  // 2. Listing with broken photo URL AND broken coverArtUrl falling back to local vinyl placeholder
   const [rel2] = await db.insert(releases).values({
     title: 'Blue Train',
     artist: 'John Coltrane',
     label: 'Blue Note',
     releaseYear: 1957,
     format: '12" Vinyl',
-    coverArtUrl: '/assets/test-light-cover.svg',
+    coverArtUrl: '/assets/broken-release-art.jpg',
   }).returning();
 
   const [pc2] = await db.insert(physicalCopies).values({
@@ -150,34 +150,50 @@ async function run() {
       const mainImg = page.locator('#main-photo-img');
       await mainImg.scrollIntoViewIfNeeded();
 
-      // Verify object-fit: cover on main photo
+      // Verify object-fit: contain on main photo to ensure non-square condition photos aren't cropped
       const objectFit = await mainImg.evaluate((el) => {
         const win = (globalThis as unknown as { window: { getComputedStyle: (e: unknown) => { objectFit: string } } }).window;
         return win.getComputedStyle(el).objectFit;
       });
-      assert.equal(objectFit, 'cover', `Main detail photo must use object-fit: cover at ${vp.width}px`);
+      assert.equal(objectFit, 'contain', `Main detail photo must use object-fit: contain at ${vp.width}px`);
+
+      // Assert initial image decode/load success
+      const isInitialLoaded = await mainImg.evaluate((el) => {
+        const image = el as unknown as { complete: boolean; naturalWidth: number };
+        return image.complete && image.naturalWidth > 0;
+      });
+      assert.ok(isInitialLoaded, 'Initial main image must be completely loaded and decoded');
 
       // Verify initial main image src and alt
       const initialAlt = await mainImg.getAttribute('alt');
       assert.equal(initialAlt, 'Front sleeve photo of A Love Supreme');
 
-      // Interact with thumbnail gallery
+      // Interact with thumbnail gallery via keyboard activation (Enter key)
       const thumbBtns = page.locator('.thumbnail-btn');
       const thumbCount = await thumbBtns.count();
       assert.equal(thumbCount, 2, 'Expected 2 thumbnail buttons for lst1');
 
-      // Click second thumbnail
-      await thumbBtns.nth(1).click();
+      // Focus and press Enter on second thumbnail
+      await thumbBtns.nth(1).focus();
+      await page.keyboard.press('Enter');
 
       // Assert thumbnail selection state updates
       const isSecondSelected = await thumbBtns.nth(1).evaluate((el) => el.classList.contains('selected'));
       const secondAriaCurrent = await thumbBtns.nth(1).getAttribute('aria-current');
-      assert.ok(isSecondSelected, 'Second thumbnail button must have selected class when clicked');
-      assert.equal(secondAriaCurrent, 'true', 'Second thumbnail button must have aria-current="true" when clicked');
+      assert.ok(isSecondSelected, 'Second thumbnail button must have selected class when activated via keyboard');
+      assert.equal(secondAriaCurrent, 'true', 'Second thumbnail button must have aria-current="true" when activated via keyboard');
 
-      // Assert main image src and alt updated
+      // Assert main image src, alt, and decode success after thumbnail selection
+      const updatedSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
       const updatedAlt = await mainImg.getAttribute('alt');
+      assert.ok(updatedSrc.includes('assets/test-dark-cover.svg'), 'Main image src must update to second thumbnail URL');
       assert.equal(updatedAlt, 'Gatefold inner photo of A Love Supreme', 'Main image alt text must update to match selected thumbnail');
+
+      const isUpdatedLoaded = await mainImg.evaluate((el) => {
+        const image = el as unknown as { complete: boolean; naturalWidth: number };
+        return image.complete && image.naturalWidth > 0;
+      });
+      assert.ok(isUpdatedLoaded, 'Main image after thumbnail activation must be completely loaded and decoded');
 
       await page.screenshot({ path: path.join(outputDir, `listing-detail-${vp.name}.png`), fullPage: true });
       await context.close();
