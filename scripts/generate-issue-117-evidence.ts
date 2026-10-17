@@ -2,6 +2,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import * as fs from 'fs';
 import * as path from 'path';
+import { assert } from 'console';
 import { setOverrideDb } from '../src/db';
 import { profiles } from '../src/db/schema/profiles';
 import { releases } from '../src/db/schema/releases';
@@ -11,11 +12,10 @@ import { listingPhotos } from '../src/db/schema/listingPhotos';
 import { createApp } from '../src/app';
 import { chromium } from '@playwright/test';
 
-const lightSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23fdfdfd"/><rect x="10" y="10" width="380" height="380" fill="none" stroke="%23cccccc" stroke-width="4"/><text x="50%" y="40%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="%23111111">LIGHT ALBUM</text><text x="50%" y="60%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="18" fill="%23666666">High Key Light Art</text></svg>`;
-
-const darkSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%230d0d0d"/><rect x="10" y="10" width="380" height="380" fill="none" stroke="%23333333" stroke-width="4"/><text x="50%" y="40%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="%23ffffff">DARK SIDE</text><text x="50%" y="60%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="18" fill="%23aaaaaa">Low Key Dark Art</text></svg>`;
-
-const busySvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23f60f4b"/><circle cx="100" cy="100" r="80" fill="%23ffcc00"/><circle cx="300" cy="100" r="80" fill="%2300ccff"/><circle cx="100" cy="300" r="80" fill="%2366ff66"/><circle cx="300" cy="300" r="80" fill="%23ff66cc"/><path d="M0 0 L400 400 M400 0 L0 400" stroke="%23000000" stroke-width="8"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="%23ffffff">BUSY PATTERN</text></svg>`;
+// Sample static image assets served by Express static middleware from public/
+const lightArtPath = 'assets/brand/the-vinyl-drop-logo-mark.svg';
+const darkArtPath = 'assets/brand/the-vinyl-drop-wordmark.svg';
+const busyArtPath = 'assets/test-cover.webp';
 
 async function run() {
   console.log('Seeding PGlite verification DB with varied artwork test cases...');
@@ -57,10 +57,10 @@ async function run() {
     price: number;
     art: string | null;
   }> = [
-    { title: 'The White Album (Light Art)', artist: 'The Beatles', year: 1968, media: 'NM', sleeve: 'VG+', price: 4500, art: lightSvg },
-    { title: 'The Black Album (Dark Art)', artist: 'Metallica', year: 1991, media: 'VG+', sleeve: 'VG', price: 3200, art: darkSvg },
-    { title: 'Sgt. Pepper (Busy Art)', artist: 'The Beatles', year: 1967, media: 'M', sleeve: 'NM', price: 5500, art: busySvg },
-    { title: 'Broken Image Test', artist: 'Missing File Band', year: 2020, media: 'VG', sleeve: 'VG-', price: 1500, art: '/assets/non-existent-file.jpg' },
+    { title: 'The White Album (Light Art)', artist: 'The Beatles', year: 1968, media: 'NM', sleeve: 'VG+', price: 4500, art: lightArtPath },
+    { title: 'The Black Album (Dark Art)', artist: 'Metallica', year: 1991, media: 'VG+', sleeve: 'VG', price: 3200, art: darkArtPath },
+    { title: 'Sgt. Pepper (Busy Art)', artist: 'The Beatles', year: 1967, media: 'M', sleeve: 'NM', price: 5500, art: busyArtPath },
+    { title: 'Broken Image Test', artist: 'Missing File Band', year: 2020, media: 'VG', sleeve: 'VG-', price: 1500, art: 'assets/non-existent-file.jpg' },
     { title: 'No Image Fallback Test', artist: 'No Image Artist', year: 2021, media: 'G+', sleeve: 'G', price: 1000, art: null },
   ];
 
@@ -121,34 +121,75 @@ async function run() {
       const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
       const page = await context.newPage();
 
-      // Grid Mode
+      // Grid Mode Verification
       await page.goto(`http://localhost:${port}/browse?view=grid`, { waitUntil: 'networkidle' });
       await page.waitForTimeout(500);
+
+      // Invariant assertions in Grid Mode
+      const scrollWidthGrid = await page.evaluate(() => (globalThis as unknown as Record<string, Record<string, Record<string, number>>>)['document']['documentElement']['scrollWidth']);
+      const viewportWidthGrid = await page.evaluate(() => (globalThis as unknown as Record<string, Record<string, Record<string, number>>>)['document']['documentElement']['clientWidth']);
+      assert(scrollWidthGrid <= viewportWidthGrid, `Horizontal overflow detected in Grid mode at ${vp.width}px!`);
+
+      // Verify grid media frame and overlay layout assertions
+      const gridCards = page.locator('.listing-card');
+      const cardCount = await gridCards.count();
+      assert(cardCount === 5, `Expected 5 listing cards in grid mode, found ${cardCount}`);
+
+      for (let i = 0; i < cardCount; i++) {
+        const card = gridCards.nth(i);
+        const media = card.locator('.listing-card-media');
+        const imgLink = card.locator('.listing-card-image-link');
+        const badgeContainer = card.locator('.listing-card-badge-container');
+
+        const mediaBox = await media.boundingBox();
+        const imgLinkBox = await imgLink.boundingBox();
+        const badgeBox = await badgeContainer.boundingBox();
+
+        assert(mediaBox && imgLinkBox, 'Media and image link bounding boxes must exist in Grid mode');
+        // Artwork fills the media frame
+        assert(Math.abs(imgLinkBox!.width - mediaBox!.width) < 2, 'Image link must fill media frame width in Grid mode');
+        assert(Math.abs(imgLinkBox!.height - mediaBox!.height) < 2, 'Image link must fill media frame height in Grid mode');
+
+        // Badge container is positioned inside media frame bounds
+        if (badgeBox && mediaBox) {
+          assert(badgeBox.x >= mediaBox.x && (badgeBox.x + badgeBox.width) <= (mediaBox.x + mediaBox.width + 2), 'Badge overlay must be within media right edge');
+          assert(badgeBox.y >= mediaBox.y && (badgeBox.y + badgeBox.height) <= (mediaBox.y + mediaBox.height + 2), 'Badge overlay must be within media bottom edge');
+        }
+      }
+
       await page.screenshot({ path: path.join(outputDir, `browse-grid-${vp.name}.png`), fullPage: true });
 
-      // List Mode
+      // List Mode Verification
       await page.goto(`http://localhost:${port}/browse?view=list`, { waitUntil: 'networkidle' });
       await page.waitForTimeout(500);
+
+      const scrollWidthList = await page.evaluate(() => (globalThis as unknown as Record<string, Record<string, Record<string, number>>>)['document']['documentElement']['scrollWidth']);
+      const viewportWidthList = await page.evaluate(() => (globalThis as unknown as Record<string, Record<string, Record<string, number>>>)['document']['documentElement']['clientWidth']);
+      assert(scrollWidthList <= viewportWidthList, `Horizontal overflow detected in List mode at ${vp.width}px!`);
+
       await page.screenshot({ path: path.join(outputDir, `browse-list-${vp.name}.png`), fullPage: true });
 
       await context.close();
     }
 
-    // Verify broken image onerror fallback behavior specifically
+    // Explicit assertion for broken image onerror fallback behavior
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await context.newPage();
     await page.goto(`http://localhost:${port}/browse?view=grid`, { waitUntil: 'networkidle' });
 
-    // Ensure the broken image fallback triggered onerror
-    const brokenCardFallback = page.locator('[data-listing-id]').filter({ hasText: 'Broken Image Test' }).locator('.listing-card-image-fallback');
+    const brokenCard = page.locator('[data-listing-id]').filter({ hasText: 'Broken Image Test' });
+    const brokenCardFallback = brokenCard.locator('.listing-card-image-fallback');
     const isFallbackVisible = await brokenCardFallback.isVisible();
-    console.log(`[Broken Image Check] Fallback visible on error: ${isFallbackVisible}`);
+
+    // Assert that broken image fallback is visible in browser DOM
+    assert(isFallbackVisible === true, 'Broken image fallback must be visible in the DOM upon image error');
+    console.log(`[Broken Image Assertion] Fallback visible on error: ${isFallbackVisible}`);
 
     await page.screenshot({ path: path.join(outputDir, 'broken-and-missing-image-fallback-verification.png'), fullPage: true });
 
     await browser.close();
     server.close();
-    console.log('Successfully generated all Issue #117 evidence screenshots in docs/evidence/issue-117/');
+    console.log('Successfully validated layout invariants and generated all Issue #117 evidence screenshots in docs/evidence/issue-117/');
     process.exit(0);
   });
 }

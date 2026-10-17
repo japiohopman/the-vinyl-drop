@@ -75,14 +75,8 @@ export async function deleteListingPhotoFromStorage(
  * Generates public or signed URL for a photo's storage path.
  */
 export function getPhotoPublicUrl(storagePath: string): string {
-  if (
-    storagePath.startsWith('/') ||
-    storagePath.startsWith('assets/') ||
-    storagePath.startsWith('http://') ||
-    storagePath.startsWith('https://') ||
-    storagePath.startsWith('data:')
-  ) {
-    return storagePath.startsWith('assets/') ? `/${storagePath}` : storagePath;
+  if (storagePath.startsWith('/') || storagePath.startsWith('assets/')) {
+    return storagePath.startsWith('/') ? storagePath : `/${storagePath}`;
   }
 
   if (config.NODE_ENV === 'test' && inMemoryStorage.has(storagePath)) {
