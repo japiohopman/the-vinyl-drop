@@ -1,6 +1,7 @@
 (() => {
   const root = document.querySelector('[data-dig-experience]');
-  if (!root) return;
+  const digState = window.DigModeState;
+  if (!root || !digState) return;
 
   const viewer = root.querySelector('[data-dig-viewer]');
   const slides = Array.from(root.querySelectorAll('[data-dig-slide]'));
@@ -74,7 +75,7 @@
   }
 
   function navigateTo(targetIndex, direction) {
-    if (isTransitioning || targetIndex < 0 || targetIndex >= slides.length || targetIndex === activeIndex) return;
+    if (isTransitioning || !digState.isValidIndex(targetIndex, slides.length) || targetIndex === activeIndex) return;
 
     const previous = slides[activeIndex];
     const next = slides[targetIndex];
@@ -121,10 +122,6 @@
     } else {
       transitionTimer = window.setTimeout(finish, transitionMs);
     }
-  }
-
-  function getNeighborIndex(deltaY) {
-    return activeIndex + (deltaY < 0 ? 1 : -1);
   }
 
   function clearDragStyles() {
@@ -194,8 +191,9 @@
     event.preventDefault();
     gesture.deltaY = deltaY;
     const direction = deltaY < 0 ? 1 : -1;
-    const targetIndex = activeIndex + direction;
-    const neighbor = slides[targetIndex];
+    const adjacent = digState.adjacentIndex(activeIndex, slides.length, direction);
+    const targetIndex = adjacent === null ? -1 : adjacent;
+    const neighbor = adjacent === null ? null : slides[adjacent];
     if (gesture.neighbor && gesture.neighbor !== neighbor) {
       gesture.neighbor.classList.remove('is-dragging');
       gesture.neighbor.style.transform = '';
@@ -230,8 +228,7 @@
     const { deltaY, neighborIndex } = gesture;
     const shouldNavigate = !gesture.horizontal
       && Math.abs(deltaY) >= swipeThreshold
-      && neighborIndex >= 0
-      && neighborIndex < slides.length;
+      && digState.isValidIndex(neighborIndex, slides.length);
 
     // Store the target before releasing the pointer, because clearing a short
     // gesture also clears the gesture state.
@@ -263,7 +260,8 @@
         const front = slide.querySelector('.dig-sleeve-face-front');
         const back = slide.querySelector('.dig-sleeve-face-back');
         if (!card) return;
-        const flipped = card.classList.toggle('is-flipped');
+        const flipped = digState.nextFlipState(card.classList.contains('is-flipped'));
+        card.classList.toggle('is-flipped', flipped);
         if (front) front.setAttribute('aria-hidden', String(flipped));
         if (back) back.setAttribute('aria-hidden', String(!flipped));
         flipButton.setAttribute('aria-pressed', String(flipped));
