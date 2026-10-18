@@ -92,6 +92,13 @@
       "when": 1792186500000,
       "tag": "0012_pin_messaging_trigger_search_path",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792320000000,
+      "tag": "0013_add_listing_photo_roles",
+      "breakpoints": true
     }
   ]
 }
