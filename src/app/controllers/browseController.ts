@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { searchBrowseListings } from '../services/listingService';
+import { hasExplicitWhiteLabelInventory, searchBrowseListings } from '../services/listingService';
+import { parseVinylFormatFilters, VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
 import { renderWithLayout } from '../utils/render';
 import { ConditionGrade, CONDITION_GRADES } from '../../db/schema/enums';
 
@@ -38,6 +39,17 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const genre = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
+    const submittedFormats = parseVinylFormatFilters(req.query.format);
+    const formatToggle = typeof req.query.formatToggle === 'string'
+      ? parseVinylFormatFilters(req.query.formatToggle)[0]
+      : undefined;
+    const formats = formatToggle
+      ? submittedFormats.includes(formatToggle)
+        ? submittedFormats.filter((format) => format !== formatToggle)
+        : [...submittedFormats, formatToggle]
+      : submittedFormats;
+    const whiteLabelToggle = req.query.whiteLabelToggle === '1';
+    const whiteLabel = whiteLabelToggle ? req.query.whiteLabel !== '1' : req.query.whiteLabel === '1';
     const conditionInput = typeof req.query.condition === 'string' ? req.query.condition.trim() : '';
     const condition = (CONDITION_GRADES as readonly string[]).includes(conditionInput)
       ? (conditionInput as ConditionGrade)
@@ -48,7 +60,9 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
 
     const minPrice = parseEuroQueryParamToCentsStrict(req.query.minPrice);
     const maxPrice = parseEuroQueryParamToCentsStrict(req.query.maxPrice);
-    const page = parsePageQueryParamStrict(req.query.page);
+    const parsedPage = parsePageQueryParamStrict(req.query.page);
+    const page = formatToggle || whiteLabelToggle ? 1 : parsedPage;
+    const whiteLabelAvailable = await hasExplicitWhiteLabelInventory();
 
     const viewInput = typeof req.query.view === 'string' ? req.query.view.trim().toLowerCase() : 'grid';
     const view = viewInput === 'list' ? 'list' : 'grid';
@@ -69,6 +83,8 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
             maxPrice: maxPriceEurStr,
             sort: 'newest',
             view,
+            formats,
+            whiteLabel,
           },
           pagination: {
             totalCount: 0,
@@ -77,6 +93,8 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
             totalPages: 1,
           },
           errorMessage: 'Invalid search filter or page parameters provided.',
+          formatOptions: VINYL_FORMAT_FILTERS,
+          whiteLabelAvailable,
         },
         next
       );
@@ -95,6 +113,8 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
       condition,
       minPrice,
       maxPrice,
+      formats,
+      whiteLabel,
       sort,
       page,
       limit: 12,
@@ -106,6 +126,8 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
       {
         title: q ? `Search: "${q}" — The Vinyl Drop` : 'Browse Vinyl Records — The Vinyl Drop',
         listings: results.items,
+        formatOptions: VINYL_FORMAT_FILTERS,
+        whiteLabelAvailable,
         filters: {
           q,
           genre,
@@ -114,6 +136,8 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
           maxPrice: maxPriceEurStr,
           sort,
           view,
+          formats,
+          whiteLabel,
         },
         pagination: {
           totalCount: results.totalCount,
