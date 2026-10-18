@@ -661,6 +661,7 @@ export async function deletePhotoFromListing(
           storagePath: photo.storagePath,
           displayOrder: photo.displayOrder,
           altText: photo.altText,
+          role: photo.role,
         },
         dbOverride
       );
