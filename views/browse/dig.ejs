@@ -1,0 +1,160 @@
+<%
+  const selectedFormats = Array.isArray(filters.formats) ? filters.formats : [];
+  const baseQueryParams = [
+    'q=' + encodeURIComponent(filters.q || ''),
+    'genre=' + encodeURIComponent(filters.genre || ''),
+    'condition=' + encodeURIComponent(filters.condition || ''),
+    'minPrice=' + encodeURIComponent(filters.minPrice || ''),
+    'maxPrice=' + encodeURIComponent(filters.maxPrice || ''),
+    'sort=' + encodeURIComponent(filters.sort || 'newest'),
+    ...selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }),
+    filters.whiteLabel ? 'whiteLabel=1' : '',
+  ].filter(Boolean).join('&');
+  const browseReturnUrl = '/browse?' + baseQueryParams + '&view=grid';
+  const visibleItems = Array.isArray(items) ? items : [];
+%>
+
+<div class="dig-page" data-dig-experience data-reduced-motion="false">
+  <header class="dig-page-header">
+    <div>
+      <p class="dig-eyebrow">THE VINYL DROP / BROWSE</p>
+      <h1>Crate Dig</h1>
+      <p class="dig-intro">Eén plaat tegelijk. Trek de volgende hoes uit de krat en draai de hoes om voor de achterkant.</p>
+    </div>
+    <a class="btn btn-outline dig-back-to-browse" href="<%= browseReturnUrl %>">← Terug naar Browse</a>
+  </header>
+
+  <% if (errorMessage) { %>
+    <div role="alert" class="alert alert-error"><%= errorMessage %></div>
+  <% } %>
+
+  <% if (visibleItems.length === 0) { %>
+    <section class="dig-empty-state" aria-labelledby="dig-empty-title">
+      <h2 id="dig-empty-title">Geen platen gevonden</h2>
+      <p>Met deze zoekopdracht zijn geen beschikbare listings gevonden. Ga terug naar Browse om je filters aan te passen.</p>
+      <a class="btn btn-primary" href="<%= browseReturnUrl %>">Terug naar resultaten</a>
+    </section>
+  <% } else { %>
+    <div class="dig-context-row">
+      <p class="dig-result-summary">
+        <strong><span data-dig-position aria-live="polite" aria-atomic="true">1 van <%= visibleItems.length %></span></strong>
+        <span>in deze Dig-sessie</span>
+      </p>
+      <% if (hasMore) { %>
+        <p class="dig-result-limit">Je bekijkt de eerste 100 resultaten. Gebruik Browse voor de volledige resultatenlijst.</p>
+      <% } %>
+    </div>
+
+    <% if (filters.q || filters.genre || filters.condition || filters.minPrice || filters.maxPrice || selectedFormats.length || filters.whiteLabel) { %>
+      <p class="dig-filter-summary">
+        Actieve filters:
+        <% if (filters.q) { %><span>Zoekterm: <strong><%= filters.q %></strong></span><% } %>
+        <% if (filters.genre) { %><span>Genre: <strong><%= filters.genre %></strong></span><% } %>
+        <% if (filters.condition) { %><span>Conditie: <strong><%= filters.condition %></strong></span><% } %>
+        <% if (filters.minPrice) { %><span>Min.: <strong>€<%= filters.minPrice %></strong></span><% } %>
+        <% if (filters.maxPrice) { %><span>Max.: <strong>€<%= filters.maxPrice %></strong></span><% } %>
+        <% selectedFormats.forEach(function(format) { %><span>Formaat: <strong><%= format %></strong></span><% }); %>
+        <% if (filters.whiteLabel) { %><span><strong>White label</strong></span><% } %>
+      </p>
+    <% } %>
+
+    <section class="dig-explorer" aria-label="Crate Dig albumverkenner">
+      <div class="dig-instructions">
+        <p><strong>Omhoog swipen</strong> trekt de volgende hoes uit de krat. <strong>Omlaag swipen</strong> gaat terug.</p>
+        <p>Gebruik ook de knoppen of de pijltjestoetsen omhoog en omlaag. De omdraaiknop wisselt alleen de voor- en achterkant van dezelfde hoes.</p>
+      </div>
+
+      <div class="dig-viewer" data-dig-viewer tabindex="0" role="region" aria-label="Crate Dig. Gebruik de pijltjestoetsen omhoog en omlaag om tussen platen te bladeren.">
+        <div class="dig-crate-stack" data-dig-stack>
+          <% visibleItems.forEach(function(item, index) { %>
+            <article
+              class="dig-slide <%= index === 0 ? 'is-active' : (index === 1 ? 'is-next' : (index === 0 ? 'is-previous' : '')) %>"
+              data-dig-slide
+              data-index="<%= index %>"
+              aria-label="Plaat <%= index + 1 %> van <%= visibleItems.length %>: <%= item.title %> door <%= item.artist %>"
+              aria-hidden="<%= index === 0 ? 'false' : 'true' %>"
+              <%= index === 0 ? '' : 'inert' %>
+            >
+              <div class="dig-listing-meta">
+                <p class="dig-listing-kicker">PLAAT <%= String(index + 1).padStart(2, '0') %></p>
+                <h2><%= item.title %></h2>
+                <p class="dig-artist"><%= item.artist %><% if (item.releaseYear) { %> · <%= item.releaseYear %><% } %></p>
+                <% if (item.format) { %><p class="dig-format"><%= item.format %></p><% } %>
+              </div>
+
+              <div class="dig-sleeve-interaction">
+                <div class="dig-sleeve-stage" data-dig-swipe-area aria-label="Sleeve-afbeelding. Veeg omhoog voor de volgende plaat of omlaag voor de vorige plaat.">
+                  <div class="dig-sleeve-card" data-dig-sleeve-card>
+                    <div class="dig-sleeve-face dig-sleeve-face-front">
+                      <span class="dig-face-label">Voorkant</span>
+                      <img class="dig-sleeve-image" src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
+                      <p class="dig-artwork-source"><%= item.frontArtwork.sourceLabel %></p>
+                    </div>
+                    <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Achterkant">
+                      <span class="dig-face-label">Achterkant</span>
+                      <% if (item.backArtwork) { %>
+                        <img class="dig-sleeve-image" src="<%= item.backArtwork.src %>" alt="<%= item.backArtwork.altText %>" draggable="false">
+                        <p class="dig-artwork-source"><%= item.backArtwork.sourceLabel %></p>
+                      <% } else { %>
+                        <div class="dig-missing-back" role="status">
+                          <span class="dig-missing-back-mark" aria-hidden="true">↻</span>
+                          <strong>Achterkant niet gefotografeerd</strong>
+                          <p>Er is geen expliciete foto van de achterkant van deze hoes toegevoegd.</p>
+                        </div>
+                      <% } %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="dig-controls-row">
+                <button type="button" class="btn btn-outline dig-flip-button" data-dig-flip aria-pressed="false">
+                  Bekijk achterkant
+                </button>
+                <a class="btn btn-primary dig-listing-link" href="<%= item.url %>">Bekijk listing ↗</a>
+              </div>
+
+              <dl class="dig-listing-details">
+                <div>
+                  <dt>Prijs / ruil</dt>
+                  <dd><%= item.priceFormatted %><% if (item.isTrade) { %><span class="dig-trade-note"> · ruilen mogelijk</span><% } %></dd>
+                </div>
+                <div>
+                  <dt>Plaatconditie</dt>
+                  <dd><%= item.mediaCondition %></dd>
+                </div>
+                <div>
+                  <dt>Hoesconditie</dt>
+                  <dd><%= item.sleeveCondition %></dd>
+                </div>
+                <% if (item.sellerUsername) { %>
+                  <div>
+                    <dt>Verkoper</dt>
+                    <dd><%= item.sellerUsername %><% if (item.sellerLocation) { %> · <%= item.sellerLocation %><% } %></dd>
+                  </div>
+                <% } %>
+              </dl>
+            </article>
+          <% }); %>
+        </div>
+      </div>
+
+      <div class="dig-navigation" aria-label="Navigatie tussen platen">
+        <button type="button" class="btn btn-outline dig-nav-button" data-dig-prev disabled>
+          ↑ Vorige plaat
+        </button>
+        <div class="dig-progress-wrap">
+          <progress data-dig-progress max="<%= visibleItems.length %>" value="1" aria-label="Voortgang van de Dig-sessie"></progress>
+          <span data-dig-progress-label><%= visibleItems.length === 1 ? 'Laatste plaat' : 'Omhoog voor de volgende plaat' %></span>
+        </div>
+        <button type="button" class="btn btn-outline dig-nav-button" data-dig-next <%= visibleItems.length <= 1 ? 'disabled' : '' %>>
+          Volgende plaat ↓
+        </button>
+      </div>
+
+      <p class="dig-keyboard-note">Toetsenbord: ↑ volgende · ↓ vorige · Home eerste · End laatste. Met de omdraaiknop bekijk je de andere kant van dezelfde hoes.</p>
+    </section>
+  <% } %>
+</div>
+
+<script src="/js/dig-mode.js" defer></script>
