@@ -89,7 +89,7 @@ describe('invite-only beta access and onboarding', () => {
       .set('Accept', 'text/html');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/auth/login');
+    expect(response.headers.location).toBe('/auth/login?next=%2Fprofile');
     const setCookies = response.headers['set-cookie'];
     expect(Array.isArray(setCookies) ? setCookies.join(';') : setCookies || '').toContain('sb-access-token=;');
   });
