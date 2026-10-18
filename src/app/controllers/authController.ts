@@ -25,6 +25,17 @@ import {
 } from '../middleware/auth';
 import { renderWithLayout } from '../utils/render';
 import { config } from '../../config/env';
+import {
+  INVITE_ONLY_ACCESS_DENIED_MESSAGE,
+  isBetaAllowedEmail,
+  isBetaInviteOnlyEnabled,
+  setBetaWelcomeFlashCookie,
+} from '../services/betaAccess';
+
+function queueFirstBetaWelcome(req: Request, res: Response): void {
+  if (!isBetaInviteOnlyEnabled()) return;
+  setBetaWelcomeFlashCookie(req, res);
+}
 
 export async function getSignUpPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -66,6 +77,27 @@ export async function postSignUp(req: Request, res: Response, next: NextFunction
       renderWithLayout(res, 'auth/signup', {
         title: 'Sign Up — The Vinyl Drop',
         form,
+        nextUrl,
+      }, next);
+      return;
+    }
+
+    if (!isBetaAllowedEmail(result.data.email)) {
+      res.status(403);
+      renderWithLayout(res, 'auth/signup', {
+        title: 'Sign Up — The Vinyl Drop',
+        form: {
+          values: {
+            email: req.body.email || '',
+            password: '',
+            username: req.body.username || '',
+            displayName: req.body.displayName || '',
+          },
+          fieldErrors: {},
+          generalErrors: [INVITE_ONLY_ACCESS_DENIED_MESSAGE],
+          isSubmitted: true,
+          isSuccess: false,
+        },
         nextUrl,
       }, next);
       return;
@@ -114,7 +146,8 @@ export async function postSignUp(req: Request, res: Response, next: NextFunction
       return;
     }
 
-    // Set session cookies on immediate session
+    // Claim a durable one-time welcome before redirecting to the first authenticated page.
+    if (authResult.user) queueFirstBetaWelcome(req, res);
     setAuthCookies(res, authResult.session);
     res.redirect(nextUrl);
   } catch (error) {
@@ -165,6 +198,22 @@ export async function postLogin(req: Request, res: Response, next: NextFunction)
       return;
     }
 
+    if (!isBetaAllowedEmail(result.data.email)) {
+      res.status(403);
+      renderWithLayout(res, 'auth/login', {
+        title: 'Sign In — The Vinyl Drop',
+        form: {
+          values: { email: req.body.email || '', password: '' },
+          fieldErrors: {},
+          generalErrors: [INVITE_ONLY_ACCESS_DENIED_MESSAGE],
+          isSubmitted: true,
+          isSuccess: false,
+        },
+        nextUrl,
+      }, next);
+      return;
+    }
+
     const authResult = await login(result.data, { req, res });
 
     if (authResult.error || !authResult.session) {
@@ -187,6 +236,7 @@ export async function postLogin(req: Request, res: Response, next: NextFunction)
       return;
     }
 
+    if (authResult.user) queueFirstBetaWelcome(req, res);
     setAuthCookies(res, authResult.session);
     res.redirect(nextUrl);
   } catch (error) {
@@ -235,7 +285,9 @@ export async function getAuthCallback(req: Request, res: Response, next: NextFun
     const authResult = await handleAuthCallback({ code, token_hash, type }, { req, res });
 
     if (authResult.error || !authResult.session) {
-      res.status(400);
+      const denied = authResult.error === INVITE_ONLY_ACCESS_DENIED_MESSAGE;
+      if (denied) clearAuthCookies(res);
+      res.status(denied ? 403 : 400);
       renderWithLayout(res, 'auth/login', {
         title: 'Sign In — The Vinyl Drop',
         form: {
@@ -248,6 +300,9 @@ export async function getAuthCallback(req: Request, res: Response, next: NextFun
       return;
     }
 
+    if (!authResult.isRecoverySession && authResult.user) {
+      queueFirstBetaWelcome(req, res);
+    }
     setAuthCookies(res, authResult.session);
     if (authResult.isRecoverySession && authResult.user) {
       setRecoveryCookie(res, authResult.user.id);
@@ -295,8 +350,12 @@ export async function postForgotPassword(req: Request, res: Response, next: Next
       return;
     }
 
-    const redirectTo = `${config.APP_BASE_URL}/auth/callback?next=/auth/reset-password`;
-    await sendPasswordResetEmail(result.data.email, redirectTo, { req, res });
+    // Do not send recovery emails to addresses that are not admitted to an enabled private pilot.
+    // Keep the response neutral so this endpoint does not disclose which accounts exist.
+    if (isBetaAllowedEmail(result.data.email)) {
+      const redirectTo = `${config.APP_BASE_URL}/auth/callback?next=/auth/reset-password`;
+      await sendPasswordResetEmail(result.data.email, redirectTo, { req, res });
+    }
 
     // ALWAYS show a neutral success message regardless of whether the email exists or if provider returns an error
     const form: FormViewModel = {

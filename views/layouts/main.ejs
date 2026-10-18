@@ -21,6 +21,25 @@
 <body>
   <%- include('../partials/header') %>
 
+  <% if (typeof betaInviteOnly !== 'undefined' && betaInviteOnly) { %>
+    <div class="container" style="margin-top: var(--space-3);">
+      <aside role="status" aria-label="Private beta access" style="border: var(--border-thick); border-color: var(--color-rust); padding: var(--space-3) var(--space-4); background: var(--color-surface-card);">
+        <strong>Private beta — invitation required</strong>
+        <p style="margin: var(--space-2) 0 0;"><%= inviteOnlyAccessMessage %> <a href="/contact" style="color: var(--color-rust); text-decoration: underline;">Contact us if you expected an invitation.</a></p>
+      </aside>
+    </div>
+  <% } %>
+
+  <% if (typeof showBetaWelcome !== 'undefined' && showBetaWelcome) { %>
+    <div class="container" style="margin-top: var(--space-3);">
+      <section role="status" aria-live="polite" aria-label="Beta welcome" style="border: var(--border-thick); border-color: var(--color-deep-green); padding: var(--space-4); background: var(--color-surface-card);">
+        <h2 style="font-family: var(--font-display); margin: 0 0 var(--space-2);">You’re in — welcome to The Vinyl Drop beta!</h2>
+        <p style="margin: 0 0 var(--space-2);">Thanks for helping test an early version of the app. Some things may break or change while we work on it.</p>
+        <p style="margin: 0;">Found a bug or have feedback? Please <a href="/contact" style="color: var(--color-rust); text-decoration: underline;">send us a note</a>. Your feedback helps shape the next version.</p>
+      </section>
+    </div>
+  <% } %>
+
   <main class="main-content container">
     <%- body %>
   </main>

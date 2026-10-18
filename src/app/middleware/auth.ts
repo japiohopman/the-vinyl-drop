@@ -6,6 +6,7 @@ import { getProfileById } from '../services/profileService';
 import { Profile } from '../../db/schema/profiles';
 import { config } from '../../config/env';
 import { shouldUseSecureCookies } from '../../config/cookiePolicy';
+import { isBetaAllowedEmail } from '../services/betaAccess';
 
 // Extend Express Request type
 /* eslint-disable @typescript-eslint/no-namespace */
@@ -152,6 +153,13 @@ export async function sessionMiddleware(
       }
     }
 
+    if (activeUser && !isBetaAllowedEmail(activeUser.email)) {
+      // Revoking an allowlist entry blocks previously issued application sessions too.
+      clearAuthCookies(res);
+      activeUser = null;
+      req.session = null;
+    }
+
     if (activeUser) {
       req.user = activeUser;
       res.locals.currentUser = activeUser;
@@ -161,6 +169,11 @@ export async function sessionMiddleware(
         req.profile = profile;
         res.locals.currentProfile = profile;
       }
+    } else {
+      req.user = null;
+      req.profile = null;
+      res.locals.currentUser = null;
+      res.locals.currentProfile = null;
     }
   } catch {
     // If session extraction or refresh fails, clear locals and continue unauthenticated

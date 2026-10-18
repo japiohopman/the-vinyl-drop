@@ -38,6 +38,33 @@ export const envSchema = z
       }),
   })
   .superRefine((data, ctx) => {
+    const betaAllowedEmails = [
+      ...new Set(
+        (data.BETA_ALLOWED_EMAILS || '')
+          .split(',')
+          .map((email) => email.trim().toLowerCase())
+          .filter(Boolean)
+      ),
+    ];
+
+    if (betaAllowedEmails.length > 5) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['BETA_ALLOWED_EMAILS'],
+        message: 'The invite-only pilot is limited to five email addresses at most.',
+      });
+    }
+
+    for (const email of betaAllowedEmails) {
+      if (!z.string().email().safeParse(email).success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['BETA_ALLOWED_EMAILS'],
+          message: 'BETA_ALLOWED_EMAILS must contain valid comma-separated email addresses.',
+        });
+      }
+    }
+
     const isRuntime =
       data.NODE_ENV === 'development' ||
       data.NODE_ENV === 'staging' ||

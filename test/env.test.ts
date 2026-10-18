@@ -38,6 +38,30 @@ describe('Environment Validation', () => {
     expect(validateEnv({ ...staging, SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: 'true' }).SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED).toBe(true);
   });
 
+  it('keeps invite-only access opt-in and reads the private runtime allowlist', () => {
+    expect(validateEnv({ NODE_ENV: 'test' }).BETA_INVITE_ONLY_ENABLED).toBe(false);
+
+    const enabled = validateEnv({
+      NODE_ENV: 'test',
+      BETA_INVITE_ONLY_ENABLED: 'true',
+      BETA_ALLOWED_EMAILS: 'Tester@One.example, second@example.com, tester@one.example',
+    });
+    expect(enabled.BETA_INVITE_ONLY_ENABLED).toBe(true);
+    expect(enabled.BETA_ALLOWED_EMAILS).toBe('Tester@One.example, second@example.com, tester@one.example');
+  });
+
+  it('rejects more than five unique beta testers or malformed allowlist addresses', () => {
+    expect(() => validateEnv({
+      NODE_ENV: 'test',
+      BETA_ALLOWED_EMAILS: 'one@example.com,two@example.com,three@example.com,four@example.com,five@example.com,six@example.com',
+    })).toThrow('Invalid environment configuration');
+
+    expect(() => validateEnv({
+      NODE_ENV: 'test',
+      BETA_ALLOWED_EMAILS: 'valid@example.com,not-an-email',
+    })).toThrow('Invalid environment configuration');
+  });
+
   it('should reject PORT 0 (below min 1)', () => {
     expect(() => validateEnv({ PORT: '0', NODE_ENV: 'test' })).toThrow(
       'Invalid environment configuration'
