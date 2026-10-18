@@ -8,7 +8,7 @@ This runbook converts the source inventory into a small operational procedure wi
 
 ## 1. Responsible person and contact route
 
-- **Accountable human role:** the project owner/maintainer is responsible for receiving, triaging and ensuring completion of privacy requests and security reports. Do not leave these requests unattended in a general repository issue.
+- **Accountable human for initial handling:** the repository owner/maintainer account `japiohopman` is the named operational owner for receiving, triaging and ensuring completion of privacy requests. This internal responsibility assignment is not a substitute for confirming the legal controller's identity for the public notice. Do not leave requests unattended in a general repository issue.
 - **Current public intake address:** `yepyouknowhim@gmail.com`, confirmed in `src/app/controllers/infoController.ts` and the existing `/contact` page.
 - **Still required before final publication:** the controller's legal identity and the address/contact details required for the actual operating arrangement must be confirmed. The email address alone does not establish the controller identity.
 - **Private handling:** keep request contents, account email addresses, identity evidence and tester details in a restricted mailbox or similarly access-controlled system. Never paste them into public GitHub issues, commits, screenshots or logs.
