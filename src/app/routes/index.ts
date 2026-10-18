@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getHomePage } from '../controllers/homeController';
-import { getBrowsePage, getSearchPage } from '../controllers/browseController';
+import { getBrowsePage, getSearchPage, getDigBrowsePage } from '../controllers/browseController';
 import { getActivityPage } from '../controllers/activityController';
 import { getContactPage, getCommunityRulesPage, getPrivacyNoticePage } from '../controllers/infoController';
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
@@ -15,6 +15,7 @@ import messagingRoutes from './messagingRoutes';
 const router = Router();
 
 router.get('/', getHomePage);
+router.get('/browse/dig', getDigBrowsePage);
 router.get('/browse', getBrowsePage);
 router.get('/search', getSearchPage);
 router.get('/activity', getActivityPage);
