@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { hasExplicitWhiteLabelInventory, searchBrowseListings } from '../services/listingService';
-import { parseVinylFormatFilters, VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
+import { parseVinylFormatFilters, resolveWhiteLabelFilter, toggleVinylFormatFilter, VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
 import { renderWithLayout } from '../utils/render';
 import { ConditionGrade, CONDITION_GRADES } from '../../db/schema/enums';
 
@@ -44,12 +44,10 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
       ? parseVinylFormatFilters(req.query.formatToggle)[0]
       : undefined;
     const formats = formatToggle
-      ? submittedFormats.includes(formatToggle)
-        ? submittedFormats.filter((format) => format !== formatToggle)
-        : [...submittedFormats, formatToggle]
+      ? toggleVinylFormatFilter(submittedFormats, formatToggle)
       : submittedFormats;
     const whiteLabelToggle = req.query.whiteLabelToggle === '1';
-    const whiteLabel = whiteLabelToggle ? req.query.whiteLabel !== '1' : req.query.whiteLabel === '1';
+    const whiteLabel = resolveWhiteLabelFilter(req.query.whiteLabel, whiteLabelToggle);
     const conditionInput = typeof req.query.condition === 'string' ? req.query.condition.trim() : '';
     const condition = (CONDITION_GRADES as readonly string[]).includes(conditionInput)
       ? (conditionInput as ConditionGrade)
