@@ -248,6 +248,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         storagePath: `listings/${listingId}/${photoId}.webp`,
         displayOrder: 0,
         altText: 'Cover art',
+        role: 'back_cover',
       };
 
       (photoRepo.findPhotoById as jest.Mock).mockResolvedValue(samplePhoto);
@@ -272,6 +273,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
           storagePath: `listings/${listingId}/${photoId}.webp`,
           displayOrder: 0,
           altText: 'Cover art',
+          role: 'back_cover',
         }),
         undefined
       );
@@ -296,7 +298,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
           buffer: sampleImage,
           mimetype: 'image/jpeg',
           originalname: 'cover.jpg',
-        })
+        }, 'A clear photo of the sleeve front', undefined, undefined, 'front_cover')
       ).rejects.toThrow('Database transaction deadlocked');
 
       expect(deleteSpy).toHaveBeenCalled();
@@ -326,7 +328,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
           buffer: sampleImage,
           mimetype: 'image/jpeg',
           originalname: 'cover.jpg',
-        })
+        }, 'A clear photo of the sleeve front', undefined, undefined, 'front_cover')
       ).rejects.toThrow('PostgreSQL unique constraint violation');
 
       expect(orphanRepo.recordOrphanedStorageObject).toHaveBeenCalledWith(
