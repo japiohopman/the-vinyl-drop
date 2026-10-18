@@ -1409,7 +1409,7 @@ select.form-control {
 .dig-crate-stack {
   position: relative;
   min-width: 0;
-  min-height: 760px;
+  min-height: 850px;
   perspective: 1300px;
   transform-style: preserve-3d;
   isolation: isolate;
@@ -1817,7 +1817,7 @@ select.form-control {
   }
 
   .dig-crate-stack {
-    min-height: 720px;
+    min-height: 800px;
   }
 
   .dig-sleeve-stage {
@@ -1849,7 +1849,7 @@ select.form-control {
 
 @media (max-width: 360px) {
   .dig-crate-stack {
-    min-height: 690px;
+    min-height: 760px;
   }
 
   .dig-navigation {
