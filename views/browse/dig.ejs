@@ -71,6 +71,8 @@
               class="dig-slide <%= index === 0 ? 'is-active' : (index === 1 ? 'is-next' : (index === 0 ? 'is-previous' : '')) %>"
               data-dig-slide
               data-index="<%= index %>"
+              role="group"
+              aria-roledescription="slide"
               aria-label="Plaat <%= index + 1 %> van <%= visibleItems.length %>: <%= item.title %> door <%= item.artist %>"
               aria-hidden="<%= index === 0 ? 'false' : 'true' %>"
               <%= index === 0 ? '' : 'inert' %>
@@ -85,12 +87,12 @@
               <div class="dig-sleeve-interaction">
                 <div class="dig-sleeve-stage" data-dig-swipe-area aria-label="Sleeve-afbeelding. Veeg omhoog voor de volgende plaat of omlaag voor de vorige plaat.">
                   <div class="dig-sleeve-card" data-dig-sleeve-card>
-                    <div class="dig-sleeve-face dig-sleeve-face-front">
+                    <div class="dig-sleeve-face dig-sleeve-face-front" aria-hidden="false">
                       <span class="dig-face-label">Voorkant</span>
                       <img class="dig-sleeve-image" src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
                       <p class="dig-artwork-source"><%= item.frontArtwork.sourceLabel %></p>
                     </div>
-                    <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Achterkant">
+                    <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Achterkant" aria-hidden="true">
                       <span class="dig-face-label">Achterkant</span>
                       <% if (item.backArtwork) { %>
                         <img class="dig-sleeve-image" src="<%= item.backArtwork.src %>" alt="<%= item.backArtwork.altText %>" draggable="false">
