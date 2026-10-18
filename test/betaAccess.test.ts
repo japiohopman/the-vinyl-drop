@@ -90,7 +90,8 @@ describe('invite-only beta access and onboarding', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/auth/login');
-    expect((response.headers['set-cookie'] || []).join(';')).toContain('sb-access-token=;');
+    const setCookies = response.headers['set-cookie'];
+    expect(Array.isArray(setCookies) ? setCookies.join(';') : setCookies || '').toContain('sb-access-token=;');
   });
 
   it('renders and expires the one-use welcome flash on the first HTML response', async () => {
@@ -101,7 +102,8 @@ describe('invite-only beta access and onboarding', () => {
 
     expect(first.status).toBe(200);
     expect(first.text).toContain('You’re in — welcome to The Vinyl Drop beta!');
-    expect((first.headers['set-cookie'] || []).join(';')).toContain(`${BETA_WELCOME_COOKIE}=;`);
+    const welcomeCookies = first.headers['set-cookie'];
+    expect(Array.isArray(welcomeCookies) ? welcomeCookies.join(';') : welcomeCookies || '').toContain(`${BETA_WELCOME_COOKIE}=;`);
 
     const second = await request(app)
       .get('/auth/login')
@@ -132,7 +134,7 @@ describe('invite-only beta access and onboarding', () => {
   });
 
   it('does not show a new welcome when this browser already has the seen marker', () => {
-    const req = { cookies: { [BETA_WELCOME_SEEN_COOKIE]: '1' } } as Request;
+    const req = { cookies: { [BETA_WELCOME_SEEN_COOKIE]: '1' } } as unknown as Request;
     const res = { cookie: jest.fn() } as unknown as Response;
 
     setBetaWelcomeFlashCookie(req, res);
