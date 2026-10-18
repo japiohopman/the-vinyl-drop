@@ -391,7 +391,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
   });
 
   describe('Listing Detail View & Authorization Boundaries (GET /listings/:id)', () => {
-    it('should render public listing detail page for published listings', async () => {
+    it('should render public listing detail page for published listings with object-fit: contain for artwork', async () => {
       (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
       (commentService.getListingComments as jest.Mock).mockResolvedValue([mockComment]);
 
@@ -404,6 +404,101 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('Blue Note');
       expect(res.text).toContain('Is this an original US Mono pressing?');
       expect(res.text).toContain('Sign in to post a comment');
+      expect(res.text).toContain('id="main-photo-img"');
+      expect(res.text).toContain('style="width: 100%; height: 100%; object-fit: contain; display: block;"');
+    });
+
+    it('should render multi-stage onerror fallback logic and verify local placeholder asset presence', async () => {
+      const detailedListingWithCoverArt = {
+        ...mockDetailedListing,
+        photos: [
+          {
+            id: 'photo-1',
+            listingId: mockPublishedListing.id,
+            storagePath: 'assets/broken-photo.webp',
+            publicUrl: '/assets/broken-photo.webp',
+            displayOrder: 0,
+            altText: 'Front cover',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: 'photo-2',
+            listingId: mockPublishedListing.id,
+            storagePath: 'assets/back-photo.webp',
+            publicUrl: '/assets/back-photo.webp',
+            displayOrder: 1,
+            altText: 'Back sleeve',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+        release: {
+          ...mockRelease,
+          coverArtUrl: 'https://example.com/cover-art.jpg',
+        },
+      };
+      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(detailedListingWithCoverArt);
+      (commentService.getListingComments as jest.Mock).mockResolvedValue([]);
+
+      const app = createApp();
+      const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('data-secondary-fallback="https://example.com/cover-art.jpg"');
+      expect(res.text).toContain('data-secondary-alt="Catalog cover artwork for Blue Train"');
+      expect(res.text).toContain('data-placeholder="/assets/vinyl-placeholder.svg"');
+      expect(res.text).toContain('data-placeholder-alt="Default vinyl placeholder for Blue Train"');
+      expect(res.text).toContain('this.onerror=null;');
+      expect(res.text).toContain('class="thumbnail-btn selected"');
+      expect(res.text).toContain('aria-current="true"');
+      expect(res.text).toContain('data-alt-text="Back sleeve"');
+
+      // Verify the local fallback SVG asset exists on disk
+      const fs = await import('fs');
+      const path = await import('path');
+      expect(fs.existsSync(path.join(process.cwd(), 'public/assets/vinyl-placeholder.svg'))).toBe(true);
+    });
+
+    it('should render coverArtUrl fallback when photos array is empty', async () => {
+      const detailedListingWithCoverArt = {
+        ...mockDetailedListing,
+        photos: [],
+        release: {
+          ...mockRelease,
+          coverArtUrl: 'https://example.com/cover-art.jpg',
+        },
+      };
+      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(detailedListingWithCoverArt);
+      (commentService.getListingComments as jest.Mock).mockResolvedValue([]);
+
+      const app = createApp();
+      const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('src="https://example.com/cover-art.jpg"');
+      expect(res.text).toContain('id="main-photo-img"');
+      expect(res.text).toContain('data-placeholder-alt="Default vinyl placeholder for Blue Train"');
+    });
+
+    it('should render local vinyl placeholder when both photos and release.coverArtUrl are missing', async () => {
+      const detailedListingWithoutPhotosOrCover = {
+        ...mockDetailedListing,
+        photos: [],
+        release: {
+          ...mockRelease,
+          coverArtUrl: null,
+        },
+      };
+      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(detailedListingWithoutPhotosOrCover);
+      (commentService.getListingComments as jest.Mock).mockResolvedValue([]);
+
+      const app = createApp();
+      const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('src="/assets/vinyl-placeholder.svg"');
+      expect(res.text).toContain('id="main-photo-img"');
     });
 
     it('should return 404 Not Found when attempting to view non-existent or unpublished listing as unauthorized user', async () => {
