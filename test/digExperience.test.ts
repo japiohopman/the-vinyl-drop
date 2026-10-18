@@ -4,13 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { resolveDigArtwork, DigPhotoCandidate } from '../src/domain/digExperience';
 import { listingPhotoRoleSchema, newListingPhotoRoleSchema } from '../src/validators/listing';
-// The same pure state helpers are imported by the browser controller and exercised directly here.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const digState = require('../public/js/dig-state.js') as {
-  isValidIndex(index: number, total: number): boolean;
-  adjacentIndex(currentIndex: number, total: number, direction: number): number | null;
-  nextFlipState(isFlipped: boolean): boolean;
-};
+import digState from '../public/js/dig-state.js';
 
 const photo = (
   role: DigPhotoCandidate['role'],
