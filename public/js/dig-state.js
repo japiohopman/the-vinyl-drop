@@ -10,6 +10,14 @@
       return this.isValidIndex(candidate, total) ? candidate : null;
     },
 
+    shouldCommitSwipe(deltaY, threshold, targetIndex, total, isHorizontal) {
+      return !isHorizontal
+        && Number.isFinite(deltaY)
+        && Number.isFinite(threshold)
+        && Math.abs(deltaY) >= threshold
+        && this.isValidIndex(targetIndex, total);
+    },
+
     nextFlipState(isFlipped) {
       return !Boolean(isFlipped);
     },
