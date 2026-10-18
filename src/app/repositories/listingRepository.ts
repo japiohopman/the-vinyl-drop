@@ -6,6 +6,7 @@ import { physicalCopies, PhysicalCopy } from '../../db/schema/physicalCopies';
 import { releases, Release } from '../../db/schema/releases';
 import { profiles, Profile } from '../../db/schema/profiles';
 import { listingPhotos } from '../../db/schema/listingPhotos';
+import { getVinylFormatPostgresPattern, VinylFormatFilter, WHITE_LABEL_POSTGRES_PATTERN } from '../../domain/releaseFormat';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -18,6 +19,8 @@ export interface SearchListingsParams {
   status?: ListingStatus;
   sellerId?: string;
   sellerUsername?: string;
+  formats?: VinylFormatFilter[];
+  whiteLabel?: boolean;
   sort?: 'newest' | 'price_asc' | 'price_desc' | 'title_asc' | 'artist_asc';
   page?: number;
   limit?: number;
@@ -169,6 +172,20 @@ export async function searchListings(
     conditions.push(ilike(releases.genre, `%${params.genre.trim()}%`));
   }
 
+  // Format quick filters use explicit terms in legacy free-text metadata. LP is
+  // an album/long-play characteristic; 12-inch and 7-inch are physical diameters.
+  if (params.formats && params.formats.length > 0) {
+    conditions.push(or(...params.formats.map((format) =>
+      sql\`${releases.format} ~* \${getVinylFormatPostgresPattern(format)}\`
+    ))!);
+  }
+
+  // White-label is a release characteristic, not a physical diameter. Match
+  // only explicit markers in the release label field; do not guess from title.
+  if (params.whiteLabel) {
+    conditions.push(sql\`${releases.label} ~* \${WHITE_LABEL_POSTGRES_PATTERN}\`);
+  }
+
   // Condition filter
   if (params.condition) {
     conditions.push(
@@ -290,4 +307,17 @@ export async function searchListings(
     limit,
     totalPages,
   };
+}
+
+
+/** Only show the White label shortcut when published catalog data has an explicit label marker. */
+export async function hasExplicitWhiteLabelInventory(dbOverride?: DbInstance): Promise<boolean> {
+  const db = dbOverride || getDb();
+  const result = await db
+    .select({ total: count() })
+    .from(listings)
+    .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
+    .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
+    .where(and(eq(listings.status, 'published'), sql`${releases.label} ~* ${WHITE_LABEL_POSTGRES_PATTERN}`));
+  return Number(result[0]?.total || 0) > 0;
 }
