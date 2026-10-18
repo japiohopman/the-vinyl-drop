@@ -1365,14 +1365,14 @@ select.form-control {
 .dig-filter-summary span {
   padding: 2px var(--space-2);
   border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-bg);
+  background: var(--color-paper);
 }
 
 .dig-explorer {
   min-width: 0;
   padding: var(--space-4);
   border: var(--border-thick);
-  background: var(--color-paper-muted);
+  background: var(--color-paper);
   box-shadow: var(--shadow-tactile);
 }
 
@@ -1612,7 +1612,7 @@ select.form-control {
   margin: 0;
   padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-bg);
+  background: var(--color-paper);
   color: var(--color-ink-muted);
   font-size: var(--font-size-xs);
   line-height: 1.35;
