@@ -10,7 +10,6 @@
   <% const formatParams = selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }).join('&'); %>
   <% const baseQueryParams = 'q=' + encodeURIComponent(filters.q || '') + '&genre=' + encodeURIComponent(filters.genre || '') + '&condition=' + encodeURIComponent(filters.condition || '') + '&minPrice=' + encodeURIComponent(filters.minPrice || '') + '&maxPrice=' + encodeURIComponent(filters.maxPrice || '') + '&sort=' + encodeURIComponent(filters.sort || 'newest'); %>
   <% const queryBaseParams = [baseQueryParams, formatParams, filters.whiteLabel ? 'whiteLabel=1' : ''].filter(Boolean).join('&'); %>
-  <% const queryBaseParams = `q=${encodeURIComponent(filters.q || '')}&genre=${encodeURIComponent(filters.genre || '')}&condition=${encodeURIComponent(filters.condition || '')}&minPrice=${encodeURIComponent(filters.minPrice || '')}&maxPrice=${encodeURIComponent(filters.maxPrice || '')}&sort=${encodeURIComponent(filters.sort || 'newest')}`; %>
 
   <div class="browse-header" style="margin-bottom: var(--space-6);">
     <h1 style="font-family: var(--font-display); font-size: var(--font-size-3xl); margin-bottom: var(--space-2);">
