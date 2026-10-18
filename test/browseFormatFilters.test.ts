@@ -1,4 +1,7 @@
 import { PGlite } from '@electric-sql/pglite';
+import type { SQL } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import { searchListings } from '../src/app/repositories/listingRepository';
 import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
@@ -10,6 +13,7 @@ import {
   resolveWhiteLabelFilter,
   toggleVinylFormatFilter,
   VINYL_FORMAT_FILTERS,
+  WHITE_LABEL_POSTGRES_PATTERN,
 } from '../src/domain/releaseFormat';
 
 describe('Browse vinyl format filters — metadata semantics', () => {
@@ -115,5 +119,44 @@ describe('Browse format filters — rendered state and responsive controls', () 
     expect(css).toContain('min-height: 44px');
     expect(css).toContain('@media (max-width: 767px)');
     expect(css).toContain('grid-template-columns: minmax(0, 1fr)');
+  });
+});
+
+
+describe('Browse format filters — repository query integration', () => {
+  it('wires selected formats into the repository WHERE clause and combines independent filters with AND', async () => {
+    const whereClauses: Array<{ sql: string; params: unknown[] }> = [];
+    const builder = {
+      from: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn((condition: SQL | undefined) => {
+        if (condition) {
+          whereClauses.push(new PgDialect().sqlToQuery(condition));
+        }
+        return Promise.resolve([{ total: 0 }]);
+      }),
+    };
+    const db = {
+      select: jest.fn().mockReturnValue(builder),
+    } as unknown as NonNullable<Parameters<typeof searchListings>[1]>;
+
+    const result = await searchListings({
+      formats: ['lp', '12-inch'],
+      whiteLabel: true,
+      genre: 'Hip Hop',
+    }, db);
+
+    expect(result.totalCount).toBe(0);
+    expect(whereClauses).toHaveLength(1);
+
+    const where = whereClauses[0];
+    expect(where.sql.toLowerCase()).toContain(' or ');
+    expect(where.sql.toLowerCase()).toContain(' and ');
+    expect(where.sql.match(/"releases"\."format" ~\*/g)).toHaveLength(2);
+    expect(where.sql).toContain('"releases"."label" ~*');
+    expect(where.params).toContain(getVinylFormatPostgresPattern('lp'));
+    expect(where.params).toContain(getVinylFormatPostgresPattern('12-inch'));
+    expect(where.params).toContain(WHITE_LABEL_POSTGRES_PATTERN);
+    expect(where.params).toContain('%Hip Hop%');
   });
 });
