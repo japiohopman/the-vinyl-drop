@@ -28,7 +28,11 @@
   function clearFlip(slide) {
     const card = slide.querySelector('[data-dig-sleeve-card]');
     const button = slide.querySelector('[data-dig-flip]');
+    const front = slide.querySelector('.dig-sleeve-face-front');
+    const back = slide.querySelector('.dig-sleeve-face-back');
     if (card) card.classList.remove('is-flipped');
+    if (front) front.setAttribute('aria-hidden', 'false');
+    if (back) back.setAttribute('aria-hidden', 'true');
     if (button) {
       button.setAttribute('aria-pressed', 'false');
       button.textContent = 'Bekijk achterkant';
@@ -256,8 +260,12 @@
       flipButton.addEventListener('click', () => {
         if (!slide.classList.contains('is-active')) return;
         const card = slide.querySelector('[data-dig-sleeve-card]');
+        const front = slide.querySelector('.dig-sleeve-face-front');
+        const back = slide.querySelector('.dig-sleeve-face-back');
         if (!card) return;
         const flipped = card.classList.toggle('is-flipped');
+        if (front) front.setAttribute('aria-hidden', String(flipped));
+        if (back) back.setAttribute('aria-hidden', String(!flipped));
         flipButton.setAttribute('aria-pressed', String(flipped));
         flipButton.textContent = flipped ? 'Bekijk voorkant' : 'Bekijk achterkant';
       });
