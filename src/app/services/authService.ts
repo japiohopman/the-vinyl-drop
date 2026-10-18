@@ -9,6 +9,7 @@ import { config } from '../../config/env';
 import { getDb } from '../../db';
 import { isPasswordPwned } from './pwnedPasswordService';
 import { createPasswordCheckedSignupApproval } from '../repositories/signupApprovalRepository';
+import { isBetaAllowedEmail, INVITE_ONLY_ACCESS_DENIED_MESSAGE } from './betaAccess';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -293,6 +294,21 @@ export async function handleAuthCallback(
       session: null,
       profile: null,
       error: error?.message || 'Failed to authenticate session',
+    };
+  }
+
+  // Check the private beta allowlist before creating an application profile.
+  if (!isBetaAllowedEmail(data.user.email)) {
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Access stays denied; do not expose provider/session details.
+    }
+    return {
+      user: null,
+      session: null,
+      profile: null,
+      error: INVITE_ONLY_ACCESS_DENIED_MESSAGE,
     };
   }
 
