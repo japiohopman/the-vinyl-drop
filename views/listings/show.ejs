@@ -2,24 +2,27 @@
   function handleImageFallback(img) {
     if (!img) return;
     const sec = img.getAttribute('data-secondary-fallback');
+    const secAlt = img.getAttribute('data-secondary-alt');
     const plc = img.getAttribute('data-placeholder') || '/assets/vinyl-placeholder.svg';
+    const plcAlt = img.getAttribute('data-placeholder-alt');
 
-    if (img.src === new URL(plc, document.baseURI).href) {
+    if (img.src.endsWith(plc) || img.src === plc) {
       img.onerror = null;
       return;
     }
 
-    img.alt = img.getAttribute('data-default-alt');
-    document.querySelectorAll('.thumbnail-btn').forEach(btn => {
-      btn.classList.remove('selected');
-      btn.setAttribute('aria-current', 'false');
-    });
-
-    if (sec && sec !== plc && img.src !== new URL(sec, document.baseURI).href) {
+    if (sec && sec !== plc && !img.src.endsWith(sec) && img.src !== sec) {
+      img.onerror = function() {
+        img.onerror = null;
+        img.src = plc;
+        if (plcAlt) img.alt = plcAlt;
+      };
       img.src = sec;
+      if (secAlt) img.alt = secAlt;
     } else {
       img.onerror = null;
       img.src = plc;
+      if (plcAlt) img.alt = plcAlt;
     }
   }
 </script>
@@ -35,6 +38,8 @@
     <!-- Left Column: Photo Gallery -->
     <% const defaultAlt = `Album cover artwork for ${release.title} by ${release.artist}`; %>
     <% const secondaryFallbackUrl = (release && release.coverArtUrl) ? release.coverArtUrl : '/assets/vinyl-placeholder.svg'; %>
+    <% const secondaryFallbackAlt = (release && release.coverArtUrl) ? `Catalog cover artwork for ${release.title}` : `Default vinyl placeholder for ${release.title}`; %>
+    <% const placeholderAlt = `Default vinyl placeholder for ${release.title}`; %>
     <div class="listing-gallery-section">
       <div class="primary-photo-wrapper" style="border: var(--border-thick); border-radius: var(--radius-md); overflow: hidden; background: var(--color-paper-muted); aspect-ratio: 1/1; position: relative; display: flex; align-items: center; justify-content: center;">
         <% if (photos && photos.length > 0) { %>
@@ -45,9 +50,10 @@
             style="width: 100%; height: 100%; object-fit: contain; display: block;"
             referrerpolicy="no-referrer"
             data-secondary-fallback="<%= secondaryFallbackUrl %>"
-            data-default-alt="<%= defaultAlt %>"
+            data-secondary-alt="<%= secondaryFallbackAlt %>"
             data-placeholder="/assets/vinyl-placeholder.svg"
-            onerror="handleImageFallback(this)"
+            data-placeholder-alt="<%= placeholderAlt %>"
+            onerror="if (typeof handleImageFallback === 'function') { handleImageFallback(this); } else { this.onerror=null; this.src='/assets/vinyl-placeholder.svg'; }"
           />
         <% } else if (release && release.coverArtUrl) { %>
           <img
@@ -57,14 +63,14 @@
             style="width: 100%; height: 100%; object-fit: contain; display: block;"
             referrerpolicy="no-referrer"
             data-placeholder="/assets/vinyl-placeholder.svg"
-            data-default-alt="<%= defaultAlt %>"
-            onerror="handleImageFallback(this)"
+            data-placeholder-alt="<%= placeholderAlt %>"
+            onerror="this.onerror=null; this.src='/assets/vinyl-placeholder.svg'; const plcAlt=this.getAttribute('data-placeholder-alt'); if (plcAlt) this.alt=plcAlt;"
           />
         <% } else { %>
           <img
             id="main-photo-img"
             src="/assets/vinyl-placeholder.svg"
-            alt="<%= defaultAlt %>"
+            alt="<%= placeholderAlt %>"
             style="width: 100%; height: 100%; object-fit: contain; display: block;"
           />
         <% } %>
@@ -83,7 +89,7 @@
               onclick="
                 const mainImg = document.getElementById('main-photo-img');
                 if (mainImg) {
-                  mainImg.onerror = function() { handleImageFallback(this); };
+                  if (typeof handleImageFallback === 'function') { mainImg.onerror = function() { handleImageFallback(this); }; }
                   mainImg.src = this.getAttribute('data-public-url');
                   mainImg.alt = this.getAttribute('data-alt-text');
                 }
