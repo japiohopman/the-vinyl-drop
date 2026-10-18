@@ -167,7 +167,32 @@ async function run() {
     altText: 'Broken photo on Blue Train',
   });
 
-  // 4. Listing with NO seller photo AND NO release artwork -> directly renders vinyl placeholder
+  // 4. Listing with NO seller photo AND broken release artwork -> tests `else if (release && release.coverArtUrl)` branch
+  const [rel4] = await db.insert(releases).values({
+    title: 'My Favorite Things',
+    artist: 'John Coltrane',
+    label: 'Atlantic',
+    releaseYear: 1961,
+    format: 'LP',
+    coverArtUrl: '/assets/broken-release-art.jpg',
+  }).returning();
+
+  const [pc4] = await db.insert(physicalCopies).values({
+    releaseId: rel4.id,
+    ownerId: sellerId,
+    mediaCondition: 'VG+',
+    sleeveCondition: 'VG',
+  }).returning();
+
+  const [lst4] = await db.insert(listings).values({
+    physicalCopyId: pc4.id,
+    sellerId: sellerId,
+    price: 3000,
+    currency: 'EUR',
+    status: 'published',
+  }).returning();
+
+  // 5. Listing with NO seller photo AND NO release artwork -> directly renders vinyl placeholder
   const [rel5] = await db.insert(releases).values({
     title: 'Ballads',
     artist: 'John Coltrane',
@@ -258,14 +283,15 @@ async function run() {
       const updatedAlt = await mainImg.getAttribute('alt');
       assert.equal(updatedAlt, 'Gatefold inner photo of A Love Supreme', 'Main image alt text must update to match selected thumbnail');
 
-      // Now click third thumbnail (broken seller photo) to verify re-armed fallback triggering
+      // Now click third thumbnail (broken seller photo) to verify re-armed fallback triggering AND thumbnail deselection
       await thumbBtns.nth(2).click();
       await assertLoadedImage(page, '#main-photo-img', 'test-light-cover.svg');
 
+      // Verify that thumbnail selection was cleared because fallback catalog artwork is now displayed
       const isThirdSelected = await thumbBtns.nth(2).evaluate((el) => el.classList.contains('selected'));
       const thirdAriaCurrent = await thumbBtns.nth(2).getAttribute('aria-current');
-      assert.ok(isThirdSelected, 'Third thumbnail button must remain selected after fallback');
-      assert.equal(thirdAriaCurrent, 'true', 'Third thumbnail button must keep aria-current="true" after fallback');
+      assert.equal(isThirdSelected, false, 'Third thumbnail button MUST NOT remain selected after fallback to catalog artwork');
+      assert.equal(thirdAriaCurrent, 'false', 'Third thumbnail button MUST have aria-current="false" after fallback to catalog artwork');
 
       await page.screenshot({ path: path.join(outputDir, `listing-detail-${vp.name}.png`), fullPage: true });
       await context.close();
@@ -302,7 +328,22 @@ async function run() {
       await context.close();
     }
 
-    // Case 4: Initial no-source listing -> truthful placeholder alt text
+    // Case 4: NO seller photo + BROKEN release artwork -> tests `else if (release && release.coverArtUrl)` template branch
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const page = await context.newPage();
+
+      await page.goto(`http://localhost:${port}/listings/${lst4.id}`, { waitUntil: 'domcontentloaded' });
+      await assertLoadedImage(page, '#main-photo-img', 'vinyl-placeholder.svg');
+
+      const mainImg = page.locator('#main-photo-img');
+      const currentAlt = await mainImg.getAttribute('alt');
+      assert.equal(currentAlt, 'Default vinyl placeholder for My Favorite Things', 'Release art fallback on no-photo listing must have truthful placeholder alt text');
+
+      await context.close();
+    }
+
+    // Case 5: Initial no-photo + no-release-art listing -> directly renders vinyl placeholder
     {
       const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
       const page = await context.newPage();
@@ -317,7 +358,7 @@ async function run() {
       await context.close();
     }
 
-    // Case 5: Controlled browser test with network route interception aborting placeholder request
+    // Case 6: Controlled browser test with network route interception aborting placeholder request
     // Asserts exact request count === 1, image remains on placeholder URL, and img.onerror === null
     {
       const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -329,9 +370,19 @@ async function run() {
       });
 
       const page = await context.newPage();
+
+      // Register requestfailed promise BEFORE navigation to avoid race conditions
+      const requestFailedPromise = page.waitForEvent('requestfailed', {
+        predicate: (req) => req.url().includes('vinyl-placeholder.svg'),
+        timeout: 5000,
+      });
+
       await page.goto(`http://localhost:${port}/listings/${lst3.id}`, { waitUntil: 'domcontentloaded' });
 
-      // Wait for image fallback chain to attempt loading vinyl-placeholder.svg and set onerror = null
+      // Await network request failure explicitly
+      await requestFailedPromise;
+
+      // Wait for image onerror handler to set onerror = null
       await page.waitForFunction(() => {
         const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string; onerror: unknown } | null } }).document.getElementById('main-photo-img');
         return Boolean(img && img.src.includes('vinyl-placeholder.svg') && img.onerror === null);

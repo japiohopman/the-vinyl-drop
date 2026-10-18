@@ -11,6 +11,11 @@
       return;
     }
 
+    document.querySelectorAll('.thumbnail-btn').forEach(btn => {
+      btn.classList.remove('selected');
+      btn.setAttribute('aria-current', 'false');
+    });
+
     if (sec && sec !== plc && !img.src.endsWith(sec) && img.src !== sec) {
       img.onerror = function() {
         img.onerror = null;
