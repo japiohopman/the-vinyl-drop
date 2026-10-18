@@ -1,6 +1,6 @@
 import request from 'supertest';
 import type { Request, Response } from 'express';
-import type { User } from '@supabase/supabase-js';
+import type { Session, User } from '@supabase/supabase-js';
 import { createApp } from '../src/app';
 import * as authService from '../src/app/services/authService';
 import { config } from '../src/config/env';
@@ -75,6 +75,37 @@ describe('invite-only beta access and onboarding', () => {
     expect(response.status).toBe(403);
     expect(response.text).toContain(INVITE_ONLY_ACCESS_DENIED_MESSAGE);
     expect(loginSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps the normal sign-in flow for an approved tester and queues the first welcome', async () => {
+    const loginSpy = jest.spyOn(authService, 'login').mockResolvedValue({
+      user: {
+        id: '11111111-1111-4111-8111-111111111111',
+        email: 'approved@example.com',
+      } as unknown as User,
+      session: {
+        access_token: 'synthetic-approved-access-token',
+        refresh_token: 'synthetic-approved-refresh-token',
+        expires_in: 3600,
+      } as Session,
+      profile: null,
+    });
+
+    const response = await request(app)
+      .post('/auth/login')
+      .set('Origin', 'http://localhost:3000')
+      .set('Accept', 'text/html')
+      .send({ email: 'APPROVED@example.com', password: 'synthetic-test-password' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/profile');
+    expect(loginSpy).toHaveBeenCalledTimes(1);
+
+    const setCookies = response.headers['set-cookie'];
+    const cookies = Array.isArray(setCookies) ? setCookies.join(';') : setCookies || '';
+    expect(cookies).toContain(`${BETA_WELCOME_COOKIE}=1`);
+    expect(cookies).toContain(`${BETA_WELCOME_SEEN_COOKIE}=1`);
+    expect(cookies).toContain('sb-access-token=synthetic-approved-access-token');
   });
 
   it('does not keep an app session for an identity removed from the private allowlist', async () => {
