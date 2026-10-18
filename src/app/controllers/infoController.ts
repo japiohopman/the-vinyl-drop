@@ -12,6 +12,18 @@ export function getContactPage(req: Request, res: Response, next: NextFunction):
   }
 }
 
+export function getPrivacyNoticePage(req: Request, res: Response, next: NextFunction): void {
+  try {
+    renderWithLayout(res, 'info/privacy', {
+      title: 'Privacy Notice — The Vinyl Drop',
+      contactEmail: 'yepyouknowhim@gmail.com',
+      noticeStatus: 'draft',
+    }, next);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export function getCommunityRulesPage(req: Request, res: Response, next: NextFunction): void {
   try {
     renderWithLayout(res, 'info/community-rules', {
