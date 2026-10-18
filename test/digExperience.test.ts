@@ -4,6 +4,13 @@ import fs from 'fs';
 import path from 'path';
 import { resolveDigArtwork, DigPhotoCandidate } from '../src/domain/digExperience';
 import { listingPhotoRoleSchema, newListingPhotoRoleSchema } from '../src/validators/listing';
+// The same pure state helpers are imported by the browser controller and exercised directly here.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const digState = require('../public/js/dig-state.js') as {
+  isValidIndex(index: number, total: number): boolean;
+  adjacentIndex(currentIndex: number, total: number, direction: number): number | null;
+  nextFlipState(isFlipped: boolean): boolean;
+};
 
 const photo = (
   role: DigPhotoCandidate['role'],
@@ -11,6 +18,29 @@ const photo = (
   publicUrl: string,
   altText: string | null = null
 ): DigPhotoCandidate => ({ role, displayOrder, publicUrl, altText });
+
+describe('Dig navigation and flip state', () => {
+  it('keeps previous/next navigation inside the first and last slide boundaries', () => {
+    expect(digState.isValidIndex(0, 3)).toBe(true);
+    expect(digState.isValidIndex(2, 3)).toBe(true);
+    expect(digState.isValidIndex(-1, 3)).toBe(false);
+    expect(digState.isValidIndex(3, 3)).toBe(false);
+    expect(digState.adjacentIndex(0, 3, -1)).toBeNull();
+    expect(digState.adjacentIndex(0, 3, 1)).toBe(1);
+    expect(digState.adjacentIndex(2, 3, 1)).toBeNull();
+    expect(digState.adjacentIndex(2, 3, -1)).toBe(1);
+    expect(digState.adjacentIndex(0, 1, 1)).toBeNull();
+    expect(digState.adjacentIndex(0, 1, -1)).toBeNull();
+  });
+
+  it('toggles front/back without changing the current slide state', () => {
+    const initialIndex = 1;
+    const flipped = digState.nextFlipState(false);
+    expect(flipped).toBe(true);
+    expect(digState.nextFlipState(flipped)).toBe(false);
+    expect(initialIndex).toBe(1);
+  });
+});
 
 describe('Dig artwork face semantics', () => {
   it('chooses only explicitly classified sleeve front and back, independently of display order', () => {
@@ -124,6 +154,7 @@ describe('Dig photo-role contract', () => {
     expect(html).toContain('Voorkant');
     expect(html).toContain('Achterkant');
     expect(html).toContain('href="/browse?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
+    expect(html).toContain('/js/dig-state.js');
     expect(html).toContain('/js/dig-mode.js');
     expect(html).not.toContain('src="/seller/record.webp"');
     expect(html).toContain('href="/listings/listing-1"');
@@ -138,7 +169,9 @@ describe('Dig photo-role contract', () => {
     expect(script).toContain("addEventListener('pointerdown'");
     expect(script).toContain("addEventListener('pointermove'");
     expect(script).toContain("window.matchMedia('(prefers-reduced-motion: reduce)')");
-    expect(script).toContain("card.classList.toggle('is-flipped')");
+    expect(script).toContain('digState.isValidIndex');
+    expect(script).toContain('digState.nextFlipState');
+    expect(script).toContain('digState.adjacentIndex');
     expect(script).toContain("slide.inert = true");
 
     const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
