@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { conditionGradeSchema, listingStatusSchema } from './condition';
+import { LISTING_PHOTO_ROLES, NEW_LISTING_PHOTO_ROLES } from '../domain/listingPhotoRole';
 
 export function parsePriceEurToCents(val?: string | number | null): number | null {
   if (val === undefined || val === null || val === '') {
@@ -80,3 +81,11 @@ export type CreateListingInput = z.input<typeof createListingSchema>;
 export type UpdateListingInput = z.input<typeof updateListingSchema>;
 export type UpdateListingDetailsInput = z.input<typeof updateListingDetailsSchema>;
 export type CreateListingFromReleaseInput = z.input<typeof createListingFromReleaseSchema>;
+
+export const listingPhotoRoleSchema = z.enum(LISTING_PHOTO_ROLES);
+export const newListingPhotoRoleSchema = z.enum(NEW_LISTING_PHOTO_ROLES);
+export const listingPhotoAltTextSchema = z
+  .string()
+  .trim()
+  .min(5, 'Please describe what the photo shows in the alt text (at least 5 characters).')
+  .max(250, 'Alt text cannot exceed 250 characters.');

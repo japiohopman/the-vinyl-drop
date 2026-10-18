@@ -1,6 +1,7 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { ListingPhoto, NewListingPhoto, listingPhotos } from '../../db/schema/listingPhotos';
+import { ListingPhotoRole } from '../../domain/listingPhotoRole';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -71,4 +72,32 @@ export async function updatePhotoOrder(
       .set({ displayOrder: index, updatedAt: new Date() })
       .where(and(eq(listingPhotos.id, photoId), eq(listingPhotos.listingId, listingId)));
   }
+}
+
+export async function findPhotosByListingIds(
+  listingIds: string[],
+  dbOverride?: DbInstance
+): Promise<ListingPhoto[]> {
+  if (listingIds.length === 0) return [];
+  const db = dbOverride || getDb();
+  return db
+    .select()
+    .from(listingPhotos)
+    .where(inArray(listingPhotos.listingId, listingIds))
+    .orderBy(asc(listingPhotos.listingId), asc(listingPhotos.displayOrder), asc(listingPhotos.createdAt));
+}
+
+export async function updateListingPhotoRole(
+  listingId: string,
+  photoId: string,
+  role: ListingPhotoRole,
+  dbOverride?: DbInstance
+): Promise<ListingPhoto | null> {
+  const db = dbOverride || getDb();
+  const results = await db
+    .update(listingPhotos)
+    .set({ role, updatedAt: new Date() })
+    .where(and(eq(listingPhotos.listingId, listingId), eq(listingPhotos.id, photoId)))
+    .returning();
+  return results[0] || null;
 }

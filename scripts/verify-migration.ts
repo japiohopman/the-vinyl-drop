@@ -168,6 +168,9 @@ export async function verifyMigrations(): Promise<void> {
   if (!checkNames.includes('listings_price_check')) {
     throw new Error("Missing expected check constraint 'listings_price_check' after migration execution");
   }
+  if (!checkNames.includes('listing_photos_role_check')) {
+    throw new Error("Missing expected check constraint 'listing_photos_role_check' after migration execution");
+  }
   if (!checkNames.includes('messages_body_length_check')) {
     throw new Error("Missing expected check constraint 'messages_body_length_check' after migration execution");
   }
@@ -183,6 +186,8 @@ export async function verifyMigrations(): Promise<void> {
     'comments_created_at_idx',
     'listing_photos_listing_idx',
     'listing_photos_order_idx',
+    'listing_photos_front_cover_unique_idx',
+    'listing_photos_back_cover_unique_idx',
     'physical_copies_release_idx',
     'physical_copies_owner_idx',
     'listings_seller_idx',

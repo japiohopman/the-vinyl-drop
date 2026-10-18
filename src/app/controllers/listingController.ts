@@ -10,6 +10,7 @@ import {
   addPhotoToListing,
   deletePhotoFromListing,
   reorderListingPhotos,
+  updateListingPhotoRole,
   publishListing,
   archiveListing,
 } from '../services/listingService';
@@ -19,6 +20,7 @@ import { formatPrice } from '../view-models/listingCardViewModel';
 import { FormViewModel } from '../view-models/formViewModel';
 import { parsePriceEurToCents } from '../../validators/listing';
 import { ValidationError, NotFoundError, AuthorizationError } from '../services/errors';
+import { LISTING_PHOTO_ROLE_GUIDANCE, LISTING_PHOTO_ROLE_LABELS, LISTING_PHOTO_ROLES, NEW_LISTING_PHOTO_ROLES } from '../../domain/listingPhotoRole';
 
 export async function getSellerListings(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -186,6 +188,10 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
       release: details.release,
       photos: details.photos,
       form,
+      photoRoles: LISTING_PHOTO_ROLES,
+      newPhotoRoles: NEW_LISTING_PHOTO_ROLES,
+      photoRoleLabels: LISTING_PHOTO_ROLE_LABELS,
+      photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
     });
   } catch (error) {
     next(error);
@@ -239,6 +245,10 @@ export async function postEditListing(req: Request, res: Response, next: NextFun
           release: details.release,
           photos: details.photos,
           form,
+          photoRoles: LISTING_PHOTO_ROLES,
+          newPhotoRoles: NEW_LISTING_PHOTO_ROLES,
+          photoRoleLabels: LISTING_PHOTO_ROLE_LABELS,
+          photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
         });
       }
     }
@@ -272,7 +282,8 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
         },
         req.body.altText,
         undefined,
-        storageOptions
+        storageOptions,
+        req.body.role
       );
     }
 
