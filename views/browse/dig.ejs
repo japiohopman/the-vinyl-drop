@@ -141,14 +141,14 @@
 
       <div class="dig-navigation" aria-label="Navigatie tussen platen">
         <button type="button" class="btn btn-outline dig-nav-button" data-dig-prev disabled>
-          ↑ Vorige plaat
+          ↓ Vorige plaat
         </button>
         <div class="dig-progress-wrap">
           <progress data-dig-progress max="<%= visibleItems.length %>" value="1" aria-label="Voortgang van de Dig-sessie"></progress>
           <span data-dig-progress-label><%= visibleItems.length === 1 ? 'Laatste plaat' : 'Omhoog voor de volgende plaat' %></span>
         </div>
         <button type="button" class="btn btn-outline dig-nav-button" data-dig-next <%= visibleItems.length <= 1 ? 'disabled' : '' %>>
-          Volgende plaat ↓
+          Volgende plaat ↑
         </button>
       </div>
 
