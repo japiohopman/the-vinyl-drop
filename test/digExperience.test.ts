@@ -77,7 +77,6 @@ describe('Dig photo-role contract', () => {
     const viewPath = path.join(process.cwd(), 'views/browse/dig.ejs');
     const html = await ejs.renderFile(viewPath, {
       title: 'Crate Dig',
-      errorMessage: '',
       hasMore: false,
       totalCount: 1,
       filters: {
