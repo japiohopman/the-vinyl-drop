@@ -54,6 +54,9 @@ describe('App Routes and Error Handling', () => {
       expect(response.text).toContain('yepyouknowhim@gmail.com');
       expect(response.text).toContain('waitlist addresses');
       expect(response.text).toContain('responsible operator');
+      expect(response.text).toContain('Your privacy rights');
+      expect(response.text).toContain('href="https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen"');
+      expect(response.text).toContain('normally one month under GDPR');
     });
   });
 
