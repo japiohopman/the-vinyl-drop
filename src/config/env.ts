@@ -15,6 +15,17 @@ export const envSchema = z
       if (val === undefined || val === '') return undefined;
       return val.toLowerCase() === 'true' || val === '1';
     }),
+    BETA_INVITE_ONLY_ENABLED: z.preprocess((value) => {
+      if (value === undefined || value === '') return undefined;
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') {
+        const normalized = value.toLowerCase();
+        if (normalized === 'true' || normalized === '1') return true;
+        if (normalized === 'false' || normalized === '0') return false;
+      }
+      return value;
+    }, z.boolean().optional()),
+    BETA_ALLOWED_EMAILS: z.string().optional(),
     APP_BASE_URL: z.string().optional(),
     ALLOWED_REDIRECT_URLS: z.string().optional(),
     RECOVERY_SIGNING_SECRET: z.string().optional(),
@@ -130,12 +141,22 @@ export const envSchema = z
     }
   });
 
-export type Env = Omit<z.infer<typeof envSchema>, 'APP_BASE_URL' | 'ALLOWED_REDIRECT_URLS' | 'MESSAGING_ENABLED' | 'SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED'> & {
+export type Env = Omit<
+  z.infer<typeof envSchema>,
+  | 'APP_BASE_URL'
+  | 'ALLOWED_REDIRECT_URLS'
+  | 'MESSAGING_ENABLED'
+  | 'SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED'
+  | 'BETA_INVITE_ONLY_ENABLED'
+  | 'BETA_ALLOWED_EMAILS'
+> & {
   APP_BASE_URL: string;
   ALLOWED_REDIRECT_URLS: string;
   RECOVERY_SIGNING_SECRET: string;
   MESSAGING_ENABLED: boolean;
   SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: boolean;
+  BETA_INVITE_ONLY_ENABLED: boolean;
+  BETA_ALLOWED_EMAILS: string;
 };
 
 export function validateEnv(envInput: Record<string, unknown> = process.env): Env {
@@ -176,6 +197,11 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
       ? result.data.SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED
       : result.data.NODE_ENV === 'test';
 
+  // Invite-only access is opt-in; deploying source alone must not silently change existing sign-up behavior.
+  // When enabled with an empty BETA_ALLOWED_EMAILS value, the allowlist helper intentionally denies everyone.
+  const defaultBetaInviteOnlyEnabled = result.data.BETA_INVITE_ONLY_ENABLED ?? false;
+  const defaultBetaAllowedEmails = result.data.BETA_ALLOWED_EMAILS || '';
+
   return {
     ...result.data,
     APP_BASE_URL: defaultAppBaseUrl,
@@ -185,6 +211,8 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
     SUPABASE_ANON_KEY: result.data.SUPABASE_ANON_KEY || 'mock-anon-key',
     MESSAGING_ENABLED: defaultMessagingEnabled,
     SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: defaultSignupPasswordCheckApprovalEnabled,
+    BETA_INVITE_ONLY_ENABLED: defaultBetaInviteOnlyEnabled,
+    BETA_ALLOWED_EMAILS: defaultBetaAllowedEmails,
   };
 }
 
