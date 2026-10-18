@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <rect width="500" height="500" fill="#ebe5d9"/>
+  <rect x="20" y="20" width="460" height="460" fill="#f60f4b" stroke="#111111" stroke-width="8"/>
+  <circle cx="250" cy="250" r="180" fill="#181818" stroke="#111111" stroke-width="6"/>
+  <circle cx="250" cy="250" r="160" fill="none" stroke="#2a2a2a" stroke-width="2"/>
+  <circle cx="250" cy="250" r="140" fill="none" stroke="#222222" stroke-width="2"/>
+  <circle cx="250" cy="250" r="120" fill="none" stroke="#282828" stroke-width="2"/>
+  <circle cx="250" cy="250" r="100" fill="none" stroke="#202020" stroke-width="2"/>
+  <circle cx="250" cy="250" r="65" fill="#f4efe6" stroke="#111111" stroke-width="4"/>
+  <circle cx="250" cy="250" r="15" fill="#111111"/>
+  <text x="250" y="215" font-family="'Space Grotesk', 'Space Mono', sans-serif" font-size="16" font-weight="bold" fill="#111111" text-anchor="middle" letter-spacing="2">THE VINYL DROP</text>
+  <text x="250" y="295" font-family="'Space Grotesk', 'Space Mono', sans-serif" font-size="12" font-weight="bold" fill="#d6003b" text-anchor="middle" letter-spacing="1">NO COVER ARTWORK AVAILABLE</text>
+</svg>
