@@ -1066,3 +1066,210 @@ select.form-control {
 .justify-between { justify-content: space-between; }
 .gap-2 { gap: var(--space-2); }
 .gap-4 { gap: var(--space-4); }
+
+
+/* Browse format quick filters — visible, tactile and mobile-safe */
+.browse-filter-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  margin-bottom: var(--space-8);
+  padding: var(--space-4);
+  background: var(--color-paper-muted);
+  border: var(--border-thick);
+  border-radius: var(--radius-md);
+}
+
+.browse-format-quick-filters {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.browse-format-quick-filters legend,
+.browse-primary-filters label,
+.browse-secondary-grid label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.browse-format-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.browse-format-chip {
+  display: inline-flex;
+  min-height: 44px;
+  min-width: 64px;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-tactile);
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.browse-format-chip:hover {
+  background: var(--color-surface-hover);
+}
+
+.browse-format-chip.is-selected {
+  background: var(--color-ink);
+  color: var(--color-white);
+  box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.25);
+}
+
+.browse-format-chip:focus-visible,
+.browse-filter-form input:focus-visible,
+.browse-filter-form select:focus-visible,
+.browse-filter-form summary:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.browse-format-help {
+  margin: var(--space-2) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-base);
+}
+
+.browse-primary-filters {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.85fr) minmax(0, 1.6fr) auto;
+  align-items: end;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.browse-genre-control,
+.browse-keyword-control {
+  min-width: 0;
+}
+
+.browse-keyword-control input,
+.browse-secondary-grid input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-3);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  color: var(--color-ink);
+  font: inherit;
+}
+
+.browse-search-submit {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+}
+
+.browse-secondary-filters {
+  min-width: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.browse-secondary-filters summary {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  padding: 0 var(--space-2);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.browse-secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+  margin-top: var(--space-3);
+}
+
+.browse-secondary-grid > div {
+  min-width: 0;
+}
+
+.browse-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.browse-apply-submit {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+}
+
+@media (max-width: 767px) {
+  .browse-filter-form {
+    padding: var(--space-3);
+  }
+
+  .browse-primary-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .browse-primary-filters .browse-genre-control {
+    order: 0;
+  }
+
+  .browse-primary-filters .browse-keyword-control {
+    order: 1;
+  }
+
+  .browse-primary-filters .browse-search-submit {
+    order: 2;
+    justify-self: start;
+    min-width: 112px;
+  }
+
+  .browse-secondary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .browse-apply-submit {
+    display: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .browse-secondary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .browse-format-chip {
+    min-width: 0;
+    flex: 1 1 calc(50% - var(--space-2));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .browse-format-chip {
+    transition: none;
+  }
+}
