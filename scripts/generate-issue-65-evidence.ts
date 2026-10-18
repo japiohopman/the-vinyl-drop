@@ -12,6 +12,14 @@ import { listingPhotos } from '../src/db/schema/listingPhotos';
 import { createApp } from '../src/app';
 import { chromium, Page } from '@playwright/test';
 
+/**
+ * Waits until the selected image has the expected resolved URL and has loaded successfully.
+ * @param page - Browser page containing the image.
+ * @param selector - CSS selector identifying the image.
+ * @param expectedUrlPath - Expected image URL, resolved relative to the current page.
+ * @param timeout - Maximum wait in milliseconds; defaults to 5000.
+ * @throws If the image does not satisfy the checks before the timeout.
+ */
 async function assertLoadedImage(page: Page, selector: string, expectedUrlPath: string, timeout = 5000) {
   await page.waitForFunction(
     ({ sel, exp }) => {
@@ -25,6 +33,11 @@ async function assertLoadedImage(page: Page, selector: string, expectedUrlPath: 
   );
 }
 
+/**
+ * Seeds an isolated PGlite database and starts a local listing verification server.
+ * Runs Playwright artwork fallback, gallery, and layout assertions, saves screenshots
+ * under docs/evidence/issue-65, and exits the process after successful verification.
+ */
 async function run() {
   console.log('Seeding PGlite verification DB for Issue #65 detail page artwork...');
   const pglite = new PGlite();
