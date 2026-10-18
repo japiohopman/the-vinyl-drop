@@ -24,7 +24,7 @@
     <a class="btn btn-outline dig-back-to-browse" href="<%= browseReturnUrl %>">← Terug naar Browse</a>
   </header>
 
-  <% if (errorMessage) { %>
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
     <div role="alert" class="alert alert-error"><%= errorMessage %></div>
   <% } %>
 
