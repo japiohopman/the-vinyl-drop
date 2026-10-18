@@ -63,6 +63,14 @@ Before publication, the owner must approve a practical rule for each category: w
 
 The existing Contact page lists [yepyouknowhim@gmail.com](mailto:yepyouknowhim@gmail.com). A user may use that address to ask a question or request access, correction or deletion of their information. The actual responsible person, identity-verification steps, request log, response process and deletion steps still need an owner-approved runbook. Do not promise automated self-service deletion or export; neither was found in the audited routes.
 
+## Privacy rights and complaints
+
+Depending on the situation and the applicable legal basis, people may have rights to request access to their personal data, correction, deletion, restriction of processing, portability, or to object to processing. Where processing relies on consent, they may withdraw that consent. These rights are subject to the conditions and exceptions in applicable law; this draft does not promise that every request will always result in deletion or export.
+
+Send a request to the contact address on the site's Contact page. The project should verify identity proportionately, respond within the applicable statutory deadline (normally one month under GDPR), explain any lawful refusal or extension, and keep only a minimal protected record that a request was handled.
+
+People may also lodge a complaint with the Dutch supervisory authority, the [Autoriteit Persoonsgegevens](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen). The public notice must retain a working link to that authority.
+
 ## Responsible operator and contact
 
 **Required before approval:** confirm the legal name of the controller/responsible operator and the public postal/business address (or obtain advice on what must be published for this project). The current application only verifies the existing email contact; it does not establish the operator's legal identity or address.
@@ -81,5 +89,6 @@ Privacy contact currently shown by the application: [yepyouknowhim@gmail.com](ma
 
 - [European Commission — information that organisations must provide](https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/obligations_en)
 - [Autoriteit Persoonsgegevens — cookies](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/internet-telefoon-tv-en-post/cookies)
+- [Autoriteit Persoonsgegevens — privacy rights and requests](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen)
 - [Repository data inventory](BETA_DATA_INVENTORY.md)
 - [Security and privacy notes](SECURITY_PRIVACY.md)
