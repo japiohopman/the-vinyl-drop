@@ -226,9 +226,13 @@
   function handlePointerUp(event) {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
     const { deltaY, neighborIndex } = gesture;
-    const shouldNavigate = !gesture.horizontal
-      && Math.abs(deltaY) >= swipeThreshold
-      && digState.isValidIndex(neighborIndex, slides.length);
+    const shouldNavigate = digState.shouldCommitSwipe(
+      deltaY,
+      swipeThreshold,
+      neighborIndex,
+      slides.length,
+      gesture.horizontal
+    );
 
     // Store the target before releasing the pointer, because clearing a short
     // gesture also clears the gesture state.
