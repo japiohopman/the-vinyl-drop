@@ -33,7 +33,23 @@
               Select Photo to Upload
             </label>
             <input type="file" id="photoFile" name="photo" accept="image/jpeg,image/png,image/webp" required style="font-family: var(--font-mono); font-size: var(--font-size-sm);" />
-            <input type="text" name="altText" placeholder="Alt text description (optional e.g. Front sleeve wear)" style="padding: 8px; border: var(--border-thin); font-size: var(--font-size-sm);" />
+            <label for="newPhotoRole" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm);">Wat staat er op deze foto? (verplicht)</label>
+            <select id="newPhotoRole" name="role" required class="form-control">
+              <option value="">Kies de fotorol</option>
+              <% newPhotoRoles.forEach(function(role) { %>
+                <option value="<%= role %>"><%= photoRoleLabels[role] %></option>
+              <% }); %>
+            </select>
+            <details>
+              <summary>Fototips per rol</summary>
+              <ul style="padding-left: var(--space-5); font-size: var(--font-size-sm);">
+                <% newPhotoRoles.forEach(function(role) { %>
+                  <li style="margin: var(--space-2) 0;"><strong><%= photoRoleLabels[role] %>:</strong> <%= photoRoleGuidance[role] %></li>
+                <% }); %>
+              </ul>
+            </details>
+            <label for="altText" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm);">Alt-tekst (beschrijf wat zichtbaar is)</label>
+            <input type="text" id="altText" name="altText" placeholder="Bijvoorbeeld: Side A-label of slijtage aan de rechterhoek" required maxlength="500" style="padding: 8px; border: var(--border-thin); font-size: var(--font-size-sm);" />
             <div>
               <%- include('../partials/button', {
                 text: 'Upload Photo',
@@ -50,6 +66,10 @@
         </p>
       <% } %>
 
+      <% if (photoError) { %>
+        <p role="alert" style="padding: var(--space-3); border: 1px solid var(--color-error-border); color: var(--color-error-border); margin-bottom: var(--space-4);"><%= photoError %></p>
+      <% } %>
+
       <!-- Existing Photos List -->
       <% if (photos.length > 0) { %>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-4);">
@@ -57,8 +77,18 @@
             <div style="border: var(--border-thin); padding: var(--space-2); border-radius: var(--radius-sm); background: #fff; text-align: center;">
               <img src="<%= photo.publicUrl %>" alt="<%= photo.altText || 'Listing photo' %>" style="width: 100%; height: 140px; object-fit: cover; border-radius: var(--radius-xs);" />
               <div style="margin-top: var(--space-2); font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
-                Photo #<%= idx + 1 %>
+                Foto #<%= idx + 1 %> · <strong><%= photoRoleLabels[photo.role] || photoRoleLabels.legacy_unclassified %></strong>
               </div>
+              <p style="font-size: var(--font-size-xs); color: var(--color-ink-muted); text-align: left;"><%= photoRoleGuidance[photo.role] || photoRoleGuidance.legacy_unclassified %></p>
+              <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/role" method="POST" style="margin-top: var(--space-2); text-align: left;">
+                <label for="photo-role-<%= idx %>" style="font-size: var(--font-size-xs); font-weight: 700;">Classificeer / wijzig fotorol</label>
+                <select id="photo-role-<%= idx %>" name="role" required class="form-control">
+                  <% photoRoles.forEach(function(role) { %>
+                    <option value="<%= role %>" <%= role === photo.role ? 'selected' : '' %>><%= photoRoleLabels[role] %></option>
+                  <% }); %>
+                </select>
+                <button type="submit" class="btn btn-outline btn-sm" style="width: 100%; margin-top: var(--space-2);">Rol opslaan</button>
+              </form>
               <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/delete" method="POST" style="margin-top: var(--space-2);">
                 <button type="submit" class="btn btn-outline btn-sm" style="width: 100%; color: #dc2626; border-color: #fca5a5;">Delete Photo</button>
               </form>
