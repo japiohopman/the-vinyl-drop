@@ -176,14 +176,14 @@ export async function searchListings(
   // an album/long-play characteristic; 12-inch and 7-inch are physical diameters.
   if (params.formats && params.formats.length > 0) {
     conditions.push(or(...params.formats.map((format) =>
-      sql\`${releases.format} ~* \${getVinylFormatPostgresPattern(format)}\`
+      sql`${releases.format} ~* ${getVinylFormatPostgresPattern(format)}`
     ))!);
   }
 
   // White-label is a release characteristic, not a physical diameter. Match
   // only explicit markers in the release label field; do not guess from title.
   if (params.whiteLabel) {
-    conditions.push(sql\`${releases.label} ~* \${WHITE_LABEL_POSTGRES_PATTERN}\`);
+    conditions.push(sql`${releases.label} ~* ${WHITE_LABEL_POSTGRES_PATTERN}`);
   }
 
   // Condition filter
