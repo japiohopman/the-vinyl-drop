@@ -89,7 +89,7 @@
             referrerpolicy="no-referrer"
             data-placeholder="/assets/vinyl-placeholder.svg"
             data-placeholder-alt="<%= placeholderAlt %>"
-            onerror="this.onerror=null; this.src='/assets/vinyl-placeholder.svg'; const plcAlt=this.getAttribute('data-placeholder-alt'); if (plcAlt) this.alt=plcAlt;"
+            onerror="if (typeof handleImageFallback === 'function') { handleImageFallback(this); } else if (typeof renderTerminalFallback === 'function') { renderTerminalFallback(this); } else { this.onerror=null; }"
           />
         <% } else { %>
           <img
@@ -108,12 +108,15 @@
         <div class="thumbnail-list" style="display: flex; gap: var(--space-3); margin-top: var(--space-4); overflow-x: auto; padding-bottom: var(--space-2);">
           <% photos.forEach(function(photo, index) { %>
             <% const thumbAlt = photo.altText || `Item photo ${index + 1} for ${release.title}`; %>
+            <% const thumbUnavailableAlt = `Item photo ${index + 1} unavailable for ${release.title}`; %>
             <button
               type="button"
               class="thumbnail-btn <%= index === 0 ? 'selected' : '' %>"
               aria-current="<%= index === 0 ? 'true' : 'false' %>"
+              aria-label="<%= thumbAlt %>"
               data-public-url="<%= photo.publicUrl %>"
               data-alt-text="<%= thumbAlt %>"
+              data-unavailable-alt="<%= thumbUnavailableAlt %>"
               onclick="
                 const mainImg = document.getElementById('main-photo-img');
                 if (mainImg) {
@@ -129,10 +132,11 @@
             >
               <img
                 src="<%= photo.publicUrl %>"
-                alt="Thumbnail <%= index + 1 %>"
+                alt="<%= thumbAlt %>"
                 style="width: 100%; height: 100%; object-fit: contain;"
                 data-placeholder="/assets/vinyl-placeholder.svg"
-                onerror="this.onerror=null; this.src=this.getAttribute('data-placeholder') || '/assets/vinyl-placeholder.svg';"
+                data-unavailable-alt="<%= thumbUnavailableAlt %>"
+                onerror="this.onerror=null; this.src=this.getAttribute('data-placeholder') || '/assets/vinyl-placeholder.svg'; const unAv=this.getAttribute('data-unavailable-alt'); if (unAv) { this.alt=unAv; if (this.parentElement && this.parentElement.tagName==='BUTTON') this.parentElement.setAttribute('aria-label', unAv); }"
               >
             </button>
           <% }); %>

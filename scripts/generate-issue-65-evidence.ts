@@ -269,8 +269,12 @@ async function run() {
       const thumbCount = await thumbBtns.count();
       assert.equal(thumbCount, 3, 'Expected 3 thumbnail buttons for lst1');
 
-      // Verify that 3rd thumbnail (broken seller photo) fell back to vinyl-placeholder.svg without broken icon
+      // Verify that 3rd thumbnail (broken seller photo) fell back to vinyl-placeholder.svg and updated truthful alt & aria-label
       await assertLoadedImage(page, '.thumbnail-btn:nth-child(3) img', '/assets/vinyl-placeholder.svg');
+      const thirdThumbAlt = await page.locator('.thumbnail-btn:nth-child(3) img').getAttribute('alt');
+      const thirdBtnAria = await page.locator('.thumbnail-btn:nth-child(3)').getAttribute('aria-label');
+      assert.equal(thirdThumbAlt, 'Item photo 3 unavailable for A Love Supreme', 'Thumbnail image alt must update to truthful unavailable text when broken');
+      assert.equal(thirdBtnAria, 'Item photo 3 unavailable for A Love Supreme', 'Thumbnail button aria-label must update to truthful unavailable text when broken');
 
       // Focus and press Enter on second thumbnail
       await thumbBtns.nth(1).focus();
@@ -363,7 +367,7 @@ async function run() {
       await context.close();
     }
 
-    // Case 6: Controlled browser test with network route interception aborting placeholder request
+    // Case 6: Controlled browser test on listing with seller photo (`lst3`) with network route interception aborting placeholder request
     // Asserts exact request count === 1, img.onerror === null, img.style.display === 'none', and terminal fallback badge rendered
     {
       const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -400,6 +404,44 @@ async function run() {
       assert.equal(placeholderRequestCount, 1, 'Placeholder request count MUST be exactly 1 (no repeated requests / infinite loops)');
       assert.ok(badgeText.includes('Vinyl Record'), 'Terminal fallback badge must display fallback label text');
       assert.equal(badgeAriaLabel, 'Default vinyl placeholder for Blue Train', 'Terminal fallback badge must carry truthful accessible aria-label');
+
+      await context.close();
+    }
+
+    // Case 7: Controlled browser test on listing with NO seller photo + broken release.coverArtUrl (`lst4`)
+    // Verifies that when `coverArtUrl` fails AND placeholder request is aborted, terminal DOM badge is rendered cleanly
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      let placeholderRequestCount = 0;
+
+      await context.route('**/assets/vinyl-placeholder.svg', (route) => {
+        placeholderRequestCount++;
+        route.abort();
+      });
+
+      const page = await context.newPage();
+
+      const requestFailedPromise = page.waitForEvent('requestfailed', {
+        predicate: (req) => req.url().includes('vinyl-placeholder.svg'),
+        timeout: 5000,
+      });
+
+      await page.goto(`http://localhost:${port}/listings/${lst4.id}`, { waitUntil: 'domcontentloaded' });
+
+      await requestFailedPromise;
+
+      await page.waitForSelector('.terminal-fallback-badge', { state: 'visible', timeout: 5000 });
+
+      const imgStyleDisplay = await page.locator('#main-photo-img').evaluate((el) => (el as unknown as { style: { display: string } }).style.display);
+      const finalOnerror = await page.locator('#main-photo-img').evaluate((el) => (el as unknown as { onerror: unknown }).onerror);
+      const badgeText = await page.locator('.terminal-fallback-badge').innerText();
+      const badgeAriaLabel = await page.locator('.terminal-fallback-badge').getAttribute('aria-label');
+
+      assert.equal(imgStyleDisplay, 'none', 'Image element MUST be hidden when placeholder fails on no-seller-photo branch');
+      assert.equal(finalOnerror, null, 'img.onerror MUST be null after terminal fallback on no-seller-photo branch');
+      assert.equal(placeholderRequestCount, 1, 'Placeholder request count MUST be exactly 1 on no-seller-photo branch');
+      assert.ok(badgeText.includes('Vinyl Record'), 'Terminal fallback badge must display fallback label text');
+      assert.equal(badgeAriaLabel, 'Default vinyl placeholder for My Favorite Things', 'Terminal fallback badge must carry truthful accessible aria-label');
 
       await context.close();
     }
