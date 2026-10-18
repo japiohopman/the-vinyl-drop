@@ -126,6 +126,7 @@
   function clearDragStyles() {
     if (!gesture) return;
     const { slide, stage, neighbor } = gesture;
+    stage.classList.remove('is-gesture-active');
     slide.classList.remove('is-dragging');
     if (neighbor) neighbor.classList.remove('is-dragging');
     slide.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
@@ -191,11 +192,17 @@
     const direction = deltaY < 0 ? 1 : -1;
     const targetIndex = activeIndex + direction;
     const neighbor = slides[targetIndex];
+    if (gesture.neighbor && gesture.neighbor !== neighbor) {
+      gesture.neighbor.classList.remove('is-dragging');
+      gesture.neighbor.style.transform = '';
+      gesture.neighbor.style.transition = '';
+    }
     gesture.neighborIndex = targetIndex;
     gesture.neighbor = neighbor || null;
 
     gesture.slide.classList.add('is-dragging');
     const progressValue = Math.min(Math.abs(deltaY) / gesture.height, 1);
+    if (motionPreference.matches) return;
     const softenedDelta = neighbor ? deltaY : deltaY * 0.22;
     const rotation = direction > 0 ? -progressValue * 9 : progressValue * 9;
     gesture.slide.style.transform = `translate3d(0, ${softenedDelta}px, 0) rotateX(${rotation}deg)`;
@@ -216,7 +223,7 @@
 
   function handlePointerUp(event) {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
-    const { deltaY, neighborIndex, slide, neighbor } = gesture;
+    const { deltaY, neighborIndex } = gesture;
     const shouldNavigate = !gesture.horizontal
       && Math.abs(deltaY) >= swipeThreshold
       && neighborIndex >= 0
@@ -261,7 +268,11 @@
       stage.addEventListener('pointerdown', handlePointerDown);
       stage.addEventListener('pointermove', handlePointerMove);
       stage.addEventListener('pointerup', handlePointerUp);
-      stage.addEventListener('pointercancel', handlePointerUp);
+      stage.addEventListener('pointercancel', (event) => {
+        if (!gesture || event.pointerId !== gesture.pointerId) return;
+        stage.classList.remove('is-gesture-active');
+        clearDragStyles();
+      });
       stage.addEventListener('lostpointercapture', (event) => {
         if (gesture && event.pointerId === gesture.pointerId) clearDragStyles();
       });
