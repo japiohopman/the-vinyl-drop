@@ -1,4 +1,5 @@
 import ejs from 'ejs';
+import { PGlite } from '@electric-sql/pglite';
 import fs from 'fs';
 import path from 'path';
 import { resolveDigArtwork, DigPhotoCandidate } from '../src/domain/digExperience';
@@ -146,5 +147,67 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('object-fit: contain');
     expect(css).toContain('.dig-slide.is-leaving-up');
     expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped');
+  });
+});
+
+
+describe('Dig photo-role migration compatibility', () => {
+  it('keeps existing photo rows visible and ordered while leaving them unclassified', async () => {
+    const database = new PGlite();
+    try {
+      await database.exec(`
+        CREATE SCHEMA IF NOT EXISTS public;
+        CREATE TABLE public.listing_photos (
+          id uuid PRIMARY KEY,
+          listing_id uuid NOT NULL,
+          storage_path text NOT NULL,
+          display_order integer NOT NULL DEFAULT 0,
+          alt_text text,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        );
+        INSERT INTO public.listing_photos (id, listing_id, storage_path, display_order, alt_text)
+        VALUES
+          ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'old/second.webp', 1, 'Second old image'),
+          ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'old/first.webp', 0, 'First old image');
+      `);
+
+      const migrationPath = path.join(process.cwd(), 'drizzle/0013_add_listing_photo_roles.sql');
+      const migration = fs.readFileSync(migrationPath, 'utf8');
+      for (const statement of migration.split('--> statement-breakpoint').map((part) => part.trim()).filter(Boolean)) {
+        await database.exec(statement);
+      }
+
+      const rows = await database.query<{ id: string; storage_path: string; display_order: number; role: string }>(
+        'SELECT id::text AS id, storage_path, display_order, role FROM public.listing_photos ORDER BY display_order'
+      );
+      expect(rows.rows).toEqual([
+        {
+          id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+          storage_path: 'old/first.webp',
+          display_order: 0,
+          role: 'legacy_unclassified',
+        },
+        {
+          id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          storage_path: 'old/second.webp',
+          display_order: 1,
+          role: 'legacy_unclassified',
+        },
+      ]);
+
+      await database.query(
+        "UPDATE public.listing_photos SET role = 'front_cover' WHERE id = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'"
+      );
+      await expect(database.query(
+        "UPDATE public.listing_photos SET role = 'front_cover' WHERE id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'"
+      )).rejects.toThrow();
+      const roleAfterRejectedDuplicate = await database.query<{ id: string; role: string }>(
+        'SELECT id::text AS id, role FROM public.listing_photos ORDER BY display_order'
+      );
+      expect(roleAfterRejectedDuplicate.rows.map((row) => row.role)).toEqual(['front_cover', 'legacy_unclassified']);
+    } finally {
+      await database.close();
+    }
   });
 });
