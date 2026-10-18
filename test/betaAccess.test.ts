@@ -78,7 +78,7 @@ describe('invite-only beta access and onboarding', () => {
   });
 
   it('does not keep an app session for an identity removed from the private allowlist', async () => {
-    const getUserFromTokenSpy = jest.spyOn(authService, 'getUserFromToken').mockResolvedValue({
+    jest.spyOn(authService, 'getUserFromToken').mockResolvedValue({
       id: '11111111-1111-4111-8111-111111111111',
       email: 'removed@example.com',
     } as unknown as User);
