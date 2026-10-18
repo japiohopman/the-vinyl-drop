@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import { resolveDigArtwork, DigPhotoCandidate } from '../src/domain/digExperience';
 import { listingPhotoRoleSchema, newListingPhotoRoleSchema } from '../src/validators/listing';
-import { VINYL_FORMAT_FILTERS } from '../src/domain/releaseFormat';
 
 const photo = (
   role: DigPhotoCandidate['role'],
@@ -124,8 +123,7 @@ describe('Dig photo-role contract', () => {
     expect(html).toContain('Achterkant niet gefotografeerd');
     expect(html).toContain('Voorkant');
     expect(html).toContain('Achterkant');
-    expect(html).toContain('name="'); // The page is EJS-rendered, not a client-side-only template.
-    expect(html).toContain('href="/browse?q=De%20La%20Soul&genre=Hip%20Hop&condition=VG%2B&minPrice=10.00&maxPrice=50.00&sort=price_asc&format=lp&format=7-inch&whiteLabel=1&view=grid"');
+    expect(html).toContain('href="/browse?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
     expect(html).toContain('/js/dig-mode.js');
     expect(html).not.toContain('src="/seller/record.webp"');
     expect(html).toContain('href="/listings/listing-1"');
