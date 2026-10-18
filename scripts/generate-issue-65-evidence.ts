@@ -10,7 +10,18 @@ import { physicalCopies } from '../src/db/schema/physicalCopies';
 import { listings } from '../src/db/schema/listings';
 import { listingPhotos } from '../src/db/schema/listingPhotos';
 import { createApp } from '../src/app';
-import { chromium } from '@playwright/test';
+import { chromium, Page } from '@playwright/test';
+
+async function assertLoadedImage(page: Page, selector: string, expectedUrlSubstring: string, timeout = 5000) {
+  await page.waitForFunction(
+    ({ sel, sub }) => {
+      const img = (globalThis as unknown as { document: { querySelector: (s: string) => { src: string; complete: boolean; naturalWidth: number } | null } }).document.querySelector(sel);
+      return Boolean(img && img.src.includes(sub) && img.complete && img.naturalWidth > 0);
+    },
+    { sel: selector, sub: expectedUrlSubstring },
+    { timeout }
+  );
+}
 
 async function run() {
   console.log('Seeding PGlite verification DB for Issue #65 detail page artwork...');
@@ -156,32 +167,7 @@ async function run() {
     altText: 'Broken photo on Blue Train',
   });
 
-  // 4. Listing with NO seller photo AND broken release artwork -> placeholder fallback
-  const [rel4] = await db.insert(releases).values({
-    title: 'My Favorite Things',
-    artist: 'John Coltrane',
-    label: 'Atlantic',
-    releaseYear: 1961,
-    format: 'LP',
-    coverArtUrl: '/assets/broken-release-art.jpg',
-  }).returning();
-
-  const [pc4] = await db.insert(physicalCopies).values({
-    releaseId: rel4.id,
-    ownerId: sellerId,
-    mediaCondition: 'VG+',
-    sleeveCondition: 'VG',
-  }).returning();
-
-  const [lst4] = await db.insert(listings).values({
-    physicalCopyId: pc4.id,
-    sellerId: sellerId,
-    price: 3000,
-    currency: 'EUR',
-    status: 'published',
-  }).returning();
-
-  // 5. Listing with NO seller photo AND NO release artwork -> directly renders vinyl placeholder
+  // 4. Listing with NO seller photo AND NO release artwork -> directly renders vinyl placeholder
   const [rel5] = await db.insert(releases).values({
     title: 'Ballads',
     artist: 'John Coltrane',
@@ -244,12 +230,8 @@ async function run() {
       });
       assert.equal(objectFit, 'contain', `Main detail photo must use object-fit: contain at ${vp.width}px`);
 
-      // Assert initial image decode/load success
-      const isInitialLoaded = await mainImg.evaluate((el) => {
-        const image = el as unknown as { complete: boolean; naturalWidth: number };
-        return image.complete && image.naturalWidth > 0;
-      });
-      assert.ok(isInitialLoaded, 'Initial main image must be completely loaded and decoded');
+      // Polling assertion for initial image load & decode
+      await assertLoadedImage(page, '#main-photo-img', 'assets/test-cover.webp');
 
       // Verify initial main image src and alt
       const initialAlt = await mainImg.getAttribute('alt');
@@ -270,27 +252,15 @@ async function run() {
       assert.ok(isSecondSelected, 'Second thumbnail button must have selected class when activated via keyboard');
       assert.equal(secondAriaCurrent, 'true', 'Second thumbnail button must have aria-current="true" when activated via keyboard');
 
-      // Assert main image src, alt, and decode success after thumbnail selection
-      const updatedSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
-      const updatedAlt = await mainImg.getAttribute('alt');
-      assert.ok(updatedSrc.includes('assets/test-dark-cover.svg'), 'Main image src must update to second thumbnail URL');
-      assert.equal(updatedAlt, 'Gatefold inner photo of A Love Supreme', 'Main image alt text must update to match selected thumbnail');
+      // Polling assertion for second image load & decode after thumbnail activation
+      await assertLoadedImage(page, '#main-photo-img', 'assets/test-dark-cover.svg');
 
-      const isUpdatedLoaded = await mainImg.evaluate((el) => {
-        const image = el as unknown as { complete: boolean; naturalWidth: number };
-        return image.complete && image.naturalWidth > 0;
-      });
-      assert.ok(isUpdatedLoaded, 'Main image after thumbnail activation must be completely loaded and decoded');
+      const updatedAlt = await mainImg.getAttribute('alt');
+      assert.equal(updatedAlt, 'Gatefold inner photo of A Love Supreme', 'Main image alt text must update to match selected thumbnail');
 
       // Now click third thumbnail (broken seller photo) to verify re-armed fallback triggering
       await thumbBtns.nth(2).click();
-      await page.waitForFunction(() => {
-        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
-        return img && img.src.includes('test-light-cover.svg');
-      }, { timeout: 5000 });
-
-      const rearmedSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
-      assert.ok(rearmedSrc.includes('test-light-cover.svg'), 'Clicking broken thumbnail must trigger re-armed fallback to release artwork');
+      await assertLoadedImage(page, '#main-photo-img', 'test-light-cover.svg');
 
       const isThirdSelected = await thumbBtns.nth(2).evaluate((el) => el.classList.contains('selected'));
       const thirdAriaCurrent = await thumbBtns.nth(2).getAttribute('aria-current');
@@ -307,23 +277,11 @@ async function run() {
       const page = await context.newPage();
 
       await page.goto(`http://localhost:${port}/listings/${lst2.id}`, { waitUntil: 'domcontentloaded' });
+      await assertLoadedImage(page, '#main-photo-img', 'test-light-cover.svg');
+
       const mainImg = page.locator('#main-photo-img');
-
-      await page.waitForFunction(() => {
-        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
-        return img && img.src.includes('test-light-cover.svg');
-      }, { timeout: 5000 });
-
-      const currentSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
       const currentAlt = await mainImg.getAttribute('alt');
-      assert.ok(currentSrc.includes('test-light-cover.svg'), 'Broken seller photo must fall back to valid release artwork URL');
       assert.equal(currentAlt, 'Catalog cover artwork for Giant Steps', 'Alt text must update to release artwork alt text');
-
-      const isReleaseArtLoaded = await mainImg.evaluate((el) => {
-        const image = el as unknown as { complete: boolean; naturalWidth: number };
-        return image.complete && image.naturalWidth > 0;
-      });
-      assert.ok(isReleaseArtLoaded, 'Fallback release artwork must load and decode successfully (naturalWidth > 0)');
 
       await context.close();
     }
@@ -334,16 +292,10 @@ async function run() {
       const page = await context.newPage();
 
       await page.goto(`http://localhost:${port}/listings/${lst3.id}`, { waitUntil: 'domcontentloaded' });
+      await assertLoadedImage(page, '#main-photo-img', 'vinyl-placeholder.svg');
+
       const mainImg = page.locator('#main-photo-img');
-
-      await page.waitForFunction(() => {
-        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string } | null } }).document.getElementById('main-photo-img');
-        return img && img.src.includes('vinyl-placeholder.svg');
-      }, { timeout: 5000 });
-
-      const currentSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
       const currentAlt = await mainImg.getAttribute('alt');
-      assert.ok(currentSrc.includes('vinyl-placeholder.svg'), 'Broken seller photo + broken release art must fall back to vinyl placeholder');
       assert.equal(currentAlt, 'Default vinyl placeholder for Blue Train', 'Alt text must update to truthful vinyl placeholder alt text');
 
       await page.screenshot({ path: path.join(outputDir, 'broken-photo-fallback-verification.png'), fullPage: true });
@@ -356,48 +308,41 @@ async function run() {
       const page = await context.newPage();
 
       await page.goto(`http://localhost:${port}/listings/${lst5.id}`, { waitUntil: 'domcontentloaded' });
-      const mainImg = page.locator('#main-photo-img');
+      await assertLoadedImage(page, '#main-photo-img', 'vinyl-placeholder.svg');
 
-      const currentSrc = await mainImg.evaluate((el) => (el as unknown as { src: string }).src);
+      const mainImg = page.locator('#main-photo-img');
       const currentAlt = await mainImg.getAttribute('alt');
-      assert.ok(currentSrc.includes('vinyl-placeholder.svg'), 'Initial listing with no photos/cover art must render vinyl placeholder');
       assert.equal(currentAlt, 'Default vinyl placeholder for Ballads', 'Initial placeholder must have truthful placeholder alt text');
 
       await context.close();
     }
 
-    // Case 5: Controlled browser test forcing local placeholder failure -> verifies handler halts with onerror === null (no infinite loop)
+    // Case 5: Controlled browser test with network route interception aborting placeholder request
+    // Asserts exact request count === 1, image remains on placeholder URL, and img.onerror === null
     {
       const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      let placeholderRequestCount = 0;
+
+      await context.route('**/assets/vinyl-placeholder.svg', (route) => {
+        placeholderRequestCount++;
+        route.abort();
+      });
+
       const page = await context.newPage();
+      await page.goto(`http://localhost:${port}/listings/${lst3.id}`, { waitUntil: 'domcontentloaded' });
 
-      await page.goto(`http://localhost:${port}/listings/${lst4.id}`, { waitUntil: 'domcontentloaded' });
+      // Wait for image fallback chain to attempt loading vinyl-placeholder.svg and set onerror = null
+      await page.waitForFunction(() => {
+        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { src: string; onerror: unknown } | null } }).document.getElementById('main-photo-img');
+        return Boolean(img && img.src.includes('vinyl-placeholder.svg') && img.onerror === null);
+      }, { timeout: 5000 });
 
-      // Set data-placeholder to a non-existent URL and trigger error handling
-      await page.evaluate(() => {
-        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { setAttribute: (k: string, v: string) => void; dispatchEvent: (e: unknown) => void } | null } }).document.getElementById('main-photo-img');
-        if (img) {
-          img.setAttribute('data-placeholder', '/assets/broken-placeholder-file.svg');
-          if (typeof (globalThis as unknown as { handleImageFallback: (i: unknown) => void }).handleImageFallback === 'function') {
-            (globalThis as unknown as { handleImageFallback: (i: unknown) => void }).handleImageFallback(img);
-          }
-        }
-      });
+      const finalSrc = await page.locator('#main-photo-img').evaluate((el) => (el as unknown as { src: string }).src);
+      const finalOnerror = await page.locator('#main-photo-img').evaluate((el) => (el as unknown as { onerror: unknown }).onerror);
 
-      // Dispatch error event when image source is pointing to the broken placeholder
-      await page.evaluate(() => {
-        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { dispatchEvent: (e: unknown) => void } | null } }).document.getElementById('main-photo-img');
-        if (img) {
-          img.dispatchEvent(new Event('error'));
-        }
-      });
-
-      const onerrorIsCleared = await page.evaluate(() => {
-        const img = (globalThis as unknown as { document: { getElementById: (id: string) => { onerror: unknown } | null } }).document.getElementById('main-photo-img');
-        return img ? img.onerror === null : false;
-      });
-
-      assert.ok(onerrorIsCleared, 'onerror property on image element MUST be set to null after placeholder failure to halt loop');
+      assert.ok(finalSrc.includes('vinyl-placeholder.svg'), 'Image src must remain on vinyl placeholder URL after aborted request');
+      assert.equal(finalOnerror, null, 'img.onerror MUST be null after fallback to placeholder completes');
+      assert.equal(placeholderRequestCount, 1, 'Placeholder request count MUST be exactly 1 (no repeated requests / infinite loops)');
 
       await context.close();
     }
