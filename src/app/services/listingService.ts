@@ -40,6 +40,7 @@ import {
   findRecentPublishedListings as findRecentInRepo,
   JoinedListingRecord,
   searchListings,
+  hasExplicitWhiteLabelInventory as hasWhiteLabelInRepo,
   SearchListingsParams,
   updateListing as updateListingInRepo,
   updateListingStatus as updateStatusInRepo,
@@ -217,6 +218,10 @@ export async function getHomeFeedListings(
     dbOverride
   );
   return result.records.map(recordToListingCardViewModel);
+}
+
+export async function hasExplicitWhiteLabelInventory(dbOverride?: DbInstance): Promise<boolean> {
+  return hasWhiteLabelInRepo(dbOverride);
 }
 
 export async function searchDigListings(
