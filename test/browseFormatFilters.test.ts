@@ -7,6 +7,8 @@ import {
   isExplicitWhiteLabel,
   matchesVinylFormatFilter,
   parseVinylFormatFilters,
+  resolveWhiteLabelFilter,
+  toggleVinylFormatFilter,
   VINYL_FORMAT_FILTERS,
 } from '../src/domain/releaseFormat';
 
@@ -15,6 +17,11 @@ describe('Browse vinyl format filters — metadata semantics', () => {
     expect(parseVinylFormatFilters(['LP', '7-inch', 'lp', 'invalid', 12])).toEqual(['lp', '7-inch']);
     expect(parseVinylFormatFilters('12-inch')).toEqual(['12-inch']);
     expect(parseVinylFormatFilters(undefined)).toEqual([]);
+    expect(toggleVinylFormatFilter(['lp', '7-inch'], 'lp')).toEqual(['7-inch']);
+    expect(toggleVinylFormatFilter(['lp'], '12-inch')).toEqual(['lp', '12-inch']);
+    expect(resolveWhiteLabelFilter('1', true)).toBe(false);
+    expect(resolveWhiteLabelFilter('', true)).toBe(true);
+    expect(resolveWhiteLabelFilter(['1'], false)).toBe(false);
   });
 
   it('distinguishes LP release type from explicit physical diameter', () => {
@@ -98,7 +105,7 @@ describe('Browse format filters — rendered state and responsive controls', () 
     expect(html).toContain('whiteLabel=1');
     expect(html).toContain('view=list');
     expect(html).toContain('q=De%20La%20Soul');
-    expect(html).toContain('page=1'); // Changing a filter should restart on page one.
+    expect(html).toContain('page=2'); // View-mode links preserve current page as well as every filter.
   });
 
   it('keeps responsive inputs shrinkable and quick-filter touch targets at least 44px', () => {
