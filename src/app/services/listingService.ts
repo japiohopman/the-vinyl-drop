@@ -256,6 +256,8 @@ export async function searchDigListings(
       url: `/listings/${record.listing.id}`,
       frontArtwork: artwork.front,
       backArtwork: artwork.back,
+      mediaCondition: record.physicalCopy.mediaCondition,
+      sleeveCondition: record.physicalCopy.sleeveCondition,
       conditionSummary: `Media ${record.physicalCopy.mediaCondition} · hoes ${record.physicalCopy.sleeveCondition}`,
     };
   });
