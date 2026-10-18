@@ -48,3 +48,19 @@ export const WHITE_LABEL_POSTGRES_PATTERN =
 export function isExplicitWhiteLabel(label: string | null | undefined): boolean {
   return typeof label === 'string' && /(?:^|[^a-z0-9])white[\s_-]+label(?:$|[^a-z0-9])/i.test(label);
 }
+
+/** Toggle a selected format chip; return a new stable list without duplicates. */
+export function toggleVinylFormatFilter(
+  selectedFormats: VinylFormatFilter[],
+  toggledFormat: VinylFormatFilter
+): VinylFormatFilter[] {
+  return selectedFormats.includes(toggledFormat)
+    ? selectedFormats.filter((format) => format !== toggledFormat)
+    : [...selectedFormats, toggledFormat];
+}
+
+/** Parse the optional white-label chip state and toggle it only when that button was used. */
+export function resolveWhiteLabelFilter(currentValue: unknown, toggleSubmitted: boolean): boolean {
+  const isSelected = currentValue === '1';
+  return toggleSubmitted ? !isSelected : isSelected;
+}
