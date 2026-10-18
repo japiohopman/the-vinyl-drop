@@ -40,6 +40,23 @@ describe('App Routes and Error Handling', () => {
     });
   });
 
+  describe('GET /privacy', () => {
+    it('renders the owner-review privacy draft and links to it from the footer', async () => {
+      const response = await request(app)
+        .get('/privacy')
+        .set('Accept', 'text/html');
+
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toMatch(/html/);
+      expect(response.text).toContain('Privacy Notice');
+      expect(response.text).toContain('Owner review draft — not approved for publication');
+      expect(response.text).toContain('href="/privacy"');
+      expect(response.text).toContain('yepyouknowhim@gmail.com');
+      expect(response.text).toContain('waitlist addresses');
+      expect(response.text).toContain('responsible operator');
+    });
+  });
+
   describe('GET /health', () => {
     it('should return health status JSON with 200 OK', async () => {
       const response = await request(app).get('/health');
