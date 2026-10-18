@@ -25,6 +25,11 @@ describe('Dig navigation and flip state', () => {
     expect(digState.adjacentIndex(2, 3, -1)).toBe(1);
     expect(digState.adjacentIndex(0, 1, 1)).toBeNull();
     expect(digState.adjacentIndex(0, 1, -1)).toBeNull();
+
+    expect(digState.shouldCommitSwipe(-80, 64, 1, 3, false)).toBe(true);
+    expect(digState.shouldCommitSwipe(30, 64, 1, 3, false)).toBe(false);
+    expect(digState.shouldCommitSwipe(80, 64, 3, 3, false)).toBe(false);
+    expect(digState.shouldCommitSwipe(-80, 64, 1, 3, true)).toBe(false);
   });
 
   it('toggles front/back without changing the current slide state', () => {
