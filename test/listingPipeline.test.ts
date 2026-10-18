@@ -302,6 +302,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       ).rejects.toThrow('Database transaction deadlocked');
 
       expect(deleteSpy).toHaveBeenCalled();
+      deleteSpy.mockRestore();
     });
 
     it('should record durable orphan record if photo upload DB insertion fails AND Storage cleanup fails', async () => {
