@@ -12,14 +12,6 @@ import { listingPhotos } from '../src/db/schema/listingPhotos';
 import { createApp } from '../src/app';
 import { chromium, Page } from '@playwright/test';
 
-/**
- * Waits until the selected image has the expected resolved URL and has loaded successfully.
- * @param page - Browser page containing the image.
- * @param selector - CSS selector identifying the image.
- * @param expectedUrlPath - Expected image URL, resolved relative to the current page.
- * @param timeout - Maximum wait in milliseconds; defaults to 5000.
- * @throws If the image does not satisfy the checks before the timeout.
- */
 async function assertLoadedImage(page: Page, selector: string, expectedUrlPath: string, timeout = 5000) {
   await page.waitForFunction(
     ({ sel, exp }) => {
@@ -33,11 +25,6 @@ async function assertLoadedImage(page: Page, selector: string, expectedUrlPath: 
   );
 }
 
-/**
- * Seeds an isolated PGlite database and starts a local listing verification server.
- * Runs Playwright artwork fallback, gallery, and layout assertions, saves screenshots
- * under docs/evidence/issue-65, and exits the process after successful verification.
- */
 async function run() {
   console.log('Seeding PGlite verification DB for Issue #65 detail page artwork...');
   const pglite = new PGlite();
@@ -381,7 +368,7 @@ async function run() {
     }
 
     // Case 6: Controlled browser test on listing with seller photo (`lst3`) with network route interception aborting placeholder request
-    // Asserts exact request count === 1, img.onerror === null, img.style.display === 'none', and terminal fallback badge rendered
+    // Asserts exact request count === 1, img.onerror === null, img.style.display === 'none', and terminal fallback badge rendered with role="img"
     {
       const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
       let placeholderRequestCount = 0;
@@ -393,7 +380,6 @@ async function run() {
 
       const page = await context.newPage();
 
-      // Register requestfailed promise BEFORE navigation to avoid race conditions
       const requestFailedPromise = page.waitForEvent('requestfailed', {
         predicate: (req) => req.url().includes('vinyl-placeholder.svg'),
         timeout: 5000,
@@ -401,28 +387,28 @@ async function run() {
 
       await page.goto(`http://localhost:${port}/listings/${lst3.id}`, { waitUntil: 'domcontentloaded' });
 
-      // Await network request failure explicitly
       await requestFailedPromise;
 
-      // Wait for terminal fallback badge element to be created and displayed in DOM
       await page.waitForSelector('.terminal-fallback-badge', { state: 'visible', timeout: 5000 });
 
       const imgStyleDisplay = await page.locator('#main-photo-img').evaluate((el) => (el as unknown as { style: { display: string } }).style.display);
       const finalOnerror = await page.locator('#main-photo-img').evaluate((el) => (el as unknown as { onerror: unknown }).onerror);
       const badgeText = await page.locator('.terminal-fallback-badge').innerText();
       const badgeAriaLabel = await page.locator('.terminal-fallback-badge').getAttribute('aria-label');
+      const badgeRole = await page.locator('.terminal-fallback-badge').getAttribute('role');
 
       assert.equal(imgStyleDisplay, 'none', 'Image element MUST be hidden when placeholder request fails');
       assert.equal(finalOnerror, null, 'img.onerror MUST be null after terminal fallback completes');
       assert.equal(placeholderRequestCount, 1, 'Placeholder request count MUST be exactly 1 (no repeated requests / infinite loops)');
       assert.ok(badgeText.includes('Vinyl Record'), 'Terminal fallback badge must display fallback label text');
       assert.equal(badgeAriaLabel, 'Default vinyl placeholder for Blue Train', 'Terminal fallback badge must carry truthful accessible aria-label');
+      assert.equal(badgeRole, 'img', 'Terminal fallback badge MUST carry role="img" for screen reader accessibility');
 
       await context.close();
     }
 
     // Case 7: Controlled browser test on listing with NO seller photo + broken release.coverArtUrl (`lst4`)
-    // Verifies that when `coverArtUrl` fails AND placeholder request is aborted, terminal DOM badge is rendered cleanly
+    // Verifies that when `coverArtUrl` fails AND placeholder request is aborted, terminal DOM badge is rendered cleanly with role="img"
     {
       const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
       let placeholderRequestCount = 0;
@@ -449,12 +435,50 @@ async function run() {
       const finalOnerror = await page.locator('#main-photo-img').evaluate((el) => (el as unknown as { onerror: unknown }).onerror);
       const badgeText = await page.locator('.terminal-fallback-badge').innerText();
       const badgeAriaLabel = await page.locator('.terminal-fallback-badge').getAttribute('aria-label');
+      const badgeRole = await page.locator('.terminal-fallback-badge').getAttribute('role');
 
       assert.equal(imgStyleDisplay, 'none', 'Image element MUST be hidden when placeholder fails on no-seller-photo branch');
       assert.equal(finalOnerror, null, 'img.onerror MUST be null after terminal fallback on no-seller-photo branch');
       assert.equal(placeholderRequestCount, 1, 'Placeholder request count MUST be exactly 1 on no-seller-photo branch');
       assert.ok(badgeText.includes('Vinyl Record'), 'Terminal fallback badge must display fallback label text');
       assert.equal(badgeAriaLabel, 'Default vinyl placeholder for My Favorite Things', 'Terminal fallback badge must carry truthful accessible aria-label');
+      assert.equal(badgeRole, 'img', 'Terminal fallback badge MUST carry role="img" on no-seller-photo branch');
+
+      await context.close();
+    }
+
+    // Case 8: Test gallery recovery after terminal fallback: clicking a working thumbnail restores mainImg.style.display = 'block' and removes badge
+    {
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      const page = await context.newPage();
+
+      await page.goto(`http://localhost:${port}/listings/${lst1.id}`, { waitUntil: 'domcontentloaded' });
+
+      // Trigger terminal fallback manually on main image
+      await page.evaluate(() => {
+        const img = (globalThis as unknown as { document: { getElementById: (id: string) => unknown } }).document.getElementById('main-photo-img');
+        if (img && typeof (globalThis as unknown as { renderTerminalFallback: (i: unknown) => void }).renderTerminalFallback === 'function') {
+          (globalThis as unknown as { renderTerminalFallback: (i: unknown) => void }).renderTerminalFallback(img);
+        }
+      });
+
+      // Assert badge is visible and image is hidden
+      await page.waitForSelector('.terminal-fallback-badge', { state: 'visible' });
+      const hiddenDisplay = await page.locator('#main-photo-img').evaluate((el) => (el as unknown as { style: { display: string } }).style.display);
+      assert.equal(hiddenDisplay, 'none', 'Image must be hidden after terminal fallback');
+
+      // Click second thumbnail (valid photo test-dark-cover.svg)
+      const thumbBtns = page.locator('.thumbnail-btn');
+      await thumbBtns.nth(1).click();
+
+      // Assert main image display is restored to block and badge is removed from DOM
+      const restoredDisplay = await page.locator('#main-photo-img').evaluate((el) => (el as unknown as { style: { display: string } }).style.display);
+      const badgeCount = await page.locator('.terminal-fallback-badge').count();
+      assert.equal(restoredDisplay, 'block', 'mainImg.style.display MUST be restored to block when a thumbnail is selected');
+      assert.equal(badgeCount, 0, 'terminal-fallback-badge MUST be removed from DOM when a thumbnail is selected');
+
+      // Polling assertion that valid second thumbnail photo loads cleanly on main image
+      await assertLoadedImage(page, '#main-photo-img', '/assets/test-dark-cover.svg');
 
       await context.close();
     }
