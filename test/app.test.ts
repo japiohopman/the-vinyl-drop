@@ -30,7 +30,9 @@ describe('App Routes and Error Handling', () => {
         .set('Accept', 'text/html');
 
       expect(response.status).toBe(200);
-      expect(response.text).toContain('family=Capriola');
+      expect(response.text).toContain('href="/fonts/fonts.css"');
+      expect(response.text).not.toContain('fonts.googleapis.com');
+      expect(response.text).not.toContain('fonts.gstatic.com');
       expect(response.text).toContain('src="/assets/brand/vinyl-drop-cartridge.svg"');
       expect(response.text).toContain('href="/" class="nav-link active" aria-current="page">HOME</a>');
       expect(response.text).toContain('href="/browse" class="nav-link">BROWSE</a>');
@@ -57,6 +59,18 @@ describe('App Routes and Error Handling', () => {
       expect(response.text).toContain('Your privacy rights');
       expect(response.text).toContain('href="https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen"');
       expect(response.text).toContain('normally one month under GDPR');
+    });
+  });
+
+  describe('GET /terms', () => {
+    it('renders separate Terms and links to them from the footer', async () => {
+      const response = await request(app).get('/terms').set('Accept', 'text/html');
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Terms of Use');
+      expect(response.text).toContain('Owner review draft — not approved for the external beta');
+      expect(response.text).toContain('beta-terms-2026-10-19-v1');
+      expect(response.text).toContain('at least 18 years old');
+      expect(response.text).toContain('href="/terms"');
     });
   });
 
