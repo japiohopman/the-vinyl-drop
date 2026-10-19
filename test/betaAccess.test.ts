@@ -56,6 +56,8 @@ describe('invite-only beta access and onboarding', () => {
         displayName: 'Not Invited',
         email: 'not-invited@example.com',
         password: 'SafePassword123!',
+        termsAccepted: 'true',
+        ageConfirmed: 'true',
       });
 
     expect(response.status).toBe(403);

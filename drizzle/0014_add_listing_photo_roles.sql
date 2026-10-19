@@ -1,4 +1,4 @@
--- Migration: 0013_add_listing_photo_roles.sql
+-- Migration: 0014_add_listing_photo_roles.sql
 -- Record what each seller photo depicts; gallery order remains independent.
 -- Existing rows become legacy_unclassified, never guessed front/back.
 

@@ -1,94 +1,91 @@
-# Beta Privacy Notice — Owner Review Draft
+# The Vinyl Drop — Privacy Notice Draft
 
-**Status: NOT approved for publication.** This is a source-grounded draft for the owner to review. It does not claim legal compliance. Do not merge or publish until the owner confirms the responsible operator identity, legal basis, retention rules, and the actual deployed cookie/provider behavior.
+**Status: owner review draft; not approved for publication.** This text documents the implemented/source-level design and owner decisions, but does not certify legal compliance or live provider settings. Keep this warning until the remaining legal, provider and deployed-browser checks are evidenced and reviewed.
 
-**Last source audit:** 2026-10-18  
-**Existing privacy contact in the application:** [yepyouknowhim@gmail.com](mailto:yepyouknowhim@gmail.com), currently shown on `/contact`.  
-**Still missing:** the responsible operator's approved legal name and business/postal address, approved purpose-by-purpose legal basis, owner-approved retention schedule, responsible human for data-rights requests, and final third-party/cookie review.
+**Source review:** 19 October 2026
+**Operator:** Jaap Hopman, acting as a private individual
+**Public privacy contact:** yepyouknowhim@gmail.com
+
+Do not invent a company or publish a residential address to fill a template. Required controller/contact disclosures for this exact arrangement remain subject to review.
 
 ## What The Vinyl Drop does
 
-The Vinyl Drop is a community marketplace for people to discover, list, buy, sell, and trade physical vinyl records. The current application does not take payments or provide escrow. Listings, their photos, public profile fields, and comments can be visible to other visitors when published.
+The Vinyl Drop is a free, invite-only community website for vinyl collectors to publish and discover records offered for sale or trade. It does not process payments, provide escrow or arrange shipping. Buyer and seller arrange any transaction and collection/logistics themselves.
 
-## Information the current application handles
+## Information handled
 
-- **Account and sign-in:** email address, Supabase Auth user ID, authentication state and session tokens. Passwords and OAuth credentials are managed by Supabase Auth; the app does not store plaintext passwords in its application tables.
-- **Profile:** username, display name, avatar URL, optional website, bio, coarse location and timestamps. Public profile fields may be visible to visitors. The app's intended location granularity is city/neighborhood, not a street address.
-- **Records and listings:** artist/title/release metadata, label/catalogue details, format, seller's copy condition, price/trade status, description, publication state and relevant timestamps.
-- **Photos:** processed listing images, storage paths, ordering and alt text. The source upload pipeline converts supported images to WebP, resizes large images and strips EXIF metadata. Listing imagery is served from the public-read listing-photo bucket, so do not upload private or sensitive images.
-- **Community activity:** comments on published listings, favorites and activity-event records. Comments on visible listings are public. Favorites are intended to be private to the signed-in user; activity events may appear on community activity surfaces according to the event type.
-- **Security and operational diagnostics:** bounded application/runtime error information and hosting logs. Provider-side log retention was not inspected. A rare Storage rollback failure can write diagnostic details to a restricted reconciliation table; those details and their cleanup schedule still need review.
-- **Password safety check:** during the app's new-password check, the service sends a five-character SHA-1 hash prefix to the Have I Been Pwned range API and compares returned suffixes locally. The raw password and full hash are not intentionally sent to that service. This is an application-path control; the native Supabase leaked-password warning remains and the direct-Auth mitigation is governed by Issue #118.
+- **Account and sign-in:** email address, Supabase Auth identity, authentication/session state and security information. Supabase Auth handles password/OAuth authentication; application tables do not store plaintext passwords.
+- **Profile:** username, display name, avatar URL, optional website, bio, coarse location and timestamps. Public profile fields rendered by the application may be visible to visitors. Location is intended to be city/neighbourhood level, not a street address.
+- **Listings and catalog data:** release and catalogue details, format, physical-copy condition, price or trade indication, listing description/status and timestamps.
+- **Listing photos:** processed image bytes, Storage paths, ordering and alt text. Supported uploads are converted to WebP, resized and stripped of EXIF metadata. Published listing photos use a public-read path; do not upload private or sensitive images.
+- **Community data:** comments, favorites and activity events. Comments on visible listings are public. Favorites are private. Activity visibility depends on event type.
+- **Registration audit:** Terms version, Terms acceptance timestamp, 18+ attestation timestamp and linked Auth user ID are stored in the restricted private registration-consent table. The table stores no date of birth or identity document and is configured to cascade-delete when the Auth identity is removed. The source migration must be separately applied and verified before the updated registration flow is deployed.
+- **Operational and security information:** application/runtime logs, bounded error diagnostics and authentication cookies. Provider-side log retention has not been independently verified.
+- **Password-safety check:** the application sends only a five-character SHA-1 hash prefix to the Have I Been Pwned range API and compares matching suffixes locally. It does not intentionally send the raw password or full hash to that service. The remaining direct-Auth bypass is tracked separately in Issue #118.
 
-The application source audit did not find a waitlist table or waitlist collection route. **Do not collect waitlist addresses** until the owner separately approves its purpose, provider, access, retention and deletion process.
+## Purposes and legal basis
 
-## Why the information is used
+Information supports authentication, profile/account maintenance, listing and photo management, publication of user-selected public content, search/discovery, community features, account/service security, troubleshooting and the new-password safety check.
 
-The current source supports these purposes: signing users in, maintaining profiles, publishing and managing record listings, displaying listing photos and comments, supporting marketplace discovery, keeping the service functioning, investigating faults/security issues, and checking new passwords against a known-breach list.
+**Legal-basis review remains open.** Contract necessity is a candidate for data required for user-requested core functions. Legitimate interests are a candidate for necessary security/abuse prevention only after a documented balancing assessment. These are candidates, not a claim that a lawyer or privacy adviser has approved each purpose.
 
-**Owner/legal review required:** the lawful basis for each purpose has not been approved in this draft. No lawful basis or legal-compliance claim should be inferred from this list of technical purposes.
+## Visibility
 
-## Services that may receive information
+Published listings and their photos, public comments, and the public profile fields rendered by the site can be seen by visitors. Favorites are not public. Activity events can be displayed according to their event type. Users should not place personal details they do not want to disclose in public profile fields, listings or comments.
 
-The current architecture uses:
+## Providers and external requests
 
-- **Supabase** for authentication, the PostgreSQL database and listing-photo storage.
-- **Render** for web hosting/runtime and platform logs.
-- **Discogs and/or MusicBrainz** for catalog searches/lookups when those features are used.
-- **Have I Been Pwned** for the password-range check described above.
-- The browser and the email/auth provider for sign-in verification, recovery and OAuth flows.
+Source-visible providers include Supabase for Auth/PostgreSQL/Storage, Render for hosting/runtime, Discogs and/or MusicBrainz for catalog lookups, Have I Been Pwned for password-range checks, and Google as part of OAuth sign-in. Resend and Strato apply only to the mail/domain/DNS functions actually configured. Not every provider receives every category of data.
 
-This inventory records the providers visible in source/configuration; it does not yet verify every deployed provider setting, data-processing agreement, region, international transfer or retention default. Those details must be checked before this draft is approved.
+Provider regions, international transfers and safeguards, processing terms, provider-side logs and backups must be checked against the actual configured services. This notice does not claim EU-only processing or a verified fixed provider retention period.
 
-## Sign-in cookies and similar browser storage
+## Cookies and fonts
 
-The source currently sets essential authentication/session cookies for sign-in and account recovery:
+The source configures essential HTTP-only authentication/session cookies for access, refresh, recovery and short-lived PKCE/auth-flow handling. It also uses tvd-beta-welcome-seen as a first-party HTTP-only presentation marker for 180 days and tvd-beta-welcome as a 60-second HTTP-only display-only flash. Neither grants account or beta access.
 
-- `sb-access-token`: session access token; lifetime follows the returned Supabase session expiry (one hour if no expiry is returned).
-- `sb-refresh-token`: refresh token; configured for up to 30 days.
-- `sb-recovery-mode`: short-lived recovery marker; configured for 15 minutes.
-- Temporary Supabase PKCE/auth-flow values: configured for up to 10 minutes.
+The existing design font families are served from this site's own /fonts/ assets under the SIL Open Font License; the external Google Fonts links have been removed from the page layout. A clean deployed-browser/network check is still required before a definitive statement that no other third-party requests or tracking storage occur.
 
-These cookies are HTTP-only and use SameSite=Lax; the Secure flag follows the application environment's cookie policy. They support authentication, session refresh and password recovery.
+## Retention and deletion
 
-No analytics or advertising tracker was identified in the tracked application source/package manifest in the 2026-10-18 source audit. **That is not yet a verified statement about the deployed website:** deployed browser/network behavior and third-party font/provider requests still need to be checked before the public notice is finalized. The owner must decide whether a separate cookie notice or other disclosure is needed after that check. Do not add a consent banner unless the actual deployed setup requires one.
+These are the current policy directions/targets, not claims that automated purging or all provider settings have been verified:
 
-## How long information is kept
+- **Active account/profile:** retained while the account is active; no automatic one-year expiry for an active account.
+- **Archived listing data/photos:** target deletion 12 months after archive, except for a specific documented reason to retain particular data longer.
+- **Drafts:** verify whether and where drafts persist before setting a retention period; no independent draft retention period is claimed here.
+- **Comments, favorites and activity:** retained only while needed for service/community purposes. On a valid account-erasure request, remove or anonymise linked records where appropriate while respecting other users' rights and specific lawful security/retention needs.
+- **Registration agreement audit:** minimum Terms-version and timestamp record is linked to Auth identity and is removed when that identity is erased.
+- **Routine app/security logs:** approximately 30 days is the target policy period. Incident material may remain longer where necessary and documented. Actual provider log retention is unverified.
+- **Privacy-request audit:** minimal, access-controlled record with a target maximum of 12 months after closure unless a specific documented need requires longer.
+- **Backups and provider logs:** actual provider retention limits and deletion after restore remain to be checked.
 
-**Not approved yet.** The repository has timestamps, some foreign-key cascades, listing-photo cleanup, and cookie expiries, but those do not amount to a complete data-retention policy. There is currently no approved retention schedule for accounts/profiles, listings and comments, favorites/activity, release metadata, Storage objects, diagnostics, or provider logs. Archived content is not the same as deleted content. The app has no self-service account export or full account-deletion flow.
+Archived does not mean deleted. The application does not currently provide self-service full account export or erasure. A valid request may require manual handling across Auth, database rows, Storage objects, diagnostics, provider logs and backups. Do not infer automatic deletion from a target policy.
 
-Before publication, the owner must approve a practical rule for each category: what event starts deletion, what is removed, what exceptions may be retained for security/operational reasons, and what provider/back-up retention cannot be controlled directly.
+## Minimum age and invitation model
 
-## Access, correction and deletion requests
+The initial pilot is invite-only and limited to adults aged 18 or older. Registration uses a self-attestation only; no date of birth or identity document is requested solely for age checking. Google OAuth Console's test-user list and the application's private beta email allowlist are separate controls and must be configured consistently in access-controlled systems. Tester email addresses must not be placed in source code, commits or public issues.
 
-The existing Contact page lists [yepyouknowhim@gmail.com](mailto:yepyouknowhim@gmail.com). A user may use that address to ask a question or request access, correction or deletion of their information. The actual responsible person, identity-verification steps, request log, response process and deletion steps still need an owner-approved runbook. Do not promise automated self-service deletion or export; neither was found in the audited routes.
+There is no public waitlist, public email-capture form, marketing newsletter or advertising system in this pilot. The first cohort is limited to five personally known friends. Google OAuth test-user access is governed by the configured Google Cloud project; the application also applies its own private-beta email allowlist.
 
-## Privacy rights and complaints
+## Rights and requests
 
-Depending on the situation and the applicable legal basis, people may have rights to request access to their personal data, correction, deletion, restriction of processing, portability, or to object to processing. Where processing relies on consent, they may withdraw that consent. These rights are subject to the conditions and exceptions in applicable law; this draft does not promise that every request will always result in deletion or export.
+Depending on the applicable legal basis and circumstances, people may request access, correction, deletion, restriction or portability, or object to certain processing. Where consent is the legal basis for a purpose, it may be withdrawn. These rights have statutory conditions and exceptions. Contact yepyouknowhim@gmail.com; identity checks should be proportionate and responses are normally due within one month under GDPR, subject to lawful extensions.
 
-Send a request to the contact address on the site's Contact page. The project should verify identity proportionately, respond within the applicable statutory deadline (normally one month under GDPR), explain any lawful refusal or extension, and keep only a minimal protected record that a request was handled.
+People may complain to the Dutch supervisory authority, the Autoriteit Persoonsgegevens: https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen
 
-People may also lodge a complaint with the Dutch supervisory authority, the [Autoriteit Persoonsgegevens](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen). The public notice must retain a working link to that authority.
+## Remaining publication checks
 
-## Responsible operator and contact
+- Confirm the legally required controller identity/contact disclosures for this private-individual arrangement without publishing unnecessary private residential details.
+- Review purpose-specific lawful bases, including a documented balancing assessment where legitimate interests are considered.
+- Independently verify the actual provider regions, transfers/safeguards, processing terms, provider log retention and backups.
+- Run a clean deployed-browser/network check for cookies, font requests and all other third-party network requests.
+- Apply and verify the new private registration-consent migration only through a separately authorized staging process.
+- Keep this notice and the separate Terms of Use marked as drafts until the owner/privacy review accepts the evidence and wording.
 
-**Required before approval:** confirm the legal name of the controller/responsible operator and the public postal/business address (or obtain advice on what must be published for this project). The current application only verifies the existing email contact; it does not establish the operator's legal identity or address.
+## References
 
-Privacy contact currently shown by the application: [yepyouknowhim@gmail.com](mailto:yepyouknowhim@gmail.com).
-
-## Owner decisions needed before this becomes a public notice
-
-1. Confirm the responsible controller/operator's legal name and the address/contact details to publish.
-2. Approve the purpose-specific legal bases and the retention/deletion rule for each data category.
-3. Name the person responsible for access/correction/deletion requests and approve the manual handling procedure.
-4. Confirm deployed cookies, third-party resources and provider/data-region details; decide whether a separate Terms of Use or cookie notice is needed.
-5. Keep waitlist collection disabled until the separate #48 decision explicitly approves its purpose, provider, access, retention and deletion.
-
-## References used for drafting
-
-- [European Commission — information that organisations must provide](https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/obligations_en)
-- [Autoriteit Persoonsgegevens — cookies](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/internet-telefoon-tv-en-post/cookies)
-- [Autoriteit Persoonsgegevens — privacy rights and requests](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen)
-- [Repository data inventory](BETA_DATA_INVENTORY.md)
-- [Security and privacy notes](SECURITY_PRIVACY.md)
+- European Commission — information organisations must provide: https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/obligations_en
+- Autoriteit Persoonsgegevens — cookies: https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/internet-telefoon-tv-en-post/cookies
+- Autoriteit Persoonsgegevens — privacy rights: https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen
+- Google Cloud — manage app audience and test users: https://support.google.com/cloud/answer/15549945
+- Repository data inventory: docs/BETA_DATA_INVENTORY.md
+- Operational request runbook: docs/BETA_PRIVACY_OPERATIONS.md
