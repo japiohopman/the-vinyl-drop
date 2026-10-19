@@ -59,7 +59,7 @@ export function resolveDigArtwork(
     front = {
       src: releaseCoverArtUrl,
       altText: `Release artwork preview for ${title} by ${artist}; not a photo of the physical copy being offered`,
-      sourceLabel: 'Release artwork / preview — not evidence of this copy's condition',
+      sourceLabel: 'Release artwork / preview — not evidence of this copy’s condition',
       sourceKind: 'release_artwork',
     };
   } else {
