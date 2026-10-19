@@ -57,3 +57,5 @@ This inventory does not claim legal compliance, fixed provider retention, or imp
 - `src/app/services/storageService.ts`, `listingService.ts`, `commentService.ts`, `favoriteService.ts`, `activityService.ts`, `pwnedPasswordService.ts`
 - `src/app/controllers/infoController.ts`, `profileController.ts`; `src/app/routes/index.ts`, `authRoutes.ts`, `listingRoutes.ts`, `profileRoutes.ts`
 - `docs/SECURITY_PRIVACY.md`, Issues #48, #49, #62, #88 and #89
+- `docs/BETA_LEGAL_BASIS_REGISTER.md` (owner-review draft)
+- Open follow-ups: #153 (Network/Cookies), #154 (operator/legal scope/Terms), #155 (backup/recovery)
