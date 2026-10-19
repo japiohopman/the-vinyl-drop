@@ -54,6 +54,21 @@
         helpText: 'Must be at least 8 characters.'
       }) %>
 
+      <fieldset style="margin-top: var(--space-5); padding: var(--space-4); border: 1px solid var(--color-border-subtle); display: flex; flex-direction: column; gap: var(--space-3);">
+        <legend style="padding: 0 var(--space-2); font-family: var(--font-display); font-weight: 700;">Before creating your account</legend>
+        <p style="font-size: var(--font-size-sm); color: var(--color-ink-muted);">Read the <a href="/privacy" style="color: var(--color-rust); text-decoration: underline;">Privacy Notice</a> to understand how account and community data are handled. The notice remains marked as a review draft while required checks are completed.</p>
+        <label for="termsAccepted" style="display: flex; align-items: flex-start; gap: var(--space-2); line-height: 1.5;">
+          <input id="termsAccepted" name="termsAccepted" type="checkbox" value="true" required style="margin-top: 0.25rem; flex: 0 0 auto;">
+          <span>I have read and agree to the <a href="/terms" style="color: var(--color-rust); text-decoration: underline;">Terms of Use</a>.</span>
+        </label>
+        <% if (form.fieldErrors.termsAccepted) { %><p role="alert" style="color: var(--color-rust-accessible); font-size: var(--font-size-sm);"><%= form.fieldErrors.termsAccepted %></p><% } %>
+        <label for="ageConfirmed" style="display: flex; align-items: flex-start; gap: var(--space-2); line-height: 1.5;">
+          <input id="ageConfirmed" name="ageConfirmed" type="checkbox" value="true" required style="margin-top: 0.25rem; flex: 0 0 auto;">
+          <span>I confirm that I am at least 18 years old.</span>
+        </label>
+        <% if (form.fieldErrors.ageConfirmed) { %><p role="alert" style="color: var(--color-rust-accessible); font-size: var(--font-size-sm);"><%= form.fieldErrors.ageConfirmed %></p><% } %>
+      </fieldset>
+
       <div style="margin-top: var(--space-6); display: flex; flex-direction: column; gap: var(--space-3);">
         <%- include('../partials/button', {
           text: 'Create Account',
@@ -62,9 +77,9 @@
           size: 'md'
         }) %>
 
-        <a href="/auth/google?next=<%= encodeURIComponent(nextUrl) %>" class="btn btn-outline btn-md" style="display: flex; align-items: center; justify-content: center; gap: var(--space-2);">
+        <button type="submit" formaction="/auth/google/start" formmethod="POST" formnovalidate class="btn btn-outline btn-md" style="display: flex; align-items: center; justify-content: center; gap: var(--space-2);">
           <span>Sign up with Google</span>
-        </a>
+        </button>
       </div>
     </form>
 
