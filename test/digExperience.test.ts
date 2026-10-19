@@ -66,7 +66,7 @@ describe('Dig artwork face semantics', () => {
 
     expect(result.front.src).toBe('/seller/old-photo.webp');
     expect(result.front.sourceKind).toBe('legacy_photo');
-    expect(result.front.sourceLabel).toContain('nog niet geclassificeerd');
+    expect(result.front.sourceLabel).toContain('not yet classified');
     expect(result.back).toBeNull();
     expect(result.hasExplicitBackCover).toBe(false);
     expect(photos[0].role).toBe('legacy_unclassified');
@@ -81,7 +81,7 @@ describe('Dig artwork face semantics', () => {
 
     expect(result.front.src).toBe('/release/catalogue-art.webp');
     expect(result.front.sourceKind).toBe('release_artwork');
-    expect(result.front.sourceLabel).toContain('geen bewijs van de conditie');
+    expect(result.front.sourceLabel).toContain('not evidence of this copy\'s condition');
     expect(result.back).toBeNull();
     expect(result.hasExplicitBackCover).toBe(false);
   });
