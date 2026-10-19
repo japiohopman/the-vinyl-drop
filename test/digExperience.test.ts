@@ -188,7 +188,7 @@ describe('Dig photo-role contract', () => {
     const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     expect(css).toContain('.dig-sleeve-image');
     expect(css).toContain('object-fit: contain');
-    expect(css).toContain('touch-action: none;');
+    expect(css).toContain('touch-action: pinch-zoom;');
     expect(css).toContain('.dig-artwork-badge');
     expect(css).toContain('.dig-slide.is-leaving-up');
     expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped');
