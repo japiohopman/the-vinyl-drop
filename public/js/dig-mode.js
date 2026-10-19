@@ -9,7 +9,6 @@
   const nextButton = root.querySelector('[data-dig-next]');
   const position = root.querySelector('[data-dig-position]');
   const progress = root.querySelector('[data-dig-progress]');
-  const progressLabel = root.querySelector('[data-dig-progress-label]');
   const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
   const transitionMs = 440;
   const swipeThreshold = 64;
@@ -48,11 +47,6 @@
     }
     if (previousButton) previousButton.disabled = activeIndex === 0 || isTransitioning;
     if (nextButton) nextButton.disabled = activeIndex >= slides.length - 1 || isTransitioning;
-    if (progressLabel) {
-      if (slides.length === 1) progressLabel.textContent = 'Eén plaat in deze sessie';
-      else if (activeIndex === slides.length - 1) progressLabel.textContent = 'Je bent bij de laatste plaat';
-      else progressLabel.textContent = 'Omhoog voor de volgende plaat';
-    }
   }
 
   function paintSlides() {
