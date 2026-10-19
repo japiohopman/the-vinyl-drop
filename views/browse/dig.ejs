@@ -19,7 +19,6 @@
     <div>
       <p class="dig-eyebrow">THE VINYL DROP / BROWSE</p>
       <h1>Crate Dig</h1>
-      <p class="dig-intro">Eén plaat tegelijk. Trek de volgende hoes uit de krat en draai de hoes om voor de achterkant.</p>
     </div>
     <a class="btn btn-outline dig-back-to-browse" href="<%= browseReturnUrl %>">← Terug naar Browse</a>
   </header>
@@ -59,11 +58,6 @@
     <% } %>
 
     <section class="dig-explorer" aria-label="Crate Dig albumverkenner">
-      <div class="dig-instructions">
-        <p><strong>Omhoog swipen</strong> trekt de volgende hoes uit de krat. <strong>Omlaag swipen</strong> gaat terug.</p>
-        <p>Gebruik ook de knoppen of de pijltjestoetsen omhoog en omlaag. De omdraaiknop wisselt alleen de voor- en achterkant van dezelfde hoes.</p>
-      </div>
-
       <div class="dig-viewer" data-dig-viewer tabindex="0" role="region" aria-label="Crate Dig. Gebruik de pijltjestoetsen omhoog en omlaag om tussen platen te bladeren.">
         <div class="dig-crate-stack" data-dig-stack>
           <% visibleItems.forEach(function(item, index) { %>
@@ -147,14 +141,12 @@
         </button>
         <div class="dig-progress-wrap">
           <progress data-dig-progress max="<%= visibleItems.length %>" value="1" aria-label="Voortgang van de Dig-sessie"></progress>
-          <span data-dig-progress-label><%= visibleItems.length === 1 ? 'Laatste plaat' : 'Omhoog voor de volgende plaat' %></span>
         </div>
         <button type="button" class="btn btn-outline dig-nav-button" data-dig-next <%= visibleItems.length <= 1 ? 'disabled' : '' %>>
           Volgende plaat ↑
         </button>
       </div>
 
-      <p class="dig-keyboard-note">Toetsenbord: ↑ volgende · ↓ vorige · Home eerste · End laatste. Met de omdraaiknop bekijk je de andere kant van dezelfde hoes.</p>
     </section>
   <% } %>
 </div>
