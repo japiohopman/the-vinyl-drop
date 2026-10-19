@@ -151,6 +151,14 @@
 
   function handlePointerDown(event) {
     if (isTransitioning || gesture || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
+
+    // A previous cancelled gesture may still have a delayed paintSlides reset queued.
+    // Cancel it before a new drag starts so it cannot snap the sleeve back mid-gesture.
+    if (cancelGestureTimer) {
+      window.clearTimeout(cancelGestureTimer);
+      cancelGestureTimer = 0;
+    }
+
     const stage = event.currentTarget;
     const slide = slides[activeIndex];
     if (!slide || !stage.closest('[data-dig-slide]')?.classList.contains('is-active')) return;
