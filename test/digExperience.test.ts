@@ -203,7 +203,7 @@ describe('Dig photo-role migration compatibility', () => {
           ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'old/first.webp', 0, 'First old image');
       `);
 
-      const migrationPath = path.join(process.cwd(), 'drizzle/0013_add_listing_photo_roles.sql');
+      const migrationPath = path.join(process.cwd(), 'drizzle/0014_add_listing_photo_roles.sql');
       const migration = fs.readFileSync(migrationPath, 'utf8');
       for (const statement of migration.split('--> statement-breakpoint').map((part) => part.trim()).filter(Boolean)) {
         await database.exec(statement);
