@@ -1497,7 +1497,7 @@ select.form-control {
   aspect-ratio: 1 / 1;
   margin: 0 auto;
   perspective: 1300px;
-  touch-action: none;
+  touch-action: pinch-zoom;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -1918,9 +1918,14 @@ select.form-control {
 }
 
 .thumbnail-list {
+  display: flex;
+  gap: var(--space-3);
   box-sizing: border-box;
   max-width: 100%;
   min-width: 0;
+  margin-top: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
 }
 
 .thumbnail-btn {
