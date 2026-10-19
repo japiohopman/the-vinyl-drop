@@ -198,6 +198,7 @@ describe('Dig photo-role contract', () => {
   });
 });
 
+describe('Responsive listing page', () => {
   it('keeps the focused listing detail grid within narrow mobile viewports', () => {
     const view = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
     const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
