@@ -19,7 +19,7 @@ The Vinyl Drop is a free, invite-only community website for vinyl collectors to 
 - **Listings and catalog data:** release and catalogue details, format, physical-copy condition, price or trade indication, listing description/status and timestamps.
 - **Listing photos:** processed image bytes, Storage paths, ordering and alt text. Supported uploads are converted to WebP, resized and stripped of EXIF metadata. Published listing photos use a public-read path; do not upload private or sensitive images.
 - **Community data:** comments, favorites and activity events. Comments on visible listings are public. Favorites are private. Activity visibility depends on event type.
-- **Registration audit:** Terms version, Terms acceptance timestamp, 18+ attestation timestamp and linked Auth user ID are stored in the restricted private registration-consent table. The table stores no date of birth or identity document and is configured to cascade-delete when the Auth identity is removed. The source migration must be separately applied and verified before the updated registration flow is deployed.
+- **Registration audit:** Terms version, Terms acceptance timestamp, 18+ attestation timestamp and linked Auth user ID are stored in the restricted private registration-consent table. The table stores no date of birth or identity document and is configured to cascade-delete when the Auth identity is removed. The owner-authorized migration was applied and the schema/history verified on the staging project on 19 October 2026. This confirms the schema, not the end-to-end deletion process or provider/backup retention.
 - **Operational and security information:** application/runtime logs, bounded error diagnostics and authentication cookies. Provider-side log retention has not been independently verified.
 - **Password-safety check:** the application sends only a five-character SHA-1 hash prefix to the Have I Been Pwned range API and compares matching suffixes locally. It does not intentionally send the raw password or full hash to that service. The remaining direct-Auth bypass is tracked separately in Issue #118.
 
@@ -78,7 +78,7 @@ People may complain to the Dutch supervisory authority, the Autoriteit Persoonsg
 - Review purpose-specific lawful bases, including a documented balancing assessment where legitimate interests are considered.
 - Independently verify the actual provider regions, transfers/safeguards, processing terms, provider log retention and backups.
 - Run a clean deployed-browser/network check for cookies, font requests and all other third-party network requests.
-- Apply and verify the new private registration-consent migration only through a separately authorized staging process.
+- [x] The private registration-consent migration was applied and its schema/history verified on staging on 19 October 2026. Any further database changes require separate authorization.
 - Keep this notice and the separate Terms of Use marked as drafts until the owner/privacy review accepts the evidence and wording.
 
 ## References
