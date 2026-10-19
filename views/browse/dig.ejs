@@ -67,7 +67,7 @@
               data-index="<%= index %>"
               role="group"
               aria-roledescription="slide"
-              aria-label="Record <%= index + 1 %> of <%= visibleItems.length %>: <%= item.title %> door <%= item.artist %>"
+              aria-label="Record <%= index + 1 %> of <%= visibleItems.length %>: <%= item.title %> by <%= item.artist %>"
               aria-hidden="<%= index === 0 ? 'false' : 'true' %>"
               <%= index === 0 ? '' : 'inert' %>
             >
@@ -86,7 +86,7 @@
                       <img class="dig-sleeve-image" src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
 
                     </div>
-                    <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Achterkant" aria-hidden="true">
+                    <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Back cover" aria-hidden="true">
                       <% if (item.backArtwork) { %>
                         <img class="dig-sleeve-image" src="<%= item.backArtwork.src %>" alt="<%= item.backArtwork.altText %>" draggable="false">
 
