@@ -192,6 +192,7 @@
       neighborIndex: -1,
       height: Math.max(stage.getBoundingClientRect().height, 1),
       width: Math.max(stage.getBoundingClientRect().width, 1),
+      axis: 'pending',
       horizontal: false,
     };
 
@@ -208,14 +209,17 @@
     const deltaX = event.clientX - gesture.startX;
     const deltaY = event.clientY - gesture.startY;
 
-    if (!gesture.horizontal && Math.abs(deltaX) > 18 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15) {
+    if (gesture.axis === 'pending' && Math.abs(deltaX) > 18 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15) {
       gesture.horizontal = true;
+      gesture.axis = 'horizontal';
       const card = gesture.slide.querySelector('[data-dig-sleeve-card]');
       gesture.slide.classList.add('is-dragging');
       if (card) {
         card.classList.add('is-dragging');
         card.style.transition = 'none';
       }
+    } else if (gesture.axis === 'pending' && Math.abs(deltaY) > 4) {
+      gesture.axis = 'vertical';
     }
 
     if (gesture.horizontal) {
@@ -285,6 +289,8 @@
         const draggedTransform = card.style.transform;
         card.classList.remove('is-dragging');
         slide.classList.remove('is-dragging');
+        slide.style.transform = '';
+        slide.style.transition = '';
         card.style.transition = motionPreference.matches ? 'none' : 'transform 260ms cubic-bezier(.2, .75, .25, 1)';
         card.style.transform = draggedTransform;
         void card.offsetHeight;
