@@ -11,7 +11,7 @@ import { isPasswordPwned } from './pwnedPasswordService';
 import { createPasswordCheckedSignupApproval } from '../repositories/signupApprovalRepository';
 import { isBetaAllowedEmail, INVITE_ONLY_ACCESS_DENIED_MESSAGE } from './betaAccess';
 import { saveRegistrationConsent, hasRegistrationConsent } from '../repositories/registrationConsentRepository';
-import { createRegistrationConsentRecord, RegistrationConsentRecord } from './registrationConsent';
+import { RegistrationConsentRecord } from './registrationConsent';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -98,6 +98,10 @@ export async function ensureProfileForUser(
 }
 
 export async function signUp(input: SignUpInput, options?: AuthOptions): Promise<AuthResult> {
+  if (!options?.registrationConsent) {
+    return { user: null, session: null, profile: null, error: 'You must accept the Terms of Use and confirm that you are at least 18 years old.' };
+  }
+
   const supabase = options?.supabase || getSupabaseClient(options?.req, options?.res);
 
   // Check if username is already taken in profiles table
@@ -186,7 +190,7 @@ export async function signUp(input: SignUpInput, options?: AuthOptions): Promise
   }
 
   try {
-    await saveRegistrationConsent(data.user.id, options?.registrationConsent || createRegistrationConsentRecord(), options?.dbOverride);
+    await saveRegistrationConsent(data.user.id, options.registrationConsent, options?.dbOverride);
   } catch {
     return { user: null, session: null, profile: null, error: 'Account creation is temporarily unavailable. Please try again in a moment.' };
   }
