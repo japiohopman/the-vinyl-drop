@@ -1470,11 +1470,6 @@ select.form-control {
   text-align: center;
 }
 
-.dig-listing-kicker {
-  margin-bottom: var(--space-1);
-  font-weight: 700;
-}
-
 .dig-listing-meta h2 {
   overflow-wrap: anywhere;
   margin: 0;
@@ -1488,13 +1483,6 @@ select.form-control {
   margin: var(--space-1) 0 0;
   color: var(--color-ink-muted);
   font-size: var(--font-size-md);
-}
-
-.dig-format {
-  margin: var(--space-2) 0 0;
-  color: var(--color-ink-muted);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
 }
 
 .dig-sleeve-interaction {
@@ -1789,10 +1777,6 @@ select.form-control {
     padding: 0 var(--space-3);
   }
 
-  .dig-explorer {
-    padding: var(--space-3);
-  }
-
   .dig-page-header {
     flex-direction: column;
     align-items: stretch;
@@ -1816,8 +1800,7 @@ select.form-control {
   }
 
   .dig-crate-stack {
-    min-height: clamp(500px, calc(100vh - 14rem), 640px);
-    min-height: clamp(500px, calc(100svh - 14rem), 640px);
+    min-height: 480px;
   }
 
   .dig-sleeve-stage {
@@ -1857,8 +1840,7 @@ select.form-control {
 
 @media (max-width: 360px) {
   .dig-crate-stack {
-    min-height: clamp(460px, calc(100vh - 12rem), 600px);
-    min-height: clamp(460px, calc(100svh - 12rem), 600px);
+    min-height: 450px;
   }
 
   .dig-navigation {
@@ -2038,6 +2020,10 @@ select.form-control {
   gap: var(--space-2);
   align-items: center;
   flex-wrap: wrap;
+}
+
+.listing-detail-container .breadcrumb-nav {
+  margin-bottom: var(--space-5);
 }
 
 .listing-breadcrumb {
