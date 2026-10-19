@@ -44,29 +44,29 @@ export function resolveDigArtwork(
   if (explicitFront) {
     front = {
       src: explicitFront.publicUrl,
-      altText: explicitFront.altText || `Voorkant van de fysieke hoes van ${title} — ${artist}`,
-      sourceLabel: 'Foto van de voorkant van deze fysieke kopie',
+      altText: explicitFront.altText || `Front cover of the physical sleeve of ${title} — ${artist}`,
+      sourceLabel: 'Photo of the front cover of this physical copy',
       sourceKind: 'seller_front',
     };
   } else if (legacyFirst) {
     front = {
       src: legacyFirst.publicUrl,
-      altText: legacyFirst.altText || `Niet-geclassificeerde verkopersfoto van ${title} — ${artist}`,
-      sourceLabel: 'Verkopersfoto — nog niet geclassificeerd',
+      altText: legacyFirst.altText || `Unclassified seller photo of ${title} — ${artist}`,
+      sourceLabel: 'Seller photo — not yet classified',
       sourceKind: 'legacy_photo',
     };
   } else if (releaseCoverArtUrl) {
     front = {
       src: releaseCoverArtUrl,
-      altText: `Release artwork-preview voor ${title} van ${artist}; geen foto van de aangeboden fysieke kopie`,
-      sourceLabel: 'Release artwork / preview — geen bewijs van de conditie van deze kopie',
+      altText: `Release artwork preview for ${title} van ${artist}; not a photo of the physical copy being offered`,
+      sourceLabel: 'Release artwork / preview — not evidence of this copy's condition',
       sourceKind: 'release_artwork',
     };
   } else {
     front = {
       src: placeholderUrl,
-      altText: `Geen bruikbare voorkantfoto beschikbaar voor ${title} van ${artist}`,
-      sourceLabel: 'Geen foto van de voorkant beschikbaar',
+      altText: `No usable front-cover photo available for ${title} van ${artist}`,
+      sourceLabel: 'No front-cover photo available',
       sourceKind: 'placeholder',
     };
   }
@@ -74,8 +74,8 @@ export function resolveDigArtwork(
   const back: DigArtworkFace | null = explicitBack
     ? {
         src: explicitBack.publicUrl,
-        altText: explicitBack.altText || `Achterkant van de fysieke hoes van ${title} — ${artist}`,
-        sourceLabel: 'Foto van de achterkant van deze fysieke kopie',
+        altText: explicitBack.altText || `Back cover of the physical sleeve of ${title} — ${artist}`,
+        sourceLabel: 'Photo of the back cover of this physical copy',
         sourceKind: 'seller_back',
       }
     : null;
