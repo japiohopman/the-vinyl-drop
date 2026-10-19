@@ -41,7 +41,7 @@ Provider regions, international transfers and safeguards, processing terms, prov
 
 ## Cookies and fonts
 
-The source configures essential HTTP-only authentication/session cookies for access, refresh, recovery and short-lived PKCE/auth-flow handling. It also uses tvd-beta-welcome-seen as a first-party HTTP-only presentation marker for 180 days and tvd-beta-welcome as a 60-second HTTP-only display-only flash. Neither grants account or beta access.
+The source configures essential HTTP-only authentication/session cookies for access, refresh, recovery and short-lived PKCE/auth-flow handling. During Google sign-up, tvd-registration-consent is a first-party signed, HTTP-only cookie (Secure on HTTPS/staging/production, SameSite=Lax) that carries the selected Terms version and Terms/18+ attestation timestamps through the OAuth round-trip; it expires after up to 10 minutes and is cleared by the callback. It does not grant account or beta access. The site also uses tvd-beta-welcome-seen as a first-party HTTP-only presentation marker for 180 days and tvd-beta-welcome as a 60-second HTTP-only display-only flash. Neither welcome cookie grants account or beta access.
 
 The existing design font families are served from this site's own /fonts/ assets under the SIL Open Font License; the external Google Fonts links have been removed from the page layout. A clean deployed-browser/network check is still required before a definitive statement that no other third-party requests or tracking storage occur.
 
