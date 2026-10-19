@@ -69,7 +69,7 @@ describe('App Routes and Error Handling', () => {
       expect(response.status).toBe(200);
       expect(response.text).toContain('Terms of Use');
       expect(response.text).toContain('Owner review draft — not approved for the external beta');
-      expect(response.text).toContain('beta-terms-2026-10-19-v1');
+      expect(response.text).toContain('beta-terms-2026-10-19-v2');
       expect(response.text).toContain('at least 18 years old');
       expect(response.text).toContain('href="/terms"');
     });
