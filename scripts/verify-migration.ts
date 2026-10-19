@@ -114,7 +114,10 @@ export async function verifyMigrations(): Promise<void> {
       [role]
     );
     const privileges = access.rows[0];
-    if (privileges.schema_usage || privileges.can_select || privileges.can_insert || privileges.can_update || privileges.can_delete) {
+    // supabase_auth_admin needs USAGE on the private schema for the separate, existing
+    // password-check trigger/function; it must still have no table access to consent records.
+    const schemaAccessIsForbidden = role !== 'supabase_auth_admin' && privileges.schema_usage;
+    if (schemaAccessIsForbidden || privileges.can_select || privileges.can_insert || privileges.can_update || privileges.can_delete) {
       throw new Error('Registration-consent audit is accessible to restricted role ' + role);
     }
   }
