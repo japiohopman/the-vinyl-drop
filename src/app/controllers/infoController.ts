@@ -24,6 +24,11 @@ export function getPrivacyNoticePage(req: Request, res: Response, next: NextFunc
   }
 }
 
+export function getTermsOfUsePage(req: Request, res: Response, next: NextFunction): void {
+  try { renderWithLayout(res, 'info/terms', { title: 'Terms of Use — The Vinyl Drop', contactEmail: 'yepyouknowhim@gmail.com', termsVersion: 'beta-terms-2026-10-19-v1' }, next); }
+  catch (error) { next(error); }
+}
+
 export function getCommunityRulesPage(req: Request, res: Response, next: NextFunction): void {
   try {
     renderWithLayout(res, 'info/community-rules', {

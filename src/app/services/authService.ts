@@ -10,6 +10,8 @@ import { getDb } from '../../db';
 import { isPasswordPwned } from './pwnedPasswordService';
 import { createPasswordCheckedSignupApproval } from '../repositories/signupApprovalRepository';
 import { isBetaAllowedEmail, INVITE_ONLY_ACCESS_DENIED_MESSAGE } from './betaAccess';
+import { saveRegistrationConsent, hasRegistrationConsent } from '../repositories/registrationConsentRepository';
+import { createRegistrationConsentRecord, RegistrationConsentRecord } from './registrationConsent';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -29,6 +31,8 @@ export interface AuthOptions {
   dbOverride?: DbInstance;
   /** Safe in-app destination after email confirmation; defaults to /profile. */
   signupNextUrl?: string;
+  /** Server-validated registration agreement for a new account. */
+  registrationConsent?: RegistrationConsentRecord;
 }
 
 /**
@@ -181,6 +185,12 @@ export async function signUp(input: SignUpInput, options?: AuthOptions): Promise
     };
   }
 
+  try {
+    await saveRegistrationConsent(data.user.id, options?.registrationConsent || createRegistrationConsentRecord(), options?.dbOverride);
+  } catch {
+    return { user: null, session: null, profile: null, error: 'Account creation is temporarily unavailable. Please try again in a moment.' };
+  }
+
   const profile = await ensureProfileForUser(data.user, input.username, options?.dbOverride);
 
   return {
@@ -208,7 +218,12 @@ export async function login(input: LoginInput, options?: AuthOptions): Promise<A
     };
   }
 
-  const profile = await ensureProfileForUser(data.user, undefined, options?.dbOverride);
+  const existingProfile = await findProfileById(data.user.id, options?.dbOverride);
+  if (!existingProfile && !(await hasRegistrationConsent(data.user.id, options?.dbOverride))) {
+    try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* remains denied */ }
+    return { user: null, session: null, profile: null, error: 'This account has not completed registration. Please use Sign Up, accept the Terms of Use and confirm you are at least 18.' };
+  }
+  const profile = existingProfile || await ensureProfileForUser(data.user, undefined, options?.dbOverride);
 
   return {
     user: data.user,
@@ -312,7 +327,22 @@ export async function handleAuthCallback(
     };
   }
 
-  const profile = await ensureProfileForUser(data.user, undefined, options?.dbOverride);
+  const existingProfile = await findProfileById(data.user.id, options?.dbOverride);
+  if (!existingProfile) {
+    const storedConsent = await hasRegistrationConsent(data.user.id, options?.dbOverride);
+    if (!storedConsent && !options?.registrationConsent) {
+      try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* remains denied */ }
+      return { user: null, session: null, profile: null, error: 'This Google account needs to complete registration. Return to Sign Up, accept the Terms of Use and confirm you are at least 18.' };
+    }
+    if (!storedConsent && options?.registrationConsent) {
+      try { await saveRegistrationConsent(data.user.id, options.registrationConsent, options?.dbOverride); }
+      catch {
+        try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* remains denied */ }
+        return { user: null, session: null, profile: null, error: 'Registration could not be completed securely. Please return to Sign Up and try again.' };
+      }
+    }
+  }
+  const profile = existingProfile || await ensureProfileForUser(data.user, undefined, options?.dbOverride);
 
   return {
     user: data.user,

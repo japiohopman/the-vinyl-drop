@@ -9,11 +9,17 @@ export const usernameSchema = z
     message: 'Username may only contain letters, numbers, underscores, and hyphens',
   });
 
+export const registrationConsentSchema = z.object({
+  termsAccepted: z.literal('true', { errorMap: () => ({ message: 'You must accept the Terms of Use to create an account.' }) }),
+  ageConfirmed: z.literal('true', { errorMap: () => ({ message: 'You must confirm that you are at least 18 years old.' }) }),
+});
+
 export const signUpSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters long' }),
   username: usernameSchema,
   displayName: z.string().max(50, { message: 'Display name must not exceed 50 characters' }).optional(),
+  ...registrationConsentSchema.shape,
 });
 
 export type SignUpInput = z.infer<typeof signUpSchema>;
