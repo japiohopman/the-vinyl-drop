@@ -92,6 +92,7 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 - [ ] Approve or revise the legal-basis register above.
 - [ ] Approve the data-retention/deletion rules and practical end conditions for every category.
 - [ ] Confirm the manual request handler, restricted record location and record retention period.
+- [ ] Choose and verify the pre-pilot backup/recovery plan for Supabase Free: a secure off-site database export plus a separate Storage-object recovery strategy, or an explicit owner-accepted residual-risk decision. Database exports/backups do not contain the stored image objects.
 - [ ] Perform a deployed clean-browser/network check for cookies, third-party requests and tracking; record evidence without exposing session values.
 - [ ] Review the separate `/terms` draft and the `/privacy` notice; keep both labelled as drafts until the required owner/legal/provider checks are evidenced.
 - [ ] Confirm the initial pilot is 18+ and that registration stores no date of birth or identity document.
