@@ -64,7 +64,7 @@ Archived does not mean deleted. The application does not currently provide self-
 
 The initial pilot is invite-only and limited to adults aged 18 or older. Registration uses a self-attestation only; no date of birth or identity document is requested solely for age checking. Google OAuth Console's test-user list and the application's private beta email allowlist are separate controls and must be configured consistently in access-controlled systems. Tester email addresses must not be placed in source code, commits or public issues.
 
-There is no public waitlist, public email-capture form, marketing newsletter or advertising system in this pilot. The first cohort is limited to five personally known friends. Google OAuth's Testing mode and Google Play testing tracks are separate processes; Play Store testing requirements are not applied to a website-only pilot.
+There is no public waitlist, public email-capture form, marketing newsletter or advertising system in this pilot. The first cohort is limited to five personally known friends. Google OAuth test-user access is governed by the configured Google Cloud project; the application also applies its own private-beta email allowlist.
 
 ## Rights and requests
 
@@ -87,6 +87,5 @@ People may complain to the Dutch supervisory authority, the Autoriteit Persoonsg
 - Autoriteit Persoonsgegevens — cookies: https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/internet-telefoon-tv-en-post/cookies
 - Autoriteit Persoonsgegevens — privacy rights: https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen
 - Google Cloud — manage app audience and test users: https://support.google.com/cloud/answer/15549945
-- Google Play — test tracks: https://support.google.com/googleplay/android-developer/answer/9845334
 - Repository data inventory: docs/BETA_DATA_INVENTORY.md
 - Operational request runbook: docs/BETA_PRIVACY_OPERATIONS.md
