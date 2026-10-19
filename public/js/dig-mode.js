@@ -25,22 +25,39 @@
     root.dataset.reducedMotion = motionPreference.matches ? 'true' : 'false';
   }
 
-  function clearFlip(slide) {
+  function setFlipState(slide, flipped) {
     const card = slide.querySelector('[data-dig-sleeve-card]');
     const button = slide.querySelector('[data-dig-flip]');
     const front = slide.querySelector('.dig-sleeve-face-front');
     const back = slide.querySelector('.dig-sleeve-face-back');
-    if (card) card.classList.remove('is-flipped');
-    if (front) front.setAttribute('aria-hidden', 'false');
-    if (back) back.setAttribute('aria-hidden', 'true');
+    if (card) card.classList.toggle('is-flipped', flipped);
+    if (front) front.setAttribute('aria-hidden', String(flipped));
+    if (back) back.setAttribute('aria-hidden', String(!flipped));
     if (button) {
-      button.setAttribute('aria-pressed', 'false');
-      button.textContent = 'Bekijk achterkant';
+      button.setAttribute('aria-pressed', String(flipped));
+      button.setAttribute('aria-label', flipped ? 'Flip cover to view the front' : 'Flip cover to view the back');
+      button.textContent = flipped ? 'Flip cover to front' : 'Flip cover to back';
     }
   }
 
+  function clearFlip(slide) {
+    const card = slide.querySelector('[data-dig-sleeve-card]');
+    if (card) {
+      card.style.transform = '';
+      card.style.transition = '';
+      card.classList.remove('is-dragging');
+    }
+    setFlipState(slide, false);
+  }
+
+  function toggleFlip(slide) {
+    const card = slide.querySelector('[data-dig-sleeve-card]');
+    if (!card) return;
+    setFlipState(slide, digState.nextFlipState(card.classList.contains('is-flipped')));
+  }
+
   function updateNavigation() {
-    if (position) position.textContent = `${activeIndex + 1} van ${slides.length}`;
+    if (position) position.textContent = `${activeIndex + 1} of ${slides.length}`;
     if (progress) {
       progress.max = slides.length;
       progress.value = activeIndex + 1;
@@ -124,6 +141,12 @@
     stage.classList.remove('is-gesture-active');
     slide.classList.remove('is-dragging');
     if (neighbor) neighbor.classList.remove('is-dragging');
+    const sleeveCard = slide.querySelector('[data-dig-sleeve-card]');
+    if (sleeveCard) {
+      sleeveCard.classList.remove('is-dragging');
+      sleeveCard.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
+      sleeveCard.style.transform = '';
+    }
     slide.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
     slide.style.transform = '';
     if (neighbor) {
@@ -161,12 +184,14 @@
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
+      deltaX: 0,
       deltaY: 0,
       stage,
       slide,
       neighbor: null,
       neighborIndex: -1,
       height: Math.max(stage.getBoundingClientRect().height, 1),
+      width: Math.max(stage.getBoundingClientRect().width, 1),
       horizontal: false,
     };
 
@@ -183,9 +208,25 @@
     const deltaX = event.clientX - gesture.startX;
     const deltaY = event.clientY - gesture.startY;
 
-    if (Math.abs(deltaX) > 18 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15) {
+    if (!gesture.horizontal && Math.abs(deltaX) > 18 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15) {
       gesture.horizontal = true;
-      clearDragStyles();
+      const card = gesture.slide.querySelector('[data-dig-sleeve-card]');
+      gesture.slide.classList.add('is-dragging');
+      if (card) {
+        card.classList.add('is-dragging');
+        card.style.transition = 'none';
+      }
+    }
+
+    if (gesture.horizontal) {
+      gesture.deltaX = deltaX;
+      event.preventDefault();
+      const card = gesture.slide.querySelector('[data-dig-sleeve-card]');
+      if (card && !motionPreference.matches) {
+        const startingAngle = card.classList.contains('is-flipped') ? 180 : 0;
+        const deltaAngle = Math.max(-180, Math.min(180, (deltaX / gesture.width) * 180));
+        card.style.transform = 'rotateY(' + (startingAngle + deltaAngle) + 'deg)';
+      }
       return;
     }
     if (Math.abs(deltaY) < 4) return;
@@ -227,20 +268,50 @@
 
   function handlePointerUp(event) {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
-    const { deltaY, neighborIndex } = gesture;
+    const { deltaX, deltaY, neighborIndex, slide, stage, horizontal } = gesture;
+
+    if (horizontal) {
+      const card = slide.querySelector('[data-dig-sleeve-card]');
+      const shouldFlip = Math.abs(deltaX) >= swipeThreshold;
+      stage.classList.remove('is-gesture-active');
+      gesture = null;
+      try {
+        if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+      } catch {
+        // Already released by the browser.
+      }
+
+      if (card) {
+        const draggedTransform = card.style.transform;
+        card.classList.remove('is-dragging');
+        slide.classList.remove('is-dragging');
+        card.style.transition = motionPreference.matches ? 'none' : 'transform 260ms cubic-bezier(.2, .75, .25, 1)';
+        card.style.transform = draggedTransform;
+        void card.offsetHeight;
+        if (shouldFlip) {
+          setFlipState(slide, digState.nextFlipState(card.classList.contains('is-flipped')));
+        }
+        card.style.transform = '';
+        window.setTimeout(() => {
+          card.style.transition = '';
+          card.classList.remove('is-dragging');
+        }, motionPreference.matches ? 0 : 280);
+      }
+      return;
+    }
+
     const shouldNavigate = digState.shouldCommitSwipe(
       deltaY,
       swipeThreshold,
       neighborIndex,
       slides.length,
-      gesture.horizontal
+      false
     );
 
     // Store the target before releasing the pointer, because clearing a short
     // gesture also clears the gesture state.
     const targetIndex = neighborIndex;
     const direction = deltaY < 0 ? 1 : -1;
-    const stage = gesture.stage;
     stage.classList.remove('is-gesture-active');
 
     if (shouldNavigate) {
@@ -262,16 +333,7 @@
     if (flipButton) {
       flipButton.addEventListener('click', () => {
         if (!slide.classList.contains('is-active')) return;
-        const card = slide.querySelector('[data-dig-sleeve-card]');
-        const front = slide.querySelector('.dig-sleeve-face-front');
-        const back = slide.querySelector('.dig-sleeve-face-back');
-        if (!card) return;
-        const flipped = digState.nextFlipState(card.classList.contains('is-flipped'));
-        card.classList.toggle('is-flipped', flipped);
-        if (front) front.setAttribute('aria-hidden', String(flipped));
-        if (back) back.setAttribute('aria-hidden', String(!flipped));
-        flipButton.setAttribute('aria-pressed', String(flipped));
-        flipButton.textContent = flipped ? 'Bekijk voorkant' : 'Bekijk achterkant';
+        toggleFlip(slide);
       });
     }
 
