@@ -99,7 +99,7 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 ## 9. Owner closeout checklist
 
 - [ ] Confirm controller/operator legal identity and which postal/contact details must be public.
-- [ ] Approve or revise the legal-basis register above.
+- [ ] Review and approve or revise `docs/BETA_LEGAL_BASIS_REGISTER.md`, including both draft legitimate-interests assessments.
 - [ ] Approve the data-retention/deletion rules and practical end conditions for every category.
 - [ ] Confirm the manual request handler, restricted record location and record retention period.
 - [ ] Choose and verify the pre-pilot backup/recovery plan for Supabase Free: a secure off-site database export plus a separate Storage-object recovery strategy, or an explicit owner-accepted residual-risk decision. Database exports/backups do not contain the stored image objects.
@@ -118,4 +118,5 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 - [Autoriteit Persoonsgegevens — cookies](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/internet-telefoon-tv-en-post/cookies)
 - [Autoriteit Persoonsgegevens — privacy rights](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen)
 - `docs/BETA_DATA_INVENTORY.md`
-- Issue #48 and Issue #88
+- `docs/BETA_LEGAL_BASIS_REGISTER.md` — proposed per-purpose basis mapping and legitimate-interests assessments; owner approval remains open.
+- Issues #48, #88, #153, #154 and #155
