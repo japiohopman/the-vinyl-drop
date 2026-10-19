@@ -630,7 +630,32 @@ describe('Authentication & Session Handling', () => {
       expect(res.header.location).toContain('accounts.google.com');
     });
 
-    it('GET /auth/callback should exchange PKCE code for session and bootstrap profile', async () => {
+    it('POST /auth/google/start carries signed registration consent through the OAuth callback', async () => {
+      mockSupabase.auth.signInWithOAuth.mockResolvedValue({ data: { url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=test' }, error: null });
+      const app = createApp();
+      const startResponse = await request(app).post('/auth/google/start').set('Origin', 'http://localhost:3000')
+        .send({ termsAccepted: 'true', ageConfirmed: 'true', next: '/profile' });
+      expect(startResponse.status).toBe(302);
+      expect(startResponse.header.location).toContain('accounts.google.com');
+      const redirectTo = new URL(mockSupabase.auth.signInWithOAuth.mock.calls[0][0].options.redirectTo);
+      expect(redirectTo.pathname).toBe('/auth/callback');
+      expect(redirectTo.searchParams.get('flow')).toBe('signup');
+      expect(redirectTo.searchParams.get('next')).toBe('/profile');
+      const setCookies = startResponse.headers['set-cookie'];
+      const cookiePairs = (Array.isArray(setCookies) ? setCookies : [setCookies]).filter(Boolean).map((value: string) => value.split(';')[0]);
+      expect(cookiePairs.some((value: string) => value.startsWith('tvd-registration-consent='))).toBe(true);
+      const mockUser = { id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', email: 'googleuser@gmail.com', user_metadata: { full_name: 'New OAuth Tester' } };
+      mockSupabase.auth.exchangeCodeForSession.mockResolvedValue({ data: { user: mockUser, session: { access_token: 'oauth-consent-token', refresh_token: 'oauth-consent-refresh', expires_in: 3600 } }, error: null });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(null);
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+      jest.spyOn(profileRepository, 'createProfile').mockImplementation(async (data: any) => ({ ...data, bio: null, location: null, createdAt: new Date(), updatedAt: new Date() }));
+      const callback = await request(app).get('/auth/callback?code=synthetic-oauth-code&flow=signup&next=%2Fprofile').set('Cookie', cookiePairs.join('; '));
+      expect(callback.status).toBe(302);
+      expect(callback.header.location).toBe('/profile');
+      expect(mockSaveRegistrationConsent).toHaveBeenCalledWith(mockUser.id, expect.objectContaining({ termsVersion: 'beta-terms-2026-10-19-v1' }), undefined);
+    });
+
+    it('GET /auth/callback rejects first-time Google accounts without registration consent', async () => {
       const mockUser = {
         id: '44444444-4444-4444-4444-444444444444',
         email: 'googleuser@gmail.com',
@@ -662,14 +687,12 @@ describe('Authentication & Session Handling', () => {
         updatedAt: new Date(),
       }));
 
+      const createProfileSpy = jest.spyOn(profileRepository, 'createProfile');
       const app = createApp();
       const res = await request(app).get('/auth/callback?code=mock-pkce-code-123&next=/profile');
-
-      expect(res.status).toBe(302);
-      expect(res.header.location).toBe('/profile');
-      const cookieHeader = res.header['set-cookie'];
-      const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
-      expect(cookies).toContain('sb-access-token=oauth-token-abc');
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('complete registration');
+      expect(createProfileSpy).not.toHaveBeenCalled();
     });
 
     it('GET /auth/callback should handle PKCE exchange failure safely', async () => {
