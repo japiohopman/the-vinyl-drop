@@ -102,7 +102,7 @@ describe('Dig photo-role contract', () => {
     expect(newListingPhotoRoleSchema.safeParse('back_cover').success).toBe(true);
   });
 
-  it('renders one-listing slides, labeled faces, missing-back fallback, accessible controls and filter-preserving return links', async () => {
+  it('renders a clean English Dig card, accessible swipe-to-flip control, missing-back fallback and filter-preserving return links', async () => {
     const viewPath = path.join(process.cwd(), 'views/browse/dig.ejs');
     const html = await ejs.renderFile(viewPath, {
       title: 'Crate Dig',
@@ -134,8 +134,8 @@ describe('Dig photo-role contract', () => {
         url: '/listings/listing-1',
         frontArtwork: {
           src: '/seller/front.webp',
-          altText: 'Voorkant van de fysieke hoes van 3 Feet High and Rising',
-          sourceLabel: 'Foto van de voorkant van deze fysieke kopie',
+          altText: 'Front cover of the physical sleeve for 3 Feet High and Rising',
+          sourceLabel: 'Seller photo of the physical front cover',
           sourceKind: 'seller_front',
         },
         backArtwork: null,
@@ -148,10 +148,14 @@ describe('Dig photo-role contract', () => {
     expect(html).toContain('data-dig-slide');
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain('aria-pressed="false"');
-    expect(html).toContain('Bekijk achterkant');
-    expect(html).toContain('Achterkant niet gefotografeerd');
-    expect(html).toContain('Voorkant');
-    expect(html).toContain('Achterkant');
+    expect(html).toContain('Flip cover to view the back');
+    expect(html).toContain('Back cover not photographed');
+    expect(html).not.toContain('dig-face-label');
+    expect(html).not.toContain('dig-artwork-source');
+    expect(html).not.toContain('Media condition');
+    expect(html).not.toContain('Sleeve condition');
+    expect(html).toContain('Price');
+    expect(html).toContain('Open listing');
     expect(html).toContain('data-dig-prev');
     expect(html).toContain('data-dig-next');
     expect(html).not.toContain('dig-instructions');
@@ -173,6 +177,8 @@ describe('Dig photo-role contract', () => {
     expect(script).toContain("event.key === 'End'");
     expect(script).toContain("addEventListener('pointerdown'");
     expect(script).toContain("addEventListener('pointermove'");
+    expect(script).toContain('gesture.deltaX');
+    expect(script).toContain('setFlipState(slide, digState.nextFlipState');
     expect(script).toContain("window.matchMedia('(prefers-reduced-motion: reduce)')");
     expect(script).toContain('digState.isValidIndex');
     expect(script).toContain('digState.nextFlipState');
@@ -182,11 +188,27 @@ describe('Dig photo-role contract', () => {
     const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     expect(css).toContain('.dig-sleeve-image');
     expect(css).toContain('object-fit: contain');
+    expect(css).toContain('touch-action: none;');
+    expect(css).toContain('.dig-artwork-badge');
     expect(css).toContain('.dig-slide.is-leaving-up');
     expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped');
     expect(css).toContain('@media (max-width: 680px)');
     expect(css).toContain('.dig-nav-button {\n    display: none;');
     expect(css).toContain('.dig-keyboard-note {\n    display: none;');
+  });
+});
+
+  it('keeps the focused listing detail grid within narrow mobile viewports', () => {
+    const view = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
+    const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+
+    expect(view).not.toContain('minmax(320px, 1fr)');
+    expect(view).toContain('class="listing-detail-grid"');
+    expect(view).toContain('class="listing-main-photo"');
+    expect(css).toContain('.listing-detail-grid {');
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr);');
+    expect(css).toContain('.listing-main-photo');
+    expect(css).toContain('@media (max-width: 767px)');
   });
 });
 
