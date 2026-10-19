@@ -89,3 +89,4 @@ People may complain to the Dutch supervisory authority, the Autoriteit Persoonsg
 - Google Cloud — manage app audience and test users: https://support.google.com/cloud/answer/15549945
 - Repository data inventory: docs/BETA_DATA_INVENTORY.md
 - Operational request runbook: docs/BETA_PRIVACY_OPERATIONS.md
+- Internal legal-basis register (owner review draft): docs/BETA_LEGAL_BASIS_REGISTER.md
