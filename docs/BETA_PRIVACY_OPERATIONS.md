@@ -32,7 +32,7 @@ The exact legal deadlines, grounds for refusal/retention, and the appropriate id
 
 The owner-approved directions below are the current policy baseline for the initial pilot. Targets are not claims that automated purging or provider-side retention has been verified.
 
-| Data category | Proposed rule for owner review | Current implementation caveat |
+| Data category | Owner-approved policy direction | Current implementation caveat |
 | --- | --- | --- |
 | Auth account and profile | Retain while active; no automatic expiry after 12 months. On valid erasure, remove/anonymise personal data where appropriate and document specific lawful exceptions. | No self-service full erasure/export path. Manual cross-system handling remains required. |
 | Draft/published/archived listings and photos | Archived content is targeted for deletion 12 months after archive unless a specific documented reason justifies longer retention. Draft retention must be defined only after confirming where drafts persist. | Policy target only; archive is not deletion. Storage objects and orphan reconciliation require separate checks. |
@@ -43,7 +43,8 @@ The owner-approved directions below are the current policy baseline for the init
 | Storage orphan diagnostics | Keep only while needed to resolve a failed upload/delete cleanup; review after the incident is resolved and remove diagnostic details when no longer needed. | No automated expiry policy is currently documented. The table is restricted; verify actual access grants as part of operational review. |
 | Privacy-request handling record | Keep a minimal, access-controlled record; target deletion within 12 months after closure unless a documented need requires longer. Do not keep ID copies by default. | Manual process; no ticket/mailbox automation is implemented. |
 | HIBP password-range request | Do not persist the submitted password or full hash; the service checks the returned suffix in memory. | The app uses the five-character hash-prefix protocol. The native Supabase leaked-password warning remains a separate known limitation. |
-| Registration agreement audit | Retain only the Terms version, Terms-acceptance timestamp, 18+ attestation timestamp and Auth user ID. Delete it when the Auth identity is erased. | A source-only private-schema migration adds this audit; apply and verify it only through a separately authorised staging migration. |\n| Waitlist / marketing | No collection and no retention. If later selected, approve purpose, provider, access, retention and deletion as a separate scope. | No waitlist route/table; #48 excludes a public waitlist from the five-person pilot. |
+| Registration agreement audit | Retain only the Terms version, Terms-acceptance timestamp, 18+ attestation timestamp and Auth user ID. Delete it when the Auth identity is erased. | Migration 0013 was applied and verified on staging on 19 October 2026 (schema, RLS, grants and Auth-delete cascade). The manual account-erasure process and provider/backup retention still need operational verification. |
+| Waitlist / marketing | No collection and no retention. If later selected, approve purpose, provider, access, retention and deletion as a separate scope. | No waitlist route/table; #48 excludes a public waitlist from the five-person pilot. |
 
 ## 4. Legal-basis decision register
 
@@ -83,7 +84,7 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 - [ ] Perform a deployed clean-browser/network check for cookies, third-party requests and tracking; record evidence without exposing session values.
 - [ ] Review the separate `/terms` draft and the `/privacy` notice; keep both labelled as drafts until the required owner/legal/provider checks are evidenced.
 - [ ] Confirm the initial pilot is 18+ and that registration stores no date of birth or identity document.
-- [ ] Apply and verify the private registration-consent migration only via the separately authorised staging process.
+- [x] The private registration-consent migration was applied and schema/history verified on staging on 19 October 2026. Further database changes require separate authorization.
 - [ ] Keep the five-person pilot manual and invite-only; no public waitlist or marketing collection.
 - [ ] Review the public wording with appropriate legal/privacy advice before converting the draft into a final notice.
 
