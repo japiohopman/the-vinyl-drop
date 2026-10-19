@@ -614,7 +614,17 @@ export async function updateListingPhotoRole(
     }
   }
 
-  const updated = await updatePhotoRoleInRepo(listingId, photoId, role, dbOverride);
+  const updated = await updatePhotoRoleInRepo(listingId, photoId, role, dbOverride).catch((error: unknown) => {
+    // The preflight conflict check above improves the normal user message, but two
+    // concurrent requests can still race. Preserve the partial unique indexes as
+    // the final authority and translate their violation into the same validation error.
+    const dbError = error as { code?: string };
+    if (dbError.code === '23505' && (role === 'front_cover' || role === 'back_cover')) {
+      const side = role === 'front_cover' ? 'front cover' : 'back cover';
+      throw new ValidationError(`This listing already has a ${side}. Change that photo's role first.`);
+    }
+    throw error;
+  });
   if (!updated) throw new NotFoundError('Photo not found');
   return { ...updated, publicUrl: getPhotoPublicUrl(updated.storagePath) };
 }
