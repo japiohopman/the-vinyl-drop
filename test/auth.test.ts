@@ -4,7 +4,7 @@ import { createApp } from '../src/app';
 import { setSupabaseClient } from '../src/lib/supabase';
 import { isAllowedRedirectUrl, sanitizeRedirectUrl } from '../src/validators/auth';
 import * as profileRepository from '../src/app/repositories/profileRepository';
-import { ensureProfileForUser } from '../src/app/services/authService';
+import { ensureProfileForUser, signUp } from '../src/app/services/authService';
 import { Profile } from '../src/db/schema/profiles';
 import crypto from 'crypto';
 import { generateRecoveryToken } from '../src/app/middleware/auth';
@@ -204,6 +204,19 @@ describe('Authentication & Session Handling', () => {
       expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
     });
 
+    it('signup service fails closed when no server-validated consent record is supplied', async () => {
+      const result = await signUp({
+        username: 'service_guard',
+        email: 'service-guard@example.com',
+        password: 'securepassword123',
+        termsAccepted: 'true',
+        ageConfirmed: 'true',
+      });
+      expect(result.error).toContain('You must accept the Terms of Use');
+      expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
+      expect(mockIsPasswordPwned).not.toHaveBeenCalled();
+    });
+
     it('POST /auth/signup should reject a breached password before calling Supabase Auth', async () => {
       const submittedPassword = 'known-breached-password-test-value';
       mockIsPasswordPwned.mockResolvedValue(true);
@@ -336,6 +349,15 @@ describe('Authentication & Session Handling', () => {
       );
       expect(mockCreatePasswordCheckedSignupApproval.mock.invocationCallOrder[0]).toBeLessThan(
         mockSupabase.auth.signUp.mock.invocationCallOrder[0]
+      );
+      expect(mockSaveRegistrationConsent).toHaveBeenCalledWith(
+        mockUser.id,
+        expect.objectContaining({
+          termsVersion: 'beta-terms-2026-10-19-v1',
+          termsAcceptedAt: expect.any(String),
+          ageAttestedAt: expect.any(String),
+        }),
+        undefined
       );
       expect(res.header.location).toBe('/profile');
       expect(res.header['set-cookie']).toBeDefined();
