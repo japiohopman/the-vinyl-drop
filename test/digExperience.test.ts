@@ -152,6 +152,12 @@ describe('Dig photo-role contract', () => {
     expect(html).toContain('Achterkant niet gefotografeerd');
     expect(html).toContain('Voorkant');
     expect(html).toContain('Achterkant');
+    expect(html).toContain('data-dig-prev');
+    expect(html).toContain('data-dig-next');
+    expect(html).not.toContain('dig-instructions');
+    expect(html).not.toContain('Omhoog swipen');
+    expect(html).not.toContain('data-dig-progress-label');
+    expect(html).toContain('class="dig-keyboard-note"');
     expect(html).toContain('href="/browse?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
     expect(html).toContain('/js/dig-state.js');
     expect(html).toContain('/js/dig-mode.js');
@@ -178,6 +184,9 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('object-fit: contain');
     expect(css).toContain('.dig-slide.is-leaving-up');
     expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped');
+    expect(css).toContain('@media (max-width: 680px)');
+    expect(css).toContain('.dig-nav-button {\n    display: none;');
+    expect(css).toContain('.dig-keyboard-note {\n    display: none;');
   });
 });
 
