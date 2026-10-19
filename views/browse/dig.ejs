@@ -1,0 +1,137 @@
+<%
+  const selectedFormats = Array.isArray(filters.formats) ? filters.formats : [];
+  const baseQueryParams = [
+    'q=' + encodeURIComponent(filters.q || ''),
+    'genre=' + encodeURIComponent(filters.genre || ''),
+    'condition=' + encodeURIComponent(filters.condition || ''),
+    'minPrice=' + encodeURIComponent(filters.minPrice || ''),
+    'maxPrice=' + encodeURIComponent(filters.maxPrice || ''),
+    'sort=' + encodeURIComponent(filters.sort || 'newest'),
+    ...selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }),
+    filters.whiteLabel ? 'whiteLabel=1' : '',
+  ].filter(Boolean).join('&');
+  const browseReturnUrl = '/browse?' + baseQueryParams + '&view=grid';
+  const visibleItems = Array.isArray(items) ? items : [];
+%>
+
+<div class="dig-page" data-dig-experience data-reduced-motion="false">
+  <header class="dig-page-header">
+    <div>
+      <p class="dig-eyebrow">THE VINYL DROP / BROWSE</p>
+      <h1>Crate Dig</h1>
+    </div>
+    <a class="btn btn-outline dig-back-to-browse" href="<%= browseReturnUrl %>">← Back to Browse</a>
+  </header>
+
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <div role="alert" class="alert alert-error"><%= errorMessage %></div>
+  <% } %>
+
+  <% if (visibleItems.length === 0) { %>
+    <section class="dig-empty-state" aria-labelledby="dig-empty-title">
+      <h2 id="dig-empty-title">No records found</h2>
+      <p>No available listings match these filters. Return to Browse to adjust them.</p>
+      <a class="btn btn-primary" href="<%= browseReturnUrl %>">Back to results</a>
+    </section>
+  <% } else { %>
+    <div class="dig-context-row">
+      <p class="dig-result-summary">
+        <strong><span data-dig-position aria-live="polite" aria-atomic="true">1 of <%= visibleItems.length %></span></strong>
+        <span>in this session</span>
+      </p>
+      <% if (hasMore) { %>
+        <p class="dig-result-limit">Showing the first 100 results. Use Browse for the full results list.</p>
+      <% } %>
+    </div>
+
+    <% if (filters.q || filters.genre || filters.condition || filters.minPrice || filters.maxPrice || selectedFormats.length || filters.whiteLabel) { %>
+      <p class="dig-filter-summary">
+        Active filters:
+        <% if (filters.q) { %><span>Search: <strong><%= filters.q %></strong></span><% } %>
+        <% if (filters.genre) { %><span>Genre: <strong><%= filters.genre %></strong></span><% } %>
+        <% if (filters.condition) { %><span>Condition: <strong><%= filters.condition %></strong></span><% } %>
+        <% if (filters.minPrice) { %><span>Min: <strong>€<%= filters.minPrice %></strong></span><% } %>
+        <% if (filters.maxPrice) { %><span>Max: <strong>€<%= filters.maxPrice %></strong></span><% } %>
+        <% selectedFormats.forEach(function(format) { %><span>Format: <strong><%= format %></strong></span><% }); %>
+        <% if (filters.whiteLabel) { %><span><strong>White label</strong></span><% } %>
+      </p>
+    <% } %>
+
+    <section class="dig-explorer" aria-label="Crate Dig album explorer">
+      <div class="dig-viewer" data-dig-viewer tabindex="0" role="region" aria-label="Crate Dig. Use the up and down arrow keys to browse records.">
+        <div class="dig-crate-stack" data-dig-stack>
+          <% visibleItems.forEach(function(item, index) { %>
+            <article
+              class="dig-slide <%= index === 0 ? 'is-active' : (index === 1 ? 'is-next' : (index === 0 ? 'is-previous' : '')) %>"
+              data-dig-slide
+              data-index="<%= index %>"
+              role="group"
+              aria-roledescription="slide"
+              aria-label="Record <%= index + 1 %> of <%= visibleItems.length %>: <%= item.title %> by <%= item.artist %>"
+              aria-hidden="<%= index === 0 ? 'false' : 'true' %>"
+              <%= index === 0 ? '' : 'inert' %>
+            >
+              <div class="dig-listing-meta">
+                <h2><%= item.title %></h2>
+                <p class="dig-artist"><%= item.artist %><% if (item.releaseYear) { %> · <%= item.releaseYear %><% } %></p>
+              </div>
+
+              <div class="dig-sleeve-interaction">
+                <div class="dig-sleeve-stage" data-dig-swipe-area role="group" aria-label="Album cover. Swipe left or right to flip the cover. Swipe up for the next record or down for the previous record.">
+                  <div class="dig-sleeve-card" data-dig-sleeve-card>
+                    <div class="dig-sleeve-face dig-sleeve-face-front" aria-hidden="false">
+                      <% if (item.frontArtwork.sourceKind === 'release_artwork') { %>
+                      <span class="dig-artwork-badge">Release artwork</span>
+                      <% } %>
+                      <img class="dig-sleeve-image" src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
+
+                    </div>
+                    <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Back cover" aria-hidden="true">
+                      <% if (item.backArtwork) { %>
+                        <img class="dig-sleeve-image" src="<%= item.backArtwork.src %>" alt="<%= item.backArtwork.altText %>" draggable="false">
+
+                      <% } else { %>
+                        <div class="dig-missing-back" role="status">
+                          <span class="dig-missing-back-mark" aria-hidden="true">↻</span>
+                          <strong>Back cover not photographed</strong>
+                          <p>No back-cover photo was provided for this copy.</p>
+                        </div>
+                      <% } %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="dig-card-actions">
+                <p class="dig-price">
+                  <span class="dig-price-label">Price</span>
+                  <strong><%= item.priceFormatted %></strong>
+                  <% if (item.isTrade) { %><span class="dig-trade-note">Trade considered</span><% } %>
+                </p>
+                <a class="dig-listing-link" href="<%= item.url %>">Open listing <span aria-hidden="true">↗</span></a>
+                <button type="button" class="dig-flip-control" data-dig-flip aria-label="Flip cover to view the back" aria-pressed="false">Flip cover</button>
+              </div>
+            </article>
+          <% }); %>
+        </div>
+      </div>
+
+      <div class="dig-navigation" aria-label="Record navigation">
+        <button type="button" class="btn btn-outline dig-nav-button" data-dig-prev disabled>
+          ↓ Previous record
+        </button>
+        <div class="dig-progress-wrap">
+          <progress data-dig-progress max="<%= visibleItems.length %>" value="1" aria-label="Dig session progress"></progress>
+        </div>
+        <button type="button" class="btn btn-outline dig-nav-button" data-dig-next <%= visibleItems.length <= 1 ? 'disabled' : '' %>>
+          Next record ↑
+        </button>
+      </div>
+
+      <p class="dig-keyboard-note">Keyboard: ↑ next · ↓ previous · Home first · End last · F flips the cover.</p>
+    </section>
+  <% } %>
+</div>
+
+<script src="/js/dig-state.js" defer></script>
+<script src="/js/dig-mode.js" defer></script>

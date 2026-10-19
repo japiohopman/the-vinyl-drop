@@ -99,6 +99,13 @@
       "when": 1792391920000,
       "tag": "0013_private_registration_consents",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792398300000,
+      "tag": "0014_add_listing_photo_roles",
+      "breakpoints": true
     }
   ]
 }

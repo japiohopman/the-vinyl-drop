@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import { getDb } from '../../db';
 import { ListingStatus } from '../../db/schema/enums';
 import { ListingPhoto } from '../../db/schema/listingPhotos';
+import { ListingPhotoRole } from '../../domain/listingPhotoRole';
+import { resolveDigArtwork, DigArtworkFace } from '../../domain/digExperience';
 import { Listing } from '../../db/schema/listings';
 import { PhysicalCopy } from '../../db/schema/physicalCopies';
 import { Profile } from '../../db/schema/profiles';
@@ -14,6 +16,9 @@ import {
   createListingSchema,
   parsePriceEurToCents,
   reorderPhotosSchema,
+  listingPhotoAltTextSchema,
+  listingPhotoRoleSchema,
+  newListingPhotoRoleSchema,
   UpdateListingDetailsInput,
   updateListingDetailsSchema,
 } from '../../validators/listing';
@@ -23,6 +28,8 @@ import {
   deleteListingPhoto,
   findPhotoById,
   findPhotosByListingId,
+  findPhotosByListingIds,
+  updateListingPhotoRole as updatePhotoRoleInRepo,
   updatePhotoOrder,
 } from '../repositories/listingPhotoRepository';
 import {
@@ -54,13 +61,27 @@ import {
 } from './storageService';
 import { recordOrphanedStorageObject } from '../repositories/orphanRepository';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
-import { buildListingCardViewModel, ListingCardViewModel } from '../view-models/listingCardViewModel';
+import { buildListingCardViewModel, ListingCardViewModel, formatPrice } from '../view-models/listingCardViewModel';
 import { recordListingPublishedEvent } from './activityService';
 
 type DbInstance = ReturnType<typeof getDb>;
 
 export interface ListingPhotoWithUrl extends ListingPhoto {
   publicUrl: string;
+}
+
+export interface DigListingViewModel extends ListingCardViewModel {
+  frontArtwork: DigArtworkFace;
+  backArtwork: DigArtworkFace | null;
+  mediaCondition: string;
+  sleeveCondition: string;
+  conditionSummary: string;
+}
+
+export interface DigListingsResult {
+  items: DigListingViewModel[];
+  totalCount: number;
+  hasMore: boolean;
 }
 
 export interface DetailedListing {
@@ -201,6 +222,47 @@ export async function getHomeFeedListings(
 
 export async function hasExplicitWhiteLabelInventory(dbOverride?: DbInstance): Promise<boolean> {
   return hasWhiteLabelInRepo(dbOverride);
+}
+
+export async function searchDigListings(
+  params: SearchListingsParams,
+  dbOverride?: DbInstance
+): Promise<DigListingsResult> {
+  const result = await searchListings({ ...params, page: 1, limit: 100 }, dbOverride);
+  const listingIds = result.records.map((record) => record.listing.id);
+  const photoRecords = await findPhotosByListingIds(listingIds, dbOverride);
+  const photosByListingId = new Map<string, ListingPhoto[]>();
+
+  for (const photo of photoRecords) {
+    const current = photosByListingId.get(photo.listingId) || [];
+    current.push(photo);
+    photosByListingId.set(photo.listingId, current);
+  }
+
+  const items: DigListingViewModel[] = result.records.map((record) => {
+    const photos = (photosByListingId.get(record.listing.id) || []).map((photo) => ({
+      ...photo,
+      publicUrl: getPhotoPublicUrl(photo.storagePath),
+    }));
+    const artwork = resolveDigArtwork(photos, record.release.coverArtUrl, record.release.title, record.release.artist);
+    const base = recordToListingCardViewModel(record);
+
+    return {
+      ...base,
+      priceFormatted: formatPrice(
+        record.listing.price,
+        record.listing.tradeAvailable && record.listing.price === null
+      ),
+      url: `/listings/${record.listing.id}`,
+      frontArtwork: artwork.front,
+      backArtwork: artwork.back,
+      mediaCondition: record.physicalCopy.mediaCondition,
+      sleeveCondition: record.physicalCopy.sleeveCondition,
+      conditionSummary: `Media ${record.physicalCopy.mediaCondition} · hoes ${record.physicalCopy.sleeveCondition}`,
+    };
+  });
+
+  return { items, totalCount: result.totalCount, hasMore: result.totalCount > items.length };
 }
 
 export async function searchBrowseListings(
@@ -423,7 +485,8 @@ export async function addPhotoToListing(
   file: { buffer: Buffer; mimetype: string; originalname?: string },
   altText?: string,
   dbOverride?: DbInstance,
-  storageOptions?: StorageOptions
+  storageOptions?: StorageOptions,
+  roleInput?: unknown
 ): Promise<ListingPhotoWithUrl> {
   const listing = await findListingById(listingId, dbOverride);
   if (!listing) {
@@ -442,6 +505,15 @@ export async function addPhotoToListing(
   if (existingPhotoCount >= 5) {
     throw new ValidationError('Maximum photo limit (5 photos per listing) reached');
   }
+
+  const roleResult = newListingPhotoRoleSchema.safeParse(roleInput);
+  if (!roleResult.success) throw new ValidationError('Choose a photo role before uploading.');
+  const altTextResult = listingPhotoAltTextSchema.safeParse(altText);
+  if (!altTextResult.success) {
+    throw new ValidationError(altTextResult.error.issues.map((issue) => issue.message).join('; '));
+  }
+  const role = roleResult.data;
+  const validatedAltText = altTextResult.data;
 
   // Safe Sharp inspection and processing
   let processed: ProcessedImage;
@@ -471,7 +543,8 @@ export async function addPhotoToListing(
         listingId,
         storagePath,
         displayOrder: existingPhotoCount,
-        altText: altText || file.originalname || 'Listing photo',
+        altText: validatedAltText,
+        role,
       },
       dbOverride
     );
@@ -503,8 +576,57 @@ export async function addPhotoToListing(
         );
       }
     }
+    if ((dbErr as { code?: string }).code === '23505') {
+      throw new ValidationError('This listing already has a photo assigned to that sleeve side. Reclassify the existing photo before adding another one.');
+    }
     throw dbErr;
   }
+}
+
+export async function updateListingPhotoRole(
+  listingId: string,
+  photoId: string,
+  requestingUserId: string,
+  roleInput: unknown,
+  dbOverride?: DbInstance
+): Promise<ListingPhotoWithUrl> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) throw new NotFoundError('Listing not found');
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to modify photos for this listing');
+  }
+  if (isTerminalListingStatus(listing.status)) {
+    throw new ValidationError(`Cannot classify photos on a listing in terminal state '${listing.status}'`);
+  }
+
+  const roleResult = listingPhotoRoleSchema.safeParse(roleInput);
+  if (!roleResult.success) throw new ValidationError('Choose a valid photo role.');
+  const photo = await findPhotoById(photoId, dbOverride);
+  if (!photo || photo.listingId !== listingId) throw new NotFoundError('Photo not found');
+  const role: ListingPhotoRole = roleResult.data;
+
+  if (role === 'front_cover' || role === 'back_cover') {
+    const photos = await findPhotosByListingId(listingId, dbOverride);
+    const conflictingPhoto = photos.find((candidate) => candidate.id !== photoId && candidate.role === role);
+    if (conflictingPhoto) {
+      const side = role === 'front_cover' ? 'front cover' : 'back cover';
+      throw new ValidationError(`This listing already has a ${side}. Change that photo's role first.`);
+    }
+  }
+
+  const updated = await updatePhotoRoleInRepo(listingId, photoId, role, dbOverride).catch((error: unknown) => {
+    // The preflight conflict check above improves the normal user message, but two
+    // concurrent requests can still race. Preserve the partial unique indexes as
+    // the final authority and translate their violation into the same validation error.
+    const dbError = error as { code?: string };
+    if (dbError.code === '23505' && (role === 'front_cover' || role === 'back_cover')) {
+      const side = role === 'front_cover' ? 'front cover' : 'back cover';
+      throw new ValidationError(`This listing already has a ${side}. Change that photo's role first.`);
+    }
+    throw error;
+  });
+  if (!updated) throw new NotFoundError('Photo not found');
+  return { ...updated, publicUrl: getPhotoPublicUrl(updated.storagePath) };
 }
 
 export async function deletePhotoFromListing(
@@ -549,6 +671,7 @@ export async function deletePhotoFromListing(
           storagePath: photo.storagePath,
           displayOrder: photo.displayOrder,
           altText: photo.altText,
+          role: photo.role,
         },
         dbOverride
       );

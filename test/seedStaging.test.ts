@@ -296,6 +296,8 @@ describe('Staging Seed Script Safety & Idempotency', () => {
         '0002_add_release_cover_art.sql',
         '0003_brainy_scarlet_witch.sql',
         '0004_mighty_spacker_dave.sql',
+        // The seed/idempotency fixture uses the current listing_photos schema.
+        '0014_add_listing_photo_roles.sql',
       ];
 
       for (const file of migrationFiles) {

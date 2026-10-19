@@ -13,6 +13,7 @@ import {
   postEditListing,
   postUploadPhoto,
   postDeletePhoto,
+  postUpdatePhotoRole,
   postReorderPhotos,
   getPreviewListingPage,
   postPublishListing,
@@ -48,6 +49,7 @@ router.post('/:id/edit', requireAuth, validateSameOrigin, postEditListing);
 // Photo Operations
 router.post('/:id/photos', requireAuth, validateSameOrigin, multipartUploadHandler, postUploadPhoto);
 router.post('/:id/photos/:photoId/delete', requireAuth, validateSameOrigin, postDeletePhoto);
+router.post('/:id/photos/:photoId/role', requireAuth, validateSameOrigin, postUpdatePhotoRole);
 router.post('/:id/photos/reorder', requireAuth, validateSameOrigin, postReorderPhotos);
 
 // State Lifecycle Operations

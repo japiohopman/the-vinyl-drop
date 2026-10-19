@@ -14,6 +14,7 @@ import {
   publishListing,
   archiveListing,
   updateListing,
+  updateListingPhotoRole,
   getListingWithDetails,
 } from '../src/app/services/listingService';
 import { ConditionGrade } from '../src/db/schema/enums';
@@ -248,6 +249,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         storagePath: `listings/${listingId}/${photoId}.webp`,
         displayOrder: 0,
         altText: 'Cover art',
+        role: 'back_cover',
       };
 
       (photoRepo.findPhotoById as jest.Mock).mockResolvedValue(samplePhoto);
@@ -272,6 +274,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
           storagePath: `listings/${listingId}/${photoId}.webp`,
           displayOrder: 0,
           altText: 'Cover art',
+          role: 'back_cover',
         }),
         undefined
       );
@@ -296,10 +299,11 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
           buffer: sampleImage,
           mimetype: 'image/jpeg',
           originalname: 'cover.jpg',
-        })
+        }, 'A clear photo of the sleeve front', undefined, undefined, 'front_cover')
       ).rejects.toThrow('Database transaction deadlocked');
 
       expect(deleteSpy).toHaveBeenCalled();
+      deleteSpy.mockRestore();
     });
 
     it('should record durable orphan record if photo upload DB insertion fails AND Storage cleanup fails', async () => {
@@ -326,7 +330,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
           buffer: sampleImage,
           mimetype: 'image/jpeg',
           originalname: 'cover.jpg',
-        })
+        }, 'A clear photo of the sleeve front', undefined, undefined, 'front_cover')
       ).rejects.toThrow('PostgreSQL unique constraint violation');
 
       expect(orphanRepo.recordOrphanedStorageObject).toHaveBeenCalledWith(
@@ -442,6 +446,32 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
 
       // Foreign ID
       await expect(reorderListingPhotos(listingId, sellerId, [p1Id, foreignId])).rejects.toThrow(ValidationError);
+    });
+
+    it('should report a validation error when concurrent role updates hit a front-cover uniqueness conflict', async () => {
+      const photoId = '60000000-0000-4000-8000-000000000001';
+      const samplePhoto = {
+        id: photoId,
+        listingId,
+        storagePath: `listings/${listingId}/${photoId}.webp`,
+        displayOrder: 0,
+        altText: 'Legacy sleeve photo',
+        role: 'legacy_unclassified',
+      };
+      const uniqueError = Object.assign(
+        new Error('duplicate key value violates unique constraint'),
+        { code: '23505' }
+      );
+
+      (photoRepo.findPhotoById as jest.Mock).mockResolvedValueOnce(samplePhoto);
+      // No preflight conflict exists; this simulates a competing request winning
+      // the unique-index race after this request has checked the current roles.
+      (photoRepo.findPhotosByListingId as jest.Mock).mockResolvedValueOnce([samplePhoto]);
+      (photoRepo.updateListingPhotoRole as jest.Mock).mockRejectedValueOnce(uniqueError);
+
+      await expect(
+        updateListingPhotoRole(listingId, photoId, sellerId, 'front_cover')
+      ).rejects.toThrow('This listing already has a front cover. Change that photo\'s role first.');
     });
 
     it('should enforce photo limit of 5 photos per listing', async () => {
