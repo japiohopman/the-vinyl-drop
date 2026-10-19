@@ -81,7 +81,7 @@ describe('Dig artwork face semantics', () => {
 
     expect(result.front.src).toBe('/release/catalogue-art.webp');
     expect(result.front.sourceKind).toBe('release_artwork');
-    expect(result.front.sourceLabel).toContain('not evidence of this copy\'s condition');
+    expect(result.front.sourceLabel).toContain('not evidence of this copy’s condition');
     expect(result.back).toBeNull();
     expect(result.hasExplicitBackCover).toBe(false);
   });
