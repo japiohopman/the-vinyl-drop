@@ -286,22 +286,37 @@
       }
 
       if (card) {
+        const wasFlipped = card.classList.contains('is-flipped');
         const draggedTransform = card.style.transform;
         card.classList.remove('is-dragging');
         slide.classList.remove('is-dragging');
         slide.style.transform = '';
         slide.style.transition = '';
-        card.style.transition = motionPreference.matches ? 'none' : 'transform 260ms cubic-bezier(.2, .75, .25, 1)';
+
+        if (motionPreference.matches) {
+          if (shouldFlip) setFlipState(slide, !wasFlipped);
+          card.style.transform = '';
+          card.style.transition = '';
+          return;
+        }
+
+        card.style.transition = 'transform 260ms cubic-bezier(.2, .75, .25, 1)';
         card.style.transform = draggedTransform;
         void card.offsetHeight;
         if (shouldFlip) {
-          setFlipState(slide, digState.nextFlipState(card.classList.contains('is-flipped')));
+          setFlipState(slide, !wasFlipped);
+          const endAngle = wasFlipped
+            ? (deltaX > 0 ? 360 : 0)
+            : (deltaX > 0 ? 180 : -180);
+          card.style.transform = 'rotateY(' + endAngle + 'deg)';
+        } else {
+          card.style.transform = 'rotateY(' + (wasFlipped ? 180 : 0) + 'deg)';
         }
-        card.style.transform = '';
         window.setTimeout(() => {
           card.style.transition = '';
+          card.style.transform = '';
           card.classList.remove('is-dragging');
-        }, motionPreference.matches ? 0 : 280);
+        }, 280);
       }
       return;
     }
