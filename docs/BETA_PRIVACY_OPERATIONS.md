@@ -46,7 +46,7 @@ The owner-approved directions below are the current policy baseline for the init
 | Registration agreement audit | Retain only the Terms version, Terms-acceptance timestamp, 18+ attestation timestamp and Auth user ID. Delete it when the Auth identity is erased. | Migration 0013 was applied and verified on staging on 19 October 2026 (schema, RLS, grants and Auth-delete cascade). The manual account-erasure process and provider/backup retention still need operational verification. |
 | Waitlist / marketing | No collection and no retention. If later selected, approve purpose, provider, access, retention and deletion as a separate scope. | No waitlist route/table; #48 excludes a public waitlist from the five-person pilot. |
 
-## 4.1. Dutch operator identity and online-service scope — preliminary triage, not legal advice
+## 4. Dutch operator identity and online-service scope — preliminary triage, not legal advice
 
 Two public Dutch government sources frame the unresolved contact question differently depending on whether this service is treated as a business/economic activity or an intermediary service:
 
@@ -55,7 +55,7 @@ Two public Dutch government sources frame the unresolved contact question differ
 - **Extra DSA online-marketplace rules:** the ACM says its DSA marketplace-specific rules apply only where all listed criteria are met, including a group exceeding 50 employees and €10m annual turnover or balance sheet, public/open access, traders' products being a substantial part of the service's commercial activity, and the purchase agreement plus communication happening through the platform. The current pilot is manually invite-only (maximum five friends), free, does not process purchases, and has private messaging disabled; several criteria therefore appear absent for this initial configuration. This is a scope indicator, **not a blanket conclusion that every DSA or other Dutch-law obligation is inapplicable**, and must be re-evaluated before public access, in-platform messaging/transactions, commercialisation or cohort expansion. [ACM — Online marketplaces](https://www.acm.nl/nl/digitale-economie/online-diensten-aanbieden/online-marktplaatsen) · [ACM — online service providers and DSA](https://www.acm.nl/nl/digitale-economie/online-diensten-aanbieden)
 - **Required owner/legal decision:** before finalising `/privacy` and `/terms`, record whether the project is operated wholly outside a business/economic activity and obtain an authoritative answer on which identity/contact details must be publicly displayed. Do not invent a legal entity or publish a residential address just to satisfy an assumption. If the classification remains uncertain, keep the publication/invitation gate open and seek proportionate Dutch legal advice or written guidance from the relevant authority.
 
-## 4. Legal-basis decision register
+## 5. Legal-basis decision register
 
 The project owner must decide the actual legal basis for each purpose before final publication. These are candidates for review only, not legal conclusions:
 
@@ -67,7 +67,7 @@ The project owner must decide the actual legal basis for each purpose before fin
 
 The Dutch Autoriteit Persoonsgegevens explains that controllers must choose the appropriate legal basis themselves and must not retain personal data longer than necessary. Therefore this register deliberately does not mark a basis or retention period as approved.
 
-## 5. Cookies, trackers and Terms decision
+## 6. Cookies, trackers and Terms decision
 
 - Source review on 2026-10-19 found authentication/session and short-lived auth-flow cookies in `src/app/middleware/auth.ts` and `src/lib/supabase.ts`. Registration also uses a short-lived, signed, first-party HTTP-only consent ticket for Google OAuth sign-up; it does not grant beta access.
 - The layout now serves Capriola, DM Sans, IBM Plex Mono and Space Grotesk from same-origin `/fonts/` assets under SIL Open Font License notices; remote Google Fonts links have been removed from source. No analytics or advertising tracker was identified in source, but deployed browser/network behavior has not been independently verified.
@@ -75,7 +75,7 @@ The Dutch Autoriteit Persoonsgegevens explains that controllers must choose the 
 - **Terms of Use:** a separate Terms draft now exists at `/terms` and is linked from the footer and signup form. It remains explicitly marked as an owner-review draft until legal wording and release gates are reviewed; the Community Rules are still a separate document.
 - This document does not make a claim that the deployed site is free of tracking, or that a separate cookie notice/Terms page is legally unnecessary.
 
-### Read-only provider/runtime evidence snapshot — 2026-10-19
+## 7. Read-only provider/runtime evidence snapshot — 2026-10-19
 
 This snapshot records facts available from read-only provider metadata and current vendor documentation. It does not substitute for checking account-specific terms, settings, or the deployed browser's network panel.
 
@@ -87,7 +87,7 @@ This snapshot records facts available from read-only provider metadata and curre
 - **Resend / Auth email:** Resend's current GDPR documentation states that stored customer data (including message content and delivery logs) is held in the United States regardless of the selected sending region, and that its standard DPA includes transfer safeguards. Treat this as applicable only if Resend is the active SMTP provider for Supabase Auth; that exact account configuration and the executed DPA were not exposed by the read-only connector and still need confirmation in the provider dashboard. [Resend GDPR information](https://resend.com/security/gdpr) · [Resend DPA](https://resend.com/legal/dpa)
 - **Browser boundary:** Jaap confirms the merged UI was tested successfully on localhost, Firefox, and staging. That is functional browser evidence; a clean DevTools Network/Cookies capture specifically checking third-party requests, cookie names/attributes and external font traffic remains a separate privacy check.
 
-## 6. Waitlist boundary for initial beta
+## 8. Waitlist boundary for initial beta
 
 The current owner scope recorded in Issue #48 says the first group is manually selected, no more than five known friends; a public waitlist is not part of this first pilot. Follow that boundary:
 
@@ -96,7 +96,7 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 - If a later decision selects a waitlist, update #48 and this register before implementation with the exact purpose, provider, data fields, access controls, confirmation message, withdrawal/deletion flow and approved retention rule.
 - Keep tester recipient lists in access-controlled systems only.
 
-## 7. Owner closeout checklist
+## 9. Owner closeout checklist
 
 - [ ] Confirm controller/operator legal identity and which postal/contact details must be public.
 - [ ] Approve or revise the legal-basis register above.
