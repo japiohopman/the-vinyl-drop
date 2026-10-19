@@ -20,7 +20,7 @@
       <p class="dig-eyebrow">THE VINYL DROP / BROWSE</p>
       <h1>Crate Dig</h1>
     </div>
-    <a class="btn btn-outline dig-back-to-browse" href="<%= browseReturnUrl %>">← Terug naar Browse</a>
+    <a class="btn btn-outline dig-back-to-browse" href="<%= browseReturnUrl %>">← Back to Browse</a>
   </header>
 
   <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
@@ -29,36 +29,36 @@
 
   <% if (visibleItems.length === 0) { %>
     <section class="dig-empty-state" aria-labelledby="dig-empty-title">
-      <h2 id="dig-empty-title">Geen platen gevonden</h2>
-      <p>Met deze zoekopdracht zijn geen beschikbare listings gevonden. Ga terug naar Browse om je filters aan te passen.</p>
-      <a class="btn btn-primary" href="<%= browseReturnUrl %>">Terug naar resultaten</a>
+      <h2 id="dig-empty-title">No records found</h2>
+      <p>No available listings match these filters. Return to Browse to adjust them.</p>
+      <a class="btn btn-primary" href="<%= browseReturnUrl %>">Back to results</a>
     </section>
   <% } else { %>
     <div class="dig-context-row">
       <p class="dig-result-summary">
         <strong><span data-dig-position aria-live="polite" aria-atomic="true">1 van <%= visibleItems.length %></span></strong>
-        <span>in deze Dig-sessie</span>
+        <span>in this session</span>
       </p>
       <% if (hasMore) { %>
-        <p class="dig-result-limit">Je bekijkt de eerste 100 resultaten. Gebruik Browse voor de volledige resultatenlijst.</p>
+        <p class="dig-result-limit">Showing the first 100 results. Use Browse for the full results list.</p>
       <% } %>
     </div>
 
     <% if (filters.q || filters.genre || filters.condition || filters.minPrice || filters.maxPrice || selectedFormats.length || filters.whiteLabel) { %>
       <p class="dig-filter-summary">
-        Actieve filters:
-        <% if (filters.q) { %><span>Zoekterm: <strong><%= filters.q %></strong></span><% } %>
+        Active filters:
+        <% if (filters.q) { %><span>Search: <strong><%= filters.q %></strong></span><% } %>
         <% if (filters.genre) { %><span>Genre: <strong><%= filters.genre %></strong></span><% } %>
-        <% if (filters.condition) { %><span>Conditie: <strong><%= filters.condition %></strong></span><% } %>
-        <% if (filters.minPrice) { %><span>Min.: <strong>€<%= filters.minPrice %></strong></span><% } %>
-        <% if (filters.maxPrice) { %><span>Max.: <strong>€<%= filters.maxPrice %></strong></span><% } %>
-        <% selectedFormats.forEach(function(format) { %><span>Formaat: <strong><%= format %></strong></span><% }); %>
+        <% if (filters.condition) { %><span>Condition: <strong><%= filters.condition %></strong></span><% } %>
+        <% if (filters.minPrice) { %><span>Min: <strong>€<%= filters.minPrice %></strong></span><% } %>
+        <% if (filters.maxPrice) { %><span>Max: <strong>€<%= filters.maxPrice %></strong></span><% } %>
+        <% selectedFormats.forEach(function(format) { %><span>Format: <strong><%= format %></strong></span><% }); %>
         <% if (filters.whiteLabel) { %><span><strong>White label</strong></span><% } %>
       </p>
     <% } %>
 
-    <section class="dig-explorer" aria-label="Crate Dig albumverkenner">
-      <div class="dig-viewer" data-dig-viewer tabindex="0" role="region" aria-label="Crate Dig. Gebruik de pijltjestoetsen omhoog en omlaag om tussen platen te bladeren.">
+    <section class="dig-explorer" aria-label="Crate Dig album explorer">
+      <div class="dig-viewer" data-dig-viewer tabindex="0" role="region" aria-label="Crate Dig. Use the up and down arrow keys to browse records.">
         <div class="dig-crate-stack" data-dig-stack>
           <% visibleItems.forEach(function(item, index) { %>
             <article
@@ -67,35 +67,36 @@
               data-index="<%= index %>"
               role="group"
               aria-roledescription="slide"
-              aria-label="Plaat <%= index + 1 %> van <%= visibleItems.length %>: <%= item.title %> door <%= item.artist %>"
+              aria-label="Record <%= index + 1 %> of <%= visibleItems.length %>: <%= item.title %> door <%= item.artist %>"
               aria-hidden="<%= index === 0 ? 'false' : 'true' %>"
               <%= index === 0 ? '' : 'inert' %>
             >
               <div class="dig-listing-meta">
-                <p class="dig-listing-kicker">PLAAT <%= String(index + 1).padStart(2, '0') %></p>
+                <p class="dig-listing-kicker">RECORD <%= String(index + 1).padStart(2, '0') %></p>
                 <h2><%= item.title %></h2>
                 <p class="dig-artist"><%= item.artist %><% if (item.releaseYear) { %> · <%= item.releaseYear %><% } %></p>
                 <% if (item.format) { %><p class="dig-format"><%= item.format %></p><% } %>
               </div>
 
               <div class="dig-sleeve-interaction">
-                <div class="dig-sleeve-stage" data-dig-swipe-area aria-label="Sleeve-afbeelding. Veeg omhoog voor de volgende plaat of omlaag voor de vorige plaat.">
+                <div class="dig-sleeve-stage" data-dig-swipe-area role="group" aria-label="Album cover. Swipe left or right to flip the cover. Swipe up for the next record or down for the previous record.">
                   <div class="dig-sleeve-card" data-dig-sleeve-card>
                     <div class="dig-sleeve-face dig-sleeve-face-front" aria-hidden="false">
-                      <span class="dig-face-label">Voorkant</span>
+                      <% if (item.frontArtwork.sourceKind === 'release_artwork') { %>
+                      <span class="dig-artwork-badge">Release artwork</span>
+                      <% } %>
                       <img class="dig-sleeve-image" src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
-                      <p class="dig-artwork-source"><%= item.frontArtwork.sourceLabel %></p>
+
                     </div>
                     <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Achterkant" aria-hidden="true">
-                      <span class="dig-face-label">Achterkant</span>
                       <% if (item.backArtwork) { %>
                         <img class="dig-sleeve-image" src="<%= item.backArtwork.src %>" alt="<%= item.backArtwork.altText %>" draggable="false">
-                        <p class="dig-artwork-source"><%= item.backArtwork.sourceLabel %></p>
+
                       <% } else { %>
                         <div class="dig-missing-back" role="status">
                           <span class="dig-missing-back-mark" aria-hidden="true">↻</span>
-                          <strong>Achterkant niet gefotografeerd</strong>
-                          <p>Er is geen expliciete foto van de achterkant van deze hoes toegevoegd.</p>
+                          <strong>Back cover not photographed</strong>
+                          <p>No back-cover photo was provided for this copy.</p>
                         </div>
                       <% } %>
                     </div>
@@ -103,51 +104,33 @@
                 </div>
               </div>
 
-              <div class="dig-controls-row">
-                <button type="button" class="btn btn-outline dig-flip-button" data-dig-flip aria-pressed="false">
-                  Bekijk achterkant
-                </button>
-                <a class="btn btn-primary dig-listing-link" href="<%= item.url %>">Bekijk listing ↗</a>
+              <div class="dig-card-actions">
+                <p class="dig-price">
+                  <span class="dig-price-label">Price</span>
+                  <strong><%= item.priceFormatted %></strong>
+                  <% if (item.isTrade) { %><span class="dig-trade-note">Trade considered</span><% } %>
+                </p>
+                <a class="dig-listing-link" href="<%= item.url %>">Open listing <span aria-hidden="true">↗</span></a>
+                <button type="button" class="dig-flip-control" data-dig-flip aria-label="Flip cover to view the back" aria-pressed="false">Flip cover</button>
               </div>
-
-              <dl class="dig-listing-details">
-                <div>
-                  <dt>Prijs / ruil</dt>
-                  <dd><%= item.priceFormatted %><% if (item.isTrade) { %><span class="dig-trade-note"> · ruilen mogelijk</span><% } %></dd>
-                </div>
-                <div>
-                  <dt>Plaatconditie</dt>
-                  <dd><%= item.mediaCondition %></dd>
-                </div>
-                <div>
-                  <dt>Hoesconditie</dt>
-                  <dd><%= item.sleeveCondition %></dd>
-                </div>
-                <% if (item.sellerUsername) { %>
-                  <div>
-                    <dt>Verkoper</dt>
-                    <dd><%= item.sellerUsername %><% if (item.sellerLocation) { %> · <%= item.sellerLocation %><% } %></dd>
-                  </div>
-                <% } %>
-              </dl>
             </article>
           <% }); %>
         </div>
       </div>
 
-      <div class="dig-navigation" aria-label="Navigatie tussen platen">
+      <div class="dig-navigation" aria-label="Record navigation">
         <button type="button" class="btn btn-outline dig-nav-button" data-dig-prev disabled>
-          ↓ Vorige plaat
+          ↓ Previous record
         </button>
         <div class="dig-progress-wrap">
-          <progress data-dig-progress max="<%= visibleItems.length %>" value="1" aria-label="Voortgang van de Dig-sessie"></progress>
+          <progress data-dig-progress max="<%= visibleItems.length %>" value="1" aria-label="Dig session progress"></progress>
         </div>
         <button type="button" class="btn btn-outline dig-nav-button" data-dig-next <%= visibleItems.length <= 1 ? 'disabled' : '' %>>
-          Volgende plaat ↑
+          Next record ↑
         </button>
       </div>
 
-      <p class="dig-keyboard-note">Toetsenbord: ↑ volgende · ↓ vorige · Home eerste · End laatste. Met de omdraaiknop bekijk je de andere kant van dezelfde hoes.</p>
+      <p class="dig-keyboard-note">Keyboard: ↑ next · ↓ previous · Home first · End last · F flips the cover.</p>
     </section>
   <% } %>
 </div>
