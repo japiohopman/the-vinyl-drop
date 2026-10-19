@@ -18,6 +18,7 @@ export async function verifyMigrations(): Promise<void> {
     END $$;
 
     CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY);
     CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
     BEGIN
       RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
@@ -94,6 +95,41 @@ export async function verifyMigrations(): Promise<void> {
       `Drizzle migration history recorded ${migrationHistory.rows.length} entries, expected ${journal.entries.length}`
     );
   }
+
+  const consentTable = await pg.query<{ relrowsecurity: boolean }>(
+    "SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'private' AND c.relname = 'registration_consents' AND c.relkind = 'r';"
+  );
+  if (consentTable.rows.length !== 1 || !consentTable.rows[0].relrowsecurity) {
+    throw new Error('Private registration-consent table is missing or RLS is disabled');
+  }
+  const consentColumns = await pg.query<{ column_name: string }>(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'private' AND table_name = 'registration_consents' ORDER BY ordinal_position;"
+  );
+  if (consentColumns.rows.map((row) => row.column_name).join(',') !== 'user_id,terms_version,terms_accepted_at,age_attested_at') {
+    throw new Error('Registration-consent audit stores more than the approved minimum fields');
+  }
+  for (const role of ['anon', 'authenticated', 'supabase_auth_admin']) {
+    const access = await pg.query<{ schema_usage: boolean; can_select: boolean; can_insert: boolean; can_update: boolean; can_delete: boolean }>(
+      'SELECT has_schema_privilege($1, \'private\', \'USAGE\') AS schema_usage, has_table_privilege($1, \'private.registration_consents\', \'SELECT\') AS can_select, has_table_privilege($1, \'private.registration_consents\', \'INSERT\') AS can_insert, has_table_privilege($1, \'private.registration_consents\', \'UPDATE\') AS can_update, has_table_privilege($1, \'private.registration_consents\', \'DELETE\') AS can_delete;',
+      [role]
+    );
+    const privileges = access.rows[0];
+    if (privileges.schema_usage || privileges.can_select || privileges.can_insert || privileges.can_update || privileges.can_delete) {
+      throw new Error('Registration-consent audit is accessible to restricted role ' + role);
+    }
+  }
+  const consentUserId = 'e1111111-1111-4111-8111-111111111111';
+  await pg.query('INSERT INTO auth.users (id) VALUES ($1::uuid);', [consentUserId]);
+  await pg.query(
+    "INSERT INTO private.registration_consents (user_id, terms_version, terms_accepted_at, age_attested_at) VALUES ($1::uuid, 'beta-terms-test-v1', now(), now());",
+    [consentUserId]
+  );
+  await pg.query('DELETE FROM auth.users WHERE id = $1::uuid;', [consentUserId]);
+  const consentRows = await pg.query<{ count: number }>(
+    'SELECT count(*)::int AS count FROM private.registration_consents WHERE user_id = $1::uuid;',
+    [consentUserId]
+  );
+  if (consentRows.rows[0].count !== 0) throw new Error('Registration-consent audit did not cascade on Auth identity deletion');
 
   // 1. Verify expected public tables (all 11 public tables including conversations and messages)
   const tablesRes = await pg.query<{ table_name: string }>(
