@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { renderWithLayout } from '../utils/render';
+import { TERMS_VERSION } from '../services/registrationConsent';
 
 export function getContactPage(req: Request, res: Response, next: NextFunction): void {
   try {
@@ -25,7 +26,7 @@ export function getPrivacyNoticePage(req: Request, res: Response, next: NextFunc
 }
 
 export function getTermsOfUsePage(req: Request, res: Response, next: NextFunction): void {
-  try { renderWithLayout(res, 'info/terms', { title: 'Terms of Use — The Vinyl Drop', contactEmail: 'yepyouknowhim@gmail.com', termsVersion: 'beta-terms-2026-10-19-v1' }, next); }
+  try { renderWithLayout(res, 'info/terms', { title: 'Terms of Use — The Vinyl Drop', contactEmail: 'yepyouknowhim@gmail.com', termsVersion: TERMS_VERSION }, next); }
   catch (error) { next(error); }
 }
 
