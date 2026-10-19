@@ -58,14 +58,14 @@ export function resolveDigArtwork(
   } else if (releaseCoverArtUrl) {
     front = {
       src: releaseCoverArtUrl,
-      altText: `Release artwork preview for ${title} van ${artist}; not a photo of the physical copy being offered`,
+      altText: `Release artwork preview for ${title} by ${artist}; not a photo of the physical copy being offered`,
       sourceLabel: 'Release artwork / preview — not evidence of this copy's condition',
       sourceKind: 'release_artwork',
     };
   } else {
     front = {
       src: placeholderUrl,
-      altText: `No usable front-cover photo available for ${title} van ${artist}`,
+      altText: `No usable front-cover photo available for ${title} by ${artist}`,
       sourceLabel: 'No front-cover photo available',
       sourceKind: 'placeholder',
     };
