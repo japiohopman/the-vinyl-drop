@@ -1857,7 +1857,8 @@ select.form-control {
 
 @media (max-width: 360px) {
   .dig-crate-stack {
-    min-height: 760px;
+    min-height: clamp(460px, calc(100vh - 12rem), 600px);
+    min-height: clamp(460px, calc(100svh - 12rem), 600px);
   }
 
   .dig-navigation {
@@ -1916,6 +1917,15 @@ select.form-control {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
+  aspect-ratio: 1 / 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: var(--border-thick);
+  border-radius: var(--radius-md);
+  background: var(--color-paper-muted);
 }
 
 .listing-main-photo {
@@ -1933,6 +1943,29 @@ select.form-control {
 
 .thumbnail-btn {
   box-sizing: border-box;
+  display: flex;
+  flex: 0 0 64px;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  overflow: hidden;
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper-muted);
+  aspect-ratio: 1 / 1;
+  cursor: pointer;
+}
+
+.thumbnail-btn.selected {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.thumbnail-btn:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .thumbnail-image {
@@ -1947,6 +1980,13 @@ select.form-control {
   flex-direction: column;
   gap: var(--space-5);
   overflow-wrap: anywhere;
+}
+
+.seller-actions > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
 .listing-title {
