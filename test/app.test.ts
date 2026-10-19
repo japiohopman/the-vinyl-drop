@@ -58,7 +58,7 @@ describe('App Routes and Error Handling', () => {
       expect(response.text).toContain('responsible operator');
       expect(response.text).toContain('Your privacy rights');
       expect(response.text).toContain('href="https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen"');
-      expect(response.text).toContain('normally one month under GDPR');
+      expect(response.text).toContain('normally due within one month under GDPR');
     });
   });
 
