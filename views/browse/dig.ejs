@@ -72,10 +72,8 @@
               <%= index === 0 ? '' : 'inert' %>
             >
               <div class="dig-listing-meta">
-                <p class="dig-listing-kicker">RECORD <%= String(index + 1).padStart(2, '0') %></p>
                 <h2><%= item.title %></h2>
                 <p class="dig-artist"><%= item.artist %><% if (item.releaseYear) { %> · <%= item.releaseYear %><% } %></p>
-                <% if (item.format) { %><p class="dig-format"><%= item.format %></p><% } %>
               </div>
 
               <div class="dig-sleeve-interaction">
