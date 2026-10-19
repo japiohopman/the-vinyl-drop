@@ -34,7 +34,7 @@ This inventory records source-observed processing and separates current owner-ap
 - **Fonts:** Capriola, DM Sans, IBM Plex Mono and Space Grotesk are served from same-origin `/fonts/` assets under the SIL Open Font License; external Google Fonts requests have been removed from the source layout.
 - **Analytics or advertising trackers:** none were identified in tracked app source/package manifest during this audit. Confirm deployed network requests and cookie/storage behavior before making a definitive public statement.
 - **Google OAuth test users:** Google Cloud Console's OAuth test-user allowlist is separate from the application's private `BETA_ALLOWED_EMAILS` check. A Console test-user entry alone does not guarantee app access, and the application allowlist does not add an address to Google's Console. Keep actual addresses in the private provider/runtime configuration only.
-- **Google policy boundary:** OAuth consent-screen Testing mode's test-user limit and seven-day authorization expiry are distinct from Google Play testing/release requirements. Do not apply Play Store distribution requirements to a website-only pilot.
+- **Product delivery boundary:** this project is distributed as an installable PWA from its own official website. No Google Play, Apple App Store or other app-store publication is planned. For Google sign-in, the Google Cloud Console test-user list and the app's `BETA_ALLOWED_EMAILS` check remain separate authentication/access controls.
 
 ## Retention, deletion, and owner decisions still required
 
