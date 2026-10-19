@@ -1,10 +1,10 @@
 # Beta Data Inventory — Technical Audit
 
 **Status:** implementation inventory for review; **not** the published privacy notice or a legal-compliance assertion.  
-**Last audited:** 2026-10-13  
-**Scope:** tracked application source and schema on `main`. Provider dashboards, production traffic, and provider retention settings were not inspected by this document.
+**Last audited:** 2026-10-19  
+**Scope:** source-level audit updated on the Issue #88 implementation branch. Provider dashboards, deployed traffic, and provider retention settings were not inspected by this document.
 
-This inventory records what the current application appears to collect or process so the owner can make explicit purpose, visibility, retention, and deletion decisions before enabling a waitlist or inviting a wider external beta. It deliberately leaves unresolved policies as unresolved rather than inventing values.
+This inventory records source-observed processing and separates current owner-approved policy directions from unverified provider/deployment facts. The initial pilot is invite-only for up to five personally known testers, 18+ only, with no public waitlist; real invitations remain subject to Issue #88's release gate.
 
 ## Data inventory
 
@@ -21,7 +21,8 @@ This inventory records what the current application appears to collect or proces
 | Storage-orphan diagnostics | Listing/photo IDs, Storage path, failure reason, timestamps and an error-details field | PostgreSQL `orphaned_storage_objects`; server logs in exceptional rollback failure paths | The table is intended for backend reconciliation and has restricted access. A source path may record raw database/Storage error messages if both the DB insert and compensating Storage cleanup fail; this exceptional path needs continued log/error-detail review. A read-only staging snapshot on 2026-10-13 found zero rows in the table. | No documented expiry/cleanup schedule for orphan diagnostics was found. Define when resolved records and diagnostic details are removed. |
 | Runtime and operational logs | Startup/deploy events, bounded application error metadata, request method/route/status and error categories; platform logs may include operational events | Render runtime/platform logs and application logger | Merged PR #91 redacts raw exception stack/message from the reviewed central error-handler path. The separate exceptional Storage rollback path above remains a caveat; this inventory does not assert that every possible log source is fully sanitized. | Provider-side log retention/configuration was not inspected. Record relevant provider defaults/limits and choose an owner-approved retention period before external beta. |
 | Password-breach lookup | Five-character SHA-1 prefix for the Pwned Passwords range protocol; full hash stays in application memory for suffix comparison | Have I Been Pwned Pwned Passwords range API | The application does not send the raw password or full hash to HIBP, and the service does not intentionally log or persist the submitted password/hash. This is an application-route control; direct Supabase Auth/API signup can bypass it and that residual risk remains under Issue #62. | No submitted password/hash is stored by this lookup service. Provider-side request handling/retention terms should be reviewed as part of the final notice. |
-| Waitlist / beta invitation | **No waitlist table or waitlist collection route was found in the current schema/routes audit.** Future invited testers may have email addresses in restricted external systems. | Not yet implemented in this application; Google tester allowlist and email workflow are owner-operated external processes | Do not collect waitlist addresses until Issue #48 and this issue settle purpose, access, confirmation, contact and retention. Do not copy tester addresses into the repository or public issues. | No waitlist retention or deletion process is implemented. This is a precondition, not a current application collection. |
+| Registration consent audit | Terms version, Terms-acceptance timestamp, 18+ attestation timestamp and linked Auth user UUID. No DOB or identity document is collected for age checking. | `private.registration_consents`, linked to `auth.users` with `ON DELETE CASCADE`; server-side write path only, RLS enabled, client/Auth-admin roles revoked. | Restricted audit data, not a public profile field and not copied to the Google test-user list. | Deleted when the Auth identity is erased. Migration 0013 is source-only until separately authorized and verified in staging. |
+| Waitlist / beta invitation | No waitlist table or collection route was found in the source. Google Console tester emails and the app access allowlist are separate owner-operated controls. | External Google OAuth tester configuration and restricted application runtime config; no public repository address list. | Pilot cohort is no more than five personally known friends; no public email capture, waitlist or marketing newsletter. | No waitlist retention process is needed while collection stays disabled. Do not add this feature without a separate owner-approved scope. |
 
 ## Cookies and external services
 
@@ -30,21 +31,24 @@ This inventory records what the current application appears to collect or proces
 - **Authentication, database, and image storage:** Supabase Auth, PostgreSQL, and Storage hold the application’s identity/state/media according to the project architecture.
 - **Password checking:** HIBP receives only a range prefix for the application’s new-password check; see Issue #62 for the direct-Auth bypass boundary.
 - **Catalog enrichment:** Discogs/MusicBrainz integration is used for release metadata searches/lookups. Final privacy wording should be checked against actual provider request fields.
-- **Analytics or advertising trackers:** none were identified in the tracked app source/package manifest during this audit. Confirm the deployed page’s network requests before making a definitive public statement.
+- **Fonts:** Capriola, DM Sans, IBM Plex Mono and Space Grotesk are served from same-origin `/fonts/` assets under the SIL Open Font License; external Google Fonts requests have been removed from the source layout.
+- **Analytics or advertising trackers:** none were identified in tracked app source/package manifest during this audit. Confirm deployed network requests and cookie/storage behavior before making a definitive public statement.
+- **Google OAuth test users:** Google Cloud Console's OAuth test-user allowlist is separate from the application's private `BETA_ALLOWED_EMAILS` check. A Console test-user entry alone does not guarantee app access, and the application allowlist does not add an address to Google's Console. Keep actual addresses in the private provider/runtime configuration only.
+- **Google policy boundary:** OAuth consent-screen Testing mode's test-user limit and seven-day authorization expiry are distinct from Google Play testing/release requirements. Do not apply Play Store distribution requirements to a website-only pilot.
 
 ## Retention, deletion, and owner decisions still required
 
-The schema includes timestamps, and some foreign-key cascades and explicit image cleanup paths exist. **Those are not a retention policy.** The repository does not currently specify an owner-approved retention period for profiles/accounts, drafts/published/archived listings, comments, favorites/activity events, release metadata, Storage objects, orphan diagnostics, or provider logs.
+The schema includes timestamps, cascades and image-cleanup paths, but these are not a retention policy. The current owner-approved direction is: active accounts remain active until closed; archived listing data/photos target deletion 12 months after archive except for a documented reason; persistent drafts must be confirmed before assigning a period; favorites/activity are retained only while functionally needed; routine logs target about 30 days; privacy-request audit targets a maximum of 12 months after closure; registration-consent audit is removed with the Auth identity. These are policy targets, not proof that automated deletion or provider settings exist.
 
-Before this becomes the public notice, the owner must confirm:
-1. The responsible legal entity/controller identity and approved public contact channel.
-2. The purpose and visibility of each category above, including third-party recipients.
-3. Retention periods or event-based deletion rules for each category and any external provider.
-4. A responsible person and practical manual process for access/correction/deletion requests during closed beta.
-5. Whether Terms of Use and a cookie notice are required for the actual deployed cookie/analytics setup.
-6. The precise waitlist purpose, access controls, confirmation flow, retention and deletion steps before collecting any waitlist email.
+Before the public notice is approved:
+1. Verify the legal controller identity/contact details required for this private-individual arrangement. Do not invent a company or publish a residential address just to fill a template.
+2. Review purpose-specific legal bases, including a documented balancing assessment where legitimate interests are considered.
+3. Independently verify provider regions, transfer safeguards, processing terms, provider logs and backups.
+4. Record a clean deployed-browser/network check for cookies, font assets and other third-party requests.
+5. Review the separate Terms of Use draft and complete the authorised staging migration/checks for registration consent.
+6. Keep the waitlist and marketing collection disabled. Pilot invitations remain manual, no more than five friends and 18+ only.
 
-No legal basis, retention duration, self-service control, or privacy guarantee is invented here. Obtain appropriate legal review of the final visitor-facing notice. Keep Issue #88 and the #49 release gate open until required owner decisions, notice review, implementation and tests are complete.
+This inventory does not claim legal compliance, fixed provider retention, or implemented automatic deletion. Keep Issue #88 and the #49 release gate open until remaining owner/provider/review gates are resolved or explicitly accepted.
 
 ## Source map
 
