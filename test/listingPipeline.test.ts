@@ -467,7 +467,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       // No preflight conflict exists; this simulates a competing request winning
       // the unique-index race after this request has checked the current roles.
       (photoRepo.findPhotosByListingId as jest.Mock).mockResolvedValueOnce([samplePhoto]);
-      (photoRepo.updatePhotoRoleInRepo as jest.Mock).mockRejectedValueOnce(uniqueError);
+      (photoRepo.updateListingPhotoRole as jest.Mock).mockRejectedValueOnce(uniqueError);
 
       await expect(
         updateListingPhotoRole(listingId, photoId, sellerId, 'front_cover')
