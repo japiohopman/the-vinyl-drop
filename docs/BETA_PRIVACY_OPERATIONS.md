@@ -2,7 +2,7 @@
 
 **Status: proposed manual runbook; not a claim of legal compliance.**  
 **Scope:** initial invite-only beta. The published waitlist remains disabled.  
-**Last source review:** 2026-10-18.
+**Last source review:** 2026-10-19.
 
 This runbook converts the source inventory into a small operational procedure without claiming that the application has self-service privacy tools. It must be reviewed by the project owner and, where appropriate, a privacy/legal adviser before the privacy notice is approved.
 
@@ -30,20 +30,20 @@ The exact legal deadlines, grounds for refusal/retention, and the appropriate id
 
 ## 3. Retention / deletion decision table
 
-The repository currently has no complete owner-approved retention schedule. These are **proposed rules to review**, not approved promises and not evidence of implemented automatic deletion.
+The owner-approved directions below are the current policy baseline for the initial pilot. Targets are not claims that automated purging or provider-side retention has been verified.
 
 | Data category | Proposed rule for owner review | Current implementation caveat |
 | --- | --- | --- |
-| Auth account and profile | Retain while the account is active. On a verified valid erasure request, remove or anonymise personal data that no longer has a lawful reason to be retained; document any specific exception and its end condition. | No self-service account erasure/export path was found. Manual deletion must be tested across Auth and app tables before it can be promised publicly. |
-| Draft/published/archived listings and photos | Keep while the seller uses the account and the listing lifecycle needs the data. Archived means hidden/retained, not erased. On an approved erasure request, remove the user’s personal links and photos unless a documented exception applies. | Listing archive is not deletion. Storage object cleanup and orphan reconciliation must be checked during a deletion request. |
+| Auth account and profile | Retain while active; no automatic expiry after 12 months. On valid erasure, remove/anonymise personal data where appropriate and document specific lawful exceptions. | No self-service full erasure/export path. Manual cross-system handling remains required. |
+| Draft/published/archived listings and photos | Archived content is targeted for deletion 12 months after archive unless a specific documented reason justifies longer retention. Draft retention must be defined only after confirming where drafts persist. | Policy target only; archive is not deletion. Storage objects and orphan reconciliation require separate checks. |
 | Comments, favorites and activity records | Retain only while needed for the active service/community function. On an approved erasure request, remove or de-identify records linked to the person where appropriate, taking account of other users’ rights. | Existing cascade behavior and any independent activity references must be checked; do not assume all related content is automatically erased. |
 | Release/catalog metadata | It may remain where it describes a musical release rather than an identifiable seller. Remove personal associations when no longer needed. | Keep release metadata separate from personal listing and account records. |
 | Auth/session cookies | Follow the configured expiries: access token follows session expiry (one hour fallback), refresh token up to 30 days, recovery marker 15 minutes, temporary PKCE/auth-flow values up to 10 minutes. | This reflects source configuration; deployed behavior should be checked. Clearing cookies does not delete server-side data. |
-| Application/platform logs | Retain only as long as needed for fault detection, abuse/security investigation and applicable obligations; agree a specific period after checking actual Render settings and access. | Provider retention settings are not exposed by the available project connector and have not been verified. Do not claim a fixed period yet. |
+| Application/platform logs | Target approximately 30 days for routine logs. Incident-specific material may remain longer only where necessary and documented. | Render/provider retention remains unverified, so the target is not a verified configured expiry. |
 | Storage orphan diagnostics | Keep only while needed to resolve a failed upload/delete cleanup; review after the incident is resolved and remove diagnostic details when no longer needed. | No automated expiry policy is currently documented. The table is restricted; verify actual access grants as part of operational review. |
-| Privacy-request handling record | Keep a minimal private audit record sufficient to prove the request was handled, then delete it according to a short approved schedule. Do not keep identity-document copies by default. | The record system and retention period must be chosen by the owner; no ticket/mailbox automation is implemented. |
+| Privacy-request handling record | Keep a minimal, access-controlled record; target deletion within 12 months after closure unless a documented need requires longer. Do not keep ID copies by default. | Manual process; no ticket/mailbox automation is implemented. |
 | HIBP password-range request | Do not persist the submitted password or full hash; the service checks the returned suffix in memory. | The app uses the five-character hash-prefix protocol. The native Supabase leaked-password warning remains a separate known limitation. |
-| Waitlist / marketing | No collection and no retention while the feature remains disabled. If later selected, approve the purpose, source, provider, access, confirmation, retention and deletion before adding the route/table. | No waitlist table or collection route was found in source. #48 explicitly excludes a waitlist as a prerequisite for the small initial pilot. |
+| Registration agreement audit | Retain only the Terms version, Terms-acceptance timestamp, 18+ attestation timestamp and Auth user ID. Delete it when the Auth identity is erased. | A source-only private-schema migration adds this audit; apply and verify it only through a separately authorised staging migration. |\n| Waitlist / marketing | No collection and no retention. If later selected, approve purpose, provider, access, retention and deletion as a separate scope. | No waitlist route/table; #48 excludes a public waitlist from the five-person pilot. |
 
 ## 4. Legal-basis decision register
 
@@ -59,10 +59,10 @@ The Dutch Autoriteit Persoonsgegevens explains that controllers must choose the 
 
 ## 5. Cookies, trackers and Terms decision
 
-- Source review on 2026-10-18 found authentication/session and short-lived auth-flow cookies in `src/app/middleware/auth.ts` and `src/lib/supabase.ts`.
-- No analytics or advertising tracker was identified in the tracked package manifest or source reviewed. The layout does load Google Fonts externally; deployed browser/network behavior has not been independently verified.
+- Source review on 2026-10-19 found authentication/session and short-lived auth-flow cookies in `src/app/middleware/auth.ts` and `src/lib/supabase.ts`. Registration also uses a short-lived, signed, first-party HTTP-only consent ticket for Google OAuth sign-up; it does not grant beta access.
+- The layout now serves Capriola, DM Sans, IBM Plex Mono and Space Grotesk from same-origin `/fonts/` assets under SIL Open Font License notices; remote Google Fonts links have been removed from source. No analytics or advertising tracker was identified in source, but deployed browser/network behavior has not been independently verified.
 - **Provisional decision:** do not add a cookie banner or consent manager solely for the identified essential authentication cookies. The privacy notice describes the source-configured cookies. Before final publication, check the deployed page in a clean browser session and confirm whether any nonessential cookies, trackers or third-party embeds are present. If tracking cookies or other consent-requiring storage are found, block them until valid consent can be collected.
-- **Terms of Use:** the existing Community Rules are not a complete Terms of Use. GDPR alone does not determine every term-of-service question. Before expanding the marketplace or introducing paid transactions, obtain a product/legal decision on whether separate Terms are needed. Do not silently represent Community Rules as full Terms.
+- **Terms of Use:** a separate Terms draft now exists at `/terms` and is linked from the footer and signup form. It remains explicitly marked as an owner-review draft until legal wording and release gates are reviewed; the Community Rules are still a separate document.
 - This document does not make a claim that the deployed site is free of tracking, or that a separate cookie notice/Terms page is legally unnecessary.
 
 ## 6. Waitlist boundary for initial beta
@@ -81,7 +81,10 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 - [ ] Approve the data-retention/deletion rules and practical end conditions for every category.
 - [ ] Confirm the manual request handler, restricted record location and record retention period.
 - [ ] Perform a deployed clean-browser/network check for cookies, third-party requests and tracking; record evidence without exposing session values.
-- [ ] Decide whether Terms of Use are needed for the current closed beta; keep the waitlist out of scope unless separately approved.
+- [ ] Review the separate `/terms` draft and the `/privacy` notice; keep both labelled as drafts until the required owner/legal/provider checks are evidenced.
+- [ ] Confirm the initial pilot is 18+ and that registration stores no date of birth or identity document.
+- [ ] Apply and verify the private registration-consent migration only via the separately authorised staging process.
+- [ ] Keep the five-person pilot manual and invite-only; no public waitlist or marketing collection.
 - [ ] Review the public wording with appropriate legal/privacy advice before converting the draft into a final notice.
 
 ## Source references
