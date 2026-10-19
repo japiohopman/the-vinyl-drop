@@ -5,6 +5,7 @@ import {
   getLoginPage,
   postLogin,
   getGoogleOAuth,
+  postGoogleSignupStart,
   getAuthCallback,
   getForgotPasswordPage,
   postForgotPassword,
@@ -22,6 +23,7 @@ router.post('/signup', validateSameOrigin, postSignUp);
 router.get('/login', getLoginPage);
 router.post('/login', validateSameOrigin, postLogin);
 
+router.post('/google/start', validateSameOrigin, postGoogleSignupStart);
 router.get('/google', getGoogleOAuth);
 router.get('/callback', getAuthCallback);
 

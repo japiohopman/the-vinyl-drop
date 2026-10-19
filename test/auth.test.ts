@@ -4,13 +4,14 @@ import { createApp } from '../src/app';
 import { setSupabaseClient } from '../src/lib/supabase';
 import { isAllowedRedirectUrl, sanitizeRedirectUrl } from '../src/validators/auth';
 import * as profileRepository from '../src/app/repositories/profileRepository';
-import { ensureProfileForUser } from '../src/app/services/authService';
+import { ensureProfileForUser, signUp } from '../src/app/services/authService';
 import { Profile } from '../src/db/schema/profiles';
 import crypto from 'crypto';
 import { generateRecoveryToken } from '../src/app/middleware/auth';
 import { config } from '../src/config/env';
 import { isPasswordPwned } from '../src/app/services/pwnedPasswordService';
 import { createPasswordCheckedSignupApproval } from '../src/app/repositories/signupApprovalRepository';
+import { saveRegistrationConsent, hasRegistrationConsent } from '../src/app/repositories/registrationConsentRepository';
 
 jest.mock('../src/app/services/pwnedPasswordService', () => ({
   isPasswordPwned: jest.fn(),
@@ -20,10 +21,17 @@ jest.mock('../src/app/repositories/signupApprovalRepository', () => ({
   createPasswordCheckedSignupApproval: jest.fn(),
 }));
 
+jest.mock('../src/app/repositories/registrationConsentRepository', () => ({
+  saveRegistrationConsent: jest.fn(),
+  hasRegistrationConsent: jest.fn(),
+}));
+
 const mockIsPasswordPwned = isPasswordPwned as jest.MockedFunction<typeof isPasswordPwned>;
 const mockCreatePasswordCheckedSignupApproval = createPasswordCheckedSignupApproval as jest.MockedFunction<
   typeof createPasswordCheckedSignupApproval
 >;
+const mockSaveRegistrationConsent = saveRegistrationConsent as jest.MockedFunction<typeof saveRegistrationConsent>;
+const mockHasRegistrationConsent = hasRegistrationConsent as jest.MockedFunction<typeof hasRegistrationConsent>;
 
 describe('Authentication & Session Handling', () => {
   describe('Redirect URL Allow-List Validation', () => {
@@ -124,6 +132,8 @@ describe('Authentication & Session Handling', () => {
       jest.clearAllMocks();
       mockIsPasswordPwned.mockResolvedValue(false);
       mockCreatePasswordCheckedSignupApproval.mockResolvedValue(undefined);
+      mockSaveRegistrationConsent.mockResolvedValue(undefined);
+      mockHasRegistrationConsent.mockResolvedValue(false);
 
       mockSupabase = {
         auth: {
@@ -151,6 +161,9 @@ describe('Authentication & Session Handling', () => {
       expect(res.text).toContain('Join The Vinyl Drop');
       expect(res.text).toContain('name="username"');
       expect(res.text).toContain('name="email"');
+      expect(res.text).toContain('name="termsAccepted"');
+      expect(res.text).toContain('name="ageConfirmed"');
+      expect(res.text).toContain('href="/privacy"');
     });
 
     it('GET /auth/signup?next=%2Fprofile should render signup form page with next parameter', async () => {
@@ -170,13 +183,38 @@ describe('Authentication & Session Handling', () => {
         .send({
           username: 'a', // too short
           email: 'invalid-email',
-          password: '123', // too short
+          password: '123', // too short,
+          termsAccepted: 'true',
+          ageConfirmed: 'true',
         });
 
       expect(res.status).toBe(400);
       expect(res.text).toContain('Username must be at least 3 characters long');
       expect(res.text).toContain('Please enter a valid email address');
       expect(res.text).toContain('Password must be at least 8 characters long');
+    });
+
+    it('POST /auth/signup rejects missing Terms and 18+ confirmation before calling Supabase', async () => {
+      const app = createApp();
+      const res = await request(app).post('/auth/signup').set('Origin', 'http://localhost:3000')
+        .send({ username: 'adult_digger', email: 'adult@example.com', password: 'securepassword123' });
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('You must accept the Terms of Use to create an account.');
+      expect(res.text).toContain('You must confirm that you are at least 18 years old.');
+      expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
+    });
+
+    it('signup service fails closed when no server-validated consent record is supplied', async () => {
+      const result = await signUp({
+        username: 'service_guard',
+        email: 'service-guard@example.com',
+        password: 'securepassword123',
+        termsAccepted: 'true',
+        ageConfirmed: 'true',
+      });
+      expect(result.error).toContain('You must accept the Terms of Use');
+      expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
+      expect(mockIsPasswordPwned).not.toHaveBeenCalled();
     });
 
     it('POST /auth/signup should reject a breached password before calling Supabase Auth', async () => {
@@ -193,6 +231,8 @@ describe('Authentication & Session Handling', () => {
           username: 'breached_digger',
           email: 'breached@example.com',
           password: submittedPassword,
+          termsAccepted: 'true',
+          ageConfirmed: 'true',
         });
 
       expect(res.status).toBe(400);
@@ -210,7 +250,10 @@ describe('Authentication & Session Handling', () => {
       const res = await request(app)
         .post('/auth/signup')
         .set('Origin', 'http://localhost:3000')
-        .send({ username: 'approval_digger', email: 'approval@example.com', password: 'securepassword123' });
+        .send({ username: 'approval_digger', email: 'approval@example.com', password: 'securepassword123',
+          termsAccepted: 'true',
+          ageConfirmed: 'true',
+        });
 
       expect(res.status).toBe(400);
       expect(res.text).toContain('Account creation is temporarily unavailable. Please try again in a moment.');
@@ -232,6 +275,8 @@ describe('Authentication & Session Handling', () => {
           username: 'retry_digger',
           email: 'retry@example.com',
           password: submittedPassword,
+          termsAccepted: 'true',
+          ageConfirmed: 'true',
         });
 
       expect(res.status).toBe(400);
@@ -278,6 +323,8 @@ describe('Authentication & Session Handling', () => {
           username: 'new_digger',
           email: 'newuser@example.com',
           password: 'securepassword123',
+          termsAccepted: 'true',
+          ageConfirmed: 'true',
         });
 
       expect(res.status).toBe(302);
@@ -302,6 +349,15 @@ describe('Authentication & Session Handling', () => {
       );
       expect(mockCreatePasswordCheckedSignupApproval.mock.invocationCallOrder[0]).toBeLessThan(
         mockSupabase.auth.signUp.mock.invocationCallOrder[0]
+      );
+      expect(mockSaveRegistrationConsent).toHaveBeenCalledWith(
+        mockUser.id,
+        expect.objectContaining({
+          termsVersion: 'beta-terms-2026-10-19-v1',
+          termsAcceptedAt: expect.any(String),
+          ageAttestedAt: expect.any(String),
+        }),
+        undefined
       );
       expect(res.header.location).toBe('/profile');
       expect(res.header['set-cookie']).toBeDefined();
@@ -344,6 +400,8 @@ describe('Authentication & Session Handling', () => {
           username: 'unconfirmed_digger',
           email: 'unconfirmed@example.com',
           password: 'securepassword123',
+          termsAccepted: 'true',
+          ageConfirmed: 'true',
         });
 
       expect(res.status).toBe(200);
@@ -396,6 +454,8 @@ describe('Authentication & Session Handling', () => {
           username: 'jaapJeKentHem',
           email: 'existing_account@example.com',
           password: 'securepassword123',
+          termsAccepted: 'true',
+          ageConfirmed: 'true',
         });
 
       expect(res.status).toBe(200);
@@ -433,6 +493,8 @@ describe('Authentication & Session Handling', () => {
           username: 'JaapJeKentHem', // Case variant of jaapJeKentHem
           email: 'newuser@example.com',
           password: 'securepassword123',
+          termsAccepted: 'true',
+          ageConfirmed: 'true',
         });
 
       expect(res.status).toBe(400);
@@ -590,7 +652,32 @@ describe('Authentication & Session Handling', () => {
       expect(res.header.location).toContain('accounts.google.com');
     });
 
-    it('GET /auth/callback should exchange PKCE code for session and bootstrap profile', async () => {
+    it('POST /auth/google/start carries signed registration consent through the OAuth callback', async () => {
+      mockSupabase.auth.signInWithOAuth.mockResolvedValue({ data: { url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=test' }, error: null });
+      const app = createApp();
+      const startResponse = await request(app).post('/auth/google/start').set('Origin', 'http://localhost:3000')
+        .send({ termsAccepted: 'true', ageConfirmed: 'true', next: '/profile' });
+      expect(startResponse.status).toBe(302);
+      expect(startResponse.header.location).toContain('accounts.google.com');
+      const redirectTo = new URL(mockSupabase.auth.signInWithOAuth.mock.calls[0][0].options.redirectTo);
+      expect(redirectTo.pathname).toBe('/auth/callback');
+      expect(redirectTo.searchParams.get('flow')).toBe('signup');
+      expect(redirectTo.searchParams.get('next')).toBe('/profile');
+      const setCookies = startResponse.headers['set-cookie'];
+      const cookiePairs = (Array.isArray(setCookies) ? setCookies : [setCookies]).filter(Boolean).map((value: string) => value.split(';')[0]);
+      expect(cookiePairs.some((value: string) => value.startsWith('tvd-registration-consent='))).toBe(true);
+      const mockUser = { id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', email: 'googleuser@gmail.com', user_metadata: { full_name: 'New OAuth Tester' } };
+      mockSupabase.auth.exchangeCodeForSession.mockResolvedValue({ data: { user: mockUser, session: { access_token: 'oauth-consent-token', refresh_token: 'oauth-consent-refresh', expires_in: 3600 } }, error: null });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(null);
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+      jest.spyOn(profileRepository, 'createProfile').mockImplementation(async (data: any) => ({ ...data, bio: null, location: null, createdAt: new Date(), updatedAt: new Date() }));
+      const callback = await request(app).get('/auth/callback?code=synthetic-oauth-code&flow=signup&next=%2Fprofile').set('Cookie', cookiePairs.join('; '));
+      expect(callback.status).toBe(302);
+      expect(callback.header.location).toBe('/profile');
+      expect(mockSaveRegistrationConsent).toHaveBeenCalledWith(mockUser.id, expect.objectContaining({ termsVersion: 'beta-terms-2026-10-19-v1' }), undefined);
+    });
+
+    it('GET /auth/callback rejects first-time Google accounts without registration consent', async () => {
       const mockUser = {
         id: '44444444-4444-4444-4444-444444444444',
         email: 'googleuser@gmail.com',
@@ -622,14 +709,12 @@ describe('Authentication & Session Handling', () => {
         updatedAt: new Date(),
       }));
 
+      const createProfileSpy = jest.spyOn(profileRepository, 'createProfile');
       const app = createApp();
       const res = await request(app).get('/auth/callback?code=mock-pkce-code-123&next=/profile');
-
-      expect(res.status).toBe(302);
-      expect(res.header.location).toBe('/profile');
-      const cookieHeader = res.header['set-cookie'];
-      const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
-      expect(cookies).toContain('sb-access-token=oauth-token-abc');
+      expect(res.status).toBe(400);
+      expect(res.text).toContain('complete registration');
+      expect(createProfileSpy).not.toHaveBeenCalled();
     });
 
     it('GET /auth/callback should handle PKCE exchange failure safely', async () => {
