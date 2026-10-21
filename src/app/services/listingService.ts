@@ -523,6 +523,12 @@ export async function addPhotoToListing(
     throw new ValidationError((err as Error).message);
   }
 
+  // Album front covers must be stored as square pixels, not merely displayed in a square CSS frame.
+  // The browser cropper creates this output before upload; never guess a destructive server-side crop.
+  if (role === 'front_cover' && processed.width !== processed.height) {
+    throw new ValidationError('Crop the front-cover photo to a square in the preview before uploading.');
+  }
+
   const photoId = crypto.randomUUID();
 
   // Upload processed buffer to storage
