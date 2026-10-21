@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, ilike, inArray, lte, or, SQL, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lte, or, SQL, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { ConditionGrade, ListingStatus } from '../../db/schema/enums';
 import { Listing, NewListing, listings } from '../../db/schema/listings';
@@ -66,9 +66,21 @@ export async function findActiveListingByPhysicalCopyId(
   return results[0] || null;
 }
 
-export async function findListingsBySellerId(sellerId: string, dbOverride?: DbInstance): Promise<Listing[]> {
+export async function findListingsBySellerId(
+  sellerId: string,
+  dbOverride?: DbInstance,
+  includeDismissed = false
+): Promise<Listing[]> {
   const db = dbOverride || getDb();
-  return db.select().from(listings).where(eq(listings.sellerId, sellerId));
+  return db
+    .select()
+    .from(listings)
+    .where(
+      and(
+        eq(listings.sellerId, sellerId),
+        includeDismissed ? isNotNull(listings.dismissedAt) : isNull(listings.dismissedAt)
+      )
+    );
 }
 
 export async function findPublishedListingsBySellerId(

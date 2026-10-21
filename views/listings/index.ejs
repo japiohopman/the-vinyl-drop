@@ -3,15 +3,24 @@
     <div>
       <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-1);">My Listings</h1>
       <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">Manage your vinyl drops, drafts, and record trades.</p>
+      <nav aria-label="Listing views" style="display:flex;gap:var(--space-3);margin-top:var(--space-2);font-size:var(--font-size-sm);">
+        <a href="/listings" <%= !viewHidden ? 'aria-current="page"' : '' %>>Visible</a>
+        <a href="/listings?view=hidden" <%= viewHidden ? 'aria-current="page"' : '' %>>Hidden completed</a>
+      </nav>
     </div>
     <a href="/listings/new" class="btn btn-primary btn-md">+ Sell a Record</a>
   </div>
 
   <% if (listings.length === 0) { %>
     <div class="card" style="padding: var(--space-8); text-align: center; border: var(--border-thick); background: var(--color-surface-card);">
-      <p style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-2);">No listings yet!</p>
+      <% if (viewHidden) { %>
+        <p style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-2);">No hidden completed listings.</p>
+        <p style="color: var(--color-ink-muted);">Completed listings you dismiss will appear here and can be restored.</p>
+      <% } else { %>
+        <p style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-2);">No listings yet!</p>
       <p style="color: var(--color-ink-muted); margin-bottom: var(--space-4);">Ready to share your vinyl collection with local collectors?</p>
       <a href="/listings/new" class="btn btn-primary btn-md">Create Your First Listing</a>
+      <% } %>
     </div>
   <% } else { %>
     <div style="display: flex; flex-direction: column; gap: var(--space-4);">
@@ -46,6 +55,20 @@
             <% if (item.status === 'draft') { %>
               <form action="/listings/<%= item.id %>/publish" method="POST" style="display: inline;">
                 <button type="submit" class="btn btn-primary btn-sm">Publish</button>
+              </form>
+            <% } %>
+            <% if (item.status === 'published') { %>
+              <form action="/listings/<%= item.id %>/unpublish" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-outline btn-sm">Unpublish</button>
+              </form>
+            <% } %>
+            <% if (viewHidden) { %>
+              <form action="/listings/<%= item.id %>/restore-dismissed" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-outline btn-sm">Restore</button>
+              </form>
+            <% } else if (item.status === 'sold' || item.status === 'traded' || item.status === 'archived') { %>
+              <form action="/listings/<%= item.id %>/dismiss" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-outline btn-sm">Dismiss</button>
               </form>
             <% } %>
           </div>

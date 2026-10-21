@@ -20,6 +20,8 @@ export const listings = pgTable(
     tradeAvailable: boolean('trade_available').default(false).notNull(),
     description: text('description'),
     status: listingStatusEnum('status').default('draft').notNull(),
+    /** Hides a completed listing only from its owner's default My Listings view; status/history/photos remain intact. */
+    dismissedAt: timestamp('dismissed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
