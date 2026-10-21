@@ -282,6 +282,26 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       deleteStorageSpy.mockRestore();
     });
 
+    it('should reject a non-square front-cover photo rather than silently cropping unknown edges', async () => {
+      const portraitImage = await sharp({
+        create: { width: 100, height: 160, channels: 3, background: { r: 128, g: 128, b: 128 } },
+      }).jpeg().toBuffer();
+
+      const storageModule = await import('../src/app/services/storageService');
+      const uploadSpy = jest.spyOn(storageModule, 'uploadListingPhotoToStorage');
+
+      await expect(
+        addPhotoToListing(listingId, sellerId, {
+          buffer: portraitImage,
+          mimetype: 'image/jpeg',
+          originalname: 'phone-portrait.jpg',
+        }, 'Front cover', undefined, undefined, 'front_cover')
+      ).rejects.toThrow('Crop the front-cover photo to a square');
+
+      expect(uploadSpy).not.toHaveBeenCalled();
+      uploadSpy.mockRestore();
+    });
+
     it('should rollback storage upload if database insertion fails when adding a photo', async () => {
       const sampleImage = await sharp({
         create: { width: 100, height: 100, channels: 3, background: { r: 128, g: 128, b: 128 } },
