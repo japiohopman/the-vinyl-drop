@@ -87,7 +87,7 @@ The GDPR information duty requires the controller's identity and contact details
 1. **Controller/contact and service classification:** Jaap has confirmed that The Vinyl Drop is operated by him as a private individual and that the public email is `yepyouknowhim@gmail.com`. Do not invent a company or publish a residential address. The applicability of Dutch website information rules and DSA requirements to this particular free, manually invite-only community service remains to be determined; see #154.
 2. **Per-purpose basis approval:** approve/revise the Article 6(1)(b) mapping and the legitimate-interests assessments above before removing the public draft warning.
 3. **Public/private behavior:** verify that routes display exactly the fields the Notice describes, especially public profile fields, favorites, comments and activity events.
-4. **Provider facts:** Supabase project region and Render staging region are recorded in #152. Current active SMTP/provider configuration, provider-side logs/backups, transfer safeguards and clean live browser requests still need verification.
+4. **Provider facts:** Supabase project region and Render staging region are recorded in #152. The owner-confirmed deployed Network/Cookies check is complete and #153 is closed (21 October 2026); do not request another capture. Provider account terms/transfer safeguards, provider-side logs/backups and any account-specific configuration that cannot be proven from repository source still need review.
 5. **Retention and erasure:** targets in the operations runbook are policy directions, not automatic expiry. Do not imply complete account erasure until the cross-system/manual procedure has been rehearsed.
 
 ## 5. Official sources used for this draft
