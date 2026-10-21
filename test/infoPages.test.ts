@@ -53,7 +53,7 @@ describe('Contact & Community Rules Pages (Phase 6A - Issue #46)', () => {
     });
   });
 
-  describe('GET /community-rules', () =>
+  describe('GET /community-rules', () => {
     it('should resolve with 200 OK and render explicit conduct prohibitions', async () => {
       const res = await request(app).get('/community-rules');
 
