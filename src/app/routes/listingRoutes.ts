@@ -20,6 +20,7 @@ import {
   postArchiveListing,
   postDismissCompletedListing,
   postRestoreCompletedListing,
+  postUnpublishListing,
 } from '../controllers/listingController';
 import { postFavoriteListing, postUnfavoriteListing } from '../controllers/favoriteController';
 
@@ -56,6 +57,7 @@ router.post('/:id/photos/reorder', requireAuth, validateSameOrigin, postReorderP
 
 // State Lifecycle Operations
 router.post('/:id/publish', requireAuth, validateSameOrigin, postPublishListing);
+router.post('/:id/unpublish', requireAuth, validateSameOrigin, postUnpublishListing);
 router.post('/:id/archive', requireAuth, validateSameOrigin, postArchiveListing);
 router.post('/:id/dismiss', requireAuth, validateSameOrigin, postDismissCompletedListing);
 router.post('/:id/restore-dismissed', requireAuth, validateSameOrigin, postRestoreCompletedListing);
