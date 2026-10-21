@@ -13,6 +13,8 @@ import {
   updateListingPhotoRole,
   publishListing,
   archiveListing,
+  dismissCompletedListing,
+  restoreCompletedListing,
 } from '../services/listingService';
 import { getListingComments, addComment } from '../services/commentService';
 import { isListingFavorited } from '../services/favoriteService';
@@ -28,7 +30,8 @@ export async function getSellerListings(req: Request, res: Response, next: NextF
       return res.redirect('/auth/login');
     }
 
-    const rawListings = await getUserListings(req.user.id);
+    const viewHidden = req.query.view === 'hidden';
+    const rawListings = await getUserListings(req.user.id, undefined, viewHidden);
     const detailedListings = [];
 
     for (const listing of rawListings) {
@@ -48,6 +51,7 @@ export async function getSellerListings(req: Request, res: Response, next: NextF
     renderWithLayout(res, 'listings/index', {
       title: 'My Listings - The Vinyl Drop',
       listings: detailedListings,
+      viewHidden,
     });
   } catch (error) {
     next(error);
@@ -436,6 +440,26 @@ export async function postPublishListing(req: Request, res: Response, next: Next
         });
       }
     }
+    next(error);
+  }
+}
+
+export async function postDismissCompletedListing(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return res.redirect('/auth/login');
+    await dismissCompletedListing(req.params.id, req.user.id);
+    return res.redirect('/listings');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function postRestoreCompletedListing(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return res.redirect('/auth/login');
+    await restoreCompletedListing(req.params.id, req.user.id);
+    return res.redirect('/listings?view=hidden');
+  } catch (error) {
     next(error);
   }
 }
