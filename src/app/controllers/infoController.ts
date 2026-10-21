@@ -3,7 +3,7 @@ import { createHmac, randomBytes } from 'crypto';
 import { z } from 'zod';
 import { renderWithLayout } from '../utils/render';
 import { TERMS_VERSION } from '../services/registrationConsent';
-import { ContactMessageDeliveryError, sendContactMessage } from '../services/contactMessageService';
+import { sendContactMessage } from '../services/contactMessageService';
 
 const CONTACT_EMAIL = 'yepyouknowhim@gmail.com';
 const CONTACT_COOLDOWN_MS = 60_000;
@@ -137,10 +137,8 @@ export async function postContactMessage(req: Request, res: Response, next: Next
         message: 'Your message was accepted by our email provider for sending. Delivery and response time are not guaranteed; please use the direct email above if you need to follow up.',
       },
     });
-  } catch (error) {
+  } catch {
     // Provider/configuration details and message contents must never reach logs or the response.
-    const reason = error instanceof ContactMessageDeliveryError ? error.reason : 'delivery';
-    void reason; // Keep the failure classification private; the user sees one safe fallback.
     renderContact(res, next, 503, {
       values,
       fieldErrors: {},
