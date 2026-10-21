@@ -27,9 +27,11 @@ This inventory records source-observed processing and separates current owner-ap
 ## Cookies and external services
 
 - **Necessary authentication/session cookies:** described above. The code uses cookie-backed Supabase Auth/PKCE session handling. This is a source-code inventory, not a packet capture of the deployed site.
-- **Hosting/runtime:** Render hosts the staging web service and processes operational logs/events. Provider retention settings were not inspected.
-- **Authentication, database, and image storage:** Supabase Auth, PostgreSQL, and Storage hold the application’s identity/state/media according to the project architecture.
-- **Password checking:** HIBP receives only a range prefix for the application’s new-password check; see Issue #62 for the direct-Auth bypass boundary.
+- **Hosting/runtime:** Render staging service metadata confirms Frankfurt region and Free service plan. Render's published logging docs specify retention by workspace tier (Hobby 7 days, Pro 14 days, Scale/Enterprise 30 days); the exact workspace tier is not exposed by service metadata and remains unverified.
+- **Authentication, database, and image storage:** Supabase Auth, PostgreSQL, and Storage hold the application's identity/state/media. Read-only project metadata confirms the core project region is Ireland (`eu-west-1`) and status is healthy. Supabase's published transfer FAQ says account/support/usage-log processing and some Storage delivery may involve other locations; do not claim all processing remains in Ireland.
+- **Email delivery:** Resend's verified `thevinyldrop.nl` domain is enabled for sending in the EU-West sending region, with open/click tracking disabled. One staging contact-form message was received end-to-end on 21 October 2026. Resend states stored message content and delivery logs are held in the US, with 30-day email/log retention on Free/Pro/Scale plans and 7-day backups; the EU sending region does not mean EU-only storage. The receiving Gmail mailbox is a separate recipient/service.
+- **Domain/DNS:** Strato is used for domain/DNS functions; account-specific contract and retention details remain unverified.
+- **Password checking:** HIBP receives only a range prefix for the application's new-password check; see Issue #62 for the direct-Auth bypass boundary.
 - **Catalog enrichment:** Discogs/MusicBrainz integration is used for release metadata searches/lookups. Final privacy wording should be checked against actual provider request fields.
 - **Fonts:** Capriola, DM Sans, IBM Plex Mono and Space Grotesk are served from same-origin `/fonts/` assets under the SIL Open Font License; external Google Fonts requests have been removed from the source layout.
 - **Analytics or advertising trackers:** none were identified in tracked app source/package manifest during this audit. Confirm deployed network requests and cookie/storage behavior before making a definitive public statement.
