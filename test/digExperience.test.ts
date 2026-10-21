@@ -184,6 +184,7 @@ describe('Dig photo-role contract', () => {
     expect(script).toContain('digState.adjacentIndex');
     expect(script).toContain("slide.inert = true");
 
+    const view = fs.readFileSync(path.join(process.cwd(), 'views/browse/dig.ejs'), 'utf8');
     const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     expect(css).toContain('.dig-sleeve-image');
     expect(css).toContain('object-fit: contain');
