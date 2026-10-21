@@ -38,6 +38,15 @@ describe('Contact form', () => {
     expect(invalid.status).toBe(400);
     expect(sendMock).not.toHaveBeenCalled();
 
+    const tooLong = await request(app).post('/contact').set('Origin', origin).type('form').send({
+      name: '',
+      email: 'contact156long@example.com',
+      message: 'x'.repeat(5_001),
+      contactFaxNumber: '',
+    });
+    expect(tooLong.status).toBe(400);
+    expect(sendMock).not.toHaveBeenCalled();
+
     const bot = await request(app).post('/contact').set('Origin', origin).type('form').send({ name: '', email: 'contact156bot@example.com', message: 'A sufficiently long automated message.', contactFaxNumber: 'filled' });
     expect(bot.status).toBe(400);
     expect(sendMock).not.toHaveBeenCalled();
