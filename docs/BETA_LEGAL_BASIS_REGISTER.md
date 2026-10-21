@@ -39,9 +39,9 @@ This register supports, but does not replace, the public Privacy Notice. The own
 - Raw passwords, full password hashes, session tokens and recovery URLs must not be logged.
 - Routine logs target approximately 30 days; this is a policy target, not a verified provider retention setting.
 - Any incident-specific extension must be necessary, documented and access-controlled.
-- Provider log retention/transfer terms still need verification. The exceptional Storage rollback error-detail path is under remediation in PR #162 / Issue #161; verify the fix before final publication.
+- Published provider documentation and read-only metadata have been reviewed for Supabase region/transfer boundaries, Render log-retention tiers, and Resend US storage/retention. Exact Render workspace tier, account-specific terms/subprocessor records, Strato terms, backup/recovery configuration and actual deletion/purge behavior remain unverified. The exceptional Storage rollback error-detail path is under remediation in PR #162 / Issue #161; verify the fix before final publication.
 
-**Owner decision — 21 October 2026.** Jaap approved this narrow legitimate-interest policy direction for security and abuse prevention, conditional on the safeguards listed above. This approval does not certify that the current implementation/provider settings already meet those safeguards. Provider retention/transfer terms remain verification items. The exceptional Storage rollback error-detail path is under remediation in PR #162 / Issue #161 and must be verified before the public Notice is final.
+**Owner decision — 21 October 2026.** Jaap approved this narrow legitimate-interest policy direction for security and abuse prevention, conditional on the safeguards listed above. This approval does not certify that the current implementation/provider settings already meet those safeguards. Published provider docs are recorded, but account-specific retention/transfer settings, workspace tier, backup/recovery configuration and actual deletion/purge behavior remain unverified. The exceptional Storage rollback error-detail path is under remediation in PR #162 / Issue #161 and must be verified before the public Notice is final.
 
 ### LIA-B: minimal registration agreement audit
 
