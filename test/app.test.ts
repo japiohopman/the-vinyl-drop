@@ -70,6 +70,9 @@ describe('App Routes and Error Handling', () => {
       expect(response.text).toContain('responsible operator');
       expect(response.text).toContain('Your privacy rights');
       expect(response.text).toContain('Contact form messages:');
+      expect(response.text).toContain('GDPR Article 6(1)(b)');
+      expect(response.text).toContain('Article 6(1)(f)');
+      expect(response.text).not.toContain('Legal-basis review remains open');
       expect(response.text).toContain('through the configured Resend API');
       expect(response.text).toContain('href="https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen"');
       expect(response.text).toContain('normally due within one month under GDPR');
