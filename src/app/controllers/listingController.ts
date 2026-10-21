@@ -15,6 +15,7 @@ import {
   archiveListing,
   dismissCompletedListing,
   restoreCompletedListing,
+  transitionListingStatus,
 } from '../services/listingService';
 import { getListingComments, addComment } from '../services/commentService';
 import { isListingFavorited } from '../services/favoriteService';
@@ -459,6 +460,16 @@ export async function postRestoreCompletedListing(req: Request, res: Response, n
     if (!req.user) return res.redirect('/auth/login');
     await restoreCompletedListing(req.params.id, req.user.id);
     return res.redirect('/listings?view=hidden');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function postUnpublishListing(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return res.redirect('/auth/login');
+    await transitionListingStatus(req.params.id, req.user.id, 'draft');
+    return res.redirect('/listings');
   } catch (error) {
     next(error);
   }
