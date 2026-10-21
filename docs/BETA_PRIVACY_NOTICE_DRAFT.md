@@ -43,7 +43,7 @@ Provider regions, international transfers and safeguards, processing terms, prov
 
 The source configures essential HTTP-only authentication/session cookies for access, refresh, recovery and short-lived PKCE/auth-flow handling. During Google sign-up, tvd-registration-consent is a first-party signed, HTTP-only cookie (Secure on HTTPS/staging/production, SameSite=Lax) that carries the selected Terms version and Terms/18+ attestation timestamps through the OAuth round-trip; it expires after up to 10 minutes and is cleared by the callback. It does not grant account or beta access. The site also uses tvd-beta-welcome-seen as a first-party HTTP-only presentation marker for 180 days and tvd-beta-welcome as a 60-second HTTP-only display-only flash. Neither welcome cookie grants account or beta access.
 
-The existing design font families are served from this site's own /fonts/ assets under the SIL Open Font License; the external Google Fonts links have been removed from the page layout. A clean deployed-browser/network check is still required before a definitive statement that no other third-party requests or tracking storage occur.
+The existing design font families are served from this site's own /fonts/ assets under the SIL Open Font License; the external Google Fonts links have been removed from the page layout. The owner-confirmed deployed browser/network/cookie review was completed and approved on 21 October 2026 (Issue #153 closed). It included the Google OAuth flow and external catalog-thumbnail requests during Discogs search; do not claim zero external requests. Provider transfers, terms, logs and backup retention remain separate review items.
 
 ### Messages sent through the Contact form
 
@@ -81,7 +81,7 @@ People may complain to the Dutch supervisory authority, the Autoriteit Persoonsg
 - Confirm the legally required controller identity/contact disclosures for this private-individual arrangement without publishing unnecessary private residential details.
 - Review purpose-specific lawful bases, including a documented balancing assessment where legitimate interests are considered.
 - Independently verify the actual provider regions, transfers/safeguards, processing terms, provider log retention and backups.
-- Run a clean deployed-browser/network check for cookies, font requests and all other third-party network requests.
+- [x] Owner-confirmed deployed-browser/network/cookie review completed and approved; see Issue #153 (closed 21 October 2026). Do not repeat the check or retain raw HAR/cookie values.
 - [x] The private registration-consent migration was applied and its schema/history verified on staging on 19 October 2026. Any further database changes require separate authorization.
 - Keep this notice and the separate Terms of Use marked as drafts until the owner/privacy review accepts the evidence and wording.
 
