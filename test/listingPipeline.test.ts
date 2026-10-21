@@ -417,6 +417,42 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(logged).not.toContain('db-secret-detail');
       expect(logged).not.toContain('storage-secret-detail');
       expect(logged).not.toContain('orphan-secret-detail');
+      expect(logged).not.toContain(`listings/${listingId}/`);
+
+      consoleErrorSpy.mockRestore();
+      deleteStorageSpy.mockRestore();
+    });
+
+    it('should not persist or log raw exception details when delete compensation and orphan recording both fail', async () => {
+      const photoId = '60000000-0000-4000-8000-000000000002';
+      const storagePath = `listings/${listingId}/${photoId}.webp`;
+      (photoRepo.findPhotoById as jest.Mock).mockResolvedValue({
+        id: photoId,
+        listingId,
+        storagePath,
+        displayOrder: 0,
+        altText: 'Cover art',
+      });
+      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(true);
+      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(new Error('compensation-secret-detail'));
+      (orphanRepo.recordOrphanedStorageObject as jest.Mock).mockRejectedValueOnce(new Error('orphan-secret-detail'));
+
+      const storageModule = await import('../src/app/services/storageService');
+      const deleteStorageSpy = jest.spyOn(storageModule, 'deleteListingPhotoFromStorage')
+        .mockRejectedValueOnce(new Error('storage-secret-detail'));
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('storage-secret-detail');
+
+      const recordedOrphan = (orphanRepo.recordOrphanedStorageObject as jest.Mock).mock.calls[0][0];
+      expect(recordedOrphan).not.toHaveProperty('errorDetails');
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      const logged = consoleErrorSpy.mock.calls.flat().join(' ');
+      expect(logged).toContain('storage_orphan_unresolved');
+      expect(logged).not.toContain('storage-secret-detail');
+      expect(logged).not.toContain('compensation-secret-detail');
+      expect(logged).not.toContain('orphan-secret-detail');
+      expect(logged).not.toContain(storagePath);
 
       consoleErrorSpy.mockRestore();
       deleteStorageSpy.mockRestore();
