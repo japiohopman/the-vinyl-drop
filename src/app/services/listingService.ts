@@ -557,7 +557,7 @@ export async function addPhotoToListing(
     // Rollback: clean up orphaned file in storage if DB insert fails
     try {
       await deleteListingPhotoFromStorage(storagePath, storageOptions);
-    } catch (cleanupErr) {
+    } catch {
       // Record durable orphan record in database for double-failure reconciliation
       try {
         await recordOrphanedStorageObject(
@@ -678,7 +678,7 @@ export async function deletePhotoFromListing(
         },
         dbOverride
       );
-    } catch (compensationErr) {
+    } catch {
       // Record durable orphan record in database for double-failure reconciliation
       try {
         await recordOrphanedStorageObject(
