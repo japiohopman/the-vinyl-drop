@@ -50,27 +50,40 @@ These cadence/retention values are a proposed practical baseline for owner revie
 - Confirm available free disk space and the current CLI versions via `supabase --version`, `supabase db dump --help` and `supabase storage cp --help`. CLI flags can change; use the installed CLI's help before copying data.
 - Never echo secrets or use a production/service-role key in a browser/client environment. Do not run any command that restores, migrates, deletes or writes to the linked project during backup.
 
-### B. Application database schema and data
+### B. Proposed application database export
 
-After the project target is confirmed and the owner explicitly authorizes a read/export operation, the starting CLI commands are:
+**Recommended method:** use a logical PostgreSQL dump in custom format for the actual app schemas so each artifact contains both schema definitions and data. Use the existing approved database connection only after the project reference/host has been verified. The following is a command template, not authorization to run it:
 
-    supabase db dump --linked --schema public,private --file "$BACKUP_DIR/app-schema.sql"
-    supabase db dump --linked --data-only --schema public,private --file "$BACKUP_DIR/app-data.sql"
-    supabase db dump --linked --role-only --file "$BACKUP_DIR/custom-roles.sql"
+    pg_dump --dbname="$SUPABASE_DB_URL" --format=custom --schema=public --schema=private --file="$BACKUP_DIR/application.dump"
+    supabase db dump --linked --role-only --file="$BACKUP_DIR/custom-roles.sql"
 
-Run these only after reviewing installed CLI help and confirming the actual app-owned schemas. Do not put exports under the repository. Review the output filenames and exit status without pasting SQL/data into GitHub. Do not assume these commands include Auth, Storage metadata, Storage bytes, or custom role passwords.
+Before running, verify the current CLI and PostgreSQL client help, confirm the actual application schemas and that the selected connection can read them. If direct `pg_dump` is not available in the local environment, stop and select a supported export path rather than silently assuming a default CLI dump includes everything. Never echo or store the connection string in the repository. The dump may include every app row, so encrypt it immediately and restrict access.
 
-If `--schema public,private` is not compatible with the installed CLI version or the actual schema inventory, stop and revise the procedure before export rather than improvising against a live project.
+The `supabase db dump` command is still useful for migrations/schema details, but its default managed-schema exclusions make it insufficient on its own. Review exit codes, file sizes and SHA-256 checksums only; never paste SQL/data into GitHub.
 
-### C. Auth data
+### C. Proposed Supabase Auth export
 
-Do not mark recovery complete using only the three files above. Choose one explicitly supported Auth recovery approach, validate it against the current Supabase CLI/platform version and the target schema version, and ensure it includes the necessary identity records. Auth export files may contain sensitive identifiers and password hashes; encrypt them immediately and restrict access. Do not post sample rows or export output in an issue.
+Auth user migration is supported with PostgreSQL logical export/import, but it is a separate sensitive component. Supabase's guide confirms the `auth` schema includes user and identity records and password hashes, and warns that JWT secret differences invalidate existing tokens. It does not provide a one-size-fits-all Auth-only script:
+https://supabase.com/docs/guides/troubleshooting/migrating-auth-users-between-projects
 
-### D. Storage objects
+The proposed export artifact is a separate direct Auth-schema dump:
 
-Use the documented Supabase CLI `storage` copy/list command, or the official S3-compatible Storage endpoint if the operator has separately approved and secured its credentials. The intended operation is a **download to the protected local backup directory** for the bucket used by listing images, not an upload or delete. Check the installed CLI help and current docs first; confirm source and destination direction before execution.
+    pg_dump --dbname="$SUPABASE_DB_URL" --format=custom --schema=auth --file="$BACKUP_DIR/auth.dump"
 
-Record object counts and SHA-256 hashes, then compare the exported file list to the relevant app database photo references. Do not treat a list of paths or Storage metadata as a copy of the actual file bytes.
+This command is a template only. First confirm the installed client version, source schema compatibility, privileges and Supabase-supported migration guidance. The dump can contain email addresses, identity metadata and password hashes; encrypt it immediately, keep it outside the repository, and restrict access. Never restore it into the live staging/production Auth schema. The procedure is not accepted until the dump can be restored into a fresh, compatible **isolated** Supabase target and designated test-user sign-in succeeds. Different JWT secrets mean existing tokens will not be portable and users will need to sign in again.
+
+### D. Storage object bytes and metadata
+
+The database dump contains Storage metadata/references, not the listing-photo bytes. Download actual object bytes separately from the linked project's listing-photo bucket using the supported CLI `storage cp` operation or an S3-compatible client whose credentials have separately been authorized and protected.
+
+The documented CLI shape is:
+
+    supabase storage ls "<remote-bucket-path>" --recursive --experimental --linked
+    supabase storage cp "<remote-bucket-path>" "$BACKUP_DIR/storage-objects/" --recursive --experimental --linked
+
+These are shape examples only; confirm the installed CLI's `--help` for the exact remote-path notation and direction before any download. The remote bucket is the source and the protected local directory the destination. These commands have **not** been run. Do not upload, move or delete anything as part of a backup.
+
+Record object counts and SHA-256 hashes, then compare exported paths against app database photo references. A path inventory or `storage.objects` rows are not a substitute for the actual file bytes. The restore test must recreate the intended bucket configuration/policies, restore objects through the supported Storage API so platform metadata is regenerated, and verify every expected path/byte checksum and listing reference.
 
 ## 5. Isolated restore acceptance test
 
