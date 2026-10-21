@@ -2,7 +2,7 @@
 
 **Status: owner review draft; not approved for publication.** This text documents the implemented/source-level design and owner decisions, but does not certify legal compliance or live provider settings. Keep this warning until the remaining legal, provider and deployed-browser checks are evidenced and reviewed.
 
-**Source review:** 19 October 2026
+**Source review:** 21 October 2026
 **Operator:** Jaap Hopman, acting as a private individual
 **Public privacy contact:** yepyouknowhim@gmail.com
 
@@ -44,6 +44,10 @@ Provider regions, international transfers and safeguards, processing terms, prov
 The source configures essential HTTP-only authentication/session cookies for access, refresh, recovery and short-lived PKCE/auth-flow handling. During Google sign-up, tvd-registration-consent is a first-party signed, HTTP-only cookie (Secure on HTTPS/staging/production, SameSite=Lax) that carries the selected Terms version and Terms/18+ attestation timestamps through the OAuth round-trip; it expires after up to 10 minutes and is cleared by the callback. It does not grant account or beta access. The site also uses tvd-beta-welcome-seen as a first-party HTTP-only presentation marker for 180 days and tvd-beta-welcome as a 60-second HTTP-only display-only flash. Neither welcome cookie grants account or beta access.
 
 The existing design font families are served from this site's own /fonts/ assets under the SIL Open Font License; the external Google Fonts links have been removed from the page layout. A clean deployed-browser/network check is still required before a definitive statement that no other third-party requests or tracking storage occur.
+
+### Messages sent through the Contact form
+
+If you submit the form on /contact, the application receives your optional name, reply email address and message and sends them through the configured Resend API to the operator's mailbox so the operator can review and reply. The application does not store a support-message history in its database and does not intentionally log the message contents. Resend and the receiving email service process the message to deliver it and may retain it under their own service settings and terms. Do not include passwords, session tokens, account-recovery links, health information or other sensitive personal details. If the application cannot confirm that the email provider accepted the message for sending, it shows a failure message; the direct email address remains available. This route is still subject to live delivery verification and the overall privacy/legal review.
 
 ## Retention and deletion
 
