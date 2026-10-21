@@ -117,8 +117,52 @@ export async function getListingById(id: string, dbOverride?: DbInstance): Promi
   return findListingById(id, dbOverride);
 }
 
-export async function getUserListings(sellerId: string, dbOverride?: DbInstance): Promise<Listing[]> {
-  return findListingsBySellerId(sellerId, dbOverride);
+export async function getUserListings(
+  sellerId: string,
+  dbOverride?: DbInstance,
+  includeDismissed = false
+): Promise<Listing[]> {
+  return findListingsBySellerId(sellerId, dbOverride, includeDismissed);
+}
+
+const DISMISSIBLE_LISTING_STATUSES: ListingStatus[] = ['sold', 'traded', 'archived'];
+
+/** Hide a completed listing from the owner's default dashboard without changing its lifecycle state or photos. */
+export async function dismissCompletedListing(
+  listingId: string,
+  requestingUserId: string,
+  dbOverride?: DbInstance
+): Promise<Listing> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) throw new NotFoundError('Listing not found');
+  if (listing.sellerId !== requestingUserId) throw new AuthorizationError('You are not authorized to dismiss this listing');
+  if (!DISMISSIBLE_LISTING_STATUSES.includes(listing.status)) {
+    throw new ValidationError('Only sold, traded, or archived listings can be dismissed from My Listings.');
+  }
+  if (listing.dismissedAt) return listing;
+
+  const updated = await updateListingInRepo(listingId, { dismissedAt: new Date() }, dbOverride);
+  if (!updated) throw new Error('Failed to dismiss listing');
+  return updated;
+}
+
+/** Restore a dismissed completed listing to the owner's default dashboard. */
+export async function restoreCompletedListing(
+  listingId: string,
+  requestingUserId: string,
+  dbOverride?: DbInstance
+): Promise<Listing> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) throw new NotFoundError('Listing not found');
+  if (listing.sellerId !== requestingUserId) throw new AuthorizationError('You are not authorized to restore this listing');
+  if (!listing.dismissedAt) throw new ValidationError('This listing is not dismissed.');
+  if (!DISMISSIBLE_LISTING_STATUSES.includes(listing.status)) {
+    throw new ValidationError('Only sold, traded, or archived listings can be restored from the hidden view.');
+  }
+
+  const updated = await updateListingInRepo(listingId, { dismissedAt: null }, dbOverride);
+  if (!updated) throw new Error('Failed to restore listing');
+  return updated;
 }
 
 export async function getPublishedListingsBySeller(
