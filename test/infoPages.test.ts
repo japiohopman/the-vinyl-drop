@@ -26,7 +26,34 @@ describe('Contact & Community Rules Pages (Phase 6A - Issue #46)', () => {
     });
   });
 
-  describe('GET /community-rules', () => {
+  describe('GET /privacy', () => {
+    it('renders the current privacy notice and accurately discloses the manual deletion boundary', async () => {
+      const res = await request(app).get('/privacy');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Privacy Notice');
+      expect(res.text).toContain('yepyouknowhim@gmail.com');
+      expect(res.text).toContain('does not currently offer a self-service full account export or erasure flow');
+      expect(res.text).not.toContain('Owner review draft');
+      expect(res.text).not.toContain('Private beta review draft');
+    });
+  });
+
+  describe('GET /terms', () => {
+    it('renders the current Terms and links to the privacy notice and manual contact route', async () => {
+      const res = await request(app).get('/terms');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Terms of Use');
+      expect(res.text).toContain('yepyouknowhim@gmail.com');
+      expect(res.text).toContain('href="/privacy"');
+      expect(res.text).toContain('Account deletion and export are not currently self-service');
+      expect(res.text).not.toContain('Owner review draft');
+      expect(res.text).not.toContain('Private beta review draft');
+    });
+  });
+
+  describe('GET /community-rules', () =>
     it('should resolve with 200 OK and render explicit conduct prohibitions', async () => {
       const res = await request(app).get('/community-rules');
 
