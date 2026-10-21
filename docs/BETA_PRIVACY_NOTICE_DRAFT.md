@@ -37,7 +37,14 @@ Published listings and their photos, public comments, and the public profile fie
 
 Source-visible providers include Supabase for Auth/PostgreSQL/Storage, Render for hosting/runtime, Discogs and/or MusicBrainz for catalog lookups, Have I Been Pwned for password-range checks, and Google as part of OAuth sign-in. Resend and Strato apply only to the mail/domain/DNS functions actually configured. Not every provider receives every category of data.
 
-Provider regions, international transfers and safeguards, processing terms, provider-side logs and backups must be checked against the actual configured services. This notice does not claim EU-only processing or a verified fixed provider retention period.
+- **Supabase:** the project's core database/Auth/Storage region is Ireland (EU). Supabase states that account information, support access, usage telemetry/logs and some Storage content delivery may involve processing outside the selected region; its published DPA includes Standard Contractual Clauses for applicable transfers. Do not assume all processing stays in Ireland.
+- **Render:** hosts the staging web service in Frankfurt. Render says log retention depends on workspace tier: Hobby 7 days, Pro 14 days, Scale/Enterprise 30 days. The exact workspace-level tier has not been confirmed, so no exact Render retention period is promised here.
+- **Resend:** delivers contact-form messages to the operator's mailbox. The sending domain is verified and configured for the EU-West sending region, but Resend states stored customer data, including message content and delivery logs, is held in the United States. Resend states email/log data is retained for 30 days on Free/Pro/Scale plans and backups for 7 days; its published DPA describes transfer safeguards. An EU sending region does not mean EU-only storage.
+- **Google/Gmail:** Google sign-in is used for OAuth, and the operator's receiving mailbox processes contact-form notifications. Google may therefore process sign-in and received-message data for those functions.
+- **Strato:** used for domain/DNS functions; it is not the contact-form message-delivery path in the observed setup. Account-specific contract and retention terms have not been verified.
+- **Catalog/password-check services:** Discogs and/or MusicBrainz receive catalog lookup data when invoked; Have I Been Pwned receives only the five-character password hash prefix for the range check. Not every provider receives every data category.
+ 
+These provider details are based on the current project metadata and published vendor documentation. The exact Render workspace tier, account-specific service terms/subprocessor records, and backup/recovery configuration remain unverified. This notice does not claim that all processing is EU-only or that every provider retention setting is configured to the app's policy targets.
 
 ## Cookies and fonts
 
