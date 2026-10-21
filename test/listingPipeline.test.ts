@@ -16,6 +16,8 @@ import {
   updateListing,
   updateListingPhotoRole,
   getListingWithDetails,
+  dismissCompletedListing,
+  restoreCompletedListing,
 } from '../src/app/services/listingService';
 import { ConditionGrade } from '../src/db/schema/enums';
 import { config } from '../src/config/env';
@@ -205,6 +207,63 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(details).not.toBeNull();
       expect(details?.release.title).toBe('Blue Spirits');
       expect(details?.physicalCopy.mediaCondition).toBe('NM');
+    });
+
+    it('dismisses a completed listing without changing its terminal status or photos', async () => {
+      const completed = {
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        price: 2999,
+        currency: 'EUR',
+        tradeAvailable: true,
+        status: 'sold',
+        dismissedAt: null,
+      };
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(completed);
+      (listingRepo.updateListing as jest.Mock).mockImplementationOnce((_id, changes) =>
+        Promise.resolve({ ...completed, ...changes })
+      );
+
+      const result = await dismissCompletedListing(listingId, sellerId);
+
+      expect(result.status).toBe('sold');
+      expect(result.dismissedAt).toBeInstanceOf(Date);
+      expect(listingRepo.updateListing).toHaveBeenCalledWith(listingId, expect.objectContaining({ dismissedAt: expect.any(Date) }), undefined);
+    });
+
+    it('rejects dismissing a listing that is not completed', async () => {
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce({
+        id: listingId,
+        sellerId,
+        status: 'published',
+        dismissedAt: null,
+      });
+      await expect(dismissCompletedListing(listingId, sellerId)).rejects.toThrow('Only sold, traded, or archived');
+      expect(listingRepo.updateListing).not.toHaveBeenCalled();
+    });
+
+    it('restores a dismissed completed listing without changing its sold status', async () => {
+      const completed = {
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        price: 2999,
+        currency: 'EUR',
+        tradeAvailable: true,
+        status: 'traded',
+        dismissedAt: new Date('2026-10-20T10:00:00.000Z'),
+      };
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(completed);
+      (listingRepo.updateListing as jest.Mock).mockImplementationOnce((_id, changes) =>
+        Promise.resolve({ ...completed, ...changes })
+      );
+
+      const result = await restoreCompletedListing(listingId, sellerId);
+
+      expect(result.status).toBe('traded');
+      expect(result.dismissedAt).toBeNull();
+      expect(listingRepo.updateListing).toHaveBeenCalledWith(listingId, { dismissedAt: null }, undefined);
     });
 
     it('should delete a photo from a listing and re-compact photo order', async () => {
