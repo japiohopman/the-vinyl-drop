@@ -18,6 +18,7 @@ import {
   getListingWithDetails,
   dismissCompletedListing,
   restoreCompletedListing,
+  transitionListingStatus,
 } from '../src/app/services/listingService';
 import { ConditionGrade } from '../src/db/schema/enums';
 import { config } from '../src/config/env';
@@ -207,6 +208,41 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(details).not.toBeNull();
       expect(details?.release.title).toBe('Blue Spirits');
       expect(details?.physicalCopy.mediaCondition).toBe('NM');
+    });
+
+    it('unpublishes an owned published listing to draft without deleting its record', async () => {
+      const active = {
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        price: 2999,
+        currency: 'EUR',
+        tradeAvailable: true,
+        status: 'published',
+        dismissedAt: null,
+      };
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(active);
+      (listingRepo.updateListingStatus as jest.Mock).mockResolvedValueOnce({ ...active, status: 'draft' });
+
+      const result = await transitionListingStatus(listingId, sellerId, 'draft');
+
+      expect(result.status).toBe('draft');
+      expect(listingRepo.updateListingStatus).toHaveBeenCalledWith(listingId, 'draft', undefined);
+    });
+
+    it('does not unpublish a listing owned by another seller', async () => {
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce({
+        id: listingId,
+        sellerId: otherUserId,
+        price: 2999,
+        tradeAvailable: true,
+        status: 'published',
+      });
+
+      await expect(transitionListingStatus(listingId, sellerId, 'draft')).rejects.toThrow(
+        'You are not authorized to transition this listing status'
+      );
+      expect(listingRepo.updateListingStatus).not.toHaveBeenCalled();
     });
 
     it('dismisses a completed listing without changing its terminal status or photos', async () => {
