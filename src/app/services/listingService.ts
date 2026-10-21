@@ -557,7 +557,7 @@ export async function addPhotoToListing(
     // Rollback: clean up orphaned file in storage if DB insert fails
     try {
       await deleteListingPhotoFromStorage(storagePath, storageOptions);
-    } catch (cleanupErr) {
+    } catch {
       // Record durable orphan record in database for double-failure reconciliation
       try {
         await recordOrphanedStorageObject(
@@ -566,14 +566,16 @@ export async function addPhotoToListing(
             photoId,
             storagePath,
             reason: 'UPLOAD_DB_INSERT_FAILED_AND_STORAGE_CLEANUP_FAILED',
-            errorDetails: `DB Error: ${(dbErr as Error).message}; Cleanup Error: ${(cleanupErr as Error).message}`,
           },
           dbOverride
         );
       } catch {
-        console.error(
-          `CRITICAL UNRESOLVED STORAGE ORPHAN: Photo upload DB record creation failed AND compensating Storage file cleanup failed. listingId: '${listingId}', photoId: '${photoId}', storagePath: '${storagePath}'. DB Error: ${(dbErr as Error).message}. Storage Cleanup Error: ${(cleanupErr as Error).message}`
-        );
+        console.error(JSON.stringify({
+          event: 'storage_orphan_unresolved',
+          reason: 'UPLOAD_DB_INSERT_FAILED_AND_STORAGE_CLEANUP_FAILED',
+          listingId,
+          photoId,
+        }));
       }
     }
     if ((dbErr as { code?: string }).code === '23505') {
@@ -675,7 +677,7 @@ export async function deletePhotoFromListing(
         },
         dbOverride
       );
-    } catch (compensationErr) {
+    } catch {
       // Record durable orphan record in database for double-failure reconciliation
       try {
         await recordOrphanedStorageObject(
@@ -684,14 +686,16 @@ export async function deletePhotoFromListing(
             photoId,
             storagePath: photo.storagePath,
             reason: 'DELETE_STORAGE_FAILED_AND_DB_COMPENSATION_FAILED',
-            errorDetails: `Storage Error: ${(storageErr as Error).message}; Compensation Error: ${(compensationErr as Error).message}`,
           },
           dbOverride
         );
       } catch {
-        console.error(
-          `CRITICAL UNRESOLVED METADATA ORPHAN: Storage deletion failed AND DB record re-insertion compensation failed for listingId: '${listingId}', photoId: '${photoId}', storagePath: '${photo.storagePath}'. Storage Error: ${(storageErr as Error).message}. Compensation DB Error: ${(compensationErr as Error).message}`
-        );
+        console.error(JSON.stringify({
+          event: 'storage_orphan_unresolved',
+          reason: 'DELETE_STORAGE_FAILED_AND_DB_COMPENSATION_FAILED',
+          listingId,
+          photoId,
+        }));
       }
     }
     throw storageErr;
