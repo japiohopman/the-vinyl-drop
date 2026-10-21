@@ -341,6 +341,13 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         undefined
       );
 
+      const recordedOrphan = (orphanRepo.recordOrphanedStorageObject as jest.Mock).mock.calls[0]?.[0];
+      expect(recordedOrphan.errorDetails).toBe(
+        'Metadata insert and compensating Storage cleanup both failed; raw exception messages intentionally omitted.'
+      );
+      expect(recordedOrphan.errorDetails).not.toContain('PostgreSQL unique constraint violation');
+      expect(recordedOrphan.errorDetails).not.toContain('Supabase Storage 503 Service Unavailable');
+
       deleteStorageSpy.mockRestore();
     });
 
@@ -381,7 +388,84 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         undefined
       );
 
+      const recordedOrphan = (orphanRepo.recordOrphanedStorageObject as jest.Mock).mock.calls[0]?.[0];
+      expect(recordedOrphan.errorDetails).toBe(
+        'Storage deletion and database metadata compensation both failed; raw exception messages intentionally omitted.'
+      );
+      expect(recordedOrphan.errorDetails).not.toContain('DB primary key conflict');
+      expect(recordedOrphan.errorDetails).not.toContain('Supabase Storage 500 Network Timeout');
+
       deleteStorageSpy.mockRestore();
+    });
+
+
+    it('omits raw upload rollback exception messages from logs if the orphan record cannot be saved', async () => {
+      const sampleImage = await sharp({
+        create: { width: 100, height: 100, channels: 3, background: { r: 100, g: 100, b: 100 } },
+      }).jpeg().toBuffer();
+      const dbFailure = new Error('PRIVATE_DATABASE_ERROR_MARKER_UPLOAD');
+      const storageFailure = new Error('PRIVATE_STORAGE_ERROR_MARKER_UPLOAD');
+      const journalFailure = new Error('PRIVATE_ORPHAN_JOURNAL_ERROR_MARKER_UPLOAD');
+      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(dbFailure);
+      (orphanRepo.recordOrphanedStorageObject as jest.Mock).mockRejectedValueOnce(journalFailure);
+
+      const storageModule = await import('../src/app/services/storageService');
+      const deleteStorageSpy = jest.spyOn(storageModule, 'deleteListingPhotoFromStorage').mockRejectedValueOnce(storageFailure);
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      try {
+        await expect(
+          addPhotoToListing(listingId, sellerId, {
+            buffer: sampleImage,
+            mimetype: 'image/jpeg',
+            originalname: 'cover.jpg',
+          }, 'A clear photo of the sleeve front', undefined, undefined, 'front_cover')
+        ).rejects.toThrow('PRIVATE_DATABASE_ERROR_MARKER_UPLOAD');
+
+        const output = consoleSpy.mock.calls.map((args) => args.join(' ')).join('\n');
+        expect(output).toContain('Raw exception messages intentionally omitted.');
+        expect(output).not.toContain(dbFailure.message);
+        expect(output).not.toContain(storageFailure.message);
+        expect(output).not.toContain(journalFailure.message);
+      } finally {
+        deleteStorageSpy.mockRestore();
+        consoleSpy.mockRestore();
+      }
+    });
+
+    it('omits raw delete rollback exception messages from logs if the orphan record cannot be saved', async () => {
+      const photoId = '60000000-0000-4000-8000-000000000002';
+      const samplePhoto = {
+        id: photoId,
+        listingId,
+        storagePath: `listings/${listingId}/${photoId}.webp`,
+        displayOrder: 0,
+        altText: 'Cover art',
+      };
+      const storageFailure = new Error('PRIVATE_STORAGE_ERROR_MARKER_DELETE');
+      const compensationFailure = new Error('PRIVATE_DATABASE_COMPENSATION_ERROR_MARKER_DELETE');
+      const journalFailure = new Error('PRIVATE_ORPHAN_JOURNAL_ERROR_MARKER_DELETE');
+      (photoRepo.findPhotoById as jest.Mock).mockResolvedValue(samplePhoto);
+      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(true);
+      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(compensationFailure);
+      (orphanRepo.recordOrphanedStorageObject as jest.Mock).mockRejectedValueOnce(journalFailure);
+
+      const storageModule = await import('../src/app/services/storageService');
+      const deleteStorageSpy = jest.spyOn(storageModule, 'deleteListingPhotoFromStorage').mockRejectedValueOnce(storageFailure);
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      try {
+        await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow(storageFailure.message);
+
+        const output = consoleSpy.mock.calls.map((args) => args.join(' ')).join('\n');
+        expect(output).toContain('Raw exception messages intentionally omitted.');
+        expect(output).not.toContain(storageFailure.message);
+        expect(output).not.toContain(compensationFailure.message);
+        expect(output).not.toContain(journalFailure.message);
+      } finally {
+        deleteStorageSpy.mockRestore();
+        consoleSpy.mockRestore();
+      }
     });
 
     it('should reject publishing without server-side preview confirmation (Blocker 3)', async () => {
