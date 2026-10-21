@@ -50,6 +50,7 @@ describe('Favorites / Saved Listings Contract (Issue #41)', () => {
       '0002_add_release_cover_art.sql',
       '0003_brainy_scarlet_witch.sql',
       '0004_mighty_spacker_dave.sql',
+      '0015_dismiss_completed_listings.sql',
     ];
 
     for (const file of migrationFiles) {
