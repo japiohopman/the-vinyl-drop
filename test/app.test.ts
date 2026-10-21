@@ -52,7 +52,7 @@ describe('App Routes and Error Handling', () => {
   });
 
   describe('GET /privacy', () => {
-    it('renders the owner-review privacy draft and links to it from the footer', async () => {
+    it('renders the current privacy notice and links to it from the footer', async () => {
       const response = await request(app)
         .get('/privacy')
         .set('Accept', 'text/html');
@@ -60,7 +60,9 @@ describe('App Routes and Error Handling', () => {
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toMatch(/html/);
       expect(response.text).toContain('Privacy Notice');
-      expect(response.text).toContain('Owner review draft — not approved for publication');
+      expect(response.text).not.toContain('Owner review draft');
+      expect(response.text).not.toContain('Private beta review draft');
+      expect(response.text).toContain('manual handling');
       expect(response.text).not.toContain('migration must be separately applied and verified before the updated registration flow is deployed');
       expect(response.text).toContain('href="/privacy"');
       expect(response.text).toContain('yepyouknowhim@gmail.com');
@@ -87,7 +89,9 @@ describe('App Routes and Error Handling', () => {
       const response = await request(app).get('/terms').set('Accept', 'text/html');
       expect(response.status).toBe(200);
       expect(response.text).toContain('Terms of Use');
-      expect(response.text).toContain('Owner review draft — not approved for the external beta');
+      expect(response.text).not.toContain('Owner review draft');
+      expect(response.text).not.toContain('Private beta review draft');
+      expect(response.text).toContain('Account deletion and export are not currently self-service');
       expect(response.text).toContain('beta-terms-2026-10-19-v2');
       expect(response.text).toContain('at least 18 years old');
       expect(response.text).toContain('To report a listing, comment, suspected illegal content');
