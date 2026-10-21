@@ -155,7 +155,7 @@ export function getPrivacyNoticePage(req: Request, res: Response, next: NextFunc
     renderWithLayout(res, 'info/privacy', {
       title: 'Privacy Notice — The Vinyl Drop',
       contactEmail: CONTACT_EMAIL,
-      noticeStatus: 'draft',
+      noticeStatus: 'current',
     }, next);
   } catch (error) {
     next(error);
