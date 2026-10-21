@@ -119,4 +119,4 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 - [Autoriteit Persoonsgegevens — privacy rights](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen)
 - `docs/BETA_DATA_INVENTORY.md`
 - `docs/BETA_LEGAL_BASIS_REGISTER.md` — owner-approved working basis mapping and legitimate-interest policy directions; technical/provider verification remains open.
-- Issues #48, #88, #154, #155 and #156 remain relevant. Issue #153 is closed.
+- Issues #48, #88, #154 and #155 remain relevant. Issue #156 is closed after staging contact delivery passed; Issue #161 / PR #162 tracks the exceptional Storage rollback diagnostic fix. Issue #153 is closed.
