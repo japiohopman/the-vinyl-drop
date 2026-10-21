@@ -42,11 +42,12 @@ The schema includes timestamps, cascades and image-cleanup paths, but these are 
 
 Before the public notice is approved:
 1. The owner-approved public identity/contact decision is Jaap Hopman as a private individual and `yepyouknowhim@gmail.com`; do not invent a company or publish a residential address. If the project becomes commercial, reassess any separate business-site disclosure rules.
-2. The purpose-specific legal-basis framework and legitimate-interest policy directions were approved by the owner on 21 October 2026. Verify that the deployed processing and safeguards actually match those descriptions.
-3. Independently verify provider regions, transfer safeguards, processing terms, provider logs and backups.
-4. The clean deployed-browser/network/cookie review was owner-confirmed complete in #153 (closed 21 October 2026); do not repeat it. Preserve only the redacted notes and never commit cookies/tokens/raw HAR files.
-5. Review the separate Terms of Use draft. The owner-authorized registration-consent migration was applied and the schema/history verified on staging on 19 October 2026; live-provider, retention and end-to-end account-erasure checks remain separate.
-6. Keep the waitlist and marketing collection disabled. Pilot invitations remain manual, no more than five friends and 18+ only.
+2. The purpose-specific legal-basis framework and legitimate-interest policy directions were approved by the owner on 21 October 2026. Verify that the deployed processing and safeguards match those descriptions.
+3. [x] Source-level public/private visibility review completed 21 October 2026: the public profile schema has no account email field; profile pages render username/display name/avatar/website/bio/coarse location/join date; public profiles show published listings; non-published listings/comments are seller-only; and favourite activity events are returned only for the requesting user, not anonymous/public feeds. This documents the application source/templates and is not a new deployed-browser test.
+4. Independently verify provider regions, transfer safeguards, processing terms, provider logs and backups.
+5. The clean deployed-browser/network/cookie review was owner-confirmed complete in #153 (closed 21 October 2026); do not repeat it. Preserve only the redacted notes and never commit cookies/tokens/raw HAR files.
+6. Review the separate Terms of Use draft. The owner-authorized registration-consent migration was applied and the schema/history verified on staging on 19 October 2026; live-provider, retention and end-to-end account-erasure checks remain separate.
+7. Keep the waitlist and marketing collection disabled. Pilot invitations remain manual, no more than five friends and 18+ only.
 
 This inventory does not claim legal compliance, fixed provider retention, or implemented automatic deletion. Keep Issue #88 and the #49 release gate open until remaining owner/provider/review gates are resolved or explicitly accepted.
 
