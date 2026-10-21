@@ -2,7 +2,7 @@
 
 **Status: proposed manual runbook; not a claim of legal compliance.**  
 **Scope:** initial invite-only beta. The published waitlist remains disabled.  
-**Last source review:** 2026-10-19.
+**Last source review:** 2026-10-21.
 
 This runbook converts the source inventory into a small operational procedure without claiming that the application has self-service privacy tools. It must be reviewed by the project owner and, where appropriate, a privacy/legal adviser before the privacy notice is approved.
 
@@ -70,8 +70,8 @@ The Dutch Autoriteit Persoonsgegevens explains that controllers must choose the 
 ## 6. Cookies, trackers and Terms decision
 
 - Source review on 2026-10-19 found authentication/session and short-lived auth-flow cookies in `src/app/middleware/auth.ts` and `src/lib/supabase.ts`. Registration also uses a short-lived, signed, first-party HTTP-only consent ticket for Google OAuth sign-up; it does not grant beta access.
-- The layout now serves Capriola, DM Sans, IBM Plex Mono and Space Grotesk from same-origin `/fonts/` assets under SIL Open Font License notices; remote Google Fonts links have been removed from source. No analytics or advertising tracker was identified in source, but deployed browser/network behavior has not been independently verified.
-- **Provisional decision:** do not add a cookie banner or consent manager solely for the identified essential authentication cookies. The privacy notice describes the source-configured cookies. Before final publication, check the deployed page in a clean browser session and confirm whether any nonessential cookies, trackers or third-party embeds are present. If tracking cookies or other consent-requiring storage are found, block them until valid consent can be collected.
+- The layout now serves Capriola, DM Sans, IBM Plex Mono and Space Grotesk from same-origin `/fonts/` assets under SIL Open Font License notices; remote Google Fonts links have been removed from source. No analytics or advertising tracker was identified in tracked source. Jaap confirmed the deployed Network/Cookies review was completed and approved on 21 October 2026 in #153. Google-hosted assets were seen during OAuth and an external catalog-thumbnail host during Discogs search; do not claim that the site makes no external requests.
+- **Provisional decision:** do not add a cookie banner or consent manager solely for the identified essential authentication cookies. The privacy notice describes the source-configured cookies. Before final publication, compare the owner-confirmed results recorded in #153 with the notice and actual feature scope; that clean deployed-browser/network check is complete and must not be repeated without a specific new reason. If later source changes add trackers or consent-requiring storage, review and block those until the required consent can be collected.
 - **Terms of Use:** a separate Terms draft now exists at `/terms` and is linked from the footer and signup form. It remains explicitly marked as an owner-review draft until legal wording and release gates are reviewed; the Community Rules are still a separate document.
 - This document does not make a claim that the deployed site is free of tracking, or that a separate cookie notice/Terms page is legally unnecessary.
 
@@ -103,7 +103,7 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 - [ ] Approve the data-retention/deletion rules and practical end conditions for every category.
 - [ ] Confirm the manual request handler, restricted record location and record retention period.
 - [ ] Choose and verify the pre-pilot backup/recovery plan for Supabase Free. The isolated restore verification must explicitly cover (a) application schema, table data, roles and relationships, (b) Auth identities and the intended post-restore sign-in/session behavior, and (c) Storage object bytes plus paths/references used by listing photos. A default `supabase db dump` is not sufficient: managed Auth/Storage schemas, table data and roles require explicit treatment, and the database dump does not contain Storage file bytes. Record counts/IDs and photo object inventory checks, or document the exact unverified part as a release blocker. Alternatively, Jaap must explicitly accept the residual risk before external invitations.
-- [ ] Perform a deployed clean-browser/network check for cookies, third-party requests and tracking; record evidence without exposing session values.
+- [x] Owner-confirmed deployed clean-browser/network/cookie check completed; #153 closed 21 October 2026. Safe cookie attributes and the reviewed Google OAuth / Discogs thumbnail requests are recorded without values or raw HAR.
 - [ ] Review the separate `/terms` draft and the `/privacy` notice; keep both labelled as drafts until the required owner/legal/provider checks are evidenced.
 - [ ] Confirm the initial pilot is 18+ and that registration stores no date of birth or identity document.
 - [x] The private registration-consent migration was applied and schema/history verified on staging on 19 October 2026. Further database changes require separate authorization.
@@ -119,4 +119,4 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 - [Autoriteit Persoonsgegevens — privacy rights](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen)
 - `docs/BETA_DATA_INVENTORY.md`
 - `docs/BETA_LEGAL_BASIS_REGISTER.md` — proposed per-purpose basis mapping and legitimate-interests assessments; owner approval remains open.
-- Issues #48, #88, #153, #154 and #155
+- Issues #48, #88, #154, #155 and #156 remain relevant. Issue #153 is closed.
