@@ -1,6 +1,6 @@
 # The Vinyl Drop — Privacy Notice Draft
 
-**Status: owner review draft; not approved for publication.** This text documents the implemented/source-level design and owner decisions, but does not certify legal compliance or live provider settings. Keep this warning until the remaining legal, provider and deployed-browser checks are evidenced and reviewed.
+**Status: owner review draft; not approved for publication.** This text documents the implemented/source-level design and owner decisions, but does not certify legal compliance or live provider settings. Keep this warning until the remaining legal and provider checks are evidenced and reviewed and the owner approves publication. The deployed-browser/network/cookie check is complete (Issue #153 closed 21 October 2026).
 
 **Source review:** 21 October 2026
 **Operator:** Jaap Hopman, acting as a private individual
