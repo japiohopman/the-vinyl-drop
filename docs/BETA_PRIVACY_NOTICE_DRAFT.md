@@ -1,6 +1,6 @@
 # The Vinyl Drop — Privacy Notice Draft
 
-**Status: draft; not yet ready for publication.** Jaap approved the working legal-basis policy on 21 October 2026. This text is not legal advice or a certification of compliance or live provider settings. Keep the draft label until the remaining provider/transfer/logging/backup, retention/deletion and final wording checks are evidenced. One end-to-end staging contact-message delivery test passed on 21 October 2026; provider and mailbox retention remain unverified. The deployed-browser/network/cookie check is complete (Issue #153 closed 21 October 2026).
+**Status: internal publication copy for the first five-person pilot.** Jaap approved the purpose-specific working legal-basis policy and accepted baseline DSA-scope uncertainty for this bounded pilot on 21 October 2026. The text describes observed facts and marks provider-managed retention or configuration as unknown where the connected metadata cannot establish them; it does not claim independent legal certification, EU-only processing, automatic deletion, or a verified complete backup/restore. The staging contact-form delivery and deployed-browser/network/cookie checks are complete. The public page remains labelled for review until PR #162 is merged and the final page-copy change in PR #159 is merged by the owner.
 
 **Source review:** 21 October 2026
 **Operator:** Jaap Hopman, acting as a private individual
@@ -44,13 +44,13 @@ Source-visible providers include Supabase for Auth/PostgreSQL/Storage, Render fo
 - **Strato:** used for domain/DNS functions; it is not the contact-form message-delivery path in the observed setup. Account-specific contract and retention terms have not been verified.
 - **Catalog/password-check services:** Discogs and/or MusicBrainz receive catalog lookup data when invoked; Have I Been Pwned receives only the five-character password hash prefix for the range check. Not every provider receives every data category.
  
-These provider details are based on the current project metadata and published vendor documentation. The exact Render workspace tier, account-specific service terms/subprocessor records, and backup/recovery configuration remain unverified. This notice does not claim that all processing is EU-only or that every provider retention setting is configured to the app's policy targets.
+These provider details are based on current read-only project/account metadata available through the connected services and published vendor documentation. The exact Render workspace tier and account-specific Strato terms are not exposed by the available connection. The notice therefore gives Render's published retention range without selecting a tier, identifies Strato only for the configured domain/DNS functions, and does not claim EU-only processing, exact account-specific retention, or a verified backup/restore capability. These metadata limits are disclosed, not treated as indefinite research blockers for the five-person pilot.
 
 ## Cookies and fonts
 
 The source configures essential HTTP-only authentication/session cookies for access, refresh, recovery and short-lived PKCE/auth-flow handling. During Google sign-up, tvd-registration-consent is a first-party signed, HTTP-only cookie (Secure on HTTPS/staging/production, SameSite=Lax) that carries the selected Terms version and Terms/18+ attestation timestamps through the OAuth round-trip; it expires after up to 10 minutes and is cleared by the callback. It does not grant account or beta access. The site also uses tvd-beta-welcome-seen as a first-party HTTP-only presentation marker for 180 days and tvd-beta-welcome as a 60-second HTTP-only display-only flash. Neither welcome cookie grants account or beta access.
 
-The existing design font families are served from this site's own /fonts/ assets under the SIL Open Font License; the external Google Fonts links have been removed from the page layout. The owner-confirmed deployed browser/network/cookie review was completed and approved on 21 October 2026 (Issue #153 closed). It included the Google OAuth flow and external catalog-thumbnail requests during Discogs search; do not claim zero external requests. Provider transfers, terms, logs and backup retention remain separate review items.
+The existing design font families are served from this site's own /fonts/ assets under the SIL Open Font License; the external Google Fonts links have been removed from the page layout. The owner-confirmed deployed browser/network/cookie review was completed and approved on 21 October 2026 (Issue #153 closed). It included the Google OAuth flow and external catalog-thumbnail requests during Discogs search; do not claim zero external requests. Provider processing and retention limits that are known are described below; plan-dependent or account-specific values that cannot be verified are stated as unknown. The owner explicitly deferred a full backup/export/restore test for this pilot in Issue #155.
 
 ### Messages sent through the Contact form
 
@@ -67,9 +67,9 @@ These are the current policy directions/targets, not claims that automated purgi
 - **Registration agreement audit:** minimum Terms-version and timestamp record is linked to Auth identity and is removed when that identity is erased.
 - **Routine app/security logs:** approximately 30 days is the target policy period. Incident material may remain longer where necessary and documented. Actual provider log retention is unverified.
 - **Privacy-request audit:** minimal, access-controlled record with a target maximum of 12 months after closure unless a specific documented need requires longer.
-- **Backups and provider logs:** actual provider retention limits and deletion after restore remain to be checked.
+- **Provider-managed logs and backups:** retention is controlled by the respective provider and account/plan settings; the exact Render workspace tier is unavailable through service metadata. The application does not claim a fixed provider-side retention period or a verified complete restore path. A deletion request is handled manually across relevant application records and Storage objects; provider-held logs/backups may be subject to separate provider retention.
 
-Archived does not mean deleted. The application does not currently provide self-service full account export or erasure. A valid request may require manual handling across Auth, database rows, Storage objects, diagnostics, provider logs and backups. Do not infer automatic deletion from a target policy.
+Archived does not mean deleted. The application does not currently provide self-service full account export or erasure, and it does not have a general automatic retention-purge job. A valid request is handled manually by the operator across the Auth identity, linked database records and Storage objects; provider-held logs/backups are subject to provider controls and applicable terms. The operator must verify what was actually removed and explain any limits rather than promising that every provider copy is immediately erased.
 
 ## Minimum age and invitation model
 
@@ -87,10 +87,10 @@ People may complain to the Dutch supervisory authority, the Autoriteit Persoonsg
 
 - Confirm the public notice identifies Jaap Hopman as operator/controller and gives the public contact email; do not add a residential address or invented business details without a specific requirement.
 - Ensure the actual processing and technical safeguards remain consistent with the owner-approved purpose-specific bases and the legitimate-interest assessments in the internal register.
-- Independently verify the actual provider regions, transfers/safeguards, processing terms, provider log retention and backups.
+- Published provider documentation and read-only metadata have been reconciled. Exact Render workspace tier and account-specific Strato terms are not exposed by the connection; the notice states those limits rather than inventing values. A full backup/restore test is explicitly not required for the initial pilot under Issue #155.
 - [x] Owner-confirmed deployed-browser/network/cookie review completed and approved; see Issue #153 (closed 21 October 2026). Do not repeat the check or retain raw HAR/cookie values.
 - [x] The private registration-consent migration was applied and its schema/history verified on staging on 19 October 2026. Any further database changes require separate authorization.
-- Keep this notice and the separate Terms of Use marked as drafts until remaining technical/provider facts are verified and the public wording is consistent with the actual service.
+- Keep the public privacy/Terms pages marked for review until the privacy-safe rollback fix in PR #162 is merged and this page-copy change is merged by Jaap. The page copy must describe the known provider and deletion limits accurately; it must not claim a backup/restore guarantee or automated full erasure. No additional backup test, repeated contact test, repeated browser check or inaccessible account-tier investigation is required for this five-person pilot.
 
 ## References
 
