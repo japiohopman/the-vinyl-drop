@@ -1,16 +1,16 @@
-# Beta Privacy Operations — Owner Review
+# Beta Privacy Operations — Owner-Approved Working Directions
 
 **Status: proposed manual runbook; not a claim of legal compliance.**  
 **Scope:** initial invite-only beta. The published waitlist remains disabled.  
 **Last source review:** 2026-10-21.
 
-This runbook converts the source inventory into a small operational procedure without claiming that the application has self-service privacy tools. It must be reviewed by the project owner and, where appropriate, a privacy/legal adviser before the privacy notice is approved.
+This runbook converts the source inventory into a small operational procedure without claiming that the application has self-service privacy tools. Jaap approved the working legal-basis policy and accepted the remaining baseline DSA-scope uncertainty for the current pilot on 21 October 2026. The runbook must still match actual runtime/provider facts; this is not a legal compliance certificate.
 
 ## 1. Responsible person and contact route
 
 - **Accountable human for initial handling:** the repository owner/maintainer account `japiohopman` is the named operational owner for receiving, triaging and ensuring completion of privacy requests. This internal responsibility assignment is not a substitute for confirming the legal controller's identity for the public notice. Do not leave requests unattended in a general repository issue.
 - **Current public intake address:** `yepyouknowhim@gmail.com`, confirmed in `src/app/controllers/infoController.ts` and the existing `/contact` page.
-- **Still required before final publication:** the controller's legal identity and the address/contact details required for the actual operating arrangement must be confirmed. The email address alone does not establish the controller identity.
+- **Owner decision recorded:** the public operator identity is Jaap Hopman acting as a private individual, with `yepyouknowhim@gmail.com` as the public contact. Do not invent an entity or publish a residential address. A specific independent assessment would be needed to conclude that separate business-website address rules apply; that uncertainty is not represented as a government pre-approval requirement.
 - **Private handling:** keep request contents, account email addresses, identity evidence and tester details in a restricted mailbox or similarly access-controlled system. Never paste them into public GitHub issues, commits, screenshots or logs.
 
 ## 2. Manual request workflow
@@ -53,11 +53,11 @@ Two public Dutch government sources frame the unresolved contact question differ
 - **GDPR transparency:** the controller must provide its identity and contact details. This requirement alone should not be casually translated into a conclusion that a home address must always be published; other rules may add requirements depending on the actual activity.
 - **Business identity/contact rules:** Business.gov.nl lists a business's registered/trade name, physical address (subject to the stated exception), contact details, and, where the business provides services or sells online, KVK and VAT identifiers. The source describes requirements for business correspondence and a business website; it does not by itself resolve whether this owner-operated, free, non-commercial pilot is in scope. [Business.gov.nl — Rules for business correspondence](https://business.gov.nl/regulations/rules-business-correspondence/) · [Ondernemersplein — Rules for online sales](https://ondernemersplein.overheid.nl/wetten-en-regels/regels-voor-online-verkoop/)
 - **Extra DSA online-marketplace rules:** the ACM says its DSA marketplace-specific rules apply only where all listed criteria are met, including a group exceeding 50 employees and €10m annual turnover or balance sheet, public/open access, traders' products being a substantial part of the service's commercial activity, and the purchase agreement plus communication happening through the platform. The current pilot is manually invite-only (maximum five friends), free, does not process purchases, and has private messaging disabled; several criteria therefore appear absent for this initial configuration. This is a scope indicator, **not a blanket conclusion that every DSA or other Dutch-law obligation is inapplicable**, and must be re-evaluated before public access, in-platform messaging/transactions, commercialisation or cohort expansion. [ACM — Online marketplaces](https://www.acm.nl/nl/digitale-economie/online-diensten-aanbieden/online-marktplaatsen) · [ACM — online service providers and DSA](https://www.acm.nl/nl/digitale-economie/online-diensten-aanbieden)
-- **Required owner/legal decision:** before finalising `/privacy` and `/terms`, record whether the project is operated wholly outside a business/economic activity and obtain an authoritative answer on which identity/contact details must be publicly displayed. Do not invent a legal entity or publish a residential address just to satisfy an assumption. If the classification remains uncertain, keep the publication/invitation gate open and seek proportionate Dutch legal advice or written guidance from the relevant authority.
+- **Owner decision — 21 October 2026:** this is a free, non-commercial, manually invite-only pilot operated by Jaap as a private individual, with no BV, advertising, paid membership, in-app payment, escrow, shipping or private messaging. The owner accepts residual uncertainty about baseline DSA scope for the current tiny pilot; do not claim that the DSA definitely does or does not apply. Keep a genuine second contact route and a workable reporting path as risk-reduction measures. No general authority pre-approval certificate is required; qualified Dutch technology/privacy advice is optional if stronger certainty is wanted. Reassess if the operating model changes.
 
 ## 5. Legal-basis decision register
 
-The project owner must decide the actual legal basis for each purpose before final publication. These are candidates for review only, not legal conclusions:
+The project owner approved the following working policy on 21 October 2026. This is not legal certification, and the final notice must match verified implementation/provider facts:
 
 - Account/session and requested marketplace functions: assess whether necessary processing is based on steps requested by the user / performance of the relevant service arrangement.
 - Security, abuse prevention and essential service diagnostics: assess whether legitimate interests apply, including the balancing test and data minimisation.
@@ -65,7 +65,7 @@ The project owner must decide the actual legal basis for each purpose before fin
 - Waitlist, newsletters or nonessential marketing: not active for the small initial pilot. Reassess separately before enabling collection or sending messages.
 - Essential authentication cookies: source identifies these as necessary for login/session/recovery. The notice should describe them. Do not introduce analytics/tracking cookies or a consent manager without first verifying an actual need.
 
-The Dutch Autoriteit Persoonsgegevens explains that controllers must choose the appropriate legal basis themselves and must not retain personal data longer than necessary. Therefore this register deliberately does not mark a basis or retention period as approved.
+The Dutch Autoriteit Persoonsgegevens explains that controllers must choose and substantiate the appropriate legal basis and must not retain personal data longer than necessary. The policy basis is owner-approved; the configured provider retention, actual purge behavior and complete erasure path are not thereby approved or verified.
 
 ## 6. Cookies, trackers and Terms decision
 
@@ -98,8 +98,8 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 
 ## 9. Owner closeout checklist
 
-- [ ] Confirm controller/operator legal identity and which postal/contact details must be public.
-- [ ] Review and approve or revise `docs/BETA_LEGAL_BASIS_REGISTER.md`, including both draft legitimate-interests assessments.
+- [x] Owner decision recorded: Jaap Hopman acts as a private individual; public contact is `yepyouknowhim@gmail.com`; no company or residential address is to be invented.
+- [x] Owner-approved working legal-basis policy and both narrow legitimate-interest policy directions recorded in `docs/BETA_LEGAL_BASIS_REGISTER.md` on 21 October 2026. This is not independent legal certification.
 - [ ] Approve the data-retention/deletion rules and practical end conditions for every category.
 - [ ] Confirm the manual request handler, restricted record location and record retention period.
 - [ ] Choose and verify the pre-pilot backup/recovery plan for Supabase Free. The isolated restore verification must explicitly cover (a) application schema, table data, roles and relationships, (b) Auth identities and the intended post-restore sign-in/session behavior, and (c) Storage object bytes plus paths/references used by listing photos. A default `supabase db dump` is not sufficient: managed Auth/Storage schemas, table data and roles require explicit treatment, and the database dump does not contain Storage file bytes. Record counts/IDs and photo object inventory checks, or document the exact unverified part as a release blocker. Alternatively, Jaap must explicitly accept the residual risk before external invitations.
@@ -108,7 +108,7 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 - [ ] Confirm the initial pilot is 18+ and that registration stores no date of birth or identity document.
 - [x] The private registration-consent migration was applied and schema/history verified on staging on 19 October 2026. Further database changes require separate authorization.
 - [ ] Keep the five-person pilot manual and invite-only; no public waitlist or marketing collection.
-- [ ] Review the public wording with appropriate legal/privacy advice before converting the draft into a final notice.
+- [ ] Confirm the final public wording matches verified service/provider behavior. Independent legal/privacy advice is optional if greater legal certainty is desired, not a statutory pre-approval step.
 
 ## Source references
 
@@ -118,5 +118,5 @@ The current owner scope recorded in Issue #48 says the first group is manually s
 - [Autoriteit Persoonsgegevens — cookies](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/internet-telefoon-tv-en-post/cookies)
 - [Autoriteit Persoonsgegevens — privacy rights](https://autoriteitpersoonsgegevens.nl/nl/onderwerpen/algemene-informatie-avg/rechten-van-betrokkenen)
 - `docs/BETA_DATA_INVENTORY.md`
-- `docs/BETA_LEGAL_BASIS_REGISTER.md` — proposed per-purpose basis mapping and legitimate-interests assessments; owner approval remains open.
+- `docs/BETA_LEGAL_BASIS_REGISTER.md` — owner-approved working basis mapping and legitimate-interest policy directions; technical/provider verification remains open.
 - Issues #48, #88, #154, #155 and #156 remain relevant. Issue #153 is closed.
