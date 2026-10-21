@@ -341,6 +341,8 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         undefined
       );
 
+      const recordedOrphan = (orphanRepo.recordOrphanedStorageObject as jest.Mock).mock.calls[0][0];
+      expect(recordedOrphan).not.toHaveProperty('errorDetails');
       deleteStorageSpy.mockRestore();
     });
 
@@ -381,6 +383,42 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         undefined
       );
 
+      const recordedOrphan = (orphanRepo.recordOrphanedStorageObject as jest.Mock).mock.calls[0][0];
+      expect(recordedOrphan).not.toHaveProperty('errorDetails');
+      deleteStorageSpy.mockRestore();
+    });
+
+    it('should not persist or log raw exception details when storage rollback and orphan recording both fail', async () => {
+      const sampleImage = await sharp({
+        create: { width: 100, height: 100, channels: 3, background: { r: 90, g: 90, b: 90 } },
+      })
+        .jpeg()
+        .toBuffer();
+      const dbError = new Error('db-secret-detail');
+      const storageError = new Error('storage-secret-detail');
+      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(dbError);
+      (orphanRepo.recordOrphanedStorageObject as jest.Mock).mockRejectedValueOnce(new Error('orphan-secret-detail'));
+
+      const storageModule = await import('../src/app/services/storageService');
+      const deleteStorageSpy = jest.spyOn(storageModule, 'deleteListingPhotoFromStorage').mockRejectedValueOnce(storageError);
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+      await expect(
+        addPhotoToListing(listingId, sellerId, {
+          buffer: sampleImage,
+          mimetype: 'image/jpeg',
+          originalname: 'cover.jpg',
+        }, 'A clear photo of the sleeve front', undefined, undefined, 'front_cover')
+      ).rejects.toBe(dbError);
+
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
+      const logged = consoleErrorSpy.mock.calls.flat().join(' ');
+      expect(logged).toContain('storage_orphan_unresolved');
+      expect(logged).not.toContain('db-secret-detail');
+      expect(logged).not.toContain('storage-secret-detail');
+      expect(logged).not.toContain('orphan-secret-detail');
+
+      consoleErrorSpy.mockRestore();
       deleteStorageSpy.mockRestore();
     });
 
