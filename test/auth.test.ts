@@ -353,7 +353,7 @@ describe('Authentication & Session Handling', () => {
       expect(mockSaveRegistrationConsent).toHaveBeenCalledWith(
         mockUser.id,
         expect.objectContaining({
-          termsVersion: 'beta-terms-2026-10-19-v1',
+          termsVersion: 'beta-terms-2026-10-19-v2',
           termsAcceptedAt: expect.any(String),
           ageAttestedAt: expect.any(String),
         }),
@@ -674,7 +674,7 @@ describe('Authentication & Session Handling', () => {
       const callback = await request(app).get('/auth/callback?code=synthetic-oauth-code&flow=signup&next=%2Fprofile').set('Cookie', cookiePairs.join('; '));
       expect(callback.status).toBe(302);
       expect(callback.header.location).toBe('/profile');
-      expect(mockSaveRegistrationConsent).toHaveBeenCalledWith(mockUser.id, expect.objectContaining({ termsVersion: 'beta-terms-2026-10-19-v1' }), undefined);
+      expect(mockSaveRegistrationConsent).toHaveBeenCalledWith(mockUser.id, expect.objectContaining({ termsVersion: 'beta-terms-2026-10-19-v2' }), undefined);
     });
 
     it('GET /auth/callback rejects first-time Google accounts without registration consent', async () => {

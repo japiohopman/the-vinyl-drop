@@ -12,6 +12,15 @@ describe('App Routes and Error Handling', () => {
     (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([]);
   });
 
+  describe('GET /contact', () => {
+    it('shows the private operator and public contact route', async () => {
+      const response = await request(app).get('/contact').set('Accept', 'text/html');
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('run by Jaap Hopman as a private individual, not by a company');
+      expect(response.text).toContain('yepyouknowhim@gmail.com');
+    });
+  });
+
   describe('GET /', () => {
     it('should render the home page with 200 OK and HTML content', async () => {
       const response = await request(app)
@@ -52,8 +61,11 @@ describe('App Routes and Error Handling', () => {
       expect(response.headers['content-type']).toMatch(/html/);
       expect(response.text).toContain('Privacy Notice');
       expect(response.text).toContain('Owner review draft — not approved for publication');
+      expect(response.text).not.toContain('migration must be separately applied and verified before the updated registration flow is deployed');
       expect(response.text).toContain('href="/privacy"');
       expect(response.text).toContain('yepyouknowhim@gmail.com');
+      expect(response.text).toContain('tvd-registration-consent');
+      expect(response.text).toContain('up to 10 minutes');
       expect(response.text).toContain('waitlist addresses');
       expect(response.text).toContain('responsible operator');
       expect(response.text).toContain('Your privacy rights');
@@ -68,8 +80,10 @@ describe('App Routes and Error Handling', () => {
       expect(response.status).toBe(200);
       expect(response.text).toContain('Terms of Use');
       expect(response.text).toContain('Owner review draft — not approved for the external beta');
-      expect(response.text).toContain('beta-terms-2026-10-19-v1');
+      expect(response.text).toContain('beta-terms-2026-10-19-v2');
       expect(response.text).toContain('at least 18 years old');
+      expect(response.text).toContain('To report a listing, comment, suspected illegal content');
+      expect(response.text).toContain('governed by the laws of the Netherlands');
       expect(response.text).toContain('href="/terms"');
     });
   });

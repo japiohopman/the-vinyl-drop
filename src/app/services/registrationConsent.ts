@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { config } from '../../config/env';
 import { shouldUseSecureCookies } from '../../config/cookiePolicy';
 
-export const TERMS_VERSION = 'beta-terms-2026-10-19-v1';
+export const TERMS_VERSION = 'beta-terms-2026-10-19-v2';
 export const REGISTRATION_CONSENT_COOKIE = 'tvd-registration-consent';
 const CONSENT_TICKET_TTL_MS = 10 * 60 * 1000;
 

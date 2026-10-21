@@ -19,7 +19,7 @@ The Vinyl Drop is a free, invite-only community website for vinyl collectors to 
 - **Listings and catalog data:** release and catalogue details, format, physical-copy condition, price or trade indication, listing description/status and timestamps.
 - **Listing photos:** processed image bytes, Storage paths, ordering and alt text. Supported uploads are converted to WebP, resized and stripped of EXIF metadata. Published listing photos use a public-read path; do not upload private or sensitive images.
 - **Community data:** comments, favorites and activity events. Comments on visible listings are public. Favorites are private. Activity visibility depends on event type.
-- **Registration audit:** Terms version, Terms acceptance timestamp, 18+ attestation timestamp and linked Auth user ID are stored in the restricted private registration-consent table. The table stores no date of birth or identity document and is configured to cascade-delete when the Auth identity is removed. The source migration must be separately applied and verified before the updated registration flow is deployed.
+- **Registration audit:** Terms version, Terms acceptance timestamp, 18+ attestation timestamp and linked Auth user ID are stored in the restricted private registration-consent table. The table stores no date of birth or identity document and is configured to cascade-delete when the Auth identity is removed.
 - **Operational and security information:** application/runtime logs, bounded error diagnostics and authentication cookies. Provider-side log retention has not been independently verified.
 - **Password-safety check:** the application sends only a five-character SHA-1 hash prefix to the Have I Been Pwned range API and compares matching suffixes locally. It does not intentionally send the raw password or full hash to that service. The remaining direct-Auth bypass is tracked separately in Issue #118.
 
@@ -41,7 +41,7 @@ Provider regions, international transfers and safeguards, processing terms, prov
 
 ## Cookies and fonts
 
-The source configures essential HTTP-only authentication/session cookies for access, refresh, recovery and short-lived PKCE/auth-flow handling. It also uses tvd-beta-welcome-seen as a first-party HTTP-only presentation marker for 180 days and tvd-beta-welcome as a 60-second HTTP-only display-only flash. Neither grants account or beta access.
+The source configures essential HTTP-only authentication/session cookies for access, refresh, recovery and short-lived PKCE/auth-flow handling. During Google sign-up, tvd-registration-consent is a first-party signed, HTTP-only cookie (Secure on HTTPS/staging/production, SameSite=Lax) that carries the selected Terms version and Terms/18+ attestation timestamps through the OAuth round-trip; it expires after up to 10 minutes and is cleared by the callback. It does not grant account or beta access. The site also uses tvd-beta-welcome-seen as a first-party HTTP-only presentation marker for 180 days and tvd-beta-welcome as a 60-second HTTP-only display-only flash. Neither welcome cookie grants account or beta access.
 
 The existing design font families are served from this site's own /fonts/ assets under the SIL Open Font License; the external Google Fonts links have been removed from the page layout. A clean deployed-browser/network check is still required before a definitive statement that no other third-party requests or tracking storage occur.
 
@@ -78,7 +78,7 @@ People may complain to the Dutch supervisory authority, the Autoriteit Persoonsg
 - Review purpose-specific lawful bases, including a documented balancing assessment where legitimate interests are considered.
 - Independently verify the actual provider regions, transfers/safeguards, processing terms, provider log retention and backups.
 - Run a clean deployed-browser/network check for cookies, font requests and all other third-party network requests.
-- Apply and verify the new private registration-consent migration only through a separately authorized staging process.
+- [x] The private registration-consent migration was applied and its schema/history verified on staging on 19 October 2026. Any further database changes require separate authorization.
 - Keep this notice and the separate Terms of Use marked as drafts until the owner/privacy review accepts the evidence and wording.
 
 ## References
@@ -89,3 +89,4 @@ People may complain to the Dutch supervisory authority, the Autoriteit Persoonsg
 - Google Cloud — manage app audience and test users: https://support.google.com/cloud/answer/15549945
 - Repository data inventory: docs/BETA_DATA_INVENTORY.md
 - Operational request runbook: docs/BETA_PRIVACY_OPERATIONS.md
+- Internal legal-basis register (owner review draft): docs/BETA_LEGAL_BASIS_REGISTER.md
