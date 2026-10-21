@@ -1,6 +1,6 @@
 # The Vinyl Drop — Privacy Notice Draft
 
-**Status: draft; not yet ready for publication.** Jaap approved the working legal-basis policy on 21 October 2026. This text is not legal advice or a certification of compliance or live provider settings. Keep the draft label until the remaining provider, public/private-field, contact-delivery, retention and deletion checks are evidenced. The deployed-browser/network/cookie check is complete (Issue #153 closed 21 October 2026).
+**Status: draft; not yet ready for publication.** Jaap approved the working legal-basis policy on 21 October 2026. This text is not legal advice or a certification of compliance or live provider settings. Keep the draft label until the remaining provider/transfer/logging/backup, retention/deletion and final wording checks are evidenced. One end-to-end staging contact-message delivery test passed on 21 October 2026; provider and mailbox retention remain unverified. The deployed-browser/network/cookie check is complete (Issue #153 closed 21 October 2026).
 
 **Source review:** 21 October 2026
 **Operator:** Jaap Hopman, acting as a private individual
@@ -47,7 +47,7 @@ The existing design font families are served from this site's own /fonts/ assets
 
 ### Messages sent through the Contact form
 
-If you submit the form on /contact, the application receives your optional name, reply email address and message and sends them through the configured Resend API to the operator's mailbox so the operator can review and reply. The application does not store a support-message history in its database and does not intentionally log the message contents. Resend and the receiving email service process the message to deliver it and may retain it under their own service settings and terms. Do not include passwords, session tokens, account-recovery links, health information or other sensitive personal details. If the application cannot confirm that the email provider accepted the message for sending, it shows a failure message; the direct email address remains available. This route is still subject to live delivery verification and the overall privacy/legal review.
+If you submit the form on /contact, the application receives your optional name, reply email address and message and sends them through the configured Resend API to the operator's mailbox so the operator can review and reply. The application does not store a support-message history in its database and does not intentionally log the message contents. Resend and the receiving email service process the message to deliver it and may retain it under their own service settings and terms. Do not include passwords, session tokens, account-recovery links, health information or other sensitive personal details. If the application cannot confirm that the email provider accepted the message for sending, it shows a failure message; the direct email address remains available. A staging end-to-end test on 21 October 2026 confirmed that one submitted test message was received by the operator inbox. This verifies that submission only; it does not guarantee future delivery or establish provider/mailbox retention. The overall privacy/legal review remains open.
 
 ## Retention and deletion
 
