@@ -28,7 +28,6 @@ export const listings = pgTable(
   (table) => [
     check('listings_price_check', sql`"price" IS NULL OR "price" >= 0`),
     index('listings_seller_idx').on(table.sellerId),
-    index('listings_seller_dismissed_idx').on(table.sellerId, table.dismissedAt),
     index('listings_physical_copy_idx').on(table.physicalCopyId),
     index('listings_status_idx').on(table.status),
     index('listings_price_idx').on(table.price),
