@@ -1,12 +1,12 @@
 # The Vinyl Drop — Privacy Notice Draft
 
-**Status: owner review draft; not approved for publication.** This text documents the implemented/source-level design and owner decisions, but does not certify legal compliance or live provider settings. Keep this warning until the remaining legal and provider checks are evidenced and reviewed and the owner approves publication. The deployed-browser/network/cookie check is complete (Issue #153 closed 21 October 2026).
+**Status: draft; not yet ready for publication.** Jaap approved the working legal-basis policy on 21 October 2026. This text is not legal advice or a certification of compliance or live provider settings. Keep the draft label until the remaining provider, public/private-field, contact-delivery, retention and deletion checks are evidenced. The deployed-browser/network/cookie check is complete (Issue #153 closed 21 October 2026).
 
 **Source review:** 21 October 2026
 **Operator:** Jaap Hopman, acting as a private individual
 **Public privacy contact:** yepyouknowhim@gmail.com
 
-Do not invent a company or publish a residential address to fill a template. Required controller/contact disclosures for this exact arrangement remain subject to review.
+Controller identity and public contact are recorded as Jaap Hopman, acting as a private individual, and yepyouknowhim@gmail.com. Do not invent a company or publish a residential address to fill a template. Separate business-website disclosure rules have not been treated as a settled requirement for this non-commercial pilot; seek specific advice only if greater certainty is desired or the operating model changes.
 
 ## What The Vinyl Drop does
 
@@ -27,7 +27,7 @@ The Vinyl Drop is a free, invite-only community website for vinyl collectors to 
 
 Information supports authentication, profile/account maintenance, listing and photo management, publication of user-selected public content, search/discovery, community features, account/service security, troubleshooting and the new-password safety check.
 
-**Legal-basis review remains open.** Contract necessity is a candidate for data required for user-requested core functions. Legitimate interests are a candidate for necessary security/abuse prevention only after a documented balancing assessment. These are candidates, not a claim that a lawyer or privacy adviser has approved each purpose.
+**Owner-approved working policy — 21 October 2026.** Use GDPR Article 6(1)(b) for processing objectively necessary to provide the requested account/service or a feature the user asks for. Use Article 6(1)(f) for proportionate security/abuse prevention, limited diagnostics, minimal Terms/18+ audit evidence, the password-safety check and general contact enquiries, subject to the necessity/balancing safeguards in the internal register. Use Article 6(1)(b) for a contact message only where it requests pre-contract steps or requested service performance; use Article 6(1)(c) only where a specific legal obligation applies. Submitting a contact form is not blanket GDPR consent. This owner policy decision is not legal certification, and provider/technical facts still need verification.
 
 ## Visibility
 
@@ -78,12 +78,12 @@ People may complain to the Dutch supervisory authority, the Autoriteit Persoonsg
 
 ## Remaining publication checks
 
-- Confirm the legally required controller identity/contact disclosures for this private-individual arrangement without publishing unnecessary private residential details.
-- Review purpose-specific lawful bases, including a documented balancing assessment where legitimate interests are considered.
+- Confirm the public notice identifies Jaap Hopman as operator/controller and gives the public contact email; do not add a residential address or invented business details without a specific requirement.
+- Ensure the actual processing and technical safeguards remain consistent with the owner-approved purpose-specific bases and the legitimate-interest assessments in the internal register.
 - Independently verify the actual provider regions, transfers/safeguards, processing terms, provider log retention and backups.
 - [x] Owner-confirmed deployed-browser/network/cookie review completed and approved; see Issue #153 (closed 21 October 2026). Do not repeat the check or retain raw HAR/cookie values.
 - [x] The private registration-consent migration was applied and its schema/history verified on staging on 19 October 2026. Any further database changes require separate authorization.
-- Keep this notice and the separate Terms of Use marked as drafts until the owner/privacy review accepts the evidence and wording.
+- Keep this notice and the separate Terms of Use marked as drafts until remaining technical/provider facts are verified and the public wording is consistent with the actual service.
 
 ## References
 
@@ -93,4 +93,4 @@ People may complain to the Dutch supervisory authority, the Autoriteit Persoonsg
 - Google Cloud — manage app audience and test users: https://support.google.com/cloud/answer/15549945
 - Repository data inventory: docs/BETA_DATA_INVENTORY.md
 - Operational request runbook: docs/BETA_PRIVACY_OPERATIONS.md
-- Internal legal-basis register (owner review draft): docs/BETA_LEGAL_BASIS_REGISTER.md
+- Internal legal-basis register (owner-approved working policy; remaining factual checks): docs/BETA_LEGAL_BASIS_REGISTER.md
