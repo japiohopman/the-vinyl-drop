@@ -57,6 +57,11 @@
                 <button type="submit" class="btn btn-primary btn-sm">Publish</button>
               </form>
             <% } %>
+            <% if (item.status === 'published') { %>
+              <form action="/listings/<%= item.id %>/unpublish" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-outline btn-sm">Unpublish</button>
+              </form>
+            <% } %>
             <% if (viewHidden) { %>
               <form action="/listings/<%= item.id %>/restore-dismissed" method="POST" style="display: inline;">
                 <button type="submit" class="btn btn-outline btn-sm">Restore</button>
