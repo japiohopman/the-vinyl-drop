@@ -62,7 +62,7 @@ describe('App Routes and Error Handling', () => {
       expect(response.text).toContain('Privacy Notice');
       expect(response.text).not.toContain('Owner review draft');
       expect(response.text).not.toContain('Private beta review draft');
-      expect(response.text).toContain('manual handling');
+      expect(response.text).toContain('handled manually by the operator');
       expect(response.text).not.toContain('migration must be separately applied and verified before the updated registration flow is deployed');
       expect(response.text).toContain('href="/privacy"');
       expect(response.text).toContain('yepyouknowhim@gmail.com');
