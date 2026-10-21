@@ -566,7 +566,6 @@ export async function addPhotoToListing(
             photoId,
             storagePath,
             reason: 'UPLOAD_DB_INSERT_FAILED_AND_STORAGE_CLEANUP_FAILED',
-            
           },
           dbOverride
         );
@@ -687,7 +686,6 @@ export async function deletePhotoFromListing(
             photoId,
             storagePath: photo.storagePath,
             reason: 'DELETE_STORAGE_FAILED_AND_DB_COMPENSATION_FAILED',
-            
           },
           dbOverride
         );
