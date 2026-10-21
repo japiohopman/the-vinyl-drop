@@ -57,5 +57,5 @@ This inventory does not claim legal compliance, fixed provider retention, or imp
 - `src/app/services/storageService.ts`, `listingService.ts`, `commentService.ts`, `favoriteService.ts`, `activityService.ts`, `pwnedPasswordService.ts`
 - `src/app/controllers/infoController.ts`, `profileController.ts`; `src/app/routes/index.ts`, `authRoutes.ts`, `listingRoutes.ts`, `profileRoutes.ts`
 - `docs/SECURITY_PRIVACY.md`, Issues #48, #49, #62, #88 and #89
-- `docs/BETA_LEGAL_BASIS_REGISTER.md` (owner-approved working policy; technical/provider verification remains open)
+- `docs/BETA_LEGAL_BASIS_REGISTER.md` (owner-approved working policy; provider/runtime verification remains open)
 - Open follow-ups: #154 (operator/legal scope/Terms), #155 (backup/recovery), and #156 (contact-form implementation and delivery verification). #153 is closed.
