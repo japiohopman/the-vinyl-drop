@@ -17,7 +17,7 @@
       </p>
 
       <% if (contactForm.feedback) { %>
-        <div class="alert <%= contactForm.feedback.kind === 'success' ? 'alert-success' : 'alert-error' %>" role="<%= contactForm.feedback.kind === 'success' ? 'status' : 'alert' %>" style="padding: var(--space-4); margin-bottom: var(--space-4);">
+        <div role="<%= contactForm.feedback.kind === 'success' ? 'status' : 'alert' %>" style="padding: var(--space-4); margin-bottom: var(--space-4); background: <%= contactForm.feedback.kind === 'success' ? 'var(--color-success-bg)' : 'var(--color-error-bg)' %>; border: 1px solid <%= contactForm.feedback.kind === 'success' ? 'var(--color-success-border)' : 'var(--color-error-border)' %>; border-left: 4px solid <%= contactForm.feedback.kind === 'success' ? 'var(--color-success-border)' : 'var(--color-error-border)' %>;">
           <%= contactForm.feedback.message %>
         </div>
       <% } %>
@@ -25,7 +25,7 @@
       <form action="/contact" method="POST" class="auth-form" novalidate>
         <div style="margin-bottom: var(--space-4);">
           <label for="contact-name" style="display: block; font-weight: 600; margin-bottom: var(--space-2);">Name (optional)</label>
-          <input id="contact-name" name="name" type="text" autocomplete="name" maxlength="80" value="<%= contactForm.values.name %>" aria-describedby="<%= contactForm.fieldErrors.name ? 'contact-name-error' : '' %>" style="width: 100%;">
+          <input id="contact-name" name="name" type="text" autocomplete="name" maxlength="80" value="<%= contactForm.values.name %>" <%= contactForm.fieldErrors.name ? 'aria-describedby="contact-name-error"' : '' %> style="width: 100%;">
           <% if (contactForm.fieldErrors.name) { %><p id="contact-name-error" role="alert" style="color: var(--color-rust-accessible); font-size: var(--font-size-sm);"><%= contactForm.fieldErrors.name %></p><% } %>
         </div>
 
