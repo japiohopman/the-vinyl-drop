@@ -424,32 +424,38 @@ Safety rules:
 
 ---
 
-## Current project state — 2026-10-16
+## Current project state — 2026-10-21 (current snapshot)
 
-The project has progressed beyond the original Phase 0 / Phase 1 foundation plan. The current operational phase is **Prelaunch / Beta readiness**, including a human-owned staging gate and security follow-ups. The dated status below is a snapshot; always verify the linked Issues and current PR/workflow state before acting.
+This section supersedes the older status snapshot. Re-check linked GitHub Issues, PRs and workflows before acting; this file is advisory project memory, not live status telemetry.
 
-### Beta cohort and timeline
+### Recently completed
 
-- The owner clarifies that the **maximum-five-friends group was only the initial, manually controlled beta test group**, not the lasting target size of the beta.
-- The owner reports that beta readiness was expected around **2026-10-08**; that target has passed. Treat the release plan as overdue and re-evaluate the launch path now. Do not turn an initial pilot boundary into an indefinite cohort cap or leave follow-up work queued behind an unspecified future pilot wrap-up.
-- The remaining security/staging/privacy gates still apply. A missed target date is a reason to re-prioritize and resolve blockers, not permission to bypass them.
+- **PR #152 is merged**: [docs(privacy): reconcile beta release evidence and remaining gates](https://github.com/japiohopman/the-vinyl-drop/pull/152), merge status verified on 2026-10-21; head `330ec93e1408bf43d278dae57abe6c0d6209b8a6`. Its source tests, CI, safety-gate and review-relay checks passed. It reconciles source/docs, registration-consent cookie disclosure, Terms version v2, provider observations, and a more complete recovery checklist. The merge does **not** mean the privacy/Terms drafts are approved for publication or that beta release gates have closed.
+- **Issue #49 — staging coordination gate: CLOSED**. The owner closed the staging-verification coordination gate after the recorded runtime and authorization evidence. Do not repeat the inconclusive historical #133 live PATCH probe; the owner accepted the documented residual uncertainty based on the verified least-privilege mitigation.
+- The owner already tested the key user-facing pages in localhost, Firefox and staging. Do not ask for those same functional checks again without a new, specific reason.
 
-### Current release and security gates
+### Current privacy / beta release gates
 
-- **Issue #49 — staging/beta gate:** OPEN / NOT READY while the authenticated cross-user Supabase Data API authorization discrepancy remains unresolved. Issue [#133](https://github.com/japiohopman/the-vinyl-drop/issues/133) is inconclusive: the old PowerShell PATCH result is neither proof of a bypass nor proof of denial. Do not repeat that live mutation request merely to reproduce it.
-- **PR #134 / Issue #135 — least-privilege Data API mitigation:** source-level migration `0010` and isolated checks are proposed; they are not a live staging change. Migration `0009` in [Issue #127](https://github.com/japiohopman/the-vinyl-drop/issues/127) and `0010` must be separately reviewed and explicitly authorized in sequence under #49 before either is applied to staging.
-- **Issue #62 — leaked-password finding:** CLOSED only for the recorded residual-risk decision for the initial five-friend bug-finding pilot. The native Supabase `auth_leaked_password_protection` warning remains on the Free plan; never say it is cleared.
-- **Issue #118 — direct Supabase Auth signup bypass:** IMMEDIATE RELEASE BLOCKER before expanding beyond the initial group, enabling broad invitations, or claiming general beta availability. Investigate and implement the source-level solution now; do not defer solely because the first pilot is described as future work. No live Auth probe or setting change without separate explicit owner authorization.
-- **Issue #88:** applicable privacy/data-handling prerequisites must be satisfied before inviting external testers. **Issue #119:** resolve the private-messaging trigger search-path finding before enabling private messaging. The owner reported restoring staging `MESSAGING_ENABLED=false` after its controlled test.
-- **Issue #48 — invite-only onboarding / waitlist:** not ready to dispatch until its stated prerequisites and the staging gate are resolved. Do not introduce public waitlist collection as a substitute for a verified beta path.
+- **Issue #88 — privacy and beta readiness: OPEN**, the umbrella release gate. Do not invite external testers or present the public Privacy Notice/Terms as approved until applicable gates are evidenced or residual risks are explicitly accepted by Jaap.
+- **Issue #153 — staging Network/Cookies evidence: OPEN.** This is a narrow, read-only evidence task, not a request to repeat all earlier browser checks. Already reported: pages `/privacy`, `/terms`, and `/auth/signup` were checked; `sb-access-token` and `sb-refresh-token` were reported with `Secure=Yes`, `HttpOnly=Yes`, `SameSite=Lax`; normal site fonts were confirmed as local. Exact remaining evidence:
+  1. Record safe `Domain`, `Path`, and expiry/`Max-Age` for those two auth cookies. If session-only, record that rather than infer a date.
+  2. At the precise Google-sign-up redirect point, check whether `tvd-registration-consent` is set and record safe attributes only. Do not complete OAuth or create an account; stop at the Google redirect.
+  3. During a catalogue/release search using an already-authorized session, record the actual external image-hostname(s) serving result thumbnails. Discogs/MusicBrainz API lookups are server-side and are not expected to appear as browser API requests.
+  Record browser version and clean-session/private-window details if known; the earlier evidence did not capture them. Never save cookie values, tokens, OAuth codes, authorization headers or raw HAR files. Do not repeat already completed checks merely to reproduce them.
+- **Issue #154 — legal/operator/contact review: OPEN.** Resolve and record the actual legal scope, contact obligations, operator wording and owner-approved per-purpose legal-basis register. No legal certification is claimed; keep Privacy Notice and Terms marked as drafts until approved.
+- **Issue #155 — backup/recovery plan: OPEN.** Supabase is on the Free plan. A plain database dump is not a full recovery plan; application data, Auth identities and Storage bytes/references must each have an appropriate path and isolated restore verification. No backup/export/restore or plan upgrade is authorized by documentation work.
+- **Issue #156 — secondary contact form: OPEN / READY for implementation.** Jaap confirmed the existing Resend API sender and Auth SMTP setup were configured and tested. The app still needs its own contact-message handler wired to the already-approved Resend configuration. Do not repeat provider setup, change live settings, create new secrets, add paid services, or claim delivery works until the application path is verified.
+- **Issue #118 — direct Supabase Auth signup-bypass protection: OPEN.** The recorded normal signup, breached-password rejection, and direct-Auth rejection tests passed. The native Supabase `auth_leaked_password_protection` warning remains on the Free plan. This issue must be reviewed/resolved before expanding beyond the limited pilot; do not say the native warning is cleared.
+- **Issue #119 — private messaging trigger/search-path safety: OPEN.** The recorded staging migration verification removed the mutable-search-path warning, but private messaging must stay disabled (`MESSAGING_ENABLED=false`) until the remaining review and an explicit rollout decision are complete.
+- **Issue #89 — rate limits and abuse/report handling: OPEN.** Do not treat the existing contact email as proof that rate limits and a documented abuse-response process are implemented; resolve the required controls before broader external beta exposure.
+- The five-person limit refers to the explicitly bounded initial pilot, not the long-term beta target. Any pilot invitations remain subject to #88's applicable hard gates and the owner's explicit release decision.
 
-### Operational interpretation rules
+### Operational boundaries
 
-- Distinguish **product target**, **temporary pilot boundary**, **security release gate**, and **historical target date**. They are not interchangeable.
-- When a date passes, mark it overdue and update priority/status. Never repeat stale wording that implies the old date is still in the future.
-- Treat the latest owner instruction and current GitHub Issue/PR evidence as authoritative. Update both this context file and the relevant issue/runbook when a decision changes.
-- Do not repeat already completed owner-run tests without a specific new reason.
-- Do not apply live migrations, edit live Supabase/Render settings, create Auth users, repeat live mutation probes, or change production without the exact separate owner authorization required by the governing Issue.
+- Jaap owns product decisions and final merge. ChatGPT maintains this memory file; Jules and other implementation agents must treat it as read-only.
+- Read-only browser checks must not alter Render/Supabase settings, invite testers, enable waitlists, or change provider configuration.
+- Do not create accounts or complete OAuth merely to inspect the transient registration-consent cookie.
+- Never equate a green CI/safety workflow or a merged documentation PR with legal approval, a verified backup/restore, or authorization to open the beta.
 
 ### Phase 0 foundation — historical record
 
