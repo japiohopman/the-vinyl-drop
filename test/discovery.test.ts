@@ -94,6 +94,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     tradeAvailable: true,
     description: 'Original pressing in great shape.',
     status: 'published',
+    dismissedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
