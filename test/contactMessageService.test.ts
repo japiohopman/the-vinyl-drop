@@ -23,7 +23,8 @@ describe('contact message delivery service', () => {
     });
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    const url = fetchSpy.mock.calls[0][0] as string;
+    const init = fetchSpy.mock.calls[0][1] as RequestInit;
     expect(url).toBe('https://api.resend.com/emails');
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer re_test_only_key');
     expect((init.headers as Record<string, string>)['Content-Type']).toBe('application/json');
