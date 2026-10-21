@@ -8,7 +8,7 @@ This register supports, but does not replace, the public Privacy Notice. The own
 
 ## 1. Purpose-to-basis mapping
 
-| Processing purpose | Data / source-visible operation | Proposed GDPR basis | Reasoning and limits | Status |
+| Processing purpose | Data / source-visible operation | Owner-approved GDPR basis (working policy) | Reasoning and limits | Status |
 | --- | --- | --- | --- | --- |
 | Create and operate accounts and sessions | Auth user ID/email, sign-in state, session and recovery cookies, login/signup | GDPR Article 6(1)(b), where processing is objectively necessary to provide the account/service the person asks for | Authentication and session state are needed to sign in and keep the account usable. The short-lived registration-consent ticket carries a Terms version and 18+ attestation timestamp through the Google OAuth round-trip; it is cleared after callback and does not grant access. Keep optional profile fields separate from required account fields. | Owner-approved working basis; remaining safeguards still apply |
 | Maintain profiles and show user-selected public profile fields | Username, optional display name/avatar/bio/website/coarse location | Article 6(1)(b) for user-requested profile features; publication should be tied to the user's choice and clearly described | Explain which fields are public before users submit them. Do not collect street address or precise location. | Owner-approved working basis; verify actual field visibility before final publication |
