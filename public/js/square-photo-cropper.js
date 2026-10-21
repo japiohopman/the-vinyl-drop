@@ -104,6 +104,7 @@
     }
     if (file.size > maxUploadBytes) {
       clearCropper();
+      cropper.hidden = false;
       setStatus('Kies eerst een foto van maximaal 5 MiB.', true);
       return;
     }
@@ -121,7 +122,10 @@
     image.src = objectUrl;
   }
 
-  fileInput.addEventListener('change', preparePreview);
+  fileInput.addEventListener('change', () => {
+    delete form.dataset.squareCropReady;
+    preparePreview();
+  });
   roleSelect.addEventListener('change', preparePreview);
   zoomControl.addEventListener('input', redraw);
   positionControl.addEventListener('input', redraw);
