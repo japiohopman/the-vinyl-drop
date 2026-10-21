@@ -81,6 +81,14 @@ A listing must reference a release.
 - GitHub Actions
 - Playwright for important browser flows
 
+### Supabase and database environment boundary
+
+- The application uses the owner's configured **remote Supabase project** for hosted PostgreSQL, Auth, and Storage. There is no local Supabase instance in the normal development setup.
+- Never ask Jaap to install, start, or troubleshoot a hypothetical local Supabase service. Only discuss local Supabase if an explicit repository configuration change and owner-approved task actually introduce it.
+- `npm run db:verify` and the isolated PGlite test engine verify migration/schema behavior in an in-memory test environment. They are **not** a local Supabase instance and do **not** prove that a migration ran against remote staging/production.
+- State separately what source/tests prove and what was read-only verified against the remote project. Never invent remote database state or require an extra live operation just to improve confidence.
+- Remote migrations, provider-setting changes, and live data mutations require the authorization specified by the governing Issue; do not perform them as ad-hoc diagnostics.
+
 ### Rendering
 
 The application is intentionally **server-rendered**.
@@ -286,75 +294,34 @@ Shared EJS partials should include reusable presentation such as:
 
 ## Agentic workflow
 
-### Execution authority
+### Execution authority and delivery channel
 
-**GitHub Issue = execution contract.**
+**GitHub Issue = execution authority for authorized scope and acceptance.** The Issue defines the goal, scope, acceptance criteria, constraints, verification, specialist routing, and dependencies. Documentation and chat never supersede its scope.
 
-The Issue defines:
-- goal;
-- scope;
-- acceptance criteria;
-- constraints;
-- verification;
-- specialist routing;
-- dependencies when applicable.
+**Active PR body = operational instruction surface for Jules once a PR exists.** Put concrete continuation/review instructions in the existing PR body, explicitly address `@Jules`, and state the exact change, verification, current status, and out-of-scope boundaries. If a notification is needed, add a separate comment on that same PR pointing Jules to the updated body; the comment does not replace the body.
 
-Documentation describes the architecture and roadmap but never acts as the execution queue.
+**Jaap retains final human review and merge authority.** ChatGPT reviews source, tests, Issues, PRs, and workflow evidence; Jules implements the assigned Issue and does not select unrelated work.
 
-### Human / ChatGPT / Jules boundary
+### No invented pilot blockers
 
-**Jaap**
-- owns product direction;
-- performs final human review;
-- decides whether to merge.
-
-**ChatGPT**
-- architecture and planning partner;
-- inspects repository state, Issues, PRs and workflow behavior;
-- creates/updates Issues when appropriate;
-- reviews implementation;
-- writes precise PR continuation instructions when work is incomplete;
-- maintains this file.
-
-**Jules**
-- implements the assigned Issue;
-- works on its branch;
-- reports factual progress and verification;
-- continues review fixes on the same branch when scope remains inside the Issue;
-- does not select unrelated work or change architectural direction without authorization.
+- Before calling something a release blocker, tie it to an actual acceptance criterion in the **current** pilot gate and to concrete source/runtime evidence. Distinguish a blocker for the five-person pilot from an expansion gate, accepted residual risk, and future product backlog.
+- Do not reopen tests the owner has already confirmed complete unless a relevant code/runtime change gives a specific reason.
+- Do not elevate provider-account details that the connected metadata cannot expose into an endless research task when the governing release decision explicitly allows the unknown to be disclosed.
+- Do not create an Issue merely to restate an existing Issue, repeat a completed check, or turn an already-deferred task into a new gate. Update the governing Issue or durable context instead.
+- Do not add local Supabase commands, services, or setup to the workflow; the environment boundary above is binding.
 
 ### Continuation loop
 
-\`Issue -> Jules -> branch -> PR -> CI -> ChatGPT review -> PR continuation instruction -> Jules -> ... -> human merge\`
+`Issue -> Jules -> branch -> PR -> CI -> ChatGPT review -> PR-body continuation -> Jules -> ... -> human merge`
 
-When a review finds defects inside scope:
-- keep the same branch and PR;
-- put exact required changes in the PR body;
-- rerun verification;
-- review again.
+When review finds defects within scope, keep the same branch and PR and update its body with exact corrections and verification. Create a separate Issue only when genuinely new scope is required; do not quietly expand the active Issue or create a second branch for routine continuation.
 
-If the required work is genuinely new scope, create a new Issue instead of quietly expanding the active one.
+### Repeated owner corrections become durable rules
 
-### PR-body control protocol
-
-The **PR body is the operational control surface for Jules after a PR exists**.
-
-When ChatGPT continues or corrects Jules work:
-- put the authoritative continuation instruction in the existing PR body;
-- explicitly address Jules with **\`@Jules\`** so the instruction is surfaced to the implementation agent;
-- state **NOT READY** while required work remains;
-- describe exact required changes, exact verification, and explicit "do not change" boundaries;
-- keep the continuation on the same branch and PR when the work remains within the governing Issue;
-- do not create a second implementation branch merely to continue normal review work;
-- do not rely on an informal chat message as the durable implementation instruction once a PR exists.
-
-When the implementation is correct:
-- update the PR body to **READY FOR HUMAN REVIEW**;
-- keep the exact Phase Safety Gate headings and Definition of Done contract intact;
-- the human, not Jules, performs the final merge.
-
-The \`@Jules\` mention is a delivery mechanism; the GitHub Issue remains the execution authority and the PR remains the active review/continuation contract.
-
+- If the owner has to repeat a correction because it is missing from durable context, treat that as a process failure—not as another one-off reminder.
+- Convert the correction into a precise rule in this file or the most appropriate existing project source of truth.
+- Do not mark any work complete because an agent said it is complete. Use the source, current tests, live checks already authorized, and current CI/workflow evidence.
+- Keep the current operational status aligned with the governing Issues and PRs. Historical status snapshots must be clearly labelled historical, never presented as current release gates.
 ---
 
 ## Specialist roles
@@ -424,40 +391,37 @@ Safety rules:
 
 ---
 
-## Current project state — 2026-10-21 (current snapshot)
+## Current project state — 2026-10-21 (verified release snapshot)
 
-This section supersedes the older status snapshot. Re-check linked GitHub Issues, PRs and workflows before acting; this file is advisory project memory, not live status telemetry.
+This is a compact status snapshot, not live telemetry. The current governing record is [Issue #88](https://github.com/japiohopman/the-vinyl-drop/issues/88); re-check current PR/workflow state before acting. Do not use older status wording to recreate release gates.
 
-### Recently completed
+### First five-person pilot — only two remaining PRs
 
-- **PR #152 is merged**: [docs(privacy): reconcile beta release evidence and remaining gates](https://github.com/japiohopman/the-vinyl-drop/pull/152), merge status verified on 2026-10-21; head `330ec93e1408bf43d278dae57abe6c0d6209b8a6`. Its source tests, CI, safety-gate and review-relay checks passed. It reconciles source/docs, registration-consent cookie disclosure, Terms version v2, provider observations, and a more complete recovery checklist. The merge does **not** mean the privacy/Terms drafts are approved for publication or that beta release gates have closed.
-- **Issue #49 — staging coordination gate: CLOSED**. The owner closed the staging-verification coordination gate after the recorded runtime and authorization evidence. Do not repeat the inconclusive historical #133 live PATCH probe; the owner accepted the documented residual uncertainty based on the verified least-privilege mitigation.
-- The owner already tested the key user-facing pages in localhost, Firefox and staging. Do not ask for those same functional checks again without a new, specific reason.
+The intended first cohort is **at most five personally known adults**, with the server-side private-beta allowlist enforced. The current release sequence has exactly two required PR merges:
 
-### Current privacy / beta release gates
+1. **PR #162 — privacy-safe Storage rollback diagnostics.** Source changes and regression tests are complete; CI, migration verification, build, and the PR safety contract passed. Jaap performs the final review and merge.
+2. **PR #159 — reconcile/publish the pilot Privacy Notice and Terms with the approved scope.** The current PR records the owner-approved working policy and accepted residual DSA-scope uncertainty; provider-controlled/unknown retention is disclosed without unsupported claims. Its tests, migration verification, build, and CI passed. Jaap reviews/merges it after #162.
 
-- **Issue #88 — privacy and beta readiness: OPEN**, the umbrella release gate. Do not invite external testers or present public Privacy Notice/Terms as approved until applicable gates are evidenced or residual risks are explicitly accepted by Jaap.
-- **Issue #153 — CLOSED on 2026-10-21.** Jaap confirmed the full browser/network/cookie review, including auth-cookie expiry/attributes, registration-consent / Terms+18+ flow and Discogs thumbnail-host check. Do not repeat it.
-- **Issue #154 — OPEN; draft docs PR [#159](https://github.com/japiohopman/the-vinyl-drop/pull/159).** Official-source analysis separates baseline DSA scope from additional platform/marketplace duties and includes a proposed contact-form legal basis. Free/private-individual/invite-only operation alone does not establish a blanket DSA exemption. The per-purpose legal-basis register and LIAs remain owner-review proposals; public notices remain drafts.
-- **Issue #155 — OPEN; draft recovery-plan PR [#158](https://github.com/japiohopman/the-vinyl-drop/pull/158).** The proposed plan separates app schema/data/roles, Auth identities and Storage object bytes, with encryption, off-repo retention, checksums and isolated restore acceptance. No live export, backup or restore has been performed. A real backup/isolated restore or an explicit owner risk/defer decision remains required.
-- **Issue #156 — OPEN; draft implementation PR [#157](https://github.com/japiohopman/the-vinyl-drop/pull/157).** Contact form, route, validation, same-origin protection, honeypot, bounded process-local cooldown, Resend adapter, privacy copy and mocked tests are implemented. CI build-and-test passed on the recorded head. Deployed delivery and presence of `RESEND_API_KEY` in the running service have not been independently verified; no real email was sent without separate authorization.
-- **Issue #82 — OPEN; beta auth-email gate.** PRs #115/#116 are merged, templates were saved in staging according to Jaap, and sender/SMTP delivery was configured and tested. Remaining work: one authorized post-merge staging signup-confirmation run through the current callback plus branded confirmation-email desktop/mobile rendering. Password recovery and new-password sign-in were already reported passed; don't repeat those flows without a relevant change.
-- **Issue #89 — OPEN; P1 before external beta exposure.** Route-level/shared rate limits for auth/recovery/comments/uploads and the human report-triage path remain incomplete. The process-local per-email cooldown in #156 is only narrow contact-form abuse protection and does not satisfy #89. Proposed numeric limits/store behavior and staging proxy/IP test need the required owner decision and verification.
-- **Issue #72 — OPEN; P2 future photo-quality enhancement, not a current beta-release blocker.** Four-corner perspective correction remains selected backlog work; its own issue says it is not a prerequisite for #66. Do not dispatch it just to unblock beta.
-- **Issue #118 — direct Auth signup-bypass boundary: OPEN.** Three runtime tests were recorded as passed. The native Supabase leaked-password-protection warning remains on Free; do not claim it is cleared.
-- **Issue #119 — private messaging trigger/search-path safety: OPEN.** Keep `MESSAGING_ENABLED=false` until remaining review and an explicit rollout decision are complete.
-- The five-person limit describes the small initial pilot, not the long-term beta. All invitations remain subject to #88 and Jaap's explicit release decision.
+After both merges, do one focused staging smoke check that `/privacy` and `/terms` render the merged copy and match the current deployment. Invitations can be sent once those two merges and that smoke check pass. No general re-audit or extra provider operation is part of this release sequence.
 
-### Operational boundaries
+### Completed, accepted, or deferred — not blockers for this pilot
 
-- Jaap owns product decisions and final merge. ChatGPT maintains this memory file; Jules and other implementation agents must treat it as read-only.
-- Read-only browser checks must not alter Render/Supabase settings, invite testers, enable waitlists, or change provider configuration.
-- Do not create accounts or complete OAuth merely to inspect the transient registration-consent cookie.
-- Never equate a green CI/safety workflow or a merged documentation PR with legal approval, a verified backup/restore, or authorization to open the beta.
+- **#153 browser/network/cookie review:** owner-confirmed complete. Do not repeat it without a material change.
+- **#156 contact form:** one end-to-end staging submission reached the operator inbox. Closed; do not repeat the delivery test without a concrete reason.
+- **#155 backup/export/restore:** explicitly deferred by the owner for the five-person pilot. Possible loss of profile/personal data and listing photos is an accepted availability/recovery risk; no backup or restore test is claimed to have passed. This must not block the pilot.
+- **#89 shared rate limits:** deferred until expansion beyond the bounded cohort. Manual report handling and the server-side allowlist remain in force for the first five testers.
+- **#118 native Supabase leaked-password warning:** the native Free-plan warning remains and must not be described as cleared. The custom HIBP check and one-time signup approval hook passed the documented direct-signup/bypass tests. Keep reassessment as a gate before cohort expansion, not before this pilot.
+- **#72 photo perspective correction:** future photo-quality backlog; not a pilot release dependency.
+- **#82 auth email:** the signup-confirmation/recovery flow and sender/SMTP configuration were tested; optional desktop/mobile email-rendering polish was deferred and the Issue closed as not planned for this pilot.
+- **#119 private-messaging trigger/search-path remediation:** migration 0012 and staging behavior were confirmed; the Issue is closed. Private messaging remains disabled unless separately approved.
+- **Provider unknowns:** the exact Render workspace log-retention tier and account-specific Strato terms are not exposed through the connected metadata. The approved notice discloses provider-controlled/unknown retention. No plan upgrade, extra backup operation, or endless provider-account investigation is required for this pilot.
 
-### Phase 0 foundation — historical record
+### Binding operating boundaries
 
-Phase 0 — Product and Architecture Foundation was completed and merged to `main`. It established the product vision, MVP boundary, domain/data/technical architecture, UX direction, security/privacy baseline, route map, Issue strategy, and agentic workflow. **The old note saying Phase 1 is the next implementation phase is historical and no longer describes the current project state.**
+- Supabase database/Auth/Storage are hosted on the configured **remote Supabase project**; do not assume or request a local Supabase instance.
+- The pilot is free, invite-only, and adults-only (18+); no public waitlist, broad public signup, marketing, payments, escrow, shipping, or private messaging.
+- Reassess deferred expansion gates only before a materially larger cohort, public/open signup, commercialisation, in-app transactions/payments, or enabling private messaging.
+- Jaap owns all final merges and the decision to send invitations. Never equate green CI alone with deployment, legal certification, data recovery, or release authorization.
 
 ## Jules Phase 0 review notes
 
@@ -512,5 +476,8 @@ Do not:
 - add infrastructure before the product requires it;
 - merge automatically without human review;
 - silently broaden an Issue during a review loop;
+- invent or require a local Supabase service when the application is configured for remote Supabase;
+- promote accepted/deferred/future work into a pilot blocker against the current Issue #88 release decision;
+- create additional Issues to restate an existing release decision or repeat completed verification;
 - allow an external metadata provider to become an undeclared source of truth.
 
