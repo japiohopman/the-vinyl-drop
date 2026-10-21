@@ -36,13 +36,13 @@ This inventory records source-observed processing and separates current owner-ap
 - **Google OAuth test users:** Google Cloud Console's OAuth test-user allowlist is separate from the application's private `BETA_ALLOWED_EMAILS` check. A Console test-user entry alone does not guarantee app access, and the application allowlist does not add an address to Google's Console. Keep actual addresses in the private provider/runtime configuration only.
 - **Product delivery boundary:** this project is distributed as an installable PWA from its own official website. No Google Play, Apple App Store or other app-store publication is planned. For Google sign-in, the Google Cloud Console test-user list and the app's `BETA_ALLOWED_EMAILS` check remain separate authentication/access controls.
 
-## Retention, deletion, and owner decisions still required
+## Retention, deletion and remaining verification
 
 The schema includes timestamps, cascades and image-cleanup paths, but these are not a retention policy. The current owner-approved direction is: active accounts remain active until closed; archived listing data/photos target deletion 12 months after archive except for a documented reason; persistent drafts must be confirmed before assigning a period; favorites/activity are retained only while functionally needed; routine logs target about 30 days; privacy-request audit targets a maximum of 12 months after closure; registration-consent audit is removed with the Auth identity. These are policy targets, not proof that automated deletion or provider settings exist.
 
 Before the public notice is approved:
-1. Verify the legal controller identity/contact details required for this private-individual arrangement. Do not invent a company or publish a residential address just to fill a template.
-2. Review purpose-specific legal bases, including a documented balancing assessment where legitimate interests are considered.
+1. The owner-approved public identity/contact decision is Jaap Hopman as a private individual and `yepyouknowhim@gmail.com`; do not invent a company or publish a residential address. If the project becomes commercial, reassess any separate business-site disclosure rules.
+2. The purpose-specific legal-basis framework and legitimate-interest policy directions were approved by the owner on 21 October 2026. Verify that the deployed processing and safeguards actually match those descriptions.
 3. Independently verify provider regions, transfer safeguards, processing terms, provider logs and backups.
 4. The clean deployed-browser/network/cookie review was owner-confirmed complete in #153 (closed 21 October 2026); do not repeat it. Preserve only the redacted notes and never commit cookies/tokens/raw HAR files.
 5. Review the separate Terms of Use draft. The owner-authorized registration-consent migration was applied and the schema/history verified on staging on 19 October 2026; live-provider, retention and end-to-end account-erasure checks remain separate.
@@ -57,5 +57,5 @@ This inventory does not claim legal compliance, fixed provider retention, or imp
 - `src/app/services/storageService.ts`, `listingService.ts`, `commentService.ts`, `favoriteService.ts`, `activityService.ts`, `pwnedPasswordService.ts`
 - `src/app/controllers/infoController.ts`, `profileController.ts`; `src/app/routes/index.ts`, `authRoutes.ts`, `listingRoutes.ts`, `profileRoutes.ts`
 - `docs/SECURITY_PRIVACY.md`, Issues #48, #49, #62, #88 and #89
-- `docs/BETA_LEGAL_BASIS_REGISTER.md` (owner-review draft)
+- `docs/BETA_LEGAL_BASIS_REGISTER.md` (owner-approved working policy; technical/provider verification remains open)
 - Open follow-ups: #154 (operator/legal scope/Terms), #155 (backup/recovery), and #156 (contact-form implementation and delivery verification). #153 is closed.
