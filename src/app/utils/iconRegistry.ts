@@ -77,6 +77,25 @@ function sanitizeSize(size: string | number | undefined): { width: string; heigh
   return { width: sizeVal, height: sizeVal };
 }
 
+function sanitizeStyle(style: string | undefined): string | undefined {
+  if (!style) return undefined;
+  const trimmed = String(style).trim();
+  if (!trimmed) return undefined;
+
+  // Reject unsafe patterns: url(), javascript:, expressions, quotes, brackets
+  if (/url\(|javascript:|expression\(|<|>|"|'/i.test(trimmed)) {
+    return undefined;
+  }
+
+  // Allow only standard safe inline style declarations (color, fill, stroke, margin, padding, vertical-align)
+  const safePropertyPattern = /^(?:(?:color|fill|stroke|vertical-align|margin(?:-top|-bottom|-left|-right)?|padding(?:-top|-bottom|-left|-right)?)\s*:\s*[\w#()\-,.\s%]+;?\s*)+$/i;
+  if (!safePropertyPattern.test(trimmed)) {
+    return undefined;
+  }
+
+  return escapeHtml(trimmed);
+}
+
 function parseSvgContent(rawSvg: string): { viewBox: string; innerXml: string } {
   const viewBoxMatch = rawSvg.match(/viewBox="([^"]+)"/);
   const viewBox = viewBoxMatch ? viewBoxMatch[1] : '0 0 512 512';
@@ -118,6 +137,7 @@ export function getIconSvg(name: string, options: IconOptions = {}): string {
   }
 
   const dimensions = sanitizeSize(options.size);
+  const sanitizedStyle = sanitizeStyle(options.style);
 
   const attrs: string[] = [
     'xmlns="http://www.w3.org/2000/svg"',
@@ -127,8 +147,8 @@ export function getIconSvg(name: string, options: IconOptions = {}): string {
     `height="${dimensions.height}"`,
   ];
 
-  if (options.style) {
-    attrs.push(`style="${escapeHtml(String(options.style))}"`);
+  if (sanitizedStyle) {
+    attrs.push(`style="${sanitizedStyle}"`);
   }
 
   const rawTitle = options.title !== undefined ? String(options.title) : undefined;
