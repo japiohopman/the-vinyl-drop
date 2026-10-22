@@ -397,6 +397,33 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       uploadSpy.mockRestore();
     });
 
+    it('persists the seller-selected front_cover role with the uploaded photo metadata', async () => {
+      const squareImage = await sharp({
+        create: { width: 100, height: 100, channels: 3, background: { r: 128, g: 128, b: 128 } },
+      }).jpeg().toBuffer();
+      const storageModule = await import('../src/app/services/storageService');
+      const uploadSpy = jest.spyOn(storageModule, 'uploadListingPhotoToStorage')
+        .mockResolvedValue(`listings/${listingId}/front-cover.webp`);
+
+      const uploaded = await addPhotoToListing(listingId, sellerId, {
+        buffer: squareImage,
+        mimetype: 'image/jpeg',
+        originalname: 'front-cover.jpg',
+      }, 'Front cover of the physical sleeve', undefined, undefined, 'front_cover');
+
+      expect(photoRepo.createListingPhoto).toHaveBeenCalledWith(
+        expect.objectContaining({
+          listingId,
+          role: 'front_cover',
+          altText: 'Front cover of the physical sleeve',
+        }),
+        undefined
+      );
+      expect(uploaded.role).toBe('front_cover');
+      expect(uploaded.publicUrl).toBeDefined();
+      uploadSpy.mockRestore();
+    });
+
     it('should rollback storage upload if database insertion fails when adding a photo', async () => {
       const sampleImage = await sharp({
         create: { width: 100, height: 100, channels: 3, background: { r: 128, g: 128, b: 128 } },
@@ -924,6 +951,24 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       const response = await supertest(app).get('/health');
       expect(response.status).toBe(200);
       expect(response.body.status).toBe('ok');
+    });
+
+    it('keeps the chosen photo role and alt text when multipart fields follow the image part', async () => {
+      const response = await supertest(uploadTestApp)
+        .post('/test-upload')
+        .attach('photo', Buffer.from('test image payload'), {
+          filename: 'front-cover.jpg',
+          contentType: 'image/jpeg',
+        })
+        .field('altText', 'Front cover of the physical sleeve')
+        .field('role', 'front_cover');
+
+      expect(response.status).toBe(200);
+      expect(response.body.files).toBe(1);
+      expect(response.body.body).toMatchObject({
+        altText: 'Front cover of the physical sleeve',
+        role: 'front_cover',
+      });
     });
 
     it('should reject file uploads exceeding 5MB with 400 Bad Request (Blocker 2)', async () => {

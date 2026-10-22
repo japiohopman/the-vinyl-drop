@@ -42,12 +42,12 @@ describe('Dig navigation and flip state', () => {
 });
 
 describe('Dig artwork face semantics', () => {
-  it('chooses only explicitly classified sleeve front and back, independently of display order', () => {
+  it('chooses only explicitly selected front and back photos, independent of display order', () => {
     const result = resolveDigArtwork([
       photo('back_cover', 0, '/seller/back.webp', 'Achterkant met tracklist'),
       photo('record', 1, '/seller/record.webp', 'Side A label'),
       photo('front_cover', 4, '/seller/front.webp', 'Voorkant van de hoes'),
-    ], '/release/catalogue-art.webp', 'Blue Train', 'John Coltrane');
+    ], 'Blue Train', 'John Coltrane');
 
     expect(result.front.src).toBe('/seller/front.webp');
     expect(result.front.sourceKind).toBe('seller_front');
@@ -56,39 +56,38 @@ describe('Dig artwork face semantics', () => {
     expect(result.hasExplicitBackCover).toBe(true);
   });
 
-  it('allows the first legacy-unclassified image only as a labelled compatibility front fallback', () => {
-    const photos = [
+  it('never uses legacy/unclassified photos as the front or back sleeve face', () => {
+    const result = resolveDigArtwork([
       photo('legacy_unclassified', 0, '/seller/old-photo.webp', 'Oude foto zonder rol'),
       photo('record', 1, '/seller/record.webp', 'Side B label'),
       photo('inside_sleeve', 2, '/seller/inside.webp', 'Binnenkant'),
-    ];
-    const result = resolveDigArtwork(photos, '/release/catalogue-art.webp', 'Low End Theory', 'A Tribe Called Quest');
+    ], 'Low End Theory', 'A Tribe Called Quest');
 
-    expect(result.front.src).toBe('/seller/old-photo.webp');
-    expect(result.front.sourceKind).toBe('legacy_photo');
-    expect(result.front.sourceLabel).toContain('not yet classified');
+    expect(result.front.src).toBe('/assets/vinyl-placeholder.svg');
+    expect(result.front.sourceKind).toBe('placeholder');
+    expect(result.front.sourceLabel).toBe('No front-cover photo available');
     expect(result.back).toBeNull();
     expect(result.hasExplicitBackCover).toBe(false);
-    expect(photos[0].role).toBe('legacy_unclassified');
   });
 
-  it('never substitutes a record, inside sleeve, poster, or release artwork for a missing back cover', () => {
+  it('does not use catalog/release artwork or other photo roles when a front-cover photo is missing', () => {
     const result = resolveDigArtwork([
       photo('record', 0, '/seller/record.webp', 'Side A label'),
       photo('inside_sleeve', 1, '/seller/inside.webp', 'Gatefold binnenkant'),
       photo('insert_poster', 2, '/seller/poster.webp', 'Poster'),
-    ], '/release/catalogue-art.webp', 'Madvillainy', 'Madvillain');
+      photo('detail', 3, '/seller/detail.webp', 'Corner wear'),
+    ], 'Madvillainy', 'Madvillain');
 
-    expect(result.front.src).toBe('/release/catalogue-art.webp');
-    expect(result.front.sourceKind).toBe('release_artwork');
-    expect(result.front.sourceLabel).toContain('not evidence of this copy’s condition');
+    expect(result.front.src).toBe('/assets/vinyl-placeholder.svg');
+    expect(result.front.sourceKind).toBe('placeholder');
+    expect(result.front.altText).toContain('No front-cover photo available');
     expect(result.back).toBeNull();
     expect(result.hasExplicitBackCover).toBe(false);
   });
 
-  it('uses a clear placeholder when neither a suitable seller image nor release art exists', () => {
-    const result = resolveDigArtwork([], null, 'Unknown Release', 'Unknown Artist');
-    expect(result.front.src).toBe('/assets/vinyl-placeholder.svg');
+  it('uses a configurable neutral placeholder when neither explicit cover role exists', () => {
+    const result = resolveDigArtwork([], 'Unknown Release', 'Unknown Artist', '/assets/no-cover.svg');
+    expect(result.front.src).toBe('/assets/no-cover.svg');
     expect(result.front.sourceKind).toBe('placeholder');
     expect(result.back).toBeNull();
   });
@@ -185,11 +184,14 @@ describe('Dig photo-role contract', () => {
     expect(script).toContain('digState.adjacentIndex');
     expect(script).toContain("slide.inert = true");
 
+    const view = fs.readFileSync(path.join(process.cwd(), 'views/browse/dig.ejs'), 'utf8');
     const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     expect(css).toContain('.dig-sleeve-image');
     expect(css).toContain('object-fit: contain');
     expect(css).toContain('touch-action: pinch-zoom;');
-    expect(css).toContain('.dig-artwork-badge');
+    expect(view).toContain('Front cover not photographed');
+    expect(view).not.toContain('Release artwork');
+    expect(view).not.toContain('dig-artwork-badge');
     expect(css).toContain('.dig-slide.is-leaving-up');
     expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped');
     expect(css).toContain('@media (max-width: 680px)');
