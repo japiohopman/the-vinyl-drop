@@ -184,4 +184,47 @@
       <% }); %>
     </div>
   </section>
+
+  <!-- 5. REUSABLE SVG ICON SYSTEM -->
+  <section class="demo-section" aria-labelledby="icons-heading">
+    <h2 id="icons-heading" class="demo-section-title">5. Shared SVG Icon System</h2>
+    <p class="demo-section-desc">
+      Project-native normalized SVG icon partial (<code>views/partials/icon.ejs</code>). Tested on light paper and dark ink surfaces.
+    </p>
+
+    <%
+      const allIcons = [
+        'home', 'search', 'close', 'edit', 'logout',
+        'user', 'price-tag', 'round-star', 'photo-camera', 'conversation',
+        'envelope', 'funnel', 'confirmed', 'save', 'trash-can',
+        'calendar', 'pin', 'position-marker', 'talk', 'thought-bubble',
+        'plain-arrow', 'next-button', 'previous-button', 'cardboard-box-closed',
+        'boombox', 'cog', 'pause-button', 'sound-on', 'sound-off'
+      ];
+    %>
+
+    <div style="margin-bottom: var(--space-6);">
+      <h3 style="font-size: var(--font-size-md); margin-bottom: var(--space-3);">Light Surface (Paper)</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-3); background: var(--color-white); border: var(--border-thick); padding: var(--space-4); border-radius: var(--radius-sm);">
+        <% allIcons.forEach(function(iconName) { %>
+          <div style="display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--font-size-2xs); color: var(--color-ink);">
+            <%- include('../partials/icon', { name: iconName, size: 20 }) %>
+            <span><%= iconName %></span>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <div>
+      <h3 style="font-size: var(--font-size-md); margin-bottom: var(--space-3);">Dark/Ink Surface</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-3); background: var(--color-ink); color: var(--color-paper); border: var(--border-thick); padding: var(--space-4); border-radius: var(--radius-sm);">
+        <% allIcons.forEach(function(iconName) { %>
+          <div style="display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--font-size-2xs); color: var(--color-paper);">
+            <%- include('../partials/icon', { name: iconName, size: 20 }) %>
+            <span><%= iconName %></span>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+  </section>
 </div>

@@ -6,6 +6,7 @@ import { sessionMiddleware } from './app/middleware/auth';
 import { notFoundHandler, errorHandler } from './app/middleware/errorHandler';
 import { config } from './config/env';
 import { BETA_WELCOME_COOKIE, INVITE_ONLY_ACCESS_MESSAGE, isBetaInviteOnlyEnabled } from './app/services/betaAccess';
+import { getIconSvg } from './app/utils/iconRegistry';
 
 export function createApp(): Express {
   const app = express();
@@ -13,6 +14,7 @@ export function createApp(): Express {
   // Configure view engine
   app.set('views', path.join(process.cwd(), 'views'));
   app.set('view engine', 'ejs');
+  app.locals.getIconSvg = getIconSvg;
 
   // Middleware
   app.use(express.json());
@@ -26,6 +28,7 @@ export function createApp(): Express {
   // Share pilot state with server-rendered views. The welcome cookie is display-only
   // and is consumed at the first HTML response; it never grants access.
   app.use((req, res, next) => {
+    res.locals.getIconSvg = getIconSvg;
     res.locals.currentPath = req.path;
     res.locals.messagingEnabled = config.MESSAGING_ENABLED;
     res.locals.betaInviteOnly = isBetaInviteOnlyEnabled() && !req.user;
