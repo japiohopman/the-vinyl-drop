@@ -51,6 +51,32 @@ const FALLBACK_ICON = {
   innerXml: '<circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 17v-1m0-3c0-2 2-2 2-4a2 2 0 1 0-4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
 };
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sanitizeSize(size: string | number | undefined): { width: string; height: string } {
+  if (size === undefined || size === null || size === '') {
+    return { width: '1em', height: '1em' };
+  }
+
+  const rawSizeStr = String(size).trim();
+  // Valid CSS dimensions: numbers (px implied), or explicitly ending in px, rem, em, %
+  const isValidUnit = /^(\d+(?:\.\d+)?)(px|rem|em|%)?$/i.test(rawSizeStr);
+  if (!isValidUnit) {
+    return { width: '1em', height: '1em' };
+  }
+
+  const sanitized = escapeHtml(rawSizeStr);
+  const sizeVal = /^\d+(?:\.\d+)?$/.test(sanitized) ? `${sanitized}px` : sanitized;
+  return { width: sizeVal, height: sizeVal };
+}
+
 function parseSvgContent(rawSvg: string): { viewBox: string; innerXml: string } {
   const viewBoxMatch = rawSvg.match(/viewBox="([^"]+)"/);
   const viewBox = viewBoxMatch ? viewBoxMatch[1] : '0 0 512 512';
@@ -88,25 +114,26 @@ export function getIconSvg(name: string, options: IconOptions = {}): string {
   const classes = ['icon', `icon-${safeName}`];
   const customClass = options.class || options.className;
   if (customClass) {
-    classes.push(customClass);
+    classes.push(escapeHtml(String(customClass).trim()));
   }
+
+  const dimensions = sanitizeSize(options.size);
 
   const attrs: string[] = [
     'xmlns="http://www.w3.org/2000/svg"',
-    `viewBox="${iconData.viewBox}"`,
+    `viewBox="${escapeHtml(iconData.viewBox)}"`,
     `class="${classes.join(' ')}"`,
+    `width="${dimensions.width}"`,
+    `height="${dimensions.height}"`,
   ];
 
-  if (options.size !== undefined && options.size !== null && options.size !== '') {
-    const sizeVal = typeof options.size === 'number' ? `${options.size}px` : options.size;
-    attrs.push(`width="${sizeVal}"`, `height="${sizeVal}"`);
-  }
-
   if (options.style) {
-    attrs.push(`style="${options.style}"`);
+    attrs.push(`style="${escapeHtml(String(options.style))}"`);
   }
 
-  const titleText = options.title || options.ariaLabel;
+  const rawTitle = options.title !== undefined ? String(options.title) : undefined;
+  const rawAriaLabel = options.ariaLabel !== undefined ? String(options.ariaLabel) : undefined;
+  const titleText = rawTitle || rawAriaLabel;
   const isExplicitAriaHidden = options.ariaHidden !== undefined ? Boolean(options.ariaHidden) : undefined;
 
   if (isExplicitAriaHidden === true) {
@@ -114,20 +141,20 @@ export function getIconSvg(name: string, options: IconOptions = {}): string {
   } else if (isExplicitAriaHidden === false) {
     attrs.push('aria-hidden="false"');
     if (titleText) {
-      attrs.push(`aria-label="${titleText}"`, 'role="img"');
+      attrs.push(`aria-label="${escapeHtml(titleText)}"`, 'role="img"');
     }
   } else {
     // Default behavior
     if (titleText) {
-      attrs.push(`aria-label="${titleText}"`, 'role="img"');
+      attrs.push(`aria-label="${escapeHtml(titleText)}"`, 'role="img"');
     } else {
       attrs.push('aria-hidden="true"');
     }
   }
 
   let titleElement = '';
-  if (options.title) {
-    titleElement = `<title>${options.title}</title>`;
+  if (rawTitle) {
+    titleElement = `<title>${escapeHtml(rawTitle)}</title>`;
   }
 
   return `<svg ${attrs.join(' ')}>${titleElement}${iconData.innerXml}</svg>`;

@@ -3,27 +3,33 @@ import ejs from 'ejs';
 import { ALLOWLISTED_ICON_NAMES, getIconSvg } from '../src/app/utils/iconRegistry';
 
 describe('SVG Icon System & Registry', () => {
-  describe('Icon Allowlist and Asset Presence', () => {
+  describe('Icon Allowlist and Asset Coverage', () => {
     it('should contain all 30 expected allowlisted icon names', () => {
       expect(ALLOWLISTED_ICON_NAMES.size).toBe(30);
-      expect(ALLOWLISTED_ICON_NAMES.has('home')).toBe(true);
-      expect(ALLOWLISTED_ICON_NAMES.has('search')).toBe(true);
-      expect(ALLOWLISTED_ICON_NAMES.has('close')).toBe(true);
-      expect(ALLOWLISTED_ICON_NAMES.has('edit')).toBe(true);
-      expect(ALLOWLISTED_ICON_NAMES.has('logout')).toBe(true);
-      expect(ALLOWLISTED_ICON_NAMES.has('user')).toBe(true);
-      expect(ALLOWLISTED_ICON_NAMES.has('round-star')).toBe(true);
-      expect(ALLOWLISTED_ICON_NAMES.has('boombox')).toBe(true);
+    });
+
+    it('should load and render every single one of the 30 allowlisted SVG assets without error', () => {
+      for (const name of ALLOWLISTED_ICON_NAMES) {
+        const svg = getIconSvg(name);
+        expect(svg).toContain('<svg');
+        expect(svg).toContain(`class="icon icon-${name}"`);
+        expect(svg).toContain('viewBox="');
+        expect(svg).toContain('width="1em"');
+        expect(svg).toContain('height="1em"');
+        expect(svg.length).toBeGreaterThan(50);
+      }
     });
   });
 
   describe('getIconSvg Registry Function', () => {
-    it('should render SVG for a known allowlisted icon with default aria-hidden="true"', () => {
+    it('should render SVG for a known allowlisted icon with default aria-hidden="true" and 1em dimensions', () => {
       const svg = getIconSvg('user');
       expect(svg).toContain('<svg');
       expect(svg).toContain('class="icon icon-user"');
       expect(svg).toContain('aria-hidden="true"');
       expect(svg).toContain('viewBox="0 0 512 512"');
+      expect(svg).toContain('width="1em"');
+      expect(svg).toContain('height="1em"');
     });
 
     it('should return safe fallback icon when an unknown icon name is requested', () => {
@@ -45,6 +51,28 @@ describe('SVG Icon System & Registry', () => {
       expect(svg).toContain('height="24px"');
       expect(svg).toContain('class="icon icon-search custom-search-class"');
       expect(svg).toContain('style="color: var(--color-rust);"');
+    });
+
+    it('should sanitize and escape caller-supplied inputs to prevent XSS and attribute breakouts', () => {
+      const xssClass = '"><script>alert(1)</script>';
+      const xssTitle = '"><img src=x onerror=alert(1)>';
+      const xssStyle = '">color:red;';
+      const xssSize = '24px"><script>';
+
+      const svg = getIconSvg('close', {
+        class: xssClass,
+        title: xssTitle,
+        style: xssStyle,
+        size: xssSize,
+      });
+
+      expect(svg).not.toContain('<script>');
+      expect(svg).not.toContain('<img');
+      expect(svg).toContain('&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;');
+      expect(svg).toContain('&quot;&gt;&lt;img src=x onerror=alert(1)&gt;');
+      expect(svg).toContain('style="&quot;&gt;color:red;"');
+      // Invalid unit in size falls back to default 1em
+      expect(svg).toContain('width="1em"');
     });
 
     it('should configure accessible title and role="img" when title is supplied', () => {
