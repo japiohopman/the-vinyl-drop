@@ -953,8 +953,9 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(response.body.status).toBe('ok');
     });
 
-    it('keeps the chosen photo role and alt text when multipart fields follow the image part', async () => {
-      const response = await supertest(uploadTestApp)
+    it('keeps the chosen photo role and alt text regardless of multipart field ordering relative to file stream', async () => {
+      // Order A: file attachment first, form fields second
+      const responseA = await supertest(uploadTestApp)
         .post('/test-upload')
         .attach('photo', Buffer.from('test image payload'), {
           filename: 'front-cover.jpg',
@@ -963,11 +964,28 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         .field('altText', 'Front cover of the physical sleeve')
         .field('role', 'front_cover');
 
-      expect(response.status).toBe(200);
-      expect(response.body.files).toBe(1);
-      expect(response.body.body).toMatchObject({
+      expect(responseA.status).toBe(200);
+      expect(responseA.body.files).toBe(1);
+      expect(responseA.body.body).toMatchObject({
         altText: 'Front cover of the physical sleeve',
         role: 'front_cover',
+      });
+
+      // Order B: form fields first, file attachment second
+      const responseB = await supertest(uploadTestApp)
+        .post('/test-upload')
+        .field('altText', 'Back cover of the physical sleeve')
+        .field('role', 'back_cover')
+        .attach('photo', Buffer.from('test image payload'), {
+          filename: 'back-cover.jpg',
+          contentType: 'image/jpeg',
+        });
+
+      expect(responseB.status).toBe(200);
+      expect(responseB.body.files).toBe(1);
+      expect(responseB.body.body).toMatchObject({
+        altText: 'Back cover of the physical sleeve',
+        role: 'back_cover',
       });
     });
 

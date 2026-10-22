@@ -1,5 +1,6 @@
 import ejs from 'ejs';
 import { PGlite } from '@electric-sql/pglite';
+import { drizzle } from 'drizzle-orm/pglite';
 import fs from 'fs';
 import path from 'path';
 import supertest from 'supertest';
@@ -202,6 +203,94 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('@media (max-width: 680px)');
     expect(css).toContain('.dig-nav-button {\n    display: none;');
     expect(css).toContain('.dig-keyboard-note {\n    display: none;');
+  });
+});
+
+describe('searchDigListings PGlite database integration', () => {
+  let pglite: PGlite;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let db: any;
+
+  beforeAll(async () => {
+    pglite = new PGlite();
+    db = drizzle(pglite);
+
+    const migrationsToApply = [
+      '0000_grey_living_tribunal.sql',
+      '0001_add_physical_copies.sql',
+      '0002_add_release_cover_art.sql',
+      '0003_brainy_scarlet_witch.sql',
+      '0004_mighty_spacker_dave.sql',
+      '0014_add_listing_photo_roles.sql',
+      '0015_dismiss_completed_listings.sql',
+    ];
+
+    for (const filename of migrationsToApply) {
+      const sqlContent = fs.readFileSync(path.join(process.cwd(), 'drizzle', filename), 'utf8');
+      const statements = sqlContent
+        .split('--> statement-breakpoint')
+        .map((stmt) => stmt.trim())
+        .filter((stmt) => stmt.length > 0);
+
+      for (const statement of statements) {
+        await pglite.exec(statement);
+      }
+    }
+  });
+
+  afterAll(async () => {
+    await pglite.close();
+  });
+
+  it('queries database rows and resolves explicit front/back seller photos in Dig view model', async () => {
+    const sellerId = '11111111-1111-4111-8111-111111111111';
+    const releaseId = '22222222-2222-4222-8222-222222222222';
+    const copyId = '33333333-3333-4333-8333-333333333333';
+    const listingId = '44444444-4444-4444-8444-444444444444';
+
+    await pglite.exec(`
+      INSERT INTO public.profiles (id, username, display_name) VALUES ('${sellerId}', 'record_collector', 'Record Collector');
+      INSERT INTO public.releases (id, artist, title, cover_art_url) VALUES ('${releaseId}', 'Miles Davis', 'Kind of Blue', 'https://catalog.example/miles.jpg');
+      INSERT INTO public.physical_copies (id, release_id, owner_id, media_condition, sleeve_condition) VALUES ('${copyId}', '${releaseId}', '${sellerId}', 'NM', 'VG+');
+      INSERT INTO public.listings (id, physical_copy_id, seller_id, price, status) VALUES ('${listingId}', '${copyId}', '${sellerId}', 2500, 'published');
+
+      INSERT INTO public.listing_photos (id, listing_id, storage_path, display_order, role, alt_text) VALUES
+        ('55555555-5555-4555-8555-555555555555', '${listingId}', 'listings/photos/front.webp', 0, 'front_cover', 'Physical front cover'),
+        ('66666666-6666-4666-8666-666666666666', '${listingId}', 'listings/photos/back.webp', 1, 'back_cover', 'Physical back cover');
+    `);
+
+    const result = await listingService.searchDigListings({ q: 'Miles Davis' }, db);
+
+    expect(result.items.length).toBe(1);
+    const item = result.items[0];
+    expect(item.title).toBe('Kind of Blue');
+    expect(item.frontArtwork.sourceKind).toBe('seller_front');
+    expect(item.frontArtwork.src).toContain('listings/photos/front.webp');
+    expect(item.backArtwork?.sourceKind).toBe('seller_back');
+    expect(item.backArtwork?.src).toContain('listings/photos/back.webp');
+  });
+
+  it('never substitutes catalog release.cover_art_url when no seller cover photos exist in DB', async () => {
+    const sellerId = '11111111-1111-4111-8111-222222222222';
+    const releaseId = '22222222-2222-4222-8222-333333333333';
+    const copyId = '33333333-3333-4333-8333-444444444444';
+    const listingId = '44444444-4444-4444-8444-555555555555';
+
+    await pglite.exec(`
+      INSERT INTO public.profiles (id, username, display_name) VALUES ('${sellerId}', 'jazz_fan', 'Jazz Fan');
+      INSERT INTO public.releases (id, artist, title, cover_art_url) VALUES ('${releaseId}', 'John Coltrane', 'Giant Steps', 'https://catalog.example/coltrane.jpg');
+      INSERT INTO public.physical_copies (id, release_id, owner_id, media_condition, sleeve_condition) VALUES ('${copyId}', '${releaseId}', '${sellerId}', 'VG+', 'VG+');
+      INSERT INTO public.listings (id, physical_copy_id, seller_id, price, status) VALUES ('${listingId}', '${copyId}', '${sellerId}', 3000, 'published');
+    `);
+
+    const result = await listingService.searchDigListings({ q: 'Giant Steps' }, db);
+
+    expect(result.items.length).toBe(1);
+    const item = result.items[0];
+    expect(item.frontArtwork.sourceKind).toBe('placeholder');
+    expect(item.frontArtwork.src).toBe('/assets/vinyl-placeholder.svg');
+    expect(item.frontArtwork.src).not.toBe('https://catalog.example/coltrane.jpg');
+    expect(item.backArtwork).toBeNull();
   });
 });
 
