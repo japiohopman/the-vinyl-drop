@@ -122,7 +122,7 @@ Implemented application primary navigation routes:
 ## SVG Icon System Contract (Target for [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123))
 
 - **Inventory:** 25 functional SVGs reside under `public/assets/svg/`.
-- **Normalization:** Strips inline fixed dimensions (`height`/`width`), empty wrapper tags, and redundant full-canvas background paths while strictly preserving root `<svg>`, `viewBox`, `<defs>`, and path geometry coordinates.
+- **Normalization:** Strips inline fixed dimensions (`height`/`width`), empty wrapper tags, and redundant full-canvas background square paths **only** when visual/code inspection confirms the path is a redundant canvas wrapper and that removing it preserves negative space, contrast, and geometry. Strictly preserves root `<svg>`, `viewBox`, `<defs>`, and path coordinates.
 - **Coloring:** Evaluates each SVG individually; no blanket replacement of fills with `currentColor`. Preserves fixed fills, linear gradients (`round-star.svg`), and brand artwork (`vinyl-drop-cartridge.svg`) unless explicitly tested and proven safe.
 - **EJS Mechanism:** Uses a single project-native EJS partial (`views/partials/icon.ejs`) or inline SVG symbol sprite system. Raw SVG paths are not duplicated across views.
 - **Icon Gaps:** Adds only required functional gap icons (`home`, `search`, `close`, `edit`, `logout`) needed for approved UI behaviors.
@@ -167,9 +167,9 @@ Listing results display clear metadata, price or trade badge, condition tags, an
 ## Activity view (`/activity`)
 
 Community activity feed displaying recent community events:
-- `listing.published` events for newly published drops;
-- `comment.created` events for public discussion on listings;
-- `favorite.created` events for favorited records.
+- `listing.published` events for newly published drops (publicly visible);
+- `comment.created` events for public discussion on listings (publicly visible);
+- `favorite.created` events for favorited records — **included strictly when `actorId === requestingUserId`** (authenticated users see strictly their own favorite activity; anonymous/unauthenticated visitors do **not** receive `favorite.created` events).
 
 Respects public visibility boundaries and excludes draft, unpublished, or deleted source listings.
 
@@ -223,7 +223,8 @@ Automated accessibility checks run against WCAG 2.1 AA rule sets (`npm run test:
 - sufficient color contrast for text readability;
 - descriptive alt text on record photography;
 - keyboard tab navigation throughout form and listing flows;
-- explicit `aria-expanded`, `aria-controls`, `aria-live`, and `aria-current="page"` attributes across interactive surfaces.
+- explicit `aria-expanded`, `aria-controls`, and `aria-current="page"` attributes across interactive controls;
+- `aria-live` regions (`polite` / `assertive`) applied strictly to status and alert feedback containers (such as success toasts and form error summaries).
 
 ## Scope boundary reminder
 

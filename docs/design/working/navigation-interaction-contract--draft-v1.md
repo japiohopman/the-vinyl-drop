@@ -3,7 +3,7 @@
 **Design ID:** `DESIGN-122` / `navigation-interaction-contract--draft-v1`
 **Purpose:** Define canonical, implementation-ready specifications for responsive navigation, account actions, SVG icon usage, toast feedback, and messaging-window interactions for The Vinyl Drop.
 **Status:** `draft`
-**Owner Review Status:** Direction agreed by Jaap and ChatGPT on 2026-10-16. Draft v1 contract prepared for implementation workstreams (#123–#126). Awaiting registration in the canonical working map when supplied by Issue #111 (Note: `docs/design/WORKING_MAP.md` is not yet present on `main`).
+**Owner Review Status:** Direction agreed by Jaap and ChatGPT on 2026-10-16. Standalone draft v1 contract prepared for implementation workstreams (#123–#126).
 
 ## Linked Issues
 
@@ -17,7 +17,6 @@
   - [#49](https://github.com/japiohopman/the-vinyl-drop/issues/49) — Human-owned staging gate.
   - [#119](https://github.com/japiohopman/the-vinyl-drop/issues/119) — Private messaging security & session context verification.
   - [#117](https://github.com/japiohopman/the-vinyl-drop/issues/117) & [#65](https://github.com/japiohopman/the-vinyl-drop/issues/65) — Visual identity and foundation gates.
-  - [#111](https://github.com/japiohopman/the-vinyl-drop/issues/111) — Canonical design working map (template scope).
 - **Future Context:**
   - [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — Future PWA / mobile-shell context only (not in current scope).
 
@@ -107,42 +106,45 @@ The navigation adheres to the **90s record shop + crate digging** identity: high
 
 ### 2.1 Existing Asset Inventory Audit (`public/assets/svg/`)
 
-The repository contains exactly 25 SVG files in `public/assets/svg/`. Inspection confirms that **none** of these 25 functional SVGs are currently directly rendered inside EJS template views (brand logo rendering in `header.ejs` references `/assets/brand/vinyl-drop-cartridge.svg`, and artwork fallbacks reference `/assets/vinyl-placeholder.svg`).
+The repository contains exactly 25 SVG files under `public/assets/svg/`. Visual and code inspection confirms that **none** of these 25 functional SVGs are currently directly rendered inside EJS template views (`header.ejs` renders `/assets/brand/vinyl-drop-cartridge.svg`, and artwork fallbacks reference `/assets/vinyl-placeholder.svg`).
 
-Each asset appears exactly once below with its audited content characteristics and draft usage proposal for workstream [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123):
+Each asset appears exactly once in the table below with its audited content characteristics, usage status, and draft proposal for workstream [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123):
 
-| File Name | Actual Content & Geometry Attributes | Current Code Reference | Factual Description & Draft Usage Proposal (#123) |
-| --- | --- | --- | --- |
-| `boombox.svg` | Single-path boombox audio player silhouette. Contains fixed 512px style, full-canvas background square, and wrapper group. | None in templates/code | Boombox audio player silhouette. Draft proposal for community activity feed headers or music features. |
-| `calendar.svg` | Multi-path calendar page with date grids. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Calendar page silhouette. Draft proposal for release year / publication date metadata. |
-| `cardboard-box-closed.svg` | Cardboard shipping box with tape seam. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Sealed shipping box icon. Draft proposal for shipping / crate digging badges. |
-| `click.svg` | Hand cursor pointer click gesture. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Cursor pointer clicking gesture. Draft proposal for interactive cues or onboarding callouts. |
-| `cog.svg` | Gear / sprocket cog wheel. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Gear sprocket icon. Draft proposal for settings or profile edit configuration. |
-| `confirmed.svg` | Checkmark badge inside circular ring. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Checkmark inside circle badge. Draft proposal for confirmed order/publication or success states. |
-| `conversation.svg` | Overlapping speech bubbles. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Dialogue speech bubbles. Draft proposal for private message conversation threads. |
-| `envelope.svg` | Sealed mailing envelope. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Mail envelope icon. Draft proposal for `/contact` page indicators or email references. |
-| `funnel.svg` | Filter funnel shape. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Filter funnel icon. Draft proposal for `/browse` and `/search` filter toggle triggers. |
-| `next-button.svg` | Right arrow inside circular button border. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Right arrow in circle. Draft proposal for pagination forward or multi-step form progress. |
-| `pause-button.svg` | Parallel vertical pause bars. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Pause bars symbol. Draft proposal for audio preview pause controls. |
-| `photo-camera.svg` | Camera body with lens aperture. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | SLR camera silhouette. Draft proposal for photo upload step (`/listings/:id/photos`). |
-| `pin.svg` | Pushpin marker silhouette. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Pushpin marker icon. Draft proposal for location / regional marketplace indicators. |
-| `plain-arrow.svg` | Downward pointing block arrow. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Downward arrow silhouette. Draft proposal for accordion expansion or directional movement. |
-| `position-marker.svg` | Map location pin marker. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Map pin marker icon. Draft proposal for seller location on listing detail page. |
-| `previous-button.svg` | Left arrow inside circular button border. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Left arrow in circle. Draft proposal for pagination backward or form step back controls. |
-| `price-tag.svg` | Hanging price tag badge with string loop. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Price tag badge icon. Draft proposal for price display or trade indicator. |
-| `round-star.svg` | 5-point star featuring an embedded linear gradient (`url(#delapouite-round-star-gradient-1)`). | Source asset for build scripts (`favicon.ico`, `apple-touch-icon.png`) | Rounded 5-point gradient star. Source for site favicons; draft proposal for favoriting highlights. |
-| `save.svg` | Floppy disk silhouette. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Floppy disk icon. Draft proposal for saving draft listings or profile changes. |
-| `sound-off.svg` | Speaker symbol with slash/mute. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Muted speaker icon. Draft proposal for audio preview mute toggles. |
-| `sound-on.svg` | Speaker symbol with active sound waves. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Active speaker icon. Draft proposal for audio preview unmute toggles. |
-| `talk.svg` | Speech bubble with inner discussion dots. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Discussion bubble with dots. Draft proposal for public comment threads (`comment-thread.ejs`). |
-| `thought-bubble.svg` | Cloud-shaped thought bubble. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Thought cloud bubble. Draft proposal for seller copy description notes. |
-| `trash-can.svg` | Trash bin with lid and handle. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Wastebin trash icon. Draft proposal for photo removal or draft listing deletion. |
-| `user.svg` | Person head and shoulders silhouette. Contains fixed 512px style, background square, and wrapper group. | None in templates/code | Person user silhouette. Draft proposal for `YOU` navigation trigger, profile links, avatar fallback. |
+| File Name | Actual Content & Geometry Attributes | Current Code Reference | Usage Status | Factual Description & Draft Proposal (#123) |
+| --- | --- | --- | --- | --- |
+| `boombox.svg` | Single-path boombox audio player silhouette. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Unapproved / Future roadmap proposal only) | Boombox audio player silhouette. Unapproved future proposal for music feature accents. |
+| `calendar.svg` | Multi-path calendar page with date grid. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Calendar page silhouette. Proposed for release year / publication date metadata. |
+| `cardboard-box-closed.svg` | Sealed cardboard box with tape seam. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Unapproved / Future roadmap proposal only) | Sealed shipping box icon. Unapproved future proposal for shipping/crate badges. |
+| `click.svg` | Cursor hand pointer click gesture. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Unapproved / Future roadmap proposal only) | Cursor pointer click gesture. Unapproved future proposal for onboarding callouts. |
+| `cog.svg` | Gear sprocket wheel. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Unapproved / Future roadmap proposal only) | Gear sprocket icon. Unapproved future proposal for system configuration. |
+| `confirmed.svg` | Checkmark badge inside circular ring. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Checkmark inside circle badge. Proposed for success toasts and confirmed publication states. |
+| `conversation.svg` | Overlapping speech bubbles. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Dialogue speech bubbles. Proposed for private message conversation thread items. |
+| `envelope.svg` | Sealed mailing envelope. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Mail envelope icon. Proposed for `/contact` page or email references. |
+| `funnel.svg` | Filter funnel shape. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Filter funnel icon. Proposed for `/browse` and `/search` filter toggle triggers. |
+| `next-button.svg` | Right arrow inside circular button border. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Right arrow in circle. Proposed for pagination forward or multi-step form progress. |
+| `pause-button.svg` | Parallel vertical pause bars. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Unapproved / Future roadmap proposal only) | Pause bars symbol. Unapproved future proposal for audio preview controls. |
+| `photo-camera.svg` | Camera body with lens aperture. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | SLR camera silhouette. Proposed for listing photo upload interface (`/listings/:id/photos`). |
+| `pin.svg` | Pushpin marker silhouette. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Pushpin marker icon. Proposed for location or regional marketplace filters. |
+| `plain-arrow.svg` | Downward pointing block arrow. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Downward arrow silhouette. Proposed for accordion expansion or directional movement. |
+| `position-marker.svg` | Map location pin marker. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Map pin marker icon. Proposed for seller location metadata on listing detail pages. |
+| `previous-button.svg` | Left arrow inside circular button border. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Left arrow in circle. Proposed for pagination backward or form step back controls. |
+| `price-tag.svg` | Hanging price tag badge with string loop. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Price tag badge icon. Proposed for price display or trade status indicators. |
+| `round-star.svg` | 5-point star featuring an embedded linear gradient (`url(#delapouite-round-star-gradient-1)`). | Source asset for build scripts (`favicon.ico`, `apple-touch-icon.png`) | Build asset only | Rounded 5-point gradient star. Source for static favicon build generation; proposed for favorites. |
+| `save.svg` | Floppy disk silhouette. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Floppy disk icon. Proposed for saving draft listings or profile changes. |
+| `sound-off.svg` | Speaker symbol with slash/mute. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Unapproved / Future roadmap proposal only) | Muted speaker icon. Unapproved future proposal for audio preview controls. |
+| `sound-on.svg` | Speaker symbol with active sound waves. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Unapproved / Future roadmap proposal only) | Active speaker icon. Unapproved future proposal for audio preview controls. |
+| `talk.svg` | Speech bubble with inner discussion dots. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Discussion bubble with dots. Proposed for public comment threads (`comment-thread.ejs`). |
+| `thought-bubble.svg` | Cloud-shaped thought bubble. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Thought cloud bubble. Proposed for seller copy description notes. |
+| `trash-can.svg` | Trash bin with lid and handle. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Wastebin trash icon. Proposed for photo removal or draft listing deletion. |
+| `user.svg` | Person head and shoulders silhouette. Contains fixed 512px style, background square, wrapper group. | None in templates | Not in active templates (Proposed for #123) | Person user silhouette. Proposed for `YOU` navigation trigger, profile links, avatar fallback. |
+
+*Unapproved / Future roadmap proposals do NOT authorize feature implementation or code changes in #122 or #123.*
 
 ### 2.2 SVG Normalization and Color Rules
 - **No Blanket Color Replacement:** Fills will **not** be globally replaced with `currentColor`. Each icon must be evaluated individually during workstream [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123).
 - **Protection of Fills, Gradients & Artwork:** Fixed fills, linear gradients (such as `round-star.svg`'s `<linearGradient>`), multi-color brand artwork (`/assets/brand/vinyl-drop-cartridge.svg`), contrast relationships, and negative-space geometry must be preserved unless a specific modification is explicitly tested and demonstrably safe.
-- **Structural Normalization:** Normalization in [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123) focuses strictly on stripping redundant canvas wrapper attributes (such as fixed `style="height: 512px; width: 512px;"`, empty wrapper groups `<g class="" style="" transform="translate(0,0)">`, and full-canvas background square paths `<path d="M0 0h512v512H0z"...>`) while preserving root `<svg>`, `viewBox`, `<defs>`, and core path geometry coordinates.
+- **Conditional Canvas Background Path Stripping:** Full-canvas background square paths (e.g. `<path d="M0 0h512v512H0z"...>`) are stripped **only** when visual and code inspection confirms that the path is a redundant opaque canvas wrapper and that removing it preserves intentional negative space, contrast, and artwork geometry.
+- **Structural Normalization:** Normalization in [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123) focuses strictly on stripping redundant canvas wrapper attributes (such as fixed `style="height: 512px; width: 512px;"` and empty wrapper groups `<g class="" style="" transform="translate(0,0)">`) while preserving root `<svg>`, `viewBox`, `<defs>`, and core path geometry coordinates.
 
 ### 2.3 Reusable EJS Icon Mechanism
 - Implementation in [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123) will introduce a single project-native partial (`views/partials/icon.ejs`) or inline SVG symbol sprite system.
@@ -214,4 +216,7 @@ Functional SVGs are strictly separated from brand mark assets. Brand artwork (su
 
 1. **Document Agreement:** `docs/UX_UI.md`, `docs/PAGE_MAP.md`, and this interaction contract must strictly agree on all route, view-model, and feature-flag definitions.
 2. **Route Honesty:** All documentation explicitly labels proposed UI behaviors (e.g. mobile 5-item fixed bottom bar, desktop floating chat window) versus implemented backend routes.
-3. **Pipeline Verification:** Documentation updates must pass repository linting, typechecking, test execution, and build checks without warnings or errors.
+3. **Pipeline & Evidence Requirements:** All PR submissions must confirm:
+   - Clean execution of standard verification suite (`npm run lint`, `npm run typecheck`, `npm test`, `npm run build`).
+   - Passing execution of PR Contract & Phase Safety Gate checks.
+   - Reporting the exact final commit SHA and verification outcomes.
