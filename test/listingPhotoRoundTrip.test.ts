@@ -6,8 +6,9 @@ import supertest from 'supertest';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { setOverrideDb } from '../src/db';
-import { postUploadPhoto } from '../src/app/controllers/listingController';
+import { getEditListingPage, postUploadPhoto } from '../src/app/controllers/listingController';
 import { getDigBrowsePage } from '../src/app/controllers/browseController';
+import { getCreateCustomReleasePage } from '../src/app/controllers/releaseController';
 import { errorHandler } from '../src/app/middleware/errorHandler';
 import { validateSameOrigin } from '../src/app/middleware/csrf';
 import { multipartUploadHandler } from '../src/app/middleware/upload';
@@ -90,6 +91,8 @@ describe('Seller cover photo HTTP round trip', () => {
       multipartUploadHandler,
       postUploadPhoto
     );
+    app.get('/listings/:id/edit', authenticateTestSeller, getEditListingPage);
+    app.get('/releases/new', authenticateTestSeller, getCreateCustomReleasePage);
     app.get('/browse/dig', getDigBrowsePage);
     app.use(errorHandler);
   });
@@ -140,6 +143,23 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(front?.storagePath).toBeTruthy();
     expect(back?.storagePath).toBeTruthy();
     expect(front?.storagePath).not.toBe(back?.storagePath);
+
+    const releaseForm = await supertest(app).get('/releases/new');
+    expect(releaseForm.status).toBe(200);
+    expect(releaseForm.text).toContain('Optional release catalogue artwork');
+    expect(releaseForm.text).toContain('not to your individual copy');
+    expect(releaseForm.text).toContain('It is never used as the front or back of a Crate Dig sleeve');
+    expect(releaseForm.text).toContain('name="coverArt"');
+    expect(releaseForm.text).not.toContain('name="photo"');
+    expect(releaseForm.text).not.toContain('name="role"');
+
+    const listingPhotoForm = await supertest(app).get(`/listings/${listingId}/edit`);
+    expect(listingPhotoForm.status).toBe(200);
+    expect(listingPhotoForm.text).toContain('Photos of this physical copy');
+    expect(listingPhotoForm.text).toContain('Only photos uploaded here and classified as');
+    expect(listingPhotoForm.text).toContain('name="photo"');
+    expect(listingPhotoForm.text).toContain('name="role"');
+    expect(listingPhotoForm.text).toContain('upload that photo here once');
 
     const digResults = await searchDigListings({ q: 'Kind of Blue' });
     expect(digResults.items).toHaveLength(1);
