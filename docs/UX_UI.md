@@ -15,6 +15,18 @@ It explicitly does not look like:
 
 The record cover photography and structured release metadata provide the primary visual character.
 
+## Canonical Interaction Contract Reference
+
+The canonical, version-controlled interaction contract for navigation, account surface, SVG icons, toasts, and messaging window behavior is recorded in:
+- [`docs/design/working/navigation-interaction-contract--draft-v1.md`](./design/working/navigation-interaction-contract--draft-v1.md) (governed by [#122](https://github.com/japiohopman/the-vinyl-drop/issues/122)).
+
+The workstream sequence for UI implementation is:
+- [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123) — SVG icon system cataloging, normalization, and EJS partial mechanism.
+- [#124](https://github.com/japiohopman/the-vinyl-drop/issues/124) — Responsive navigation and `YOU` account surface.
+- [#125](https://github.com/japiohopman/the-vinyl-drop/issues/125) — Reusable success toasts and persistent actionable error banners.
+- [#126](https://github.com/japiohopman/the-vinyl-drop/issues/126) — Desktop floating messaging window and truthful unread indicator (gated on [#49](https://github.com/japiohopman/the-vinyl-drop/issues/49) and [#119](https://github.com/japiohopman/the-vinyl-drop/issues/119)).
+- [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — Future PWA / mobile-shell context (not in current scope).
+
 ## Brand
 
 Brand name:
@@ -38,7 +50,7 @@ Principles:
 - image-led.
 
 Avoid:
-- rounded card Overuse;
+- rounded card overuse;
 - heavy gradients;
 - decorative shadows;
 - oversized SaaS hero banners;
@@ -53,8 +65,8 @@ Custom properties defined in `public/css/style.css`:
 - Ink text/borders: `#151515`
 - White surface: `#FFFDF8`
 - Infrared / 90s pink accent (CSS token currently named `--color-rust`): `#f60f4b`
-- Darker infrared for accessible text links: `#d6003b`
-- Deep green accent: `#30463D`
+- Darker infrared for accessible text links (`--color-rust-accessible`): `#d6003b`
+- Deep green accent (`--color-deep-green`): `#30463D`
 
 Color palette tokens are verified against automated accessibility contrast rules for text readability.
 
@@ -72,7 +84,7 @@ Typography choices prioritize legibility, fast web font delivery, and catalog st
 
 Transactional Supabase Auth emails should carry this same identity rather than introduce a separate visual system: paper background, ink typography and borders, infrared pink action accents, and the `THE VINYL DROP` wordmark/tagline. Email clients cannot be assumed to support the website's CSS or custom fonts, so templates use inline styles, system-font fallbacks, simple table layout, square-edged high-contrast actions, and a visible text wordmark that remains readable when the logo image is blocked. Drafts and application notes live in [`docs/email-templates/`](./email-templates/). Auth URL/token variables are functional contracts and must not change as a side effect of visual styling.
 
-## Responsive strategy
+## Responsive strategy & Viewport Boundaries
 
 Mobile is the primary design and implementation target.
 
@@ -80,19 +92,52 @@ Tested viewport boundaries:
 - narrow phone (~360–390px);
 - standard phone (~430px);
 - tablet (~768px);
-- desktop (~1280px+).
+- desktop (~1024px+ / 1280px+).
 
 Essential functionality relies on touch and click interactions rather than hover states.
 
-## Primary navigation structure
+## Navigation Architecture and Account Surface Contract
 
-Implemented application navigation (`views/partials/nav.ejs` and `views/partials/header.ejs`):
+### Current Implemented Navigation (`views/partials/nav.ejs`)
+Implemented application primary navigation routes:
+- `HOME` (`/`)
+- `BROWSE` (`/browse`)
+- `+ DROP` (`/drop/new`)
+- `ACTIVITY` (`/activity` — implemented public route displaying community activity feed)
+- `MESSAGES` (`/messages` — authenticated route gated by `MESSAGING_ENABLED` feature flag)
+- `YOU` (`/profile` or `/profiles/:username` — public profile / account link)
+- `LOGOUT` (`POST /auth/logout` — authenticated logout action) / `SIGN IN` (`/auth/login`)
 
-**HOME (`/`) | BROWSE (`/browse`) | + DROP (`/drop/new`) | PROFILE (`/profile` or `/auth/login`)**
+### Agreed Target Interaction Model (Owner-Approved 2026-10-16 for [#124](https://github.com/japiohopman/the-vinyl-drop/issues/124))
+- **Desktop Navigation:** Compact header retaining Figma layout. Primary destinations (`HOME`, `BROWSE`, `+ DROP`, `ACTIVITY`) stay visually distinct from user account actions. `YOU` / `@username` acts as a dropdown trigger opening a compact floating menu grouping profile views, edit profile, my listings, messages (when enabled), and a visually separated logout button at the bottom.
+- **Mobile Primary Navigation:** 5-item app-like bottom navigation bar: `HOME | BROWSE | + DROP | ACTIVITY | YOU`.
+- **Mobile `YOU` Account Surface:** Tapping `YOU` on mobile slides or displays a full-screen account overlay grouping account actions:
+  - Header with user handle (`@username`) and high-contrast Close (`X`) control.
+  - Grouped links: *View profile*, *Edit profile*, *My listings*, *Messages* (only when authenticated and `MESSAGING_ENABLED=true`).
+  - *Log out* (`POST /auth/logout`) placed at the bottom, visually separated by a heavy border (`--border-thick`), styled distinctly from primary destinations.
+- **Route Honesty:** Actions and tabs are never rendered unless their backing route and feature flag are available in the current runtime context.
 
-*Note on future design notes:* Early UI concept sketches mentioned an `ACTIVITY` navigation tab. The `/activity` route is **not implemented** in current code and represents a future community roadmap concept.
+## SVG Icon System Contract (Target for [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123))
 
-Desktop layout expands the same information architecture rather than creating a separate desktop view tree.
+- **Inventory:** 25 functional SVGs reside under `public/assets/svg/`.
+- **Normalization:** Strips inline fixed dimensions (`height`/`width`), empty wrapper tags, and redundant full-canvas background paths while strictly preserving root `<svg>`, `viewBox`, and path geometry coordinates.
+- **Coloring:** Replaces fixed fill attributes with `fill="currentColor"` for single-color functional icons to inherit CSS design tokens.
+- **EJS Mechanism:** Uses a single project-native EJS partial (`views/partials/icon.ejs`) or inline SVG symbol sprite system. Raw SVG paths are not duplicated across views.
+- **Icon Gaps:** Adds only required functional gap icons (`home`, `search`, `close`, `edit`, `logout`) needed for approved UI behaviors.
+- **Brand Distinction:** Brand artwork (such as `/assets/brand/vinyl-drop-cartridge.svg`) remains distinct from functional icons.
+
+## Toast Feedback & Actionable Error Lifecycle Contract (Target for [#125](https://github.com/japiohopman/the-vinyl-drop/issues/125))
+
+- **Success Toasts:** Short, non-blocking feedback (4–5 second duration, dismissible via `X` control) displayed **only after** server confirmation of actions (e.g., photo upload, saved profile, published listing). Rendered inside polite live regions (`role="status"`, `aria-live="polite"`).
+- **Actionable Errors:** Error messages (validation, authorization, network) remain readable, persistent, and un-timed until resolved by the user. Rendered in inline form summaries or persistent banners (`role="alert"`, `aria-live="assertive"`).
+- **Architecture:** Extends existing EJS flash message locals (`res.locals.flashMessages`) without introducing secondary client notification frameworks.
+
+## Private Messaging Window Contract (Target for [#126](https://github.com/japiohopman/the-vinyl-drop/issues/126))
+
+- **Desktop Floating Chat Window:** Compact widget at viewport bottom-right with draggable header, minimize, and close controls. Minimizing or closing does not delete, archive, or mark messages as read. Full inbox/conversation pages (`/messages` and `/messages/:conversationId`) serve as accessible fallbacks.
+- **Mobile Viewports:** Draggable floating chat is disabled; mobile uses full-screen conversation threads.
+- **Truthful Unread Indicators:** Navigation message indicator reflects strictly the authenticated user's actual `unreadCount`. No fake numbers or data leaks across users.
+- **Security & Feature Flag Gating:** Private messaging remains disabled (`MESSAGING_ENABLED=false`) in staging/production until human-owned staging prerequisites ([#49](https://github.com/japiohopman/the-vinyl-drop/issues/49)) and messaging security verification ([#119](https://github.com/japiohopman/the-vinyl-drop/issues/119)) pass.
 
 ## Home view (`/`)
 
@@ -116,6 +161,15 @@ Filters:
 - trade availability flag.
 
 Listing results display clear metadata, price or trade badge, condition tags, and seller location.
+
+## Activity view (`/activity`)
+
+Community activity feed displaying recent community events:
+- `listing.published` events for newly published drops;
+- `comment.created` events for public discussion on listings;
+- `favorite.created` events for favorited records.
+
+Respects public visibility boundaries and excludes draft, unpublished, or deleted source listings.
 
 ## Listing detail view (`/listings/:id`)
 
@@ -166,8 +220,9 @@ Automated accessibility checks run against WCAG 2.1 AA rule sets (`npm run test:
 - visible focus rings across all interactive controls;
 - sufficient color contrast for text readability;
 - descriptive alt text on record photography;
-- keyboard tab navigation throughout form and listing flows.
+- keyboard tab navigation throughout form and listing flows;
+- explicit `aria-expanded`, `aria-controls`, `aria-live`, and `aria-current="page"` attributes across interactive surfaces.
 
 ## Scope boundary reminder
 
-Payment widgets, checkout flows, shipping calculators, and private chat interfaces are **not part of the UI** and are not implemented.
+Payment widgets, checkout flows, shipping calculators, and native PWA capabilities (context in [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52)) are **not part of current application scope** and are not implemented.

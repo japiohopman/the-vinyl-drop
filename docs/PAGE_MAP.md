@@ -1,6 +1,17 @@
 # Application Page and Route Map
 
-This document records the exact route and view architecture implemented in the application as of Phase 7.
+This document records the exact route and view architecture implemented in the application as of Phase 7, as well as canonical links to proposed interaction contracts.
+
+## Interaction Design Contracts
+
+Canonical UI interaction contracts and specification notes:
+- **Navigation, Icon, and Feedback Contract (Draft v1):** [`docs/design/working/navigation-interaction-contract--draft-v1.md`](./design/working/navigation-interaction-contract--draft-v1.md) (governed by [#122](https://github.com/japiohopman/the-vinyl-drop/issues/122)).
+- **Target Implementation Workstreams:**
+  - [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123) — SVG Icon System Catalog, Normalization & Shared EJS Partial.
+  - [#124](https://github.com/japiohopman/the-vinyl-drop/issues/124) — Responsive Navigation & Full-Screen `YOU` Account Overlay.
+  - [#125](https://github.com/japiohopman/the-vinyl-drop/issues/125) — Server-Confirmed Success Toasts & Persistent Error Banners.
+  - [#126](https://github.com/japiohopman/the-vinyl-drop/issues/126) — Desktop Floating Chat Window & Truthful Unread Indicator (Gated).
+  - [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — Future PWA / Mobile Shell Context (Out of scope for current UI implementation).
 
 ## Implemented public routes
 
