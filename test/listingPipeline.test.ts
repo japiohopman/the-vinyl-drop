@@ -424,6 +424,33 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       uploadSpy.mockRestore();
     });
 
+    it('persists the seller-selected back_cover role with the uploaded photo metadata', async () => {
+      const backImage = await sharp({
+        create: { width: 120, height: 160, channels: 3, background: { r: 60, g: 60, b: 60 } },
+      }).jpeg().toBuffer();
+      const storageModule = await import('../src/app/services/storageService');
+      const uploadSpy = jest.spyOn(storageModule, 'uploadListingPhotoToStorage')
+        .mockResolvedValue(`listings/${listingId}/back-cover.webp`);
+
+      const uploaded = await addPhotoToListing(listingId, sellerId, {
+        buffer: backImage,
+        mimetype: 'image/jpeg',
+        originalname: 'back-cover.jpg',
+      }, 'Back cover of the physical sleeve with tracklist', undefined, undefined, 'back_cover');
+
+      expect(photoRepo.createListingPhoto).toHaveBeenCalledWith(
+        expect.objectContaining({
+          listingId,
+          role: 'back_cover',
+          altText: 'Back cover of the physical sleeve with tracklist',
+        }),
+        undefined
+      );
+      expect(uploaded.role).toBe('back_cover');
+      expect(uploaded.publicUrl).toBeDefined();
+      uploadSpy.mockRestore();
+    });
+
     it('should rollback storage upload if database insertion fails when adding a photo', async () => {
       const sampleImage = await sharp({
         create: { width: 100, height: 100, channels: 3, background: { r: 128, g: 128, b: 128 } },
