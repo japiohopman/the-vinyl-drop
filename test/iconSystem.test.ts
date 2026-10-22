@@ -9,7 +9,7 @@ describe('SVG Icon System & Registry', () => {
       expect(ALLOWLISTED_ICON_NAMES.size).toBe(30);
     });
 
-    it('should verify that all 30 allowlisted SVG files physically exist on disk with valid drawable geometry', () => {
+    it('should verify that all 30 allowlisted SVG files physically exist on disk with valid renderable primitive geometry', () => {
       const svgDir = path.join(__dirname, '../public/assets/svg');
 
       for (const name of ALLOWLISTED_ICON_NAMES) {
@@ -18,12 +18,12 @@ describe('SVG Icon System & Registry', () => {
         // 1. Physical existence assertion
         expect(fs.existsSync(filePath)).toBe(true);
 
-        // 2. File content validity assertion — must contain root <svg, viewBox, </svg>, and drawable geometry element
+        // 2. File content validity assertion — must contain root <svg, viewBox, </svg>, and renderable shape primitive
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('<svg');
         expect(content).toContain('viewBox="');
         expect(content).toContain('</svg>');
-        expect(content).toMatch(/<(path|circle|rect|line|polyline|polygon|g|ellipse|defs)\b/);
+        expect(content).toMatch(/<(path|circle|rect|line|polyline|polygon|ellipse)\b/);
 
         // 3. Registry rendering assertion — must NOT produce fallback icon
         const svg = getIconSvg(name);
