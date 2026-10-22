@@ -9,7 +9,7 @@ describe('SVG Icon System & Registry', () => {
       expect(ALLOWLISTED_ICON_NAMES.size).toBe(30);
     });
 
-    it('should verify that all 30 allowlisted SVG files physically exist on disk with valid SVG content', () => {
+    it('should verify that all 30 allowlisted SVG files physically exist on disk with valid drawable geometry', () => {
       const svgDir = path.join(__dirname, '../public/assets/svg');
 
       for (const name of ALLOWLISTED_ICON_NAMES) {
@@ -18,12 +18,12 @@ describe('SVG Icon System & Registry', () => {
         // 1. Physical existence assertion
         expect(fs.existsSync(filePath)).toBe(true);
 
-        // 2. File content validity assertion
+        // 2. File content validity assertion — must contain root <svg, viewBox, </svg>, and drawable geometry element
         const content = fs.readFileSync(filePath, 'utf-8');
         expect(content).toContain('<svg');
         expect(content).toContain('viewBox="');
         expect(content).toContain('</svg>');
-        expect(content.length).toBeGreaterThan(30);
+        expect(content).toMatch(/<(path|circle|rect|line|polyline|polygon|g|ellipse|defs)\b/);
 
         // 3. Registry rendering assertion — must NOT produce fallback icon
         const svg = getIconSvg(name);
@@ -69,13 +69,11 @@ describe('SVG Icon System & Registry', () => {
     it('should sanitize and escape caller-supplied inputs including ampersands, script tags, and breakouts', () => {
       const xssClass = '"><script>alert(1)</script>';
       const xssTitle = 'Rock & Roll "><img src=x onerror=alert(1)>';
-      const xssAriaLabel = 'Rhythm & Blues "><script>';
       const xssSize = '24px"><script>';
 
       const svg = getIconSvg('close', {
         class: xssClass,
         title: xssTitle,
-        ariaLabel: xssAriaLabel,
         size: xssSize,
       });
 
@@ -86,6 +84,18 @@ describe('SVG Icon System & Registry', () => {
       expect(svg).toContain('aria-label="Rock &amp; Roll &quot;&gt;&lt;img src=x onerror=alert(1)&gt;"');
       // Invalid unit in size falls back to default 1em
       expect(svg).toContain('width="1em"');
+    });
+
+    it('should configure aria-label and role="img" when ariaLabel is supplied without title, with HTML escaping', () => {
+      const svg = getIconSvg('close', {
+        ariaLabel: 'Rhythm & Blues "><script>alert(1)</script>',
+      });
+
+      expect(svg).not.toContain('<title>');
+      expect(svg).not.toContain('<script>');
+      expect(svg).toContain('aria-label="Rhythm &amp; Blues &quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"');
+      expect(svg).toContain('role="img"');
+      expect(svg).not.toContain('aria-hidden="true"');
     });
 
     it('should enforce safe CSS style policy and strip unsafe URL or expression properties', () => {
