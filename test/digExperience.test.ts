@@ -2,9 +2,14 @@ import ejs from 'ejs';
 import { PGlite } from '@electric-sql/pglite';
 import fs from 'fs';
 import path from 'path';
+import supertest from 'supertest';
+import { createApp } from '../src/app';
+import * as listingService from '../src/app/services/listingService';
 import { resolveDigArtwork, DigPhotoCandidate } from '../src/domain/digExperience';
 import { listingPhotoRoleSchema, newListingPhotoRoleSchema } from '../src/validators/listing';
 import digState from '../public/js/dig-state.js';
+
+const app = createApp();
 
 const photo = (
   role: DigPhotoCandidate['role'],
@@ -197,6 +202,96 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('@media (max-width: 680px)');
     expect(css).toContain('.dig-nav-button {\n    display: none;');
     expect(css).toContain('.dig-keyboard-note {\n    display: none;');
+  });
+});
+
+describe('GET /browse/dig HTTP route integration', () => {
+  it('renders explicit seller front and back cover images in Dig view when present', async () => {
+    const spy = jest.spyOn(listingService, 'searchDigListings').mockResolvedValueOnce({
+      items: [{
+        id: 'listing-101',
+        title: 'Sex Machine',
+        artist: 'James Brown',
+        releaseYear: 1970,
+        format: 'Vinyl, LP',
+        priceFormatted: '€35.00',
+        isTrade: false,
+        mediaCondition: 'VG+',
+        sleeveCondition: 'VG+',
+        sellerUsername: 'funk_master',
+        sellerLocation: 'Detroit',
+        url: '/listings/listing-101',
+        imageUrl: 'https://storage.example/front-cover.webp',
+        imageAlt: 'Front cover of Sex Machine',
+        frontArtwork: {
+          src: 'https://storage.example/front-cover.webp',
+          altText: 'Front cover of the physical sleeve of Sex Machine — James Brown',
+          sourceLabel: 'Photo of the front cover of this physical copy',
+          sourceKind: 'seller_front',
+        },
+        backArtwork: {
+          src: 'https://storage.example/back-cover.webp',
+          altText: 'Back cover of the physical sleeve of Sex Machine — James Brown',
+          sourceLabel: 'Photo of the back cover of this physical copy',
+          sourceKind: 'seller_back',
+        },
+        conditionSummary: 'Media VG+ · hoes VG+',
+      }],
+      totalCount: 1,
+      hasMore: false,
+    });
+
+    const response = await supertest(app).get('/browse/dig?q=James+Brown');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('https://storage.example/front-cover.webp');
+    expect(response.text).toContain('https://storage.example/back-cover.webp');
+    expect(response.text).not.toContain('Front cover not photographed');
+    expect(response.text).not.toContain('Back cover not photographed');
+
+    spy.mockRestore();
+  });
+
+  it('renders missing-front and missing-back placeholders when no explicit seller cover photos exist', async () => {
+    const spy = jest.spyOn(listingService, 'searchDigListings').mockResolvedValueOnce({
+      items: [{
+        id: 'listing-102',
+        title: 'Sex Machine',
+        artist: 'James Brown',
+        releaseYear: 1970,
+        format: 'Vinyl, LP',
+        priceFormatted: '€35.00',
+        isTrade: false,
+        mediaCondition: 'VG+',
+        sleeveCondition: 'VG+',
+        sellerUsername: 'funk_master',
+        sellerLocation: 'Detroit',
+        url: '/listings/listing-102',
+        imageUrl: '/assets/vinyl-placeholder.svg',
+        imageAlt: 'Vinyl placeholder',
+        frontArtwork: {
+          src: '/assets/vinyl-placeholder.svg',
+          altText: 'No front-cover photo available for the physical copy of Sex Machine — James Brown',
+          sourceLabel: 'No front-cover photo available',
+          sourceKind: 'placeholder',
+        },
+        backArtwork: null,
+        conditionSummary: 'Media VG+ · hoes VG+',
+      }],
+      totalCount: 1,
+      hasMore: false,
+    });
+
+    const response = await supertest(app).get('/browse/dig');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Front cover not photographed');
+    expect(response.text).toContain('No seller-selected front-cover photo has been added for this copy.');
+    expect(response.text).toContain('Back cover not photographed');
+    expect(response.text).toContain('No back-cover photo was provided for this copy.');
+    expect(response.text).not.toContain('Release artwork');
+
+    spy.mockRestore();
   });
 });
 
