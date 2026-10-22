@@ -110,7 +110,9 @@ Implemented application primary navigation routes:
 
 ### Agreed Target Interaction Model (Owner-Approved 2026-10-16 for [#124](https://github.com/japiohopman/the-vinyl-drop/issues/124))
 - **Desktop Navigation:** Compact header retaining Figma layout. Primary destinations (`HOME`, `BROWSE`, `+ DROP`, `ACTIVITY`) stay visually distinct from user account actions. `YOU` / `@username` acts as a dropdown trigger opening a compact floating menu grouping profile views, edit profile, my listings, messages (when enabled), and a visually separated logout button at the bottom.
-- **Mobile Primary Navigation:** 5-item app-like bottom navigation bar: `HOME | BROWSE | + DROP | ACTIVITY | YOU`.
+- **Mobile Primary Navigation:** 5-item app-like fixed bottom navigation bar: `HOME | BROWSE | + DROP | ACTIVITY | YOU`.
+  - Fixed bottom positioning (`position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;`).
+  - Safe area inset handling (`padding-bottom: env(safe-area-inset-bottom, 0px);`) and compensating main container padding (`padding-bottom: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px));`) prevent obscuring page controls or content.
 - **Mobile `YOU` Account Surface:** Tapping `YOU` on mobile slides or displays a full-screen account overlay grouping account actions:
   - Header with user handle (`@username`) and high-contrast Close (`X`) control.
   - Grouped links: *View profile*, *Edit profile*, *My listings*, *Messages* (only when authenticated and `MESSAGING_ENABLED=true`).
@@ -120,8 +122,8 @@ Implemented application primary navigation routes:
 ## SVG Icon System Contract (Target for [#123](https://github.com/japiohopman/the-vinyl-drop/issues/123))
 
 - **Inventory:** 25 functional SVGs reside under `public/assets/svg/`.
-- **Normalization:** Strips inline fixed dimensions (`height`/`width`), empty wrapper tags, and redundant full-canvas background paths while strictly preserving root `<svg>`, `viewBox`, and path geometry coordinates.
-- **Coloring:** Replaces fixed fill attributes with `fill="currentColor"` for single-color functional icons to inherit CSS design tokens.
+- **Normalization:** Strips inline fixed dimensions (`height`/`width`), empty wrapper tags, and redundant full-canvas background paths while strictly preserving root `<svg>`, `viewBox`, `<defs>`, and path geometry coordinates.
+- **Coloring:** Evaluates each SVG individually; no blanket replacement of fills with `currentColor`. Preserves fixed fills, linear gradients (`round-star.svg`), and brand artwork (`vinyl-drop-cartridge.svg`) unless explicitly tested and proven safe.
 - **EJS Mechanism:** Uses a single project-native EJS partial (`views/partials/icon.ejs`) or inline SVG symbol sprite system. Raw SVG paths are not duplicated across views.
 - **Icon Gaps:** Adds only required functional gap icons (`home`, `search`, `close`, `edit`, `logout`) needed for approved UI behaviors.
 - **Brand Distinction:** Brand artwork (such as `/assets/brand/vinyl-drop-cartridge.svg`) remains distinct from functional icons.
@@ -134,10 +136,10 @@ Implemented application primary navigation routes:
 
 ## Private Messaging Window Contract (Target for [#126](https://github.com/japiohopman/the-vinyl-drop/issues/126))
 
-- **Desktop Floating Chat Window:** Compact widget at viewport bottom-right with draggable header, minimize, and close controls. Minimizing or closing does not delete, archive, or mark messages as read. Full inbox/conversation pages (`/messages` and `/messages/:conversationId`) serve as accessible fallbacks.
-- **Mobile Viewports:** Draggable floating chat is disabled; mobile uses full-screen conversation threads.
+- **Desktop Floating Chat Window:** Compact widget at viewport bottom-right with title bar, minimize, and close controls. Opening, minimizing, or closing does not delete, archive, or mark messages as read. Full inbox/conversation pages (`/messages` and `/messages/:conversationId`) serve as accessible fallbacks.
+- **Mobile Viewports:** Floating chat widget is disabled; mobile uses full-screen conversation threads.
 - **Truthful Unread Indicators:** Navigation message indicator reflects strictly the authenticated user's actual `unreadCount`. No fake numbers or data leaks across users.
-- **Security & Feature Flag Gating:** Private messaging remains disabled (`MESSAGING_ENABLED=false`) in staging/production until human-owned staging prerequisites ([#49](https://github.com/japiohopman/the-vinyl-drop/issues/49)) and messaging security verification ([#119](https://github.com/japiohopman/the-vinyl-drop/issues/119)) pass.
+- **Security & Feature Flag Gating:** Private messaging remains disabled (`MESSAGING_ENABLED=false`) in staging/production even after prerequisites ([#49](https://github.com/japiohopman/the-vinyl-drop/issues/49)) and ([#119](https://github.com/japiohopman/the-vinyl-drop/issues/119)) close, until Jaap explicitly authorizes activation.
 
 ## Home view (`/`)
 
