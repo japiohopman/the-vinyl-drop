@@ -24,11 +24,17 @@
       <input type="text" name="title" value="<%= form.values.title || '' %>" required class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Untitled White Label EP" />
     </div>
 
-    <div>
-      <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Catalog Cover Artwork (Optional)</label>
-      <input type="file" name="coverArt" accept="image/jpeg,image/png,image/webp" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" />
-      <span style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); display: block; margin-top: var(--space-1);">Upload general catalog artwork for unindexed releases (JPEG, PNG, WebP up to 5MB). Note: Photos of your specific physical copy (front/back sleeve) are uploaded later on your listing page for Crate Dig.</span>
-    </div>
+    <fieldset class="release-catalog-artwork" style="margin: 0; padding: var(--space-3); border: 1px solid var(--color-border-subtle); display: flex; flex-direction: column; gap: var(--space-2);">
+      <legend style="padding: 0 var(--space-1); font-family: var(--font-heading); font-size: var(--font-size-sm); font-weight: bold;">Optional release catalogue artwork</legend>
+      <p style="margin: 0; font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
+        This image belongs to the release record (the general edition), not to your individual copy. It is never used as the front or back of a Crate Dig sleeve.
+      </p>
+      <label for="releaseCoverArt" style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm);">Upload separate catalogue artwork (JPEG, PNG, WebP; up to 5MB)</label>
+      <input id="releaseCoverArt" type="file" name="coverArt" accept="image/jpeg,image/png,image/webp" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" />
+      <p style="margin: 0; font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
+        Selling a specific physical record? Leave this optional field blank if you only have a photo of that copy. After creating the listing, upload the physical photo once under <strong>Photos of this physical copy</strong> and choose <strong>Front cover</strong> or <strong>Back cover</strong>. Those listing photos are what Crate Dig displays.
+      </p>
+    </fieldset>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
       <div>
