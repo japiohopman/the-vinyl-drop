@@ -46,7 +46,7 @@
           <div class="card select-release-result" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);">
             <div class="select-release-result-content" style="display: flex; align-items: center; gap: var(--space-4);">
               <% if (item.thumb || item.coverImage) { %>
-                <img src="<%= item.thumb || item.coverImage %>" alt="Artwork for <%= item.title %>" class="select-release-artwork" data-artwork-image data-artwork-fallback="/assets/vinyl-placeholder.svg" loading="lazy" referrerpolicy="no-referrer" />
+                <img src="<%= item.thumb || item.coverImage %>" alt="Artwork for <%= item.title %>" class="select-release-artwork" data-artwork-image data-artwork-fallback="<%= item.thumb && item.coverImage && item.thumb !== item.coverImage ? item.coverImage : '/assets/vinyl-placeholder.svg' %>" loading="lazy" referrerpolicy="no-referrer" />
               <% } else { %>
                 <img src="/assets/vinyl-placeholder.svg" alt="" aria-hidden="true" class="select-release-artwork" />
               <% } %>
