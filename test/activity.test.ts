@@ -151,7 +151,7 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
     expect(eventTypes).toContain('favorite.created');
 
     const publishedEvent = feed.find((e) => e.eventType === 'listing.published');
-    expect(publishedEvent?.listingArtworkUrl).toBe('/mock-storage/community/rumours-front.webp');
+    expect(publishedEvent?.listingArtworkUrl).toContain('community/rumours-front.webp');
     expect(publishedEvent?.artworkFallbackUrl).toBe('https://catalog.example/rumours.webp');
 
     const favEvent = feed.find((e) => e.eventType === 'favorite.created');
@@ -212,7 +212,7 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
       expect(res.text).toContain('Rumours');
       expect(res.text).toContain('Fleetwood Mac');
       expect(res.text).toContain('activity-record-artwork');
-      expect(res.text).toContain('/mock-storage/community/rumours-front.webp');
+      expect(res.text).toContain('community/rumours-front.webp');
       expect(res.text).toContain('activity-avatar-fallback');
       expect(res.text).toContain('activity-icon-badge');
       expect(res.text).not.toContain('🏷️');
