@@ -143,7 +143,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       messagingEnabled: false,
     });
 
-    expect(html).toContain('href="/browse" class="nav-link active" aria-current="page"');
+    expect(html).toContain('href="/dig" class="nav-link active" aria-current="page"');
   });
 
   describe('Real Playwright Browser Script & Focus Interactions', () => {
