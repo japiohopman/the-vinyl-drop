@@ -83,6 +83,23 @@ describe('Flash Messages and Toast System', () => {
       );
     });
 
+    it('rejects an expired signed flash cookie', () => {
+      const now = jest.spyOn(Date, 'now').mockReturnValue(1000);
+      try {
+        setFlashCookie(mockRes as Response, 'success', 'Expired success');
+        const token = (mockRes.cookie as jest.Mock).mock.calls[0][1] as string;
+        now.mockReturnValue(11001);
+        mockReq.cookies = { [FLASH_COOKIE_NAME]: token };
+
+        flashMiddleware(mockReq as Request, mockRes as Response, nextFn);
+
+        expect(mockRes.locals?.flashMessages).toEqual([]);
+        expect(mockRes.clearCookie).toHaveBeenCalled();
+      } finally {
+        now.mockRestore();
+      }
+    });
+
     it('does not set an empty flash cookie', () => {
       setFlashCookie(mockRes as Response, 'success', '   ');
       expect(mockRes.cookie).not.toHaveBeenCalled();
