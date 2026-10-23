@@ -1,7 +1,7 @@
 import path from 'path';
 import ejs from 'ejs';
 import request from 'supertest';
-import { Request, Response } from 'express';
+import express, { Request, Response } from 'express';
 import { flashMiddleware, setFlashCookie, FLASH_COOKIE_NAME } from '../src/app/middleware/flash';
 import { createApp } from '../src/app';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
@@ -25,49 +25,25 @@ describe('Flash Messages and Toast System', () => {
       nextFn = jest.fn();
     });
 
-    it('should extract success message from query params', () => {
-      mockReq.query = { success: 'Profile updated successfully.' };
-
-      flashMiddleware(mockReq as Request, mockRes as Response, nextFn);
-
-      expect(nextFn).toHaveBeenCalled();
-      expect(mockRes.locals?.flashMessages).toEqual([
-        { type: 'success', message: 'Profile updated successfully.' },
-      ]);
-    });
-
-    it('should extract error message from query params', () => {
-      mockReq.query = { error: 'Invalid input provided.' };
-
-      flashMiddleware(mockReq as Request, mockRes as Response, nextFn);
-
-      expect(mockRes.locals?.flashMessages).toEqual([
-        { type: 'error', message: 'Invalid input provided.' },
-      ]);
-    });
-
-    it('should parse and clear tvd-flash cookie', () => {
-      mockReq.cookies = {
-        [FLASH_COOKIE_NAME]: JSON.stringify({
-          type: 'success',
-          message: 'Photo uploaded cleanly.',
-        }),
+    it('does not allow URL parameters to manufacture success, error, or info messages', () => {
+      mockReq.query = {
+        success: 'ForgedSuccess',
+        error: 'ForgedError',
+        flash: 'ForgedFlash',
       };
 
       flashMiddleware(mockReq as Request, mockRes as Response, nextFn);
 
-      expect(mockRes.clearCookie).toHaveBeenCalledWith(FLASH_COOKIE_NAME, { path: '/' });
-      expect(mockRes.locals?.flashMessages).toEqual([
-        { type: 'success', message: 'Photo uploaded cleanly.' },
-      ]);
+      expect(nextFn).toHaveBeenCalled();
+      expect(mockRes.locals?.flashMessages).toEqual([]);
     });
 
-    it('should handle setFlashCookie helper correctly', () => {
+    it('sets a short-lived signed HTTP-only cookie for server-issued feedback', () => {
       setFlashCookie(mockRes as Response, 'success', 'Saved changes');
 
       expect(mockRes.cookie).toHaveBeenCalledWith(
         FLASH_COOKIE_NAME,
-        JSON.stringify({ type: 'success', message: 'Saved changes' }),
+        expect.stringMatching(/^\{.*\}\.[a-f0-9]{64}$/),
         expect.objectContaining({
           httpOnly: true,
           path: '/',
@@ -75,12 +51,67 @@ describe('Flash Messages and Toast System', () => {
         })
       );
     });
+
+    it('accepts a valid signed cookie once and clears it', () => {
+      let setCookieValue = '';
+      const captureRes: Partial<Response> = {
+        cookie: jest.fn((name, val) => {
+          if (name === FLASH_COOKIE_NAME) setCookieValue = val;
+          return captureRes as Response;
+        }),
+        clearCookie: jest.fn(() => captureRes as Response),
+        locals: {},
+      };
+
+      setFlashCookie(captureRes as Response, 'success', 'Verified action completed');
+
+      mockReq.cookies = {
+        [FLASH_COOKIE_NAME]: setCookieValue,
+      };
+
+      flashMiddleware(mockReq as Request, mockRes as Response, nextFn);
+
+      expect(mockRes.clearCookie).toHaveBeenCalledWith(FLASH_COOKIE_NAME, { path: '/' });
+      expect(mockRes.locals?.flashMessages).toEqual([
+        { type: 'success', message: 'Verified action completed' },
+      ]);
+    });
+
+    it('rejects a tampered flash cookie instead of treating it as success', () => {
+      let setCookieValue = '';
+      const captureRes: Partial<Response> = {
+        cookie: jest.fn((name, val) => {
+          if (name === FLASH_COOKIE_NAME) setCookieValue = val;
+          return captureRes as Response;
+        }),
+        clearCookie: jest.fn(() => captureRes as Response),
+        locals: {},
+      };
+
+      setFlashCookie(captureRes as Response, 'success', 'Legitimate message');
+
+      // Tamper payload portion of signed cookie
+      const tamperedCookie = setCookieValue.replace('Legitimate', 'Tampered');
+      mockReq.cookies = {
+        [FLASH_COOKIE_NAME]: tamperedCookie,
+      };
+
+      flashMiddleware(mockReq as Request, mockRes as Response, nextFn);
+
+      expect(mockRes.clearCookie).toHaveBeenCalledWith(FLASH_COOKIE_NAME, { path: '/' });
+      expect(mockRes.locals?.flashMessages).toEqual([]);
+    });
+
+    it('does not set an empty flash cookie', () => {
+      setFlashCookie(mockRes as Response, 'success', '   ');
+      expect(mockRes.cookie).not.toHaveBeenCalled();
+    });
   });
 
   describe('flash.ejs View Partial Template Tests', () => {
     const flashTemplatePath = path.resolve(__dirname, '../views/partials/flash.ejs');
 
-    it('should render success toast inside polite live region with confirmed icon and close button', async () => {
+    it('renders success toast inside a polite live region with a keyboard-operable close button', async () => {
       const html = await ejs.renderFile(flashTemplatePath, {
         flashMessages: [{ type: 'success', message: 'Listing published successfully!' }],
         getIconSvg,
@@ -91,12 +122,23 @@ describe('Flash Messages and Toast System', () => {
       expect(html).toContain('toast toast-success');
       expect(html).toContain('Listing published successfully!');
       expect(html).toContain('aria-label="Dismiss notification"');
+      expect(html).toContain('data-dismiss-toast');
       expect(html).toContain('data-auto-dismiss="true"');
       expect(html).toContain('icon-confirmed');
       expect(html).toContain('icon-close');
     });
 
-    it('should render persistent error banner inside assertive live region', async () => {
+    it('escapes message text rather than interpreting it as HTML', async () => {
+      const html = await ejs.renderFile(flashTemplatePath, {
+        flashMessages: [{ type: 'success', message: '<script>alert("xss")</script>' }],
+        getIconSvg,
+      });
+
+      expect(html).not.toContain('<script>');
+      expect(html).toContain('&lt;script&gt;');
+    });
+
+    it('renders an actionable error banner without auto-dismiss behavior', async () => {
       const html = await ejs.renderFile(flashTemplatePath, {
         flashMessages: [{ type: 'error', message: 'File size exceeds maximum limit.' }],
         getIconSvg,
@@ -111,26 +153,51 @@ describe('Flash Messages and Toast System', () => {
     });
   });
 
+  describe('Signed flash redirect integration', () => {
+    let testApp: express.Express;
+
+    beforeAll(() => {
+      testApp = express();
+      testApp.get('/test/emit-flash', (_req, res) => {
+        setFlashCookie(res, 'success', 'Profile saved successfully.');
+        res.redirect('/design-system');
+      });
+      testApp.use(createApp());
+    });
+
+    it('shows a server-issued message after redirect once, then consumes the cookie', async () => {
+      const agent = request.agent(testApp);
+
+      const resRedirect = await agent.get('/test/emit-flash');
+      expect(resRedirect.status).toBe(302);
+
+      const resFollow = await agent.get(resRedirect.header.location);
+      expect(resFollow.status).toBe(200);
+      expect(resFollow.text).toContain('role="status"');
+      expect(resFollow.text).toContain('Profile saved successfully.');
+
+      // Second request using same agent shows cookie was consumed and cleared
+      const resSecond = await agent.get('/design-system');
+      expect(resSecond.status).toBe(200);
+      expect(resSecond.text).not.toContain('Profile saved successfully.');
+    });
+  });
+
   describe('Application Shell Integration Tests', () => {
     const app = createApp();
 
-    it('should render success toast on GET /design-system?success=TestSuccess', async () => {
-      const response = await request(app).get('/design-system?success=TestSuccess');
+    it('does not render a fabricated success toast from a URL parameter', async () => {
+      const response = await request(app).get('/design-system?success=FabricatedSuccess');
 
       expect(response.status).toBe(200);
-      expect(response.text).toContain('role="status"');
-      expect(response.text).toContain('aria-live="polite"');
-      expect(response.text).toContain('TestSuccess');
-      expect(response.text).toContain('/js/toast.js');
+      expect(response.text).not.toContain('FabricatedSuccess');
     });
 
-    it('should render persistent error banner on GET /design-system?error=TestError', async () => {
-      const response = await request(app).get('/design-system?error=TestError');
+    it('does not render a fabricated error banner from a URL parameter', async () => {
+      const response = await request(app).get('/design-system?error=FabricatedError');
 
       expect(response.status).toBe(200);
-      expect(response.text).toContain('role="alert"');
-      expect(response.text).toContain('aria-live="assertive"');
-      expect(response.text).toContain('TestError');
+      expect(response.text).not.toContain('FabricatedError');
     });
   });
 });

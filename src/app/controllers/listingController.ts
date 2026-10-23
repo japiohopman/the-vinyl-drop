@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { renderWithLayout } from '../utils/render';
+import { setFlashCookie } from '../middleware/flash';
 import { listReleases, findReleaseById } from '../repositories/releaseRepository';
 import {
   getUserListings,
@@ -293,7 +294,8 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
       );
     }
 
-    res.redirect(`/listings/${listingId}/edit?success=${encodeURIComponent('Photo uploaded successfully.')}`);
+    setFlashCookie(res, 'success', 'Photo uploaded successfully.');
+    res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {
     if (error instanceof ValidationError) {
       const listingId = req.params.id;
@@ -334,7 +336,8 @@ export async function postUpdatePhotoRole(req: Request, res: Response, next: Nex
   const photoId = req.params.photoId;
   try {
     await updateListingPhotoRole(listingId, photoId, req.user.id, req.body.role);
-    return res.redirect(`/listings/${listingId}/edit?success=${encodeURIComponent('Photo role updated.')}`);
+    setFlashCookie(res, 'success', 'Photo role updated.');
+    return res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {
     if (error instanceof ValidationError) {
       return res.redirect(`/listings/${listingId}/edit?photoError=${encodeURIComponent(error.message)}`);
@@ -352,7 +355,8 @@ export async function postDeletePhoto(req: Request, res: Response, next: NextFun
     const { id: listingId, photoId } = req.params;
     await deletePhotoFromListing(listingId, photoId, req.user.id, undefined, { req });
 
-    res.redirect(`/listings/${listingId}/edit?success=${encodeURIComponent('Photo removed successfully.')}`);
+    setFlashCookie(res, 'success', 'Photo removed successfully.');
+    res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {
     next(error);
   }
@@ -421,7 +425,8 @@ export async function postPublishListing(req: Request, res: Response, next: Next
 
     await publishListing(listingId, req.user.id, { previewConfirmed });
 
-    res.redirect(`/listings/${listingId}/preview?success=${encodeURIComponent('Listing published successfully!')}`);
+    setFlashCookie(res, 'success', 'Listing published successfully!');
+    res.redirect(`/listings/${listingId}/preview`);
   } catch (error) {
     if (error instanceof ValidationError || (error as Error).name === 'InvalidLifecycleTransitionError') {
       const listingId = req.params.id;

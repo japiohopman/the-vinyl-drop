@@ -16,15 +16,55 @@ async function main() {
   console.log('Starting verification server with in-memory PGlite database...');
   const pglite = new PGlite();
   await pglite.waitReady;
+
+  await pglite.exec(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+        CREATE ROLE supabase_auth_admin NOLOGIN;
+      END IF;
+    END $$;
+
+    CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY);
+    CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+    BEGIN
+      RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+    EXCEPTION WHEN OTHERS THEN
+      RETURN NULL;
+    END;
+    $$ LANGUAGE plpgsql STABLE;
+
+    CREATE OR REPLACE FUNCTION auth.role() RETURNS text AS $$
+    BEGIN
+      RETURN COALESCE(NULLIF(current_setting('request.jwt.claim.role', true), ''), 'authenticated');
+    END;
+    $$ LANGUAGE plpgsql STABLE;
+
+    CREATE SCHEMA IF NOT EXISTS storage;
+    CREATE TABLE IF NOT EXISTS storage.objects (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      bucket_id text NOT NULL,
+      name text NOT NULL,
+      owner uuid,
+      created_at timestamptz DEFAULT now(),
+      updated_at timestamptz DEFAULT now(),
+      last_accessed_at timestamptz DEFAULT now(),
+      metadata jsonb
+    );
+
+    CREATE OR REPLACE FUNCTION storage.foldername(name text) RETURNS text[] AS $$
+    BEGIN
+      RETURN string_to_array(name, '/');
+    END;
+    $$ LANGUAGE plpgsql IMMUTABLE;
+  `);
+
   const db = drizzle(pglite);
 
-  const migrationFiles = [
-    '0000_grey_living_tribunal.sql',
-    '0001_add_physical_copies.sql',
-    '0002_add_release_cover_art.sql',
-    '0003_brainy_scarlet_witch.sql',
-    '0004_mighty_spacker_dave.sql',
-  ];
+  const migrationFiles = fs
+    .readdirSync(path.join(__dirname, '../drizzle'))
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
 
   for (const file of migrationFiles) {
     const sqlContent = fs.readFileSync(path.join(__dirname, '../drizzle', file), 'utf8');
