@@ -10,16 +10,24 @@ export interface FlashMessage {
 
 export const FLASH_COOKIE_NAME = 'tvd-flash';
 const FLASH_SECRET = config.RECOVERY_SIGNING_SECRET || 'fallback-secret-for-flash-messages';
+// Domain-separate flash signatures from other HMAC uses of the shared server secret.
+const FLASH_SIGNING_CONTEXT = 'the-vinyl-drop:tvd-flash:v1:';
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_COOKIE_LENGTH = 4096;
 const ALLOWED_TYPES: Set<string> = new Set(['success', 'error', 'info']);
 
+/** Signs the serialized payload with a flash-specific HMAC context. */
 function signFlashPayload(payloadStr: string): string {
-  const hmac = crypto.createHmac('sha256', FLASH_SECRET).update(payloadStr).digest('hex');
+  const hmac = crypto
+    .createHmac('sha256', FLASH_SECRET)
+    .update(FLASH_SIGNING_CONTEXT)
+    .update(payloadStr)
+    .digest('hex');
   return `${payloadStr}.${hmac}`;
 }
 
+/** Verifies a cookie's signature and validates its schema, expiry, and size. */
 export function verifyAndParseFlashCookie(cookieVal: string): FlashMessage | null {
   if (!cookieVal || typeof cookieVal !== 'string') return null;
   if (cookieVal.length > MAX_COOKIE_LENGTH) return null;
@@ -32,7 +40,11 @@ export function verifyAndParseFlashCookie(cookieVal: string): FlashMessage | nul
 
   if (!signature || !payloadStr) return null;
 
-  const expectedHmac = crypto.createHmac('sha256', FLASH_SECRET).update(payloadStr).digest('hex');
+  const expectedHmac = crypto
+    .createHmac('sha256', FLASH_SECRET)
+    .update(FLASH_SIGNING_CONTEXT)
+    .update(payloadStr)
+    .digest('hex');
   try {
     const sigBuf = Buffer.from(signature, 'hex');
     const expBuf = Buffer.from(expectedHmac, 'hex');

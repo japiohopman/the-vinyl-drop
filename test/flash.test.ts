@@ -18,7 +18,11 @@ import { shouldUseSecureCookies } from '../src/config/cookiePolicy';
 function signFlashTestPayload(payload: Record<string, unknown>): string {
   const payloadText = JSON.stringify(payload);
   const secret = config.RECOVERY_SIGNING_SECRET || 'fallback-secret-for-flash-messages';
-  const signature = crypto.createHmac('sha256', secret).update(payloadText).digest('hex');
+  const signature = crypto
+    .createHmac('sha256', secret)
+    .update('the-vinyl-drop:tvd-flash:v1:')
+    .update(payloadText)
+    .digest('hex');
   return `${payloadText}.${signature}`;
 }
 
@@ -93,6 +97,18 @@ describe('Flash Messages and Toast System', () => {
       expect(mockRes.locals?.flashMessages).toEqual([
         { type: 'success', message: 'Verified action completed' },
       ]);
+    });
+
+    it('rejects raw HMAC signatures that are not scoped to flash messages', () => {
+      const payloadText = JSON.stringify({
+        type: 'success',
+        message: 'Signed for a different purpose',
+        expiresAt: Date.now() + 10000,
+      });
+      const secret = config.RECOVERY_SIGNING_SECRET || 'fallback-secret-for-flash-messages';
+      const unscopedSignature = crypto.createHmac('sha256', secret).update(payloadText).digest('hex');
+
+      expect(verifyAndParseFlashCookie(`${payloadText}.${unscopedSignature}`)).toBeNull();
     });
 
     it('rejects a tampered flash cookie instead of treating it as success', () => {
