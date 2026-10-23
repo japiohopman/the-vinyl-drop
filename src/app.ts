@@ -3,6 +3,7 @@ import path from 'path';
 import cookieParser from 'cookie-parser';
 import router from './app/routes';
 import { sessionMiddleware } from './app/middleware/auth';
+import { flashMiddleware } from './app/middleware/flash';
 import { notFoundHandler, errorHandler } from './app/middleware/errorHandler';
 import { config } from './config/env';
 import { BETA_WELCOME_COOKIE, INVITE_ONLY_ACCESS_MESSAGE, isBetaInviteOnlyEnabled } from './app/services/betaAccess';
@@ -24,6 +25,7 @@ export function createApp(): Express {
 
   // Session middleware
   app.use(sessionMiddleware);
+  app.use(flashMiddleware);
 
   // Share pilot state with server-rendered views. The welcome cookie is display-only
   // and is consumed at the first HTML response; it never grants access.

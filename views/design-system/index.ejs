@@ -227,4 +227,56 @@
       </div>
     </div>
   </section>
+
+  <!-- 6. ACTION FEEDBACK & TOAST NOTIFICATIONS -->
+  <section class="demo-section" aria-labelledby="feedback-heading">
+    <h2 id="feedback-heading" class="demo-section-title">6. Action Feedback & Accessible Toast System</h2>
+    <p class="demo-section-desc">
+      Brief, consistent success feedback toasts (auto-dismissing, non-focus-stealing) and persistent actionable error banners.
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: var(--space-6);">
+      <div>
+        <h3 style="font-size: var(--font-size-md); margin-bottom: var(--space-3);">A. Confirmed Success Toast (Static Preview)</h3>
+        <div style="position: relative; max-width: 440px; pointer-events: auto;">
+          <div class="toast toast-success" style="position: static; opacity: 1; transform: none;">
+            <div class="toast-icon">
+              <%- include('../partials/icon', { name: 'confirmed', size: 20, ariaHidden: true }) %>
+            </div>
+            <div class="toast-content">
+              <span class="toast-message">Listing photo uploaded successfully.</span>
+            </div>
+            <button type="button" class="toast-close" aria-label="Dismiss notification">
+              <%- include('../partials/icon', { name: 'close', size: 16, ariaHidden: true }) %>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="font-size: var(--font-size-md); margin-bottom: var(--space-3);">B. Persistent Actionable Error Banner</h3>
+        <div class="flash-error-banner" role="alert" aria-live="assertive" style="max-width: 640px;">
+          <div class="flash-error-header">
+            <%- include('../partials/icon', { name: 'close', size: 20, ariaHidden: true, className: 'flash-error-icon' }) %>
+            <strong class="flash-error-title">Attention required</strong>
+          </div>
+          <ul class="flash-error-list">
+            <li>Image upload failed: File size exceeds maximum limit of 5MB.</li>
+            <li>Please select an image file under 5MB and try again.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="font-size: var(--font-size-md); margin-bottom: var(--space-3);">C. Test Live Toast Trigger</h3>
+        <p style="font-size: var(--font-size-sm); margin-bottom: var(--space-3);">
+          Click below to trigger a live cross-redirect success toast.
+        </p>
+        <div style="display: flex; gap: var(--space-3);">
+          <a href="/design-system?success=Photo+uploaded+successfully." class="btn btn-primary btn-sm">Trigger Success Toast</a>
+          <a href="/design-system?error=An+unexpected+system+error+occurred." class="btn btn-outline btn-sm">Trigger Error Banner</a>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>

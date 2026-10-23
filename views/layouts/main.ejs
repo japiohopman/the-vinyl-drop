@@ -15,9 +15,11 @@
   <link rel="manifest" href="/site.webmanifest">
 
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/js/toast.js" defer></script>
 </head>
 <body>
   <%- include('../partials/header') %>
+  <%- include('../partials/flash') %>
 
   <% if (typeof betaInviteOnly !== 'undefined' && betaInviteOnly) { %>
     <div class="container" style="margin-top: var(--space-3);">

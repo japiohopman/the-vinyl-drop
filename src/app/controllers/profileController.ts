@@ -165,7 +165,7 @@ export async function postEditProfile(req: Request, res: Response, next: NextFun
 
     try {
       const updatedProfile = await updateProfile(profile.id, req.user.id, result.data);
-      res.redirect(`/profiles/${encodeURIComponent(updatedProfile.username)}`);
+      res.redirect(`/profiles/${encodeURIComponent(updatedProfile.username)}?success=${encodeURIComponent('Profile saved successfully.')}`);
     } catch (error) {
       const errMessage = error instanceof Error ? error.message : 'Failed to update profile.';
       const form: FormViewModel = {
