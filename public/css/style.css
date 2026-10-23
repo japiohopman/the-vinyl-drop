@@ -1285,7 +1285,7 @@ select.form-control {
 
 .toast-container {
   position: fixed;
-  top: calc(var(--space-4) + env(safe-area-inset-top, 0px));
+  top: calc(var(--header-height-mobile) + var(--space-4) + env(safe-area-inset-top, 0px));
   right: var(--space-4);
   z-index: 250;
   display: flex;
@@ -1414,7 +1414,7 @@ select.form-control {
 
 @media (max-width: 768px) {
   .toast-container {
-    top: calc(var(--space-3) + env(safe-area-inset-top, 0px));
+    top: calc(var(--header-height-mobile) + var(--space-3) + env(safe-area-inset-top, 0px));
     left: 50%;
     right: auto;
     transform: translateX(-50%);
