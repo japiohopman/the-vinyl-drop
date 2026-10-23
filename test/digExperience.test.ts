@@ -222,7 +222,10 @@ describe('Dig photo-role contract', () => {
     expect(activityView).toContain('data-avatar-image');
     expect(activityView).toContain('item.listingArtworkUrl');
     expect(activityView).toContain("name: 'talk'");
-    expect(activityView).not.toMatch(/[🏷️💬❤️📻]/);
+    expect(activityView).not.toContain('🏷️');
+    expect(activityView).not.toContain('💬');
+    expect(activityView).not.toContain('❤️');
+    expect(activityView).not.toContain('📻');
     expect(listingCardView).toContain('data-artwork-fallback');
   });
 
