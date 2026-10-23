@@ -230,14 +230,16 @@
     var mobileCloseBtn = document.getElementById('mobile-you-close-btn');
     var mobileBackdrop = document.getElementById('mobile-you-backdrop');
 
-    function closeMobileSurface() {
+    function closeMobileSurface(skipFocus) {
       if (!mobileSurface) return;
       mobileSurface.hidden = true;
       mobileSurface.classList.remove('is-open');
       document.body.classList.remove('account-surface-open');
       if (mobileTrigger) {
         mobileTrigger.setAttribute('aria-expanded', 'false');
-        mobileTrigger.focus();
+        if (!skipFocus) {
+          mobileTrigger.focus();
+        }
       }
     }
 
@@ -276,11 +278,17 @@
     }
 
     // Breakpoint change listener to clean up mobile surface and scroll lock if viewport resizes to desktop
+    function checkDesktopBreakpoint() {
+      if (window.innerWidth >= 768) {
+        closeMobileSurface(true);
+      }
+    }
+
     if (window.matchMedia) {
       var desktopMedia = window.matchMedia('(min-width: 768px)');
       function handleBreakpointChange(e) {
         if (e.matches) {
-          closeMobileSurface();
+          closeMobileSurface(true);
         }
       }
       if (desktopMedia.addEventListener) {
@@ -289,6 +297,8 @@
         desktopMedia.addListener(handleBreakpointChange);
       }
     }
+
+    window.addEventListener('resize', checkDesktopBreakpoint);
 
     // Keyboard navigation: Escape key & focus trap
     document.addEventListener('keydown', function(e) {
