@@ -6,7 +6,12 @@ export function renderWithLayout(
   locals: Record<string, unknown>,
   next?: NextFunction
 ): void {
-  res.render(view, locals, (err, bodyHtml) => {
+  const mergedLocals = {
+    ...res.locals,
+    ...locals,
+  };
+
+  res.render(view, mergedLocals, (err, bodyHtml) => {
     if (err) {
       if (next) {
         return next(err);
@@ -14,7 +19,7 @@ export function renderWithLayout(
       return res.status(500).send(`Render Error: ${err.message}`);
     }
     res.render('layouts/main', {
-      ...locals,
+      ...mergedLocals,
       body: bodyHtml,
     });
   });
