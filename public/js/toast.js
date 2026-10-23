@@ -1,95 +1,64 @@
 (function () {
   'use strict';
 
-  function dismissToast(toast) {
-    if (!toast || toast.getAttribute('data-dismissing') === 'true') return;
-
-    toast.setAttribute('data-dismissing', 'true');
-    if (toast._dismissTimer) {
-      window.clearTimeout(toast._dismissTimer);
-      toast._dismissTimer = null;
-    }
-
-    var reduceMotion = window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (reduceMotion) {
-      toast.remove();
+  function cleanFlashQueryParams() {
+    if (typeof window === 'undefined' || !window.history || !window.history.replaceState) {
       return;
     }
-
-    toast.classList.add('toast-dismissing');
-    window.setTimeout(function () {
-      if (toast.parentNode) toast.remove();
-    }, 300);
-  }
-
-  function pauseToast(toast) {
-    if (!toast || !toast._dismissTimer) return;
-
-    window.clearTimeout(toast._dismissTimer);
-    toast._dismissTimer = null;
-    toast._dismissRemaining = Math.max(
-      0,
-      toast._dismissRemaining - (Date.now() - toast._dismissStartedAt)
-    );
-  }
-
-  function resumeToast(toast) {
-    if (
-      !toast ||
-      toast.getAttribute('data-dismissing') === 'true' ||
-      toast._dismissTimer ||
-      toast.matches(':hover') ||
-      toast.contains(document.activeElement)
-    ) {
-      return;
+    try {
+      var url = new URL(window.location.href);
+      var searchParams = url.searchParams;
+      if (searchParams.has('success') || searchParams.has('flash') || searchParams.has('error')) {
+        searchParams.delete('success');
+        searchParams.delete('flash');
+        searchParams.delete('error');
+        var newSearch = searchParams.toString();
+        var newUrl = url.pathname + (newSearch ? '?' + newSearch : '') + url.hash;
+        window.history.replaceState(null, '', newUrl);
+      }
+    } catch (e) {
+      // Ignore URL parsing errors on fallback browsers
     }
+  }
 
-    toast._dismissStartedAt = Date.now();
-    toast._dismissTimer = window.setTimeout(function () {
-      dismissToast(toast);
-    }, toast._dismissRemaining);
+  function dismissToast(toastEl) {
+    if (!toastEl) return;
+    var prefersReducedMotion =
+      window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      toastEl.remove();
+    } else {
+      toastEl.classList.add('toast-dismissing');
+      setTimeout(function () {
+        if (toastEl && toastEl.parentNode) {
+          toastEl.remove();
+        }
+      }, 300);
+    }
   }
 
   function initToasts() {
-    var toasts = document.querySelectorAll('.toast[data-auto-dismiss="true"]');
-
+    var toasts = document.querySelectorAll('.toast-success[data-auto-dismiss="true"]');
     toasts.forEach(function (toast) {
-      var configuredTimeout = parseInt(toast.getAttribute('data-dismiss-timeout') || '4500', 10);
-      toast._dismissRemaining = Number.isFinite(configuredTimeout) && configuredTimeout > 0
-        ? configuredTimeout
-        : 4500;
-      toast._dismissTimer = null;
-      toast._dismissStartedAt = 0;
+      var timeoutMs = parseInt(toast.getAttribute('data-dismiss-timeout') || '4500', 10);
+      var timer = setTimeout(function () {
+        dismissToast(toast);
+      }, timeoutMs);
 
       toast.addEventListener('mouseenter', function () {
-        pauseToast(toast);
-      });
-      toast.addEventListener('mouseleave', function () {
-        resumeToast(toast);
+        clearTimeout(timer);
       });
       toast.addEventListener('focusin', function () {
-        pauseToast(toast);
+        clearTimeout(timer);
       });
-      toast.addEventListener('focusout', function (event) {
-        if (!event.relatedTarget || !toast.contains(event.relatedTarget)) {
-          resumeToast(toast);
-        }
+      toast.addEventListener('mouseleave', function () {
+        timer = setTimeout(function () {
+          dismissToast(toast);
+        }, 2000);
       });
-
-      resumeToast(toast);
     });
 
-    document.addEventListener('click', function (event) {
-      var target = event.target;
-      if (!target || typeof target.closest !== 'function') return;
-      var dismissButton = target.closest('[data-dismiss-toast]');
-      if (!dismissButton) return;
-
-      var toast = dismissButton.closest('.toast');
-      dismissToast(toast);
-    });
+    cleanFlashQueryParams();
   }
 
   window.dismissToast = dismissToast;

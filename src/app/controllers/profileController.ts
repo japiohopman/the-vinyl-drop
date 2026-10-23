@@ -4,7 +4,6 @@ import { getSellerPublishedListings } from '../services/listingService';
 import { profileUpdateSchema } from '../../validators/profile';
 import { formatZodFormErrors, FormViewModel } from '../view-models/formViewModel';
 import { renderWithLayout } from '../utils/render';
-import { setFlashCookie } from '../middleware/flash';
 
 export async function getCurrentProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -166,8 +165,7 @@ export async function postEditProfile(req: Request, res: Response, next: NextFun
 
     try {
       const updatedProfile = await updateProfile(profile.id, req.user.id, result.data);
-      setFlashCookie(res, 'success', 'Profile saved successfully.');
-      res.redirect(`/profiles/${encodeURIComponent(updatedProfile.username)}`);
+      res.redirect(`/profiles/${encodeURIComponent(updatedProfile.username)}?success=${encodeURIComponent('Profile saved successfully.')}`);
     } catch (error) {
       const errMessage = error instanceof Error ? error.message : 'Failed to update profile.';
       const form: FormViewModel = {
