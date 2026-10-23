@@ -335,6 +335,32 @@ When a review finds defects inside scope:
 
 If the required work is genuinely new scope, create a new Issue instead of quietly expanding the active one.
 
+### Review discipline: evidence, uncertainty, and proportionality
+
+A review must reduce project risk and help the owner ship correct work. It must not create unnecessary work by turning unverified assumptions into firm instructions.
+
+Before forming a review conclusion, ChatGPT must:
+
+1. **Rebuild the actual context.** Read this file, the governing Issue and its acceptance criteria, applicable specialist contracts, the current PR body and diff, and the changed source files and tests. Inspect relevant callers/configuration and workflow details when needed. Treat author summaries, bot reviews, previous ChatGPT messages, and green CI as leads or evidence with limited scope—not substitutes for source inspection.
+2. **Inspect the implementation itself.** Check the actual code path and test assertions, not just filenames, labels, summaries, or the presence of source-code strings. Trace a reported behavior far enough to distinguish an implementation defect from a test, fixture, environment, or configuration problem.
+3. **Separate observation from inference.** State what was directly observed, what it suggests, and what remains uncertain. Do not present a plausible explanation as a confirmed root cause. Never claim a test, browser flow, environment, or artifact was checked unless it was actually inspected.
+4. **Calibrate the finding to the evidence.** A screenshot showing HTTP 500 proves that the captured request returned an error in that test environment; by itself, it does not prove the feature branch UI is defective or identify the root cause. Check how the environment is set up and what dependencies the route requires before assigning cause. Where a feature branch does not have the live configuration or external services needed by a route, prefer a deterministic fixture for the real template/styles and controlled test data. Do not require a connection to Render, Supabase, or other shared live infrastructure when an isolated test can verify the acceptance criterion.
+5. **Make verification meaningful, not ceremonial.** A check must assert the intended behavior—not merely that a script ran, selectors exist, or a page has no overflow. Browser evidence generators must fail if the expected page/content did not render, and account-state screenshots must represent the state they claim to verify. Test doubles must faithfully model the behavior under test; do not count skipped branches or impossible mock states as coverage. Keep test screenshots and videos outside `public/` unless the product intentionally serves them.
+6. **Tie blockers to the contract.** Every blocker must identify the Issue acceptance criterion, a concrete defect, or a substantiated security/data-integrity risk that remains unsatisfied. Do not invent extra acceptance criteria or demand more infrastructure/evidence than is needed to resolve the question. Choose the smallest reliable verification that answers it. If evidence is unavailable or inconclusive, state the precise limitation instead of treating an assumption as a defect or requiring unrelated implementation work.
+7. **Give Jules actionable, feasible instructions.** Name the affected file/behavior, explain the observed failure and why it matters, and prescribe a bounded correction plus the verification that would demonstrate success. Check that the requested command, test path, and environment are actually available or explain the test setup needed. Keep in-scope fixes on the current branch/PR and preserve human merge authority.
+8. **Reconsider challenges without defensiveness.** When Jaap questions a finding or proposed action, re-check the repository and evidence from first principles. Correct the PR body/comment/instruction itself when it was wrong or overstated; do not merely apologize, defend the original wording, or transfer the diagnostic burden to Jaap. Do not make the owner repeatedly prompt for source inspection or correct avoidable assumptions.
+
+### Review conclusion format
+
+For material findings, use this compact structure:
+
+- **Observed:** the exact source, test result, log, or artifact that was inspected.
+- **Assessment:** why that observation does or does not violate a named acceptance criterion or create a concrete risk.
+- **Confidence / unknowns:** any material uncertainty and what evidence would settle it.
+- **Required action:** only the smallest in-scope change and proportionate verification needed.
+
+A finding may be marked a blocker only when the assessment is supported. Green CI is useful but does not prove product correctness; missing or imperfect evidence is not automatically a product defect. The review's goal is a correct, maintainable outcome with justified confidence—not maximizing the number or strictness of gates. Do not merge without Jaap's explicit authorization.
+
 ### PR-body control protocol
 
 The **PR body is the operational control surface for Jules after a PR exists**.
