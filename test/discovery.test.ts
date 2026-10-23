@@ -279,10 +279,9 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(faviconIndex).toBeLessThan(headEnd);
       expect(faviconIndex).toBeLessThan(bodyStart);
 
-      expect(res.text).toContain('id="nav-toggle-btn"');
+      expect(res.text).toContain('id="mobile-you-trigger"');
       expect(res.text).toContain('aria-expanded="false"');
-      expect(res.text).toContain('aria-controls="primary-nav-list"');
-      expect(res.text).toContain('aria-label="Toggle navigation menu"');
+      expect(res.text).toContain('aria-controls="mobile-you-surface"');
     });
 
     it('should verify favicon.ico has valid ICO binary magic header bytes', async () => {
