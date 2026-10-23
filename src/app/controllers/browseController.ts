@@ -214,3 +214,112 @@ export async function getDigBrowsePage(req: Request, res: Response, next: NextFu
     next(error);
   }
 }
+
+/**
+ * Canonical Dig page. Search/filter semantics are shared with the regular
+ * paginated listing view; the page renders the grid on desktop and the existing
+ * crate-dig interaction on narrow screens.
+ */
+export async function getResponsiveDigPage(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const genre = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
+    const submittedFormats = parseVinylFormatFilters(req.query.format);
+    const formatToggle = typeof req.query.formatToggle === 'string'
+      ? parseVinylFormatFilters(req.query.formatToggle)[0]
+      : undefined;
+    const formats = formatToggle
+      ? toggleVinylFormatFilter(submittedFormats, formatToggle)
+      : submittedFormats;
+    const whiteLabelToggle = req.query.whiteLabelToggle === '1';
+    const whiteLabel = resolveWhiteLabelFilter(req.query.whiteLabel, whiteLabelToggle);
+    const conditionInput = typeof req.query.condition === 'string' ? req.query.condition.trim() : '';
+    const condition = (CONDITION_GRADES as readonly string[]).includes(conditionInput)
+      ? (conditionInput as ConditionGrade)
+      : undefined;
+
+    const minPriceEurStr = typeof req.query.minPrice === 'string' ? req.query.minPrice.trim() : '';
+    const maxPriceEurStr = typeof req.query.maxPrice === 'string' ? req.query.maxPrice.trim() : '';
+    const minPrice = parseEuroQueryParamToCentsStrict(req.query.minPrice);
+    const maxPrice = parseEuroQueryParamToCentsStrict(req.query.maxPrice);
+    const parsedPage = parsePageQueryParamStrict(req.query.page);
+    const page = formatToggle || whiteLabelToggle ? 1 : parsedPage;
+    const whiteLabelAvailable = await hasExplicitWhiteLabelInventory();
+
+    const viewInput = typeof req.query.view === 'string' ? req.query.view.trim().toLowerCase() : 'grid';
+    const view = viewInput === 'list' ? 'list' : 'grid';
+    const sortInput = typeof req.query.sort === 'string' ? req.query.sort.trim() : 'newest';
+    const validSorts = ['newest', 'price_asc', 'price_desc', 'title_asc', 'artist_asc'];
+    const sort = validSorts.includes(sortInput)
+      ? (sortInput as 'newest' | 'price_asc' | 'price_desc' | 'title_asc' | 'artist_asc')
+      : 'newest';
+    const filters = {
+      q,
+      genre,
+      condition: conditionInput,
+      minPrice: minPriceEurStr,
+      maxPrice: maxPriceEurStr,
+      sort,
+      view,
+      formats,
+      whiteLabel,
+    };
+
+    if (minPrice === null || maxPrice === null || page === null) {
+      res.status(400);
+      renderWithLayout(res, 'browse/responsive-dig', {
+        title: 'Invalid Search Filters — The Vinyl Drop',
+        listings: [],
+        formatOptions: VINYL_FORMAT_FILTERS,
+        whiteLabelAvailable,
+        filters,
+        pagination: { totalCount: 0, page: 1, limit: 12, totalPages: 1 },
+        items: [],
+        totalCount: 0,
+        hasMore: false,
+        responsiveDig: true,
+        errorMessage: 'Invalid search filter or page parameters provided.',
+      }, next);
+      return;
+    }
+
+    const searchParams = {
+      q: q || undefined,
+      genre: genre || undefined,
+      condition,
+      minPrice,
+      maxPrice,
+      formats,
+      whiteLabel,
+      sort,
+    };
+
+    // The same normalized filters feed both presentations. The desktop grid keeps
+    // conventional pagination; mobile preloads the Dig session stack (up to 100).
+    const [gridResults, digResults] = await Promise.all([
+      searchBrowseListings({ ...searchParams, page, limit: 12 }),
+      searchDigListings({ ...searchParams, page: 1, limit: 100 }),
+    ]);
+
+    renderWithLayout(res, 'browse/responsive-dig', {
+      title: q ? `Search: "${q}" — Dig — The Vinyl Drop` : 'Dig — The Vinyl Drop',
+      listings: gridResults.items,
+      formatOptions: VINYL_FORMAT_FILTERS,
+      whiteLabelAvailable,
+      filters,
+      pagination: {
+        totalCount: gridResults.totalCount,
+        page: gridResults.page,
+        limit: gridResults.limit,
+        totalPages: gridResults.totalPages,
+      },
+      items: digResults.items,
+      totalCount: digResults.totalCount,
+      hasMore: digResults.hasMore,
+      errorMessage: null,
+      responsiveDig: true,
+    }, next);
+  } catch (error) {
+    next(error);
+  }
+}

@@ -7,6 +7,7 @@ import supertest from 'supertest';
 import { createApp } from '../src/app';
 import * as listingService from '../src/app/services/listingService';
 import { resolveDigArtwork, DigPhotoCandidate } from '../src/domain/digExperience';
+import { buildListingCardFromDetails } from '../src/app/view-models/listingCardViewModel';
 import { listingPhotoRoleSchema, newListingPhotoRoleSchema } from '../src/validators/listing';
 import digState from '../public/js/dig-state.js';
 
@@ -44,6 +45,42 @@ describe('Dig navigation and flip state', () => {
     expect(flipped).toBe(true);
     expect(digState.nextFlipState(flipped)).toBe(false);
     expect(initialIndex).toBe(1);
+  });
+});
+
+describe('Shared listing artwork priority', () => {
+  it('prefers an explicit seller front cover and retains release artwork as the broken-image fallback', () => {
+    const card = buildListingCardFromDetails({
+      listing: { id: 'listing-artwork-1', price: 2400, tradeAvailable: false },
+      release: {
+        title: 'Blue Lines',
+        artist: 'Massive Attack',
+        format: 'LP',
+        coverArtUrl: 'https://catalog.example/blue-lines.webp',
+      },
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG' },
+      seller: { username: 'record_seller' },
+      photos: [
+        { publicUrl: '/seller/record-label.webp', role: 'record', displayOrder: 0 },
+        { publicUrl: '/seller/front-cover.webp', role: 'front_cover', displayOrder: 4 },
+      ],
+    });
+
+    expect(card.imageUrl).toBe('/seller/front-cover.webp');
+    expect(card.fallbackImageUrl).toBe('https://catalog.example/blue-lines.webp');
+  });
+
+  it('leaves a missing cover to the shared local placeholder instead of inventing catalogue artwork', () => {
+    const card = buildListingCardFromDetails({
+      listing: { id: 'listing-artwork-2', price: 1800, tradeAvailable: false },
+      release: { title: 'Unknown Pleasures', artist: 'Joy Division', format: 'LP', coverArtUrl: null },
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG' },
+      seller: { username: 'record_seller' },
+      photos: [],
+    });
+
+    expect(card.imageUrl).toBeUndefined();
+    expect(card.fallbackImageUrl).toBeUndefined();
   });
 });
 
@@ -167,11 +204,29 @@ describe('Dig photo-role contract', () => {
     expect(html).not.toContain('Omhoog swipen');
     expect(html).not.toContain('data-dig-progress-label');
     expect(html).toContain('class="dig-keyboard-note"');
-    expect(html).toContain('href="/browse?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
+    expect(html).toContain('href="/dig?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
     expect(html).toContain('/js/dig-state.js');
     expect(html).toContain('/js/dig-mode.js');
     expect(html).not.toContain('src="/seller/record.webp"');
     expect(html).toContain('href="/listings/listing-1"');
+  });
+
+  it('uses one shared client fallback handler for artwork and broken profile avatars', () => {
+    const fallbackScript = fs.readFileSync(path.join(process.cwd(), 'public/js/artwork-fallback.js'), 'utf8');
+    const activityView = fs.readFileSync(path.join(process.cwd(), 'views/activity/index.ejs'), 'utf8');
+    const listingCardView = fs.readFileSync(path.join(process.cwd(), 'views/partials/listing-card.ejs'), 'utf8');
+
+    expect(fallbackScript).toContain('data-artwork-image');
+    expect(fallbackScript).toContain('data-avatar-image');
+    expect(fallbackScript).toContain("'/assets/vinyl-placeholder.svg'");
+    expect(activityView).toContain('data-avatar-image');
+    expect(activityView).toContain('item.listingArtworkUrl');
+    expect(activityView).toContain("name: 'talk'");
+    expect(activityView).not.toContain('🏷️');
+    expect(activityView).not.toContain('💬');
+    expect(activityView).not.toContain('❤️');
+    expect(activityView).not.toContain('📻');
+    expect(listingCardView).toContain('data-artwork-fallback');
   });
 
   it('ships keyboard, vertical pointer gesture and reduced-motion behavior in the Dig controller', () => {
@@ -382,6 +437,85 @@ describe('GET /browse/dig HTTP route integration', () => {
     expect(response.text).not.toContain('Release artwork');
 
     spy.mockRestore();
+  });
+});
+
+describe('GET /dig responsive presentation', () => {
+  it('renders the desktop grid and the mobile swipe stack from the same filter URL', async () => {
+    const commonItem = {
+      id: 'listing-responsive-1',
+      title: 'The Low End Theory',
+      artist: 'A Tribe Called Quest',
+      releaseYear: 1991,
+      format: 'Vinyl, LP',
+      priceFormatted: '€24.00',
+      isTrade: false,
+      mediaCondition: 'VG+',
+      sleeveCondition: 'VG',
+      sellerUsername: 'crate_digger',
+      sellerLocation: 'Amsterdam',
+      url: '/listings/listing-responsive-1',
+      imageUrl: 'https://catalog.example/low-end-theory.webp',
+      fallbackImageUrl: '/assets/vinyl-placeholder.svg',
+      imageAlt: 'Artwork for The Low End Theory',
+    };
+    const browseSpy = jest.spyOn(listingService, 'searchBrowseListings').mockResolvedValueOnce({
+      items: [commonItem],
+      totalCount: 1,
+      page: 1,
+      limit: 12,
+      totalPages: 1,
+    });
+    const digSpy = jest.spyOn(listingService, 'searchDigListings').mockResolvedValueOnce({
+      items: [{
+        ...commonItem,
+        frontArtwork: {
+          src: 'https://seller.example/front.webp',
+          altText: 'Seller-selected front cover',
+          sourceLabel: 'Photo of the front cover of this physical copy',
+          sourceKind: 'seller_front',
+        },
+        backArtwork: null,
+        conditionSummary: 'Media VG+ · hoes VG',
+      }],
+      totalCount: 1,
+      hasMore: false,
+    });
+    const whiteLabelSpy = jest.spyOn(listingService, 'hasExplicitWhiteLabelInventory').mockResolvedValueOnce(false);
+
+    try {
+      const response = await supertest(app).get('/dig?q=Theory');
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('class="dig-responsive-mobile-header"');
+      expect(response.text).toContain('class="dig-responsive-desktop"');
+      expect(response.text).toContain('class="dig-responsive-mobile"');
+      expect(response.text).toContain('class="listing-grid"');
+      expect(response.text).toContain('action="/dig"');
+      expect(response.text).toContain('data-dig-experience');
+      expect(response.text).toContain('https://seller.example/front.webp');
+      expect(response.text).toContain('href="/dig?');
+      expect(response.text).not.toContain('>BROWSE</a>');
+    } finally {
+      browseSpy.mockRestore();
+      digSpy.mockRestore();
+      whiteLabelSpy.mockRestore();
+    }
+  });
+});
+
+describe('Responsive release-select surface', () => {
+  it('uses the shared artwork fallback and mobile layout hooks for Discogs and local releases', () => {
+    const view = fs.readFileSync(path.join(process.cwd(), 'views/listings/select-release.ejs'), 'utf8');
+    const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+
+    expect(view).toContain('class="select-release-search-form"');
+    expect(view).toContain('class="card select-release-result"');
+    expect(view).toContain('data-artwork-image');
+    expect(view).toContain('/assets/vinyl-placeholder.svg');
+    expect(view).not.toContain('>VINYL</div>');
+    expect(css).toContain('.select-release-search-form');
+    expect(css).toContain('.select-release-result');
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr);');
   });
 });
 

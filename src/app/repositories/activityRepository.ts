@@ -6,6 +6,7 @@ import { listings } from '../../db/schema/listings';
 import { physicalCopies } from '../../db/schema/physicalCopies';
 import { profiles } from '../../db/schema/profiles';
 import { releases } from '../../db/schema/releases';
+import { listingPhotos } from '../../db/schema/listingPhotos';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -23,6 +24,7 @@ export interface JoinedActivityRecord {
   releaseTitle: string;
   releaseArtist: string;
   releaseCoverArtUrl: string | null;
+  listingFrontPhotoPath: string | null;
   commentId: string | null;
   commentContent: string | null;
   createdAt: Date;
@@ -110,6 +112,7 @@ export async function getRecentActivityEvents(
     releaseTitle: releases.title,
     releaseArtist: releases.artist,
     releaseCoverArtUrl: releases.coverArtUrl,
+    listingFrontPhotoPath: listingPhotos.storagePath,
     commentId: activityEvents.commentId,
     commentContent: comments.content,
     createdAt: activityEvents.createdAt,
@@ -125,6 +128,7 @@ export async function getRecentActivityEvents(
     .innerJoin(listings, eq(activityEvents.listingId, listings.id))
     .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
     .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
+    .leftJoin(listingPhotos, and(eq(listingPhotos.listingId, listings.id), eq(listingPhotos.role, 'front_cover')))
     .leftJoin(comments, eq(activityEvents.commentId, comments.id))
     .where(
       and(

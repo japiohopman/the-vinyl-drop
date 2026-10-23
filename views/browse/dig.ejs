@@ -10,17 +10,17 @@
     ...selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }),
     filters.whiteLabel ? 'whiteLabel=1' : '',
   ].filter(Boolean).join('&');
-  const browseReturnUrl = '/browse?' + baseQueryParams + '&view=grid';
+  const browseReturnUrl = '/dig?' + baseQueryParams + '&view=grid';
   const visibleItems = Array.isArray(items) ? items : [];
 %>
 
 <div class="dig-page" data-dig-experience data-reduced-motion="false">
   <header class="dig-page-header">
     <div>
-      <p class="dig-eyebrow">THE VINYL DROP / BROWSE</p>
-      <h1>Crate Dig</h1>
+      <p class="dig-eyebrow">THE VINYL DROP / DIG</p>
+      <h1>Dig</h1>
     </div>
-    <a class="btn btn-outline dig-back-to-browse" href="<%= browseReturnUrl %>">← Back to Browse</a>
+    <a class="btn btn-outline dig-back-to-browse" href="<%= browseReturnUrl %>">← Back to Dig results</a>
   </header>
 
   <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
@@ -30,7 +30,7 @@
   <% if (visibleItems.length === 0) { %>
     <section class="dig-empty-state" aria-labelledby="dig-empty-title">
       <h2 id="dig-empty-title">No records found</h2>
-      <p>No available listings match these filters. Return to Browse to adjust them.</p>
+      <p>No available listings match these filters. Adjust the Dig filters above to try again.</p>
       <a class="btn btn-primary" href="<%= browseReturnUrl %>">Back to results</a>
     </section>
   <% } else { %>
@@ -40,7 +40,7 @@
         <span>in this session</span>
       </p>
       <% if (hasMore) { %>
-        <p class="dig-result-limit">Showing the first 100 results. Use Browse for the full results list.</p>
+        <p class="dig-result-limit">Showing up to 100 results for these filters.</p>
       <% } %>
     </div>
 

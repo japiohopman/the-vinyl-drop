@@ -14,6 +14,7 @@
   const mediaCondition = item.mediaCondition || 'VG+';
   const sleeveCondition = item.sleeveCondition || 'VG';
   const imageUrl = item.imageUrl || '';
+  const fallbackImageUrl = item.fallbackImageUrl || '';
   const imageAlt = item.imageAlt || `Album cover artwork for ${title} by ${artist}`;
   const sellerUsername = item.sellerUsername || 'community_member';
   const sellerLocation = item.sellerLocation || 'Local Drop';
@@ -24,31 +25,15 @@
 <article class="listing-card <%= viewMode === 'list' ? 'listing-card-list-mode' : '' %>" data-listing-id="<%= listingId %>">
   <div class="listing-card-media">
     <a href="<%= targetUrl %>" class="listing-card-image-link" tabindex="-1" aria-hidden="true">
-      <% if (imageUrl) { %>
-        <img
-          src="<%= imageUrl %>"
-          alt="<%= imageAlt %>"
-          class="listing-card-image"
-          loading="lazy"
-          referrerpolicy="no-referrer"
-          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-        />
-        <div class="listing-card-image-fallback" style="display: none;">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"></circle>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-          <span class="fallback-text">Vinyl Record</span>
-        </div>
-      <% } else { %>
-        <div class="listing-card-image-fallback">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <circle cx="12" cy="12" r="10"></circle>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-          <span class="fallback-text">Vinyl Record</span>
-        </div>
-      <% } %>
+      <img
+        src="<%= imageUrl || '/assets/vinyl-placeholder.svg' %>"
+        alt="<%= imageAlt %>"
+        class="listing-card-image"
+        loading="lazy"
+        referrerpolicy="no-referrer"
+        data-artwork-image
+        data-artwork-fallback="<%= fallbackImageUrl || '' %>"
+      />
     </a>
 
     <% if (viewMode !== 'list') { %>

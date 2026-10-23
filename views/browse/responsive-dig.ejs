@@ -1,0 +1,31 @@
+<div class="dig-responsive-page">
+  <header class="dig-responsive-mobile-header">
+    <p class="dig-eyebrow">THE VINYL DROP / DIG</p>
+    <h1>Dig</h1>
+    <p>Find your next record. Swipe up through the crate, or flip a sleeve to see the back.</p>
+  </header>
+
+  <section class="dig-responsive-desktop" aria-label="Dig search and grid results">
+    <%- include('./index', {
+      title,
+      listings,
+      formatOptions,
+      whiteLabelAvailable,
+      filters,
+      pagination,
+      errorMessage,
+      responsiveDig: true
+    }) %>
+  </section>
+
+  <section class="dig-responsive-mobile" aria-label="Dig crate exploration">
+    <%- include('./dig', {
+      title,
+      items,
+      totalCount,
+      hasMore,
+      filters,
+      errorMessage
+    }) %>
+  </section>
+</div>

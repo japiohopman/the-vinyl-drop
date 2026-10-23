@@ -13,7 +13,7 @@
       <a href="/" class="nav-link<%= activePath === '/' ? ' active' : '' %>"<%- activePath === '/' ? ' aria-current="page"' : '' %>>HOME</a>
     </li>
     <li class="nav-item">
-      <a href="/browse" class="nav-link<%= activePath.startsWith('/browse') ? ' active' : '' %>"<%- activePath.startsWith('/browse') ? ' aria-current="page"' : '' %>>BROWSE</a>
+      <a href="/dig" class="nav-link<%= (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' active' : '' %>"<%- (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' aria-current="page"' : '' %>>DIG</a>
     </li>
     <li class="nav-item">
       <a href="/drop/new" class="nav-link nav-link-action<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' aria-current="page"' : '' %>>+ DROP</a>
@@ -73,9 +73,9 @@
       <%- include('./icon', { name: 'home', size: '1.25rem', ariaHidden: true }) %>
       <span>HOME</span>
     </a>
-    <a href="/browse" class="mobile-nav-item<%= activePath.startsWith('/browse') ? ' active' : '' %>"<%- activePath.startsWith('/browse') ? ' aria-current="page"' : '' %>>
-      <%- include('./icon', { name: 'search', size: '1.25rem', ariaHidden: true }) %>
-      <span>BROWSE</span>
+    <a href="/dig" class="mobile-nav-item<%= (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' active' : '' %>"<%- (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' aria-current="page"' : '' %>>
+      <%- include('./icon', { name: 'cardboard-box-closed', size: '1.25rem', ariaHidden: true }) %>
+      <span>DIG</span>
     </a>
     <a href="/drop/new" class="mobile-nav-item mobile-nav-drop<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' aria-current="page"' : '' %>>
       <%- include('./icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>

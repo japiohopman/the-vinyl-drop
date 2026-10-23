@@ -44,7 +44,7 @@ describe('App Routes and Error Handling', () => {
       expect(response.text).not.toContain('fonts.gstatic.com');
       expect(response.text).toContain('src="/assets/brand/vinyl-drop-cartridge.svg"');
       expect(response.text).toContain('href="/" class="nav-link active" aria-current="page">HOME</a>');
-      expect(response.text).toContain('href="/browse" class="nav-link">BROWSE</a>');
+      expect(response.text).toContain('href="/dig" class="nav-link">DIG</a>');
       expect(response.text).toContain('href="/drop/new" class="nav-link nav-link-action">+ DROP</a>');
       expect(response.text).toContain('href="/activity" class="nav-link">ACTIVITY</a>');
       expect(response.text).toContain('SIGN IN');

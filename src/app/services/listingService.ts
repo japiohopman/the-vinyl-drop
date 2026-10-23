@@ -96,6 +96,7 @@ function recordToListingCardViewModel(record: JoinedListingRecord): ListingCardV
   const imageUrl = record.primaryPhotoPath
     ? getPhotoPublicUrl(record.primaryPhotoPath)
     : (record.release.coverArtUrl || undefined);
+  const fallbackImageUrl = record.primaryPhotoPath ? (record.release.coverArtUrl || undefined) : undefined;
   return buildListingCardViewModel({
     id: record.listing.id,
     title: record.release.title,
@@ -107,6 +108,7 @@ function recordToListingCardViewModel(record: JoinedListingRecord): ListingCardV
     mediaCondition: record.physicalCopy.mediaCondition,
     sleeveCondition: record.physicalCopy.sleeveCondition,
     imageUrl,
+    fallbackImageUrl,
     sellerUsername: record.seller.username,
     sellerLocation: record.seller.location || undefined,
     url: `/listings/${record.listing.id}`,

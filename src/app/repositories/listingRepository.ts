@@ -297,7 +297,7 @@ export async function searchListings(
           .select()
           .from(listingPhotos)
           .where(inArray(listingPhotos.listingId, listingIds))
-          .orderBy(asc(listingPhotos.displayOrder))
+          .orderBy(sql`case when ${listingPhotos.role} = 'front_cover' then 0 else 1 end`, asc(listingPhotos.displayOrder))
       : [];
 
   const primaryPhotoMap = new Map<string, string>();
