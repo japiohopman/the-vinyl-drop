@@ -89,11 +89,7 @@ describe('Accessible toast browser behavior', () => {
     await page.waitForTimeout(300);
     await expectCount(toast, 1);
 
-    await page.evaluate(() => {
-      const activeElement = document.activeElement;
-      if (activeElement instanceof HTMLElement) activeElement.blur();
-    });
-    await page.waitForFunction(() => document.querySelector('.toast') === null, { timeout: 1500 });
+    await page.locator('body').click({ position: { x: 1, y: 1 } });
     await expectCount(toast, 0);
   });
 
@@ -113,9 +109,7 @@ describe('Accessible toast browser behavior', () => {
 });
 
 async function expectCount(locator: import('playwright').Locator, expected: number): Promise<void> {
-  await locator.page().waitForFunction(
-    ({ selector, count }) => document.querySelectorAll(selector).length === count,
-    { selector: '.toast', count: expected },
-    { timeout: 2000 }
-  );
+  const state = expected === 0 ? 'detached' : 'attached';
+  await locator.page().waitForSelector('.toast', { state, timeout: 2000 });
+  expect(await locator.count()).toBe(expected);
 }
