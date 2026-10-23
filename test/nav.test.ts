@@ -73,7 +73,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     });
 
     expect(html).toContain('HOME');
-    expect(html).toContain('BROWSE');
+    expect(html).toContain('DIG');
     expect(html).toContain('+ DROP');
     expect(html).toContain('ACTIVITY');
     expect(html).toContain('SIGN IN');
