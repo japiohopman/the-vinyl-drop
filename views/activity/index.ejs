@@ -1,73 +1,93 @@
-<div class="activity-container" style="max-width: 800px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
-  <header class="activity-header" style="margin-bottom: var(--space-6); border-bottom: var(--border-thick); padding-bottom: var(--space-4);">
-    <h1 style="font-family: var(--font-display); font-size: var(--font-size-3xl); margin-bottom: var(--space-2); color: var(--color-ink);">
-      COMMUNITY ACTIVITY
-    </h1>
-    <p style="font-family: var(--font-body); font-size: var(--font-size-base); color: var(--color-ink-muted);">
-      Recent drops, comments, and saved records across the local record shop community.
-    </p>
+ <div class="activity-container">
+  <header class="activity-header">
+    <h1>COMMUNITY ACTIVITY</h1>
+    <p>Recent drops, comments, and saved records across the local record shop community.</p>
   </header>
 
   <% if (typeof error !== 'undefined' && error) { %>
-    <div class="alert alert-error" role="alert" style="padding: var(--space-4); margin-bottom: var(--space-6); background: var(--color-error-bg); border: var(--border-thick); border-color: var(--color-rust-accessible); border-radius: var(--radius-sm); color: var(--color-rust-accessible);">
-      <strong style="font-family: var(--font-display);">Activity Unavailable:</strong> <%= error %>
+    <div class="alert alert-error" role="alert">
+      <strong>Activity Unavailable:</strong> <%= error %>
     </div>
   <% } %>
 
   <% if (events && events.length > 0) { %>
-    <ul class="activity-feed-list" aria-label="Community activity stream" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-4);">
+    <ul class="activity-feed-list" aria-label="Community activity stream">
       <% events.forEach(function(item) { %>
-        <li class="activity-card" style="padding: var(--space-4); background: var(--color-paper-muted); border: var(--border-thick); border-radius: var(--radius-sm); display: flex; gap: var(--space-4); align-items: flex-start; position: relative;">
-          <!-- Event Icon / Badge -->
-          <div class="activity-icon-badge" style="width: 44px; height: 44px; border-radius: 50%; border: var(--border-thick); background: var(--color-white); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.2rem;">
-            <% if (item.eventType === 'listing.published') { %>
-              <span title="New Drop Published" aria-hidden="true">🏷️</span>
-            <% } else if (item.eventType === 'comment.created') { %>
-              <span title="New Comment" aria-hidden="true">💬</span>
-            <% } else if (item.eventType === 'favorite.created') { %>
-              <span title="Saved Record" aria-hidden="true">❤️</span>
-            <% } %>
-          </div>
+        <li class="activity-card">
+          <a class="activity-artwork-link" href="<%= item.listingUrl %>" aria-label="Open <%= item.releaseTitle %> by <%= item.releaseArtist %>">
+            <img
+              class="activity-record-artwork"
+              src="<%= item.listingArtworkUrl || item.releaseCoverArtUrl || '/assets/vinyl-placeholder.svg' %>"
+              alt="Artwork for <%= item.releaseTitle %> by <%= item.releaseArtist %>"
+              loading="lazy"
+              referrerpolicy="no-referrer"
+              data-artwork-image
+              data-artwork-fallback="<%= item.artworkFallbackUrl || '/assets/vinyl-placeholder.svg' %>"
+            />
+          </a>
 
-          <!-- Event Content Details -->
-          <div class="activity-card-body" style="flex: 1; min-width: 0;">
-            <div class="activity-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-1);">
-              <span class="activity-actor" style="font-family: var(--font-mono); font-size: var(--font-size-xs); font-weight: 700; color: var(--color-ink);">
-                <%= item.eventDescription %>
-              </span>
-              <span class="activity-time" style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
-                <%= item.timeAgo %>
-              </span>
-            </div>
-
-            <div class="activity-release-info" style="margin-top: var(--space-2);">
-              <a href="<%= item.listingUrl %>" style="text-decoration: none; color: inherit; display: inline-block;">
-                <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin: 0 0 2px 0; color: var(--color-ink);">
-                  <%= item.releaseTitle %>
-                </h2>
-                <div style="font-family: var(--font-display); font-size: var(--font-size-sm); color: var(--color-rust-accessible);">
-                  <%= item.releaseArtist %>
+          <div class="activity-card-content">
+            <div class="activity-card-body">
+              <div class="activity-card-header">
+                <div class="activity-actor-row">
+                  <% if (item.actorAvatarUrl) { %>
+                    <span class="activity-avatar">
+                      <img
+                        class="activity-avatar-image"
+                        src="<%= item.actorAvatarUrl %>"
+                        alt=""
+                        aria-hidden="true"
+                        loading="lazy"
+                        referrerpolicy="no-referrer"
+                        onerror="this.hidden = true; this.nextElementSibling.hidden = false;"
+                      />
+                      <span class="activity-avatar-fallback" hidden aria-hidden="true"><%= item.actorUsername ? item.actorUsername.slice(0, 1).toUpperCase() : '?' %></span>
+                    </span>
+                  <% } else { %>
+                    <span class="activity-avatar">
+                      <span class="activity-avatar-fallback" aria-hidden="true"><%= item.actorUsername ? item.actorUsername.slice(0, 1).toUpperCase() : '?' %></span>
+                    </span>
+                  <% } %>
+                  <span class="activity-actor"><%= item.eventDescription %></span>
                 </div>
-              </a>
-            </div>
+                <span class="activity-time"><%= item.timeAgo %></span>
+              </div>
 
-            <% if (item.eventType === 'comment.created' && item.commentContent) { %>
-              <blockquote style="margin: var(--space-3) 0 0 0; padding: var(--space-2) var(--space-3); background: var(--color-white); border-left: 3px solid var(--color-ink); font-style: italic; font-size: var(--font-size-sm); color: var(--color-ink); border-radius: var(--radius-sm);">
-                "<%= item.commentContent %>"
-              </blockquote>
-            <% } %>
+              <div class="activity-release-info">
+                <a href="<%= item.listingUrl %>" class="activity-release-link">
+                  <h2><%= item.releaseTitle %></h2>
+                  <span class="activity-release-artist"><%= item.releaseArtist %></span>
+                </a>
+              </div>
 
-            <div class="activity-card-footer" style="margin-top: var(--space-3); display: flex; gap: var(--space-3); align-items: center;">
-              <% if (item.priceFormatted) { %>
-                <span style="font-family: var(--font-mono); font-size: var(--font-size-xs); font-weight: 700; background: var(--color-white); border: var(--border-thin, 1px solid var(--color-border)); padding: 2px 8px; border-radius: var(--radius-sm);">
-                  <%= item.priceFormatted %>
-                </span>
+              <% if (item.eventType === 'comment.created' && item.commentContent) { %>
+                <blockquote class="activity-comment"><%= item.commentContent %></blockquote>
               <% } %>
 
-              <% if (item.isPrivate) { %>
-                <span class="private-badge" style="font-family: var(--font-mono); font-size: var(--font-size-2xs); text-transform: uppercase; padding: 2px 6px; background: var(--color-paper-muted); border: 1px dashed var(--color-ink-muted); border-radius: var(--radius-sm); color: var(--color-ink-muted);">
-                  🔒 Private to you
-                </span>
+              <div class="activity-card-footer">
+                <% if (item.priceFormatted) { %>
+                  <span class="activity-price">
+                    <%- include('../partials/icon', { name: 'price-tag', size: '0.875rem', ariaHidden: true }) %>
+                    <%= item.priceFormatted %>
+                  </span>
+                <% } %>
+
+                <% if (item.isPrivate) { %>
+                  <span class="private-badge">
+                    <%- include('../partials/icon', { name: 'save', size: '0.875rem', ariaHidden: true }) %>
+                    <span>Private to you</span>
+                  </span>
+                <% } %>
+              </div>
+            </div>
+
+            <div class="activity-icon-badge" aria-label="<%= item.eventType === 'listing.published' ? 'New drop' : (item.eventType === 'comment.created' ? 'Comment' : 'Saved record') %>">
+              <% if (item.eventType === 'listing.published') { %>
+                <%- include('../partials/icon', { name: 'price-tag', size: '1.25rem', ariaHidden: true }) %>
+              <% } else if (item.eventType === 'comment.created') { %>
+                <%- include('../partials/icon', { name: 'talk', size: '1.25rem', ariaHidden: true }) %>
+              <% } else if (item.eventType === 'favorite.created') { %>
+                <%- include('../partials/icon', { name: 'save', size: '1.25rem', ariaHidden: true }) %>
               <% } %>
             </div>
           </div>
@@ -75,18 +95,13 @@
       <% }); %>
     </ul>
   <% } else if (!error) { %>
-    <!-- Explicit Empty State -->
-    <div class="activity-empty-state" style="padding: var(--space-12) var(--space-6); text-align: center; background: var(--color-paper-muted); border: var(--border-thick); border-radius: var(--radius-md);">
-      <div style="font-size: 3rem; margin-bottom: var(--space-4);" aria-hidden="true">📻</div>
-      <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-2); color: var(--color-ink);">
-        No Recent Activity
-      </h2>
-      <p style="font-family: var(--font-body); font-size: var(--font-size-base); color: var(--color-ink-muted); max-width: 480px; margin: 0 auto var(--space-6);">
-        When physical vinyl drops are published, community members leave comments, or records are saved to favorites, activity will appear here.
-      </p>
-      <a href="/browse" class="btn btn-primary">
-        Browse Vinyl Drops
-      </a>
+    <div class="activity-empty-state">
+      <div class="activity-empty-icon" aria-hidden="true">
+        <%- include('../partials/icon', { name: 'boombox', size: '3rem', ariaHidden: true }) %>
+      </div>
+      <h2>No Recent Activity</h2>
+      <p>When physical vinyl drops are published, community members leave comments, or records are saved to favorites, activity will appear here.</p>
+      <a href="/dig" class="btn btn-primary">Explore Dig</a>
     </div>
   <% } %>
 </div>
