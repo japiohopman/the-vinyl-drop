@@ -1,0 +1,22 @@
+<%
+  const getIconSvgFn = typeof getIconSvg === 'function'
+    ? getIconSvg
+    : (typeof locals !== 'undefined' && typeof locals.getIconSvg === 'function' ? locals.getIconSvg : null);
+
+  const iconName = typeof name !== 'undefined' ? name : (typeof icon !== 'undefined' ? icon : '');
+  const iconSize = typeof size !== 'undefined' ? size : undefined;
+  const iconClass = typeof className !== 'undefined' ? className : (typeof cls !== 'undefined' ? cls : (typeof classNames !== 'undefined' ? classNames : (typeof locals !== 'undefined' && typeof locals.class !== 'undefined' ? locals.class : '')));
+  const iconAriaHidden = typeof ariaHidden !== 'undefined' ? ariaHidden : undefined;
+  const iconTitle = typeof title !== 'undefined' ? title : undefined;
+  const iconAriaLabel = typeof ariaLabel !== 'undefined' ? ariaLabel : undefined;
+  const iconStyle = typeof style !== 'undefined' ? style : undefined;
+
+  const svgOutput = getIconSvgFn ? getIconSvgFn(iconName, {
+    size: iconSize,
+    class: iconClass,
+    ariaHidden: iconAriaHidden,
+    title: iconTitle,
+    ariaLabel: iconAriaLabel,
+    style: iconStyle,
+  }) : '';
+%><%- svgOutput %>
