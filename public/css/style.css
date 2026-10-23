@@ -2820,3 +2820,40 @@ select.form-control {
     overflow-wrap: anywhere;
   }
 }
+
+
+/* Dig is one product destination with presentation selected by viewport width. */
+.dig-responsive-mobile-header,
+.dig-responsive-mobile { display: none; }
+
+@media (max-width: 767px) {
+  .dig-responsive-mobile-header {
+    display: block;
+    margin: var(--space-4) var(--space-3) var(--space-3);
+    padding-bottom: var(--space-3);
+    border-bottom: var(--border-thick);
+  }
+  .dig-responsive-mobile-header h1 { font-size: var(--font-size-2xl); margin: var(--space-1) 0; }
+  .dig-responsive-mobile-header p:last-child { color: var(--color-ink-muted); font-size: var(--font-size-sm); }
+  .dig-responsive-desktop .browse-header { display: none; }
+  .dig-responsive-desktop .browse-controls-bar,
+  .dig-responsive-desktop .listing-grid,
+  .dig-responsive-desktop .listing-list,
+  .dig-responsive-desktop .pagination-nav,
+  .dig-responsive-desktop .empty-state { display: none !important; }
+  .dig-responsive-desktop .browse-page-container {
+    margin: 0 auto !important;
+    padding: 0 var(--space-3) !important;
+  }
+  .dig-responsive-mobile { display: block; }
+  .dig-responsive-mobile .dig-page-header { display: none; }
+  .dig-responsive-mobile .dig-page { margin-top: 0; padding-top: 0; }
+  .dig-responsive-mobile .dig-context-row { margin-top: var(--space-2); }
+  .dig-responsive-mobile .dig-filter-summary { margin-top: var(--space-2); }
+}
+
+@media (min-width: 768px) {
+  .dig-responsive-mobile-header,
+  .dig-responsive-mobile { display: none !important; }
+  .dig-responsive-desktop { display: block; }
+}
