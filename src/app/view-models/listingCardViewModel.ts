@@ -9,6 +9,7 @@ export interface ListingCardViewModel {
   mediaCondition: string;
   sleeveCondition: string;
   imageUrl?: string;
+  fallbackImageUrl?: string;
   imageAlt: string;
   sellerUsername?: string;
   sellerLocation?: string;
@@ -48,6 +49,7 @@ export function buildListingCardViewModel(params: {
   mediaCondition: string;
   sleeveCondition: string;
   imageUrl?: string;
+  fallbackImageUrl?: string;
   sellerUsername?: string;
   sellerLocation?: string;
   url?: string;
@@ -67,6 +69,7 @@ export function buildListingCardViewModel(params: {
     mediaCondition: params.mediaCondition,
     sleeveCondition: params.sleeveCondition,
     imageUrl: params.imageUrl,
+    fallbackImageUrl: params.fallbackImageUrl,
     imageAlt,
     sellerUsername: params.sellerUsername,
     sellerLocation: params.sellerLocation,
@@ -84,10 +87,11 @@ export function buildListingCardFromDetails(details: {
   seller: { username: string; location?: string | null };
   photos?: Array<{ publicUrl: string }>;
 }): ListingCardViewModel {
-  const primaryImage =
-    details.photos && details.photos.length > 0
-      ? details.photos[0].publicUrl
-      : details.release.coverArtUrl || undefined;
+  const hasListingPhoto = Boolean(details.photos && details.photos.length > 0);
+  const primaryImage = hasListingPhoto
+    ? details.photos![0].publicUrl
+    : details.release.coverArtUrl || undefined;
+  const fallbackImage = hasListingPhoto ? details.release.coverArtUrl || undefined : undefined;
 
   return buildListingCardViewModel({
     id: details.listing.id,
@@ -100,6 +104,7 @@ export function buildListingCardFromDetails(details: {
     mediaCondition: details.physicalCopy.mediaCondition,
     sleeveCondition: details.physicalCopy.sleeveCondition,
     imageUrl: primaryImage,
+    fallbackImageUrl: fallbackImage,
     sellerUsername: details.seller.username,
     sellerLocation: details.seller.location || undefined,
     url: `/listings/${details.listing.id}/preview`,
