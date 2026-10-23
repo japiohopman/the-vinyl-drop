@@ -74,7 +74,7 @@
       <span>HOME</span>
     </a>
     <a href="/dig" class="mobile-nav-item<%= (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' active' : '' %>"<%- (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' aria-current="page"' : '' %>>
-      <%- include('./icon', { name: 'search', size: '1.25rem', ariaHidden: true }) %>
+      <%- include('./icon', { name: 'cardboard-box-closed', size: '1.25rem', ariaHidden: true }) %>
       <span>DIG</span>
     </a>
     <a href="/drop/new" class="mobile-nav-item mobile-nav-drop<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' aria-current="page"' : '' %>>
