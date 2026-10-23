@@ -167,7 +167,7 @@ describe('Dig photo-role contract', () => {
     expect(html).not.toContain('Omhoog swipen');
     expect(html).not.toContain('data-dig-progress-label');
     expect(html).toContain('class="dig-keyboard-note"');
-    expect(html).toContain('href="/browse?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
+    expect(html).toContain('href="/dig?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
     expect(html).toContain('/js/dig-state.js');
     expect(html).toContain('/js/dig-mode.js');
     expect(html).not.toContain('src="/seller/record.webp"');
@@ -382,6 +382,69 @@ describe('GET /browse/dig HTTP route integration', () => {
     expect(response.text).not.toContain('Release artwork');
 
     spy.mockRestore();
+  });
+});
+
+describe('GET /dig responsive presentation', () => {
+  it('renders the desktop grid and the mobile swipe stack from the same filter URL', async () => {
+    const commonItem = {
+      id: 'listing-responsive-1',
+      title: 'The Low End Theory',
+      artist: 'A Tribe Called Quest',
+      releaseYear: 1991,
+      format: 'Vinyl, LP',
+      priceFormatted: '€24.00',
+      isTrade: false,
+      mediaCondition: 'VG+',
+      sleeveCondition: 'VG',
+      sellerUsername: 'crate_digger',
+      sellerLocation: 'Amsterdam',
+      url: '/listings/listing-responsive-1',
+      imageUrl: 'https://catalog.example/low-end-theory.webp',
+      fallbackImageUrl: '/assets/vinyl-placeholder.svg',
+      imageAlt: 'Artwork for The Low End Theory',
+    };
+    const browseSpy = jest.spyOn(listingService, 'searchBrowseListings').mockResolvedValueOnce({
+      items: [commonItem],
+      totalCount: 1,
+      page: 1,
+      limit: 12,
+      totalPages: 1,
+    });
+    const digSpy = jest.spyOn(listingService, 'searchDigListings').mockResolvedValueOnce({
+      items: [{
+        ...commonItem,
+        frontArtwork: {
+          src: 'https://seller.example/front.webp',
+          altText: 'Seller-selected front cover',
+          sourceLabel: 'Photo of the front cover of this physical copy',
+          sourceKind: 'seller_front',
+        },
+        backArtwork: null,
+        conditionSummary: 'Media VG+ · hoes VG',
+      }],
+      totalCount: 1,
+      hasMore: false,
+    });
+    const whiteLabelSpy = jest.spyOn(listingService, 'hasExplicitWhiteLabelInventory').mockResolvedValueOnce(false);
+
+    try {
+      const response = await supertest(app).get('/dig?q=Theory');
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('class="dig-responsive-mobile-header"');
+      expect(response.text).toContain('class="dig-responsive-desktop"');
+      expect(response.text).toContain('class="dig-responsive-mobile"');
+      expect(response.text).toContain('class="listing-grid"');
+      expect(response.text).toContain('action="/dig"');
+      expect(response.text).toContain('data-dig-experience');
+      expect(response.text).toContain('https://seller.example/front.webp');
+      expect(response.text).toContain('href="/dig?');
+      expect(response.text).not.toContain('>BROWSE</a>');
+    } finally {
+      browseSpy.mockRestore();
+      digSpy.mockRestore();
+      whiteLabelSpy.mockRestore();
+    }
   });
 });
 
