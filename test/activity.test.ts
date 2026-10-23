@@ -24,6 +24,7 @@ import { releases } from '../src/db/schema/releases';
 import { physicalCopies } from '../src/db/schema/physicalCopies';
 import { listings } from '../src/db/schema/listings';
 import { comments } from '../src/db/schema/comments';
+import { listingPhotos } from '../src/db/schema/listingPhotos';
 import { eq } from 'drizzle-orm';
 
 describe('Community Activity Surface Contract (Issue #41)', () => {
@@ -70,6 +71,7 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
     const [release] = await testDb.insert(releases).values({
       title: 'Rumours',
       artist: 'Fleetwood Mac',
+      coverArtUrl: 'https://catalog.example/rumours.webp',
     }).returning();
 
     const [physicalCopy1] = await testDb.insert(physicalCopies).values({
@@ -94,6 +96,13 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
       status: 'published',
     }).returning();
     publishedListing1Id = pubListing.id;
+    await testDb.insert(listingPhotos).values({
+      listingId: publishedListing1Id,
+      storagePath: 'community/rumours-front.webp',
+      displayOrder: 0,
+      altText: 'Front sleeve of Rumours',
+      role: 'front_cover',
+    });
     await recordListingPublishedEvent(userAId, publishedListing1Id, testDb);
 
     const [drfListing] = await testDb.insert(listings).values({
@@ -140,6 +149,10 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
     expect(eventTypes).toContain('listing.published');
     expect(eventTypes).toContain('comment.created');
     expect(eventTypes).toContain('favorite.created');
+
+    const publishedEvent = feed.find((e) => e.eventType === 'listing.published');
+    expect(publishedEvent?.listingArtworkUrl).toBe('/mock-storage/community/rumours-front.webp');
+    expect(publishedEvent?.artworkFallbackUrl).toBe('https://catalog.example/rumours.webp');
 
     const favEvent = feed.find((e) => e.eventType === 'favorite.created');
     expect(favEvent).toBeDefined();
@@ -198,6 +211,11 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
       expect(res.text).toContain('COMMUNITY ACTIVITY');
       expect(res.text).toContain('Rumours');
       expect(res.text).toContain('Fleetwood Mac');
+      expect(res.text).toContain('activity-record-artwork');
+      expect(res.text).toContain('/mock-storage/community/rumours-front.webp');
+      expect(res.text).toContain('activity-avatar-fallback');
+      expect(res.text).toContain('activity-icon-badge');
+      expect(res.text).not.toMatch(/[🏷️💬❤️📻]/);
     });
   });
 });
