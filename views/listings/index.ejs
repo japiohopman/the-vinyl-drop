@@ -25,22 +25,65 @@
   <% } else { %>
     <div style="display: flex; flex-direction: column; gap: var(--space-4);">
       <% listings.forEach(function(item) { %>
+        <%
+          const sellerPhoto = (item.photos && item.photos.length > 0) ? item.photos[0] : null;
+          const releaseArt = (item.release && item.release.coverArtUrl) ? item.release.coverArtUrl : null;
+          const localPlaceholder = '/assets/vinyl-placeholder.svg';
+
+          let initialSrc = localPlaceholder;
+          let initialAlt = 'Default vinyl placeholder for ' + item.release.title;
+          let secondarySrc = '';
+          let secondaryAlt = '';
+
+          if (sellerPhoto && sellerPhoto.publicUrl) {
+            initialSrc = sellerPhoto.publicUrl;
+            initialAlt = sellerPhoto.altText || ('Seller photo of ' + item.release.title + ' by ' + item.release.artist);
+            if (releaseArt) {
+              secondarySrc = releaseArt;
+              secondaryAlt = 'Catalog cover artwork for ' + item.release.title;
+            } else {
+              secondarySrc = localPlaceholder;
+              secondaryAlt = 'Default vinyl placeholder for ' + item.release.title;
+            }
+          } else if (releaseArt) {
+            initialSrc = releaseArt;
+            initialAlt = 'Catalog cover artwork for ' + item.release.title;
+            secondarySrc = localPlaceholder;
+            secondaryAlt = 'Default vinyl placeholder for ' + item.release.title;
+          }
+        %>
         <div class="card" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-3);">
-          <div style="flex: 1; min-width: 250px;">
-            <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1);">
-              <span class="badge" style="padding: 2px 8px; border-radius: 4px; font-size: var(--font-size-xs); font-weight: bold; text-transform: uppercase; background: <%= item.status === 'published' ? 'var(--color-accent-teal)' : item.status === 'draft' ? '#f59e0b' : '#6b7280' %>; color: #fff;">
-                <%= item.status %>
-              </span>
-              <% if (item.tradeAvailable) { %>
-                <span style="font-size: var(--font-size-xs); font-family: var(--font-mono); font-weight: bold; color: var(--color-brand-primary);">[TRADE OK]</span>
-              <% } %>
+          <div class="my-listings-item-row">
+            <div class="my-listings-thumbnail-frame">
+              <img
+                src="<%= initialSrc %>"
+                alt="<%= initialAlt %>"
+                class="my-listings-thumbnail-img"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+                data-secondary-src="<%= secondarySrc %>"
+                data-secondary-alt="<%= secondaryAlt %>"
+                data-placeholder="<%= localPlaceholder %>"
+                data-placeholder-alt="Default vinyl placeholder for <%= item.release.title %>"
+                onerror="handleMyListingsImageFallback(this)"
+              />
             </div>
-            <h2 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin: 0;">
-              <%= item.release.title %>
-            </h2>
-            <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0;">
-              by <%= item.release.artist %> (<%= item.release.releaseYear || 'Unknown' %>) &bull; Media: <%= item.physicalCopy.mediaCondition %>, Sleeve: <%= item.physicalCopy.sleeveCondition %>
-            </p>
+            <div style="flex: 1; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1);">
+                <span class="badge" style="padding: 2px 8px; border-radius: 4px; font-size: var(--font-size-xs); font-weight: bold; text-transform: uppercase; background: <%= item.status === 'published' ? 'var(--color-accent-teal)' : item.status === 'draft' ? '#f59e0b' : '#6b7280' %>; color: #fff;">
+                  <%= item.status %>
+                </span>
+                <% if (item.tradeAvailable) { %>
+                  <span style="font-size: var(--font-size-xs); font-family: var(--font-mono); font-weight: bold; color: var(--color-brand-primary);">[TRADE OK]</span>
+                <% } %>
+              </div>
+              <h2 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin: 0; overflow-wrap: anywhere;">
+                <%= item.release.title %>
+              </h2>
+              <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0; overflow-wrap: anywhere;">
+                by <%= item.release.artist %> (<%= item.release.releaseYear || 'Unknown' %>) &bull; Media: <%= item.physicalCopy.mediaCondition %>, Sleeve: <%= item.physicalCopy.sleeveCondition %>
+              </p>
+            </div>
           </div>
 
           <div style="font-family: var(--font-display); font-size: var(--font-size-md); font-weight: bold; min-width: 100px; text-align: right;">
@@ -77,3 +120,52 @@
     </div>
   <% } %>
 </div>
+
+<script>
+  function handleMyListingsImageFallback(img) {
+    if (!img) return;
+    var secondary = img.getAttribute('data-secondary-src');
+    var secondaryAlt = img.getAttribute('data-secondary-alt');
+    var placeholder = img.getAttribute('data-placeholder') || '/assets/vinyl-placeholder.svg';
+    var placeholderAlt = img.getAttribute('data-placeholder-alt') || 'Default vinyl placeholder';
+
+    if (img.src.indexOf(placeholder) !== -1) {
+      renderMyListingsTerminalFallback(img);
+      return;
+    }
+
+    if (secondary && secondary !== placeholder && img.src.indexOf(secondary) === -1) {
+      img.onerror = function() {
+        this.onerror = function() {
+          renderMyListingsTerminalFallback(this);
+        };
+        this.src = placeholder;
+        this.alt = placeholderAlt;
+      };
+      img.src = secondary;
+      if (secondaryAlt) img.alt = secondaryAlt;
+    } else {
+      img.onerror = function() {
+        renderMyListingsTerminalFallback(this);
+      };
+      img.src = placeholder;
+      img.alt = placeholderAlt;
+    }
+  }
+
+  function renderMyListingsTerminalFallback(img) {
+    if (!img) return;
+    img.onerror = null;
+    img.style.display = 'none';
+    var frame = img.parentElement;
+    if (frame && !frame.querySelector('.my-listings-terminal-fallback')) {
+      var fallback = document.createElement('div');
+      fallback.className = 'my-listings-terminal-fallback';
+      fallback.setAttribute('role', 'img');
+      var label = img.getAttribute('data-placeholder-alt') || img.getAttribute('alt') || 'Default vinyl record placeholder';
+      fallback.setAttribute('aria-label', label);
+      fallback.innerHTML = '<span aria-hidden="true" style="font-size:1.25rem;line-height:1;">🎵</span>';
+      frame.appendChild(fallback);
+    }
+  }
+</script>
