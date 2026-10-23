@@ -8,7 +8,7 @@
   </div>
 
   <!-- Search Box for External Catalog & Local DB -->
-  <form action="/drop/new" method="GET" style="margin-bottom: var(--space-6); display: flex; gap: var(--space-2);">
+  <form action="/drop/new" method="GET" class="select-release-search-form" style="margin-bottom: var(--space-6); display: flex; gap: var(--space-2);">
     <input
       type="text"
       name="q"
@@ -43,12 +43,12 @@
     <% } else { %>
       <div style="display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-8);">
         <% searchResults.forEach(function(item) { %>
-          <div class="card" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);">
-            <div style="display: flex; align-items: center; gap: var(--space-4);">
+          <div class="card select-release-result" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);">
+            <div class="select-release-result-content" style="display: flex; align-items: center; gap: var(--space-4);">
               <% if (item.thumb || item.coverImage) { %>
-                <img src="<%= item.thumb || item.coverImage %>" alt="<%= item.title %>" style="width: 60px; height: 60px; object-fit: cover; border: var(--border-thin);" referrerpolicy="no-referrer" />
+                <img src="<%= item.thumb || item.coverImage %>" alt="Artwork for <%= item.title %>" class="select-release-artwork" data-artwork-image data-artwork-fallback="/assets/vinyl-placeholder.svg" loading="lazy" referrerpolicy="no-referrer" />
               <% } else { %>
-                <div style="width: 60px; height: 60px; background: var(--color-surface-muted); border: var(--border-thin); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-muted);">VINYL</div>
+                <img src="/assets/vinyl-placeholder.svg" alt="" aria-hidden="true" class="select-release-artwork" />
               <% } %>
               <div>
                 <h3 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin-bottom: var(--space-1);"><%= item.title %></h3>
@@ -81,12 +81,12 @@
   <% } else { %>
     <div style="display: flex; flex-direction: column; gap: var(--space-3);">
       <% releases.forEach(function(rel) { %>
-        <div class="card" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);">
-          <div style="display: flex; align-items: center; gap: var(--space-4);">
+        <div class="card select-release-result" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4);">
+          <div class="select-release-result-content" style="display: flex; align-items: center; gap: var(--space-4);">
             <% if (rel.coverArtUrl) { %>
-              <img src="<%= rel.coverArtUrl %>" alt="<%= rel.title %>" style="width: 60px; height: 60px; object-fit: cover; border: var(--border-thin);" referrerpolicy="no-referrer" />
+              <img src="<%= rel.coverArtUrl %>" alt="Artwork for <%= rel.title %>" class="select-release-artwork" data-artwork-image data-artwork-fallback="/assets/vinyl-placeholder.svg" loading="lazy" referrerpolicy="no-referrer" />
             <% } else { %>
-              <div style="width: 60px; height: 60px; background: var(--color-surface-muted); border: var(--border-thin); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--color-ink-muted);">VINYL</div>
+              <img src="/assets/vinyl-placeholder.svg" alt="" aria-hidden="true" class="select-release-artwork" />
             <% } %>
             <div>
               <h3 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin-bottom: var(--space-1);"><%= rel.title %></h3>
