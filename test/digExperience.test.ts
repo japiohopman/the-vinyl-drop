@@ -448,6 +448,22 @@ describe('GET /dig responsive presentation', () => {
   });
 });
 
+describe('Responsive release-select surface', () => {
+  it('uses the shared artwork fallback and mobile layout hooks for Discogs and local releases', () => {
+    const view = fs.readFileSync(path.join(process.cwd(), 'views/listings/select-release.ejs'), 'utf8');
+    const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+
+    expect(view).toContain('class="select-release-search-form"');
+    expect(view).toContain('class="card select-release-result"');
+    expect(view).toContain('data-artwork-image');
+    expect(view).toContain('/assets/vinyl-placeholder.svg');
+    expect(view).not.toContain('>VINYL</div>');
+    expect(css).toContain('.select-release-search-form');
+    expect(css).toContain('.select-release-result');
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr);');
+  });
+});
+
 describe('Responsive listing page', () => {
   it('keeps the focused listing detail grid within narrow mobile viewports', () => {
     const view = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
