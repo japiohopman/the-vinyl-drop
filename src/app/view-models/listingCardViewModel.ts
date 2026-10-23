@@ -85,13 +85,11 @@ export function buildListingCardFromDetails(details: {
   release: { title: string; artist: string; releaseYear?: number | null; format?: string | null; coverArtUrl?: string | null };
   physicalCopy: { mediaCondition: string; sleeveCondition: string };
   seller: { username: string; location?: string | null };
-  photos?: Array<{ publicUrl: string }>;
+  photos?: Array<{ publicUrl: string; role?: string; displayOrder?: number }>;
 }): ListingCardViewModel {
-  const hasListingPhoto = Boolean(details.photos && details.photos.length > 0);
-  const primaryImage = hasListingPhoto
-    ? details.photos![0].publicUrl
-    : details.release.coverArtUrl || undefined;
-  const fallbackImage = hasListingPhoto ? details.release.coverArtUrl || undefined : undefined;
+  const primaryPhoto = details.photos?.find((photo) => photo.role === 'front_cover') || details.photos?.[0];
+  const primaryImage = primaryPhoto?.publicUrl || details.release.coverArtUrl || undefined;
+  const fallbackImage = primaryPhoto ? details.release.coverArtUrl || undefined : undefined;
 
   return buildListingCardViewModel({
     id: details.listing.id,
