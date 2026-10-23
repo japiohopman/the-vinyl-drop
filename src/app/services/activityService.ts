@@ -5,6 +5,7 @@ import {
   JoinedActivityRecord,
 } from '../repositories/activityRepository';
 import { formatPrice } from '../view-models/listingCardViewModel';
+import { getPhotoPublicUrl } from './storageService';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -20,6 +21,8 @@ export interface ActivityItemViewModel {
   releaseTitle: string;
   releaseArtist: string;
   releaseCoverArtUrl: string | null;
+  listingArtworkUrl: string;
+  artworkFallbackUrl: string;
   priceFormatted: string | null;
   commentContent: string | null;
   createdAt: Date;
@@ -55,6 +58,11 @@ export function formatActivityRecord(record: JoinedActivityRecord): ActivityItem
     eventDescription = `You favorited a drop`;
   }
 
+  const releaseArtworkFallbackUrl = record.releaseCoverArtUrl || '/assets/vinyl-placeholder.svg';
+  const listingArtworkUrl = record.listingFrontPhotoPath
+    ? getPhotoPublicUrl(record.listingFrontPhotoPath)
+    : releaseArtworkFallbackUrl;
+
   return {
     id: record.id,
     eventType: record.eventType as ActivityItemViewModel['eventType'],
@@ -67,6 +75,8 @@ export function formatActivityRecord(record: JoinedActivityRecord): ActivityItem
     releaseTitle: record.releaseTitle,
     releaseArtist: record.releaseArtist,
     releaseCoverArtUrl: record.releaseCoverArtUrl,
+    listingArtworkUrl,
+    artworkFallbackUrl: record.listingFrontPhotoPath ? releaseArtworkFallbackUrl : '/assets/vinyl-placeholder.svg',
     priceFormatted,
     commentContent: record.commentContent,
     createdAt: record.createdAt,
