@@ -18,7 +18,7 @@
         <div class="toast-content">
           <span class="toast-message"><%= msg.message %></span>
         </div>
-        <button type="button" class="toast-close" aria-label="Dismiss notification" onclick="window.dismissToast ? window.dismissToast(this.closest('.toast')) : this.closest('.toast').remove()">
+        <button type="button" class="toast-close" data-dismiss-toast aria-label="Dismiss notification">
           <%- include('icon', { name: 'close', size: 16, ariaHidden: true }) %>
         </button>
       </div>
@@ -29,7 +29,7 @@
         <div class="toast-content">
           <span class="toast-message"><%= msg.message %></span>
         </div>
-        <button type="button" class="toast-close" aria-label="Dismiss notification" onclick="window.dismissToast ? window.dismissToast(this.closest('.toast')) : this.closest('.toast').remove()">
+        <button type="button" class="toast-close" data-dismiss-toast aria-label="Dismiss notification">
           <%- include('icon', { name: 'close', size: 16, ariaHidden: true }) %>
         </button>
       </div>
