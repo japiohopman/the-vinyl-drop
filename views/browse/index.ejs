@@ -6,6 +6,7 @@
   <% } %>
 
   <% const currentView = (filters && filters.view === 'list') ? 'list' : 'grid'; %>
+  <% const routeBase = (typeof responsiveDig !== 'undefined' && responsiveDig) ? '/dig' : '/browse'; %>
   <% const selectedFormats = Array.isArray(filters.formats) ? filters.formats : []; %>
   <% const formatParams = selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }).join('&'); %>
   <% const baseQueryParams = 'q=' + encodeURIComponent(filters.q || '') + '&genre=' + encodeURIComponent(filters.genre || '') + '&condition=' + encodeURIComponent(filters.condition || '') + '&minPrice=' + encodeURIComponent(filters.minPrice || '') + '&maxPrice=' + encodeURIComponent(filters.maxPrice || '') + '&sort=' + encodeURIComponent(filters.sort || 'newest'); %>
@@ -13,20 +14,22 @@
 
   <div class="browse-header" style="margin-bottom: var(--space-6);">
     <h1 style="font-family: var(--font-display); font-size: var(--font-size-3xl); margin-bottom: var(--space-2);">
-      <%= filters.q ? `Search: "${filters.q}"` : 'Browse Vinyl Record Drops' %>
+      <%= filters.q ? `Search: "${filters.q}"` : ((typeof responsiveDig !== 'undefined' && responsiveDig) ? 'Dig Vinyl Records' : 'Browse Vinyl Record Drops') %>
     </h1>
     <p style="color: var(--color-ink-muted); font-size: var(--font-size-md);">
       Dig through physical vinyl records available in our local community marketplace.
     </p>
     <div style="margin-top: var(--space-4);">
-      <a class="btn btn-outline" href="/browse/dig?<%= queryBaseParams %>&view=dig" aria-label="Open immersive vertical crate-dig mode">
-        Open Crate Dig &rarr;
-      </a>
+      <% if (typeof responsiveDig === 'undefined' || !responsiveDig) { %>
+        <a class="btn btn-outline" href="/dig?<%= queryBaseParams %>" aria-label="Open mobile crate-dig mode">
+          Open Dig &rarr;
+        </a>
+      <% } %>
     </div>
   </div>
 
   <!-- Search & Filter Form -->
-  <form action="/browse" method="GET" class="filter-form browse-filter-form">
+  <form action="<%= routeBase %>" method="GET" class="filter-form browse-filter-form">
     <input type="hidden" name="view" value="<%= currentView %>">
     <% selectedFormats.forEach(function(format) { %>
       <input type="hidden" name="format" value="<%= format %>">
@@ -101,7 +104,7 @@
     <div class="browse-filter-actions">
       <button type="submit" class="btn btn-primary browse-apply-submit">Apply filters</button>
       <% if (filters.q || filters.genre || filters.condition || filters.minPrice || filters.maxPrice || filters.sort !== 'newest' || selectedFormats.length > 0 || filters.whiteLabel) { %>
-        <a href="/browse?view=<%= currentView %>" class="btn btn-outline btn-sm">Clear all</a>
+        <a href="<%= routeBase %>?view=<%= currentView %>" class="btn btn-outline btn-sm">Clear all</a>
       <% } %>
     </div>
   </form>
@@ -113,9 +116,9 @@
     </p>
 
     <!-- View Mode Switcher -->
-    <div class="view-mode-toggle" role="group" aria-label="Browse presentation mode" style="display: flex; gap: var(--space-1); border: var(--border-thick); border-radius: var(--radius-sm); padding: 2px; background: var(--color-white);">
+    <div class="view-mode-toggle" role="group" aria-label="Dig presentation mode" style="display: flex; gap: var(--space-1); border: var(--border-thick); border-radius: var(--radius-sm); padding: 2px; background: var(--color-white);">
       <a
-        href="/browse?<%= queryBaseParams %>&page=<%= pagination.page %>&view=grid"
+        href="<%= routeBase %>?<%= queryBaseParams %>&page=<%= pagination.page %>&view=grid"
         class="view-toggle-btn <%= currentView === 'grid' ? 'active' : '' %>"
         <%- currentView === 'grid' ? 'aria-current="page"' : '' %>
         aria-label="Grid view"
@@ -129,7 +132,7 @@
         <span>Grid</span>
       </a>
       <a
-        href="/browse?<%= queryBaseParams %>&page=<%= pagination.page %>&view=list"
+        href="<%= routeBase %>?<%= queryBaseParams %>&page=<%= pagination.page %>&view=list"
         class="view-toggle-btn <%= currentView === 'list' ? 'active' : '' %>"
         <%- currentView === 'list' ? 'aria-current="page"' : '' %>
         aria-label="List view"
@@ -169,7 +172,7 @@
         <% const queryWithView = `${queryBaseParams}&view=${currentView}`; %>
 
         <% if (pagination.page > 1) { %>
-          <a href="/browse?<%= queryWithView %>&page=<%= pagination.page - 1 %>" class="btn btn-outline btn-sm">
+          <a href="<%= routeBase %>?<%= queryWithView %>&page=<%= pagination.page - 1 %>" class="btn btn-outline btn-sm">
             ← Previous
           </a>
         <% } %>
@@ -179,7 +182,7 @@
         </span>
 
         <% if (pagination.page < pagination.totalPages) { %>
-          <a href="/browse?<%= queryWithView %>&page=<%= pagination.page + 1 %>" class="btn btn-outline btn-sm">
+          <a href="<%= routeBase %>?<%= queryWithView %>&page=<%= pagination.page + 1 %>" class="btn btn-outline btn-sm">
             Next →
           </a>
         <% } %>
@@ -193,7 +196,7 @@
       </svg>
       <h3 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">No records match your search</h3>
       <p style="color: var(--color-ink-muted); margin-bottom: var(--space-6);">Try adjusting your search terms, changing filters, or clearing your search.</p>
-      <a href="/browse?view=<%= currentView %>" class="btn btn-primary">Clear Filters</a>
+      <a href="<%= routeBase %>?view=<%= currentView %>" class="btn btn-primary">Clear Filters</a>
     </div>
   <% } %>
 </div>
