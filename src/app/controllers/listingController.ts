@@ -263,6 +263,7 @@ export async function postEditListing(req: Request, res: Response, next: NextFun
   }
 }
 
+/** Uploads a seller photo and issues success feedback only after the upload succeeds. */
 export async function postUploadPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
@@ -327,6 +328,7 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
 }
 
 
+/** Updates a listing photo role and issues confirmation after the update succeeds. */
 export async function postUpdatePhotoRole(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.user) {
     return res.redirect('/auth/login');
@@ -346,6 +348,7 @@ export async function postUpdatePhotoRole(req: Request, res: Response, next: Nex
   }
 }
 
+/** Deletes an owned listing photo and confirms the deletion only after success. */
 export async function postDeletePhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
@@ -414,6 +417,7 @@ export async function getPreviewListingPage(req: Request, res: Response, next: N
   }
 }
 
+/** Publishes an owned listing and issues confirmation only after publication succeeds. */
 export async function postPublishListing(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {

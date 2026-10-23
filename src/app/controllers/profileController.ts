@@ -127,6 +127,7 @@ export async function getEditProfilePage(req: Request, res: Response, next: Next
   }
 }
 
+/** Saves validated profile changes and issues a one-time confirmation after success. */
 export async function postEditProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {

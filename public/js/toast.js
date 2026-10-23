@@ -1,6 +1,7 @@
 (function () {
   'use strict';
 
+  /** Removes legacy notification query parameters from browser history without treating them as feedback sources. */
   function cleanFlashQueryParams() {
     if (typeof window === 'undefined' || !window.history || !window.history.replaceState) {
       return;
@@ -21,6 +22,7 @@
     }
   }
 
+  /** Dismisses a toast with a reduced-motion-aware removal transition. */
   function dismissToast(toastEl) {
     if (!toastEl) return;
     var prefersReducedMotion =
@@ -37,6 +39,7 @@
     }
   }
 
+  /** Controls a toast's display timer, preserving remaining time during hover or keyboard focus. */
   function setupToastTimer(toast) {
     var initialTimeout = parseInt(toast.getAttribute('data-dismiss-timeout') || '4500', 10);
     var remainingMs = initialTimeout;
@@ -46,6 +49,7 @@
     var isHovered = false;
     var isFocused = false;
 
+    /** Starts the timer for the specified remaining visible duration. */
     function startTimer(duration) {
       clearTimer();
       startTime = Date.now();
@@ -55,6 +59,7 @@
       }, duration);
     }
 
+    /** Pauses an active timer and calculates the remaining display duration. */
     function clearTimer() {
       if (timerId !== null) {
         clearTimeout(timerId);
@@ -67,6 +72,7 @@
       }
     }
 
+    /** Pauses while either hover or focus is active and resumes only when both end. */
     function updateState() {
       var shouldPause = isHovered || isFocused;
       if (shouldPause) {
@@ -106,6 +112,7 @@
     startTimer(initialTimeout);
   }
 
+  /** Initializes auto-dismiss timers for eligible toasts and cleans legacy query keys. */
   function initToasts() {
     var toasts = document.querySelectorAll('.toast[data-auto-dismiss="true"]');
     toasts.forEach(function (toast) {

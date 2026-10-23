@@ -9,6 +9,7 @@ import { config } from './config/env';
 import { BETA_WELCOME_COOKIE, INVITE_ONLY_ACCESS_MESSAGE, isBetaInviteOnlyEnabled } from './app/services/betaAccess';
 import { getIconSvg } from './app/utils/iconRegistry';
 
+/** Creates the Express application and wires its shared request middleware and routes. */
 export function createApp(): Express {
   const app = express();
 

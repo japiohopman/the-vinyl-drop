@@ -1,5 +1,6 @@
 import { Response, NextFunction } from 'express';
 
+/** Renders a view and carries middleware-provided locals, including flash messages, into the shared layout. */
 export function renderWithLayout(
   res: Response,
   view: string,
