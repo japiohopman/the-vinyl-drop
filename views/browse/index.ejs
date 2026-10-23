@@ -168,7 +168,7 @@
 
     <!-- Pagination Controls -->
     <% if (pagination.totalPages > 1) { %>
-      <nav class="pagination-nav" aria-label="Browse pagination" style="display: flex; justify-content: center; align-items: center; gap: var(--space-4); margin-top: var(--space-8);">
+      <nav class="pagination-nav" aria-label="<%= typeof responsiveDig !== 'undefined' && responsiveDig ? 'Dig pagination' : 'Browse pagination' %>" style="display: flex; justify-content: center; align-items: center; gap: var(--space-4); margin-top: var(--space-8);">
         <% const queryWithView = `${queryBaseParams}&view=${currentView}`; %>
 
         <% if (pagination.page > 1) { %>
