@@ -216,10 +216,27 @@ describe('My Listings Artwork Thumbnails (#146)', () => {
         },
       ];
 
-      app.get('/test/my-listings', (_req, res) => {
+      app.get('/test/my-listings', (_req, res, next) => {
         res.render('listings/index', {
           listings: sampleListings,
           viewHidden: false,
+        }, (error, bodyHtml) => {
+          if (error) return next(error);
+
+          // This is a standalone view in production layout, so include the real
+          // global stylesheet and page shell in browser tests rather than testing
+          // intrinsic image dimensions without the thumbnail-frame CSS.
+          return res.send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <main class="main-content container">${bodyHtml}</main>
+</body>
+</html>`);
         });
       });
 
