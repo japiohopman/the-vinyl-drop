@@ -133,8 +133,10 @@ describe('UI Primitives View Models and Helpers', () => {
         mode: 'grid',
       });
 
-      expect(html).toContain('class="listing-card-image-fallback"');
-      expect(html).toContain('Vinyl Record');
+      expect(html).toContain('src="/assets/vinyl-placeholder.svg"');
+      expect(html).toContain('data-artwork-image');
+      expect(html).toContain('data-artwork-fallback=""');
+      expect(html).not.toContain('class="listing-card-image-fallback"');
     });
   });
 });
