@@ -316,6 +316,7 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
       items: digResults.items,
       totalCount: digResults.totalCount,
       hasMore: digResults.hasMore,
+      errorMessage: null,
       responsiveDig: true,
     }, next);
   } catch (error) {
