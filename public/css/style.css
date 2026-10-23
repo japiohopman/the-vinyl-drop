@@ -2790,6 +2790,12 @@ select.form-control {
   }
   .select-release-search-form input,
   .select-release-search-form button { width: 100%; min-width: 0; }
+  .select-release-custom-option {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: var(--space-3);
+  }
+  .select-release-custom-option > a { width: 100%; text-align: center; white-space: normal !important; }
   .select-release-result {
     display: flex !important;
     flex-direction: column;
