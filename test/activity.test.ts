@@ -215,7 +215,10 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
       expect(res.text).toContain('/mock-storage/community/rumours-front.webp');
       expect(res.text).toContain('activity-avatar-fallback');
       expect(res.text).toContain('activity-icon-badge');
-      expect(res.text).not.toMatch(/[🏷️💬❤️📻]/);
+      expect(res.text).not.toContain('🏷️');
+      expect(res.text).not.toContain('💬');
+      expect(res.text).not.toContain('❤️');
+      expect(res.text).not.toContain('📻');
     });
   });
 });
