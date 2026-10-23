@@ -1279,6 +1279,156 @@ select.form-control {
   }
 }
 
+/* ==========================================================================
+   TOAST NOTIFICATIONS & FLASH FEEDBACK
+   ========================================================================== */
+
+.toast-container {
+  position: fixed;
+  top: calc(84px + var(--space-3) + env(safe-area-inset-top, 0px));
+  right: var(--space-4);
+  z-index: 250;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 400px;
+  width: calc(100% - var(--space-8));
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-white);
+  border: var(--border-thick);
+  border-color: var(--color-ink);
+  border-left: 6px solid var(--color-rust);
+  box-shadow: var(--shadow-tactile);
+  border-radius: var(--radius-sm);
+  position: relative;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast-success {
+  border-left-color: var(--color-rust);
+}
+
+.toast-info {
+  border-left-color: var(--color-deep-green);
+}
+
+.toast-icon {
+  color: var(--color-rust);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-message {
+  font-family: var(--font-body);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: var(--line-height-snug);
+  display: block;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  padding: var(--space-1);
+  cursor: pointer;
+  color: var(--color-ink-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  flex-shrink: 0;
+  transition: color 0.15s ease, outline-color 0.15s ease;
+}
+
+.toast-close:hover {
+  color: var(--color-rust);
+}
+
+.toast-close:focus-visible {
+  color: var(--color-rust);
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.toast-dismissing {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.flash-error-container {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.flash-error-banner {
+  background-color: var(--color-error-bg);
+  border: var(--border-thick);
+  border-color: var(--color-error-border);
+  padding: var(--space-4);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-tactile);
+}
+
+.flash-error-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.flash-error-icon {
+  color: var(--color-rust-accessible);
+  flex-shrink: 0;
+}
+
+.flash-error-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-rust-accessible);
+  margin: 0;
+}
+
+.flash-error-list {
+  list-style: disc;
+  padding-left: var(--space-5);
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-ink);
+}
+
+@media (max-width: 768px) {
+  .toast-container {
+    top: calc(72px + var(--space-2) + env(safe-area-inset-top, 0px));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: min(400px, calc(100vw - var(--space-6)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .toast-dismissing {
+    transition: none !important;
+  }
+}
+
 /* --------------------------------------------------------------------------
    10. SVG ICON SYSTEM UTILITIES (PHASE UI FOUNDATION)
    -------------------------------------------------------------------------- */

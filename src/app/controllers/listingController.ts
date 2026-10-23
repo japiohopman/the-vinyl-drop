@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { renderWithLayout } from '../utils/render';
+import { setFlashCookie } from '../middleware/flash';
 import { listReleases, findReleaseById } from '../repositories/releaseRepository';
 import {
   getUserListings,
@@ -262,6 +263,7 @@ export async function postEditListing(req: Request, res: Response, next: NextFun
   }
 }
 
+/** Uploads a seller photo and issues success feedback only after the upload succeeds. */
 export async function postUploadPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
@@ -293,6 +295,7 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
       );
     }
 
+    setFlashCookie(res, 'success', 'Photo uploaded successfully.');
     res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {
     if (error instanceof ValidationError) {
@@ -325,6 +328,7 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
 }
 
 
+/** Updates a listing photo role and issues confirmation after the update succeeds. */
 export async function postUpdatePhotoRole(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (!req.user) {
     return res.redirect('/auth/login');
@@ -334,6 +338,7 @@ export async function postUpdatePhotoRole(req: Request, res: Response, next: Nex
   const photoId = req.params.photoId;
   try {
     await updateListingPhotoRole(listingId, photoId, req.user.id, req.body.role);
+    setFlashCookie(res, 'success', 'Photo role updated.');
     return res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {
     if (error instanceof ValidationError) {
@@ -343,6 +348,7 @@ export async function postUpdatePhotoRole(req: Request, res: Response, next: Nex
   }
 }
 
+/** Deletes an owned listing photo and confirms the deletion only after success. */
 export async function postDeletePhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
@@ -352,6 +358,7 @@ export async function postDeletePhoto(req: Request, res: Response, next: NextFun
     const { id: listingId, photoId } = req.params;
     await deletePhotoFromListing(listingId, photoId, req.user.id, undefined, { req });
 
+    setFlashCookie(res, 'success', 'Photo removed successfully.');
     res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {
     next(error);
@@ -410,6 +417,7 @@ export async function getPreviewListingPage(req: Request, res: Response, next: N
   }
 }
 
+/** Publishes an owned listing and issues confirmation only after publication succeeds. */
 export async function postPublishListing(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
@@ -421,6 +429,7 @@ export async function postPublishListing(req: Request, res: Response, next: Next
 
     await publishListing(listingId, req.user.id, { previewConfirmed });
 
+    setFlashCookie(res, 'success', 'Listing published successfully!');
     res.redirect(`/listings/${listingId}/preview`);
   } catch (error) {
     if (error instanceof ValidationError || (error as Error).name === 'InvalidLifecycleTransitionError') {

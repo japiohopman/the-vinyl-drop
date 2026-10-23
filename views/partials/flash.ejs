@@ -1,0 +1,54 @@
+<%
+  const messagesList = (typeof flashMessages !== 'undefined' && Array.isArray(flashMessages))
+    ? flashMessages
+    : (typeof locals !== 'undefined' && Array.isArray(locals.flashMessages) ? locals.flashMessages : []);
+
+  const successMsgs = messagesList.filter(m => m && m.type === 'success');
+  const errorMsgs = messagesList.filter(m => m && m.type === 'error');
+  const infoMsgs = messagesList.filter(m => m && m.type === 'info');
+%>
+
+<% if (successMsgs.length > 0 || infoMsgs.length > 0) { %>
+  <div class="toast-container" id="toast-container" role="status" aria-live="polite">
+    <% successMsgs.forEach(function(msg) { %>
+      <div class="toast toast-success" data-auto-dismiss="true" data-dismiss-timeout="4500">
+        <div class="toast-icon">
+          <%- include('icon', { name: 'confirmed', size: 20, ariaHidden: true }) %>
+        </div>
+        <div class="toast-content">
+          <span class="toast-message"><%= msg.message %></span>
+        </div>
+        <button type="button" class="toast-close" data-dismiss-toast aria-label="Dismiss notification" onclick="window.dismissToast ? window.dismissToast(this.closest('.toast')) : this.closest('.toast').remove()">
+          <%- include('icon', { name: 'close', size: 16, ariaHidden: true }) %>
+        </button>
+      </div>
+    <% }); %>
+
+    <% infoMsgs.forEach(function(msg) { %>
+      <div class="toast toast-info" data-auto-dismiss="true" data-dismiss-timeout="4500">
+        <div class="toast-content">
+          <span class="toast-message"><%= msg.message %></span>
+        </div>
+        <button type="button" class="toast-close" data-dismiss-toast aria-label="Dismiss notification" onclick="window.dismissToast ? window.dismissToast(this.closest('.toast')) : this.closest('.toast').remove()">
+          <%- include('icon', { name: 'close', size: 16, ariaHidden: true }) %>
+        </button>
+      </div>
+    <% }); %>
+  </div>
+<% } %>
+
+<% if (errorMsgs.length > 0) { %>
+  <div class="container flash-error-container">
+    <div class="flash-error-banner" role="alert" aria-live="assertive">
+      <div class="flash-error-header">
+        <%- include('icon', { name: 'close', size: 20, ariaHidden: true, className: 'flash-error-icon' }) %>
+        <strong class="flash-error-title">Attention required</strong>
+      </div>
+      <ul class="flash-error-list">
+        <% errorMsgs.forEach(function(msg) { %>
+          <li><%= msg.message %></li>
+        <% }); %>
+      </ul>
+    </div>
+  </div>
+<% } %>
