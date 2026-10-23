@@ -125,6 +125,11 @@ body {
   outline-offset: 3px;
 }
 
+/* Global overflow containment for inputs and honeypots */
+input, textarea, select {
+  max-width: 100%;
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
   font-weight: 700;

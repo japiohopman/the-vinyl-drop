@@ -3,7 +3,7 @@
   const user = typeof currentUser !== 'undefined' ? currentUser : null;
   const userProfile = typeof currentProfile !== 'undefined' ? currentProfile : null;
   const isMessagingEnabled = typeof messagingEnabled !== 'undefined' ? messagingEnabled : false;
-  const username = userProfile && userProfile.username ? userProfile.username : (user && user.email ? user.email.split('@')[0] : null);
+  const username = userProfile && userProfile.username ? userProfile.username : null;
   const profileUrl = username ? `/profiles/${username}` : '/profile';
 %>
 <nav class="site-nav" aria-label="Primary Navigation">
@@ -23,38 +23,38 @@
     </li>
   </ul>
 
-  <!-- Desktop Account Menu Area -->
+  <!-- Desktop Account Area -->
   <div class="desktop-account-area">
     <% if (user) { %>
-      <div class="desktop-you-container">
+      <div class="desktop-you-container" id="desktop-you-container">
         <button
           type="button"
           class="nav-link desktop-you-trigger<%= activePath.startsWith('/profile') || activePath.startsWith('/profiles') ? ' active' : '' %>"
           id="desktop-you-trigger"
           aria-expanded="false"
-          aria-haspopup="true"
+          aria-haspopup="dialog"
           aria-controls="desktop-you-menu"
           aria-label="Account menu"
         >
           <%- include('./icon', { name: 'user', size: '1rem', ariaHidden: true }) %>
           <span class="desktop-you-label"><%= username ? '@' + username : 'YOU' %></span>
         </button>
-        <div class="desktop-you-menu" id="desktop-you-menu" role="menu" aria-label="Account Menu" hidden>
+        <div class="desktop-you-menu" id="desktop-you-menu" aria-label="Account Menu" hidden>
           <div class="desktop-you-menu-header">
             <strong><%= username ? '@' + username : 'Account' %></strong>
             <% if (user.email) { %><span class="desktop-you-email"><%= user.email %></span><% } %>
           </div>
           <div class="desktop-you-menu-links">
-            <a href="<%= profileUrl %>" class="desktop-you-menu-item" role="menuitem">View Profile</a>
-            <a href="/profile/edit" class="desktop-you-menu-item" role="menuitem">Edit Profile</a>
-            <a href="/listings" class="desktop-you-menu-item" role="menuitem">My Listings</a>
+            <a href="<%= profileUrl %>" class="desktop-you-menu-item">View Profile</a>
+            <a href="/profile/edit" class="desktop-you-menu-item">Edit Profile</a>
+            <a href="/listings" class="desktop-you-menu-item">My Listings</a>
             <% if (isMessagingEnabled) { %>
-              <a href="/messages" class="desktop-you-menu-item" role="menuitem">Messages</a>
+              <a href="/messages" class="desktop-you-menu-item">Messages</a>
             <% } %>
           </div>
           <div class="desktop-you-menu-footer">
             <form action="/auth/logout" method="POST" class="inline-form">
-              <button type="submit" class="desktop-you-logout-btn" role="menuitem">
+              <button type="submit" class="desktop-you-logout-btn">
                 <%- include('./icon', { name: 'logout', size: '1rem', ariaHidden: true }) %>
                 <span>LOG OUT</span>
               </button>
@@ -182,7 +182,8 @@
 
 <script>
   (function() {
-    // Desktop dropdown handler
+    // Desktop popover handler (Disclosure pattern)
+    var desktopContainer = document.getElementById('desktop-you-container');
     var desktopTrigger = document.getElementById('desktop-you-trigger');
     var desktopMenu = document.getElementById('desktop-you-menu');
 
@@ -198,12 +199,9 @@
       desktopTrigger.setAttribute('aria-expanded', 'true');
       desktopMenu.hidden = false;
       desktopMenu.classList.add('is-open');
-      // Focus first item
-      var firstFocusable = desktopMenu.querySelector('a, button');
-      if (firstFocusable) firstFocusable.focus();
     }
 
-    if (desktopTrigger && desktopMenu) {
+    if (desktopTrigger && desktopMenu && desktopContainer) {
       desktopTrigger.addEventListener('click', function(e) {
         e.stopPropagation();
         var isOpen = desktopTrigger.getAttribute('aria-expanded') === 'true';
@@ -215,8 +213,17 @@
       });
 
       document.addEventListener('click', function(e) {
-        if (!desktopMenu.contains(e.target) && !desktopTrigger.contains(e.target)) {
+        if (!desktopContainer.contains(e.target)) {
           closeDesktopMenu();
+        }
+      });
+
+      // Close when focus moves outside desktopContainer (e.g. Tab navigation)
+      document.addEventListener('focusin', function(e) {
+        if (desktopTrigger.getAttribute('aria-expanded') === 'true') {
+          if (!desktopContainer.contains(e.target)) {
+            closeDesktopMenu();
+          }
         }
       });
     }
