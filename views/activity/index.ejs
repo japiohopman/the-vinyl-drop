@@ -81,7 +81,7 @@
               </div>
             </div>
 
-            <div class="activity-icon-badge" aria-label="<%= item.eventType === 'listing.published' ? 'New drop' : (item.eventType === 'comment.created' ? 'Comment' : 'Saved record') %>">
+            <div class="activity-icon-badge" role="img" aria-label="<%= item.eventType === 'listing.published' ? 'New drop' : (item.eventType === 'comment.created' ? 'Comment' : 'Saved record') %>">
               <% if (item.eventType === 'listing.published') { %>
                 <%- include('../partials/icon', { name: 'price-tag', size: '1.25rem', ariaHidden: true }) %>
               <% } else if (item.eventType === 'comment.created') { %>
