@@ -33,7 +33,6 @@
           id="desktop-you-trigger"
           aria-expanded="false"
           aria-controls="desktop-you-menu"
-          aria-label="Account menu"
         >
           <%- include('./icon', { name: 'user', size: '1rem', ariaHidden: true }) %>
           <span class="desktop-you-label"><%= username ? '@' + username : 'YOU' %></span>
@@ -91,9 +90,7 @@
       class="mobile-nav-item mobile-you-trigger<%= activePath.startsWith('/profile') || activePath.startsWith('/profiles') || activePath.startsWith('/auth') ? ' active' : '' %>"
       id="mobile-you-trigger"
       aria-expanded="false"
-      aria-haspopup="dialog"
       aria-controls="mobile-you-surface"
-      aria-label="Open account surface"
     >
       <%- include('./icon', { name: 'user', size: '1.25rem', ariaHidden: true }) %>
       <span>YOU</span>
@@ -258,7 +255,8 @@
     }
 
     if (mobileTrigger) {
-      mobileTrigger.addEventListener('click', function() {
+      mobileTrigger.addEventListener('click', function(e) {
+        e.stopPropagation();
         var isOpen = mobileTrigger.getAttribute('aria-expanded') === 'true';
         if (isOpen) {
           closeMobileSurface();
@@ -274,6 +272,22 @@
 
     if (mobileBackdrop) {
       mobileBackdrop.addEventListener('click', closeMobileSurface);
+      mobileBackdrop.addEventListener('pointerdown', closeMobileSurface);
+    }
+
+    // Breakpoint change listener to clean up mobile surface and scroll lock if viewport resizes to desktop
+    if (window.matchMedia) {
+      var desktopMedia = window.matchMedia('(min-width: 768px)');
+      function handleBreakpointChange(e) {
+        if (e.matches) {
+          closeMobileSurface();
+        }
+      }
+      if (desktopMedia.addEventListener) {
+        desktopMedia.addEventListener('change', handleBreakpointChange);
+      } else if (desktopMedia.addListener) {
+        desktopMedia.addListener(handleBreakpointChange);
+      }
     }
 
     // Keyboard navigation: Escape key & focus trap

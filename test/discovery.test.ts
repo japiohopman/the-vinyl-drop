@@ -282,7 +282,6 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('id="mobile-you-trigger"');
       expect(res.text).toContain('aria-expanded="false"');
       expect(res.text).toContain('aria-controls="mobile-you-surface"');
-      expect(res.text).toContain('aria-label="Open account surface"');
     });
 
     it('should verify favicon.ico has valid ICO binary magic header bytes', async () => {

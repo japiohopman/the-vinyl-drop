@@ -2,10 +2,10 @@ import ejs from 'ejs';
 import path from 'path';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 
-describe('Navigation Partial View Rendering & Script Interactions (views/partials/nav.ejs)', () => {
+describe('Navigation Partial View Rendering & Script Declarations (views/partials/nav.ejs)', () => {
   const navTemplatePath = path.join(__dirname, '../views/partials/nav.ejs');
 
-  function renderNav(locals: Record<string, unknown>): string {
+  async function renderNav(locals: Record<string, unknown>): Promise<string> {
     return ejs.renderFile(
       navTemplatePath,
       {
@@ -15,7 +15,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       {
         filename: navTemplatePath,
       }
-    ) as unknown as string;
+    ) as unknown as Promise<string>;
   }
 
   it('renders primary desktop destinations and mobile bottom bar for unauthenticated users', async () => {
@@ -61,8 +61,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       messagingEnabled: false,
     });
 
-    expect(html).toContain('YOU');
-    expect(html).toContain('Account');
+    expect(html).toContain('<span class="desktop-you-label">YOU</span>');
+    expect(html).toContain('<strong>Account</strong>');
     expect(html).not.toContain('@john.doe');
     expect(html).not.toContain('/profiles/john.doe');
     expect(html).toContain('href="/profile" class="desktop-you-menu-item"');
@@ -100,7 +100,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('href="/browse" class="nav-link active" aria-current="page"');
   });
 
-  it('includes client-side interaction script handling disclosure popover, Escape key, focus restoration, and mobile focus trap', async () => {
+  it('includes client-side interaction script handling disclosure popover, Escape key, focus restoration, mobile focus trap, and breakpoint cleanup', async () => {
     const html = await renderNav({
       currentPath: '/',
       currentUser: { id: 'user-123', email: 'digger@example.com' },
@@ -115,6 +115,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain("document.getElementById('mobile-you-surface')");
     expect(html).toContain("document.getElementById('mobile-you-close-btn')");
     expect(html).toContain("document.body.classList.add('account-surface-open')");
+    expect(html).toContain("window.matchMedia('(min-width: 768px)')");
     expect(html).toContain("e.key === 'Escape'");
     expect(html).toContain("e.key === 'Tab'");
     expect(html).toContain("focusin");
