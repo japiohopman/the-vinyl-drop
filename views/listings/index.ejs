@@ -90,7 +90,7 @@
             <%= item.priceFormatted %>
           </div>
 
-          <div style="display: flex; gap: var(--space-2); align-items: center;">
+          <div class="my-listings-actions" style="display: flex; gap: var(--space-2); align-items: center;">
             <a href="/listings/<%= item.id %>/preview" class="btn btn-outline btn-sm">Preview</a>
             <% if (item.status !== 'sold' && item.status !== 'traded' && item.status !== 'archived') { %>
               <a href="/listings/<%= item.id %>/edit" class="btn btn-outline btn-sm">Edit & Photos</a>
