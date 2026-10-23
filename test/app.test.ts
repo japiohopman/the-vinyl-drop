@@ -47,7 +47,7 @@ describe('App Routes and Error Handling', () => {
       expect(response.text).toContain('href="/browse" class="nav-link">BROWSE</a>');
       expect(response.text).toContain('href="/drop/new" class="nav-link nav-link-action">+ DROP</a>');
       expect(response.text).toContain('href="/activity" class="nav-link">ACTIVITY</a>');
-      expect(response.text).toContain('href="/profile" class="nav-link">YOU</a>');
+      expect(response.text).toContain('SIGN IN');
     });
   });
 
