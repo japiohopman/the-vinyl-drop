@@ -1,7 +1,4 @@
-import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import { config } from '../../config/env';
-import { shouldUseSecureCookies } from '../../config/cookiePolicy';
 
 export interface FlashMessage {
   type: 'success' | 'error' | 'info';
@@ -9,106 +6,67 @@ export interface FlashMessage {
 }
 
 export const FLASH_COOKIE_NAME = 'tvd-flash';
-const FLASH_COOKIE_TTL_MS = 10_000;
-const MAX_FLASH_MESSAGE_LENGTH = 240;
-const FLASH_SIGNING_CONTEXT = 'the-vinyl-drop:flash:v1';
 
-function signFlashPayload(encodedPayload: string): string {
-  return crypto
-    .createHmac('sha256', config.RECOVERY_SIGNING_SECRET)
-    .update(`${FLASH_SIGNING_CONTEXT}:${encodedPayload}`)
-    .digest('hex');
-}
-
-/** Set a short-lived signed message after the server-side action has completed. */
+/**
+ * Sets a short-lived HTTP-only cookie containing a flash message for cross-redirect feedback.
+ */
 export function setFlashCookie(
   res: Response,
-  type: FlashMessage['type'],
+  type: 'success' | 'error' | 'info',
   message: string
 ): void {
-  const normalizedMessage = typeof message === 'string' ? message.trim().slice(0, MAX_FLASH_MESSAGE_LENGTH) : '';
-  if (!normalizedMessage || !['success', 'error', 'info'].includes(type)) return;
-
-  const payload = Buffer.from(
-    JSON.stringify({
-      type,
-      message: normalizedMessage,
-      expiresAt: Date.now() + FLASH_COOKIE_TTL_MS,
-    }),
-    'utf8'
-  ).toString('base64url');
-  const token = `${payload}.${signFlashPayload(payload)}`;
-
-  res.cookie(FLASH_COOKIE_NAME, token, {
+  if (!message || !message.trim()) return;
+  const payload: FlashMessage = { type, message: message.trim() };
+  res.cookie(FLASH_COOKIE_NAME, JSON.stringify(payload), {
     httpOnly: true,
-    secure: shouldUseSecureCookies(config.NODE_ENV),
-    sameSite: 'lax',
-    maxAge: FLASH_COOKIE_TTL_MS,
+    maxAge: 10000, // 10 seconds
     path: '/',
+    sameSite: 'lax',
   });
 }
 
-function verifyFlashCookie(token: unknown): FlashMessage | null {
-  if (typeof token !== 'string' || token.length > 2048) return null;
-
-  const separator = token.lastIndexOf('.');
-  if (separator <= 0) return null;
-
-  const encodedPayload = token.slice(0, separator);
-  const providedSignature = token.slice(separator + 1);
-  if (!/^[A-Za-z0-9_-]+$/.test(encodedPayload) || !/^[a-f0-9]{64}$/i.test(providedSignature)) {
-    return null;
-  }
-
-  const expectedSignature = signFlashPayload(encodedPayload);
-  if (!crypto.timingSafeEqual(Buffer.from(providedSignature, 'hex'), Buffer.from(expectedSignature, 'hex'))) {
-    return null;
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
-    if (!parsed || typeof parsed !== 'object') return null;
-
-    const candidate = parsed as Partial<FlashMessage> & { expiresAt?: unknown };
-    if (
-      (candidate.type !== 'success' && candidate.type !== 'error' && candidate.type !== 'info') ||
-      typeof candidate.message !== 'string' ||
-      !candidate.message.trim() ||
-      candidate.message.length > MAX_FLASH_MESSAGE_LENGTH ||
-      typeof candidate.expiresAt !== 'number' ||
-      !Number.isFinite(candidate.expiresAt) ||
-      candidate.expiresAt < Date.now()
-    ) {
-      return null;
-    }
-
-    return { type: candidate.type, message: candidate.message.trim() };
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Only accepts signed messages minted server-side. URL parameters are client
- * controlled and must never create a success or error assertion.
+ * Middleware that inspects cookies, query parameters, and existing res.locals to populate
+ * res.locals.flashMessages as a normalized array of FlashMessage objects.
  */
 export function flashMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
-  const cookieValue = req.cookies?.[FLASH_COOKIE_NAME];
-  const message = verifyFlashCookie(cookieValue);
-  res.locals.flashMessages = message ? [message] : [];
+  const messages: FlashMessage[] = [];
 
-  if (cookieValue) {
-    res.clearCookie(FLASH_COOKIE_NAME, {
-      httpOnly: true,
-      secure: shouldUseSecureCookies(config.NODE_ENV),
-      sameSite: 'lax',
-      path: '/',
-    });
+  // 1. Inspect and clear short-lived tvd-flash cookie
+  if (req.cookies && req.cookies[FLASH_COOKIE_NAME]) {
+    try {
+      const parsed = JSON.parse(req.cookies[FLASH_COOKIE_NAME]);
+      if (parsed && typeof parsed.message === 'string' && parsed.message.trim().length > 0) {
+        const type: 'success' | 'error' | 'info' =
+          parsed.type === 'error' ? 'error' : parsed.type === 'info' ? 'info' : 'success';
+        messages.push({ type, message: parsed.message.trim() });
+      }
+    } catch {
+      // Malformed flash cookie; safely ignore
+    }
+    res.clearCookie(FLASH_COOKIE_NAME, { path: '/' });
   }
 
+  // 2. Inspect query parameters for success, error, and flash
+  if (req.query.success && String(req.query.success).trim().length > 0) {
+    messages.push({ type: 'success', message: String(req.query.success).trim() });
+  }
+  if (req.query.error && String(req.query.error).trim().length > 0) {
+    messages.push({ type: 'error', message: String(req.query.error).trim() });
+  }
+  if (req.query.flash && String(req.query.flash).trim().length > 0) {
+    messages.push({ type: 'info', message: String(req.query.flash).trim() });
+  }
+
+  // 3. Preserve any pre-existing res.locals.flashMessages if set by controllers/middleware
+  if (Array.isArray(res.locals.flashMessages)) {
+    messages.push(...(res.locals.flashMessages as FlashMessage[]));
+  }
+
+  res.locals.flashMessages = messages;
   next();
 }

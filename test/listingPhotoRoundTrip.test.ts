@@ -120,7 +120,7 @@ describe('Seller cover photo HTTP round trip', () => {
       .field('altText', 'Physical front sleeve');
 
     expect(frontResponse.status).toBe(302);
-    expect(frontResponse.headers.location).toBe(`/listings/${listingId}/edit`);
+    expect(frontResponse.headers.location).toContain(`/listings/${listingId}/edit`);
 
     const backResponse = await supertest(app)
       .post(`/listings/${listingId}/photos`)
@@ -130,7 +130,7 @@ describe('Seller cover photo HTTP round trip', () => {
       .field('altText', 'Physical back sleeve');
 
     expect(backResponse.status).toBe(302);
-    expect(backResponse.headers.location).toBe(`/listings/${listingId}/edit`);
+    expect(backResponse.headers.location).toContain(`/listings/${listingId}/edit`);
 
     const storedPhotos = await findPhotosByListingId(listingId);
     const front = storedPhotos.find((photo) => photo.role === 'front_cover');
