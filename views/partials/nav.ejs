@@ -3,25 +3,12 @@
   const user = typeof currentUser !== 'undefined' ? currentUser : null;
   const userProfile = typeof currentProfile !== 'undefined' ? currentProfile : null;
   const isMessagingEnabled = typeof messagingEnabled !== 'undefined' ? messagingEnabled : false;
+  const username = userProfile && userProfile.username ? userProfile.username : (user && user.email ? user.email.split('@')[0] : null);
+  const profileUrl = username ? `/profiles/${username}` : '/profile';
 %>
 <nav class="site-nav" aria-label="Primary Navigation">
-  <button
-    type="button"
-    class="nav-toggle"
-    id="nav-toggle-btn"
-    aria-expanded="false"
-    aria-controls="primary-nav-list"
-    aria-label="Toggle navigation menu"
-  >
-    <span class="nav-toggle-icon" aria-hidden="true">
-      <span class="hamburger-line"></span>
-      <span class="hamburger-line"></span>
-      <span class="hamburger-line"></span>
-    </span>
-    <span class="nav-toggle-text">MENU</span>
-  </button>
-
-  <ul id="primary-nav-list" class="nav-list">
+  <!-- Desktop Primary Navigation Links -->
+  <ul class="desktop-nav-list">
     <li class="nav-item">
       <a href="/" class="nav-link<%= activePath === '/' ? ' active' : '' %>"<%- activePath === '/' ? ' aria-current="page"' : '' %>>HOME</a>
     </li>
@@ -34,49 +21,285 @@
     <li class="nav-item">
       <a href="/activity" class="nav-link<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>ACTIVITY</a>
     </li>
-    <% if (user && isMessagingEnabled) { %>
-      <li class="nav-item">
-        <a href="/messages" class="nav-link<%= activePath.startsWith('/messages') ? ' active' : '' %>"<%- activePath.startsWith('/messages') ? ' aria-current="page"' : '' %>>MESSAGES</a>
-      </li>
-    <% } %>
-    <li class="nav-item">
-      <a href="/profile" class="nav-link<%= activePath.startsWith('/profile') || activePath.startsWith('/profiles') ? ' active' : '' %>"<%- activePath.startsWith('/profile') || activePath.startsWith('/profiles') ? ' aria-current="page"' : '' %>><%= userProfile ? '@' + userProfile.username : 'YOU' %></a>
-    </li>
-    <% if (user) { %>
-      <li class="nav-item">
-        <form action="/auth/logout" method="POST" class="inline-form" style="display: inline;">
-          <button type="submit" class="nav-link nav-link-button" style="background: none; border: none; font: inherit; cursor: pointer;">LOGOUT</button>
-        </form>
-      </li>
-    <% } else { %>
-      <li class="nav-item">
-        <a href="/auth/login" class="nav-link<%= activePath.startsWith('/auth/login') ? ' active' : '' %>"<%- activePath.startsWith('/auth/login') ? ' aria-current="page"' : '' %>>SIGN IN</a>
-      </li>
-    <% } %>
   </ul>
+
+  <!-- Desktop Account Menu Area -->
+  <div class="desktop-account-area">
+    <% if (user) { %>
+      <div class="desktop-you-container">
+        <button
+          type="button"
+          class="nav-link desktop-you-trigger<%= activePath.startsWith('/profile') || activePath.startsWith('/profiles') ? ' active' : '' %>"
+          id="desktop-you-trigger"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="desktop-you-menu"
+          aria-label="Account menu"
+        >
+          <%- include('./icon', { name: 'user', size: '1rem', ariaHidden: true }) %>
+          <span class="desktop-you-label"><%= username ? '@' + username : 'YOU' %></span>
+        </button>
+        <div class="desktop-you-menu" id="desktop-you-menu" role="menu" aria-label="Account Menu" hidden>
+          <div class="desktop-you-menu-header">
+            <strong><%= username ? '@' + username : 'Account' %></strong>
+            <% if (user.email) { %><span class="desktop-you-email"><%= user.email %></span><% } %>
+          </div>
+          <div class="desktop-you-menu-links">
+            <a href="<%= profileUrl %>" class="desktop-you-menu-item" role="menuitem">View Profile</a>
+            <a href="/profile/edit" class="desktop-you-menu-item" role="menuitem">Edit Profile</a>
+            <a href="/listings" class="desktop-you-menu-item" role="menuitem">My Listings</a>
+            <% if (isMessagingEnabled) { %>
+              <a href="/messages" class="desktop-you-menu-item" role="menuitem">Messages</a>
+            <% } %>
+          </div>
+          <div class="desktop-you-menu-footer">
+            <form action="/auth/logout" method="POST" class="inline-form">
+              <button type="submit" class="desktop-you-logout-btn" role="menuitem">
+                <%- include('./icon', { name: 'logout', size: '1rem', ariaHidden: true }) %>
+                <span>LOG OUT</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% } else { %>
+      <a href="/auth/login" class="nav-link nav-link-signin<%= activePath.startsWith('/auth/login') ? ' active' : '' %>"<%- activePath.startsWith('/auth/login') ? ' aria-current="page"' : '' %>>SIGN IN</a>
+    <% } %>
+  </div>
 </nav>
+
+<!-- Mobile Fixed Bottom Navigation Bar -->
+<nav class="mobile-bottom-nav" aria-label="Mobile Navigation">
+  <div class="mobile-nav-bar">
+    <a href="/" class="mobile-nav-item<%= activePath === '/' ? ' active' : '' %>"<%- activePath === '/' ? ' aria-current="page"' : '' %>>
+      <%- include('./icon', { name: 'home', size: '1.25rem', ariaHidden: true }) %>
+      <span>HOME</span>
+    </a>
+    <a href="/browse" class="mobile-nav-item<%= activePath.startsWith('/browse') ? ' active' : '' %>"<%- activePath.startsWith('/browse') ? ' aria-current="page"' : '' %>>
+      <%- include('./icon', { name: 'search', size: '1.25rem', ariaHidden: true }) %>
+      <span>BROWSE</span>
+    </a>
+    <a href="/drop/new" class="mobile-nav-item mobile-nav-drop<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' aria-current="page"' : '' %>>
+      <%- include('./icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>
+      <span>+ DROP</span>
+    </a>
+    <a href="/activity" class="mobile-nav-item<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>
+      <%- include('./icon', { name: 'talk', size: '1.25rem', ariaHidden: true }) %>
+      <span>ACTIVITY</span>
+    </a>
+    <button
+      type="button"
+      class="mobile-nav-item mobile-you-trigger<%= activePath.startsWith('/profile') || activePath.startsWith('/profiles') || activePath.startsWith('/auth') ? ' active' : '' %>"
+      id="mobile-you-trigger"
+      aria-expanded="false"
+      aria-haspopup="dialog"
+      aria-controls="mobile-you-surface"
+      aria-label="Open account surface"
+    >
+      <%- include('./icon', { name: 'user', size: '1.25rem', ariaHidden: true }) %>
+      <span>YOU</span>
+    </button>
+  </div>
+</nav>
+
+<!-- Mobile Full-Screen YOU Account Surface Overlay -->
+<div
+  class="mobile-you-surface"
+  id="mobile-you-surface"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Account Surface"
+  hidden
+>
+  <div class="mobile-you-surface-backdrop" id="mobile-you-backdrop"></div>
+  <div class="mobile-you-surface-content">
+    <div class="mobile-you-header">
+      <div class="mobile-you-identity">
+        <%- include('./icon', { name: 'user', size: '1.75rem', ariaHidden: true }) %>
+        <div class="mobile-you-user-info">
+          <strong class="mobile-you-username"><%= user ? (username ? '@' + username : 'Account') : 'Guest' %></strong>
+          <% if (user && user.email) { %>
+            <span class="mobile-you-email"><%= user.email %></span>
+          <% } %>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="mobile-you-close-btn"
+        id="mobile-you-close-btn"
+        aria-label="Close account surface"
+      >
+        <%- include('./icon', { name: 'close', size: '1.5rem', ariaHidden: true }) %>
+      </button>
+    </div>
+
+    <div class="mobile-you-body">
+      <% if (user) { %>
+        <nav aria-label="Account Actions">
+          <ul class="mobile-you-actions-list">
+            <li>
+              <a href="<%= profileUrl %>" class="mobile-you-action-link">
+                <span>View Profile</span>
+              </a>
+            </li>
+            <li>
+              <a href="/profile/edit" class="mobile-you-action-link">
+                <span>Edit Profile</span>
+              </a>
+            </li>
+            <li>
+              <a href="/listings" class="mobile-you-action-link">
+                <span>My Listings</span>
+              </a>
+            </li>
+            <% if (isMessagingEnabled) { %>
+              <li>
+                <a href="/messages" class="mobile-you-action-link">
+                  <span>Messages</span>
+                </a>
+              </li>
+            <% } %>
+          </ul>
+        </nav>
+
+        <div class="mobile-you-footer">
+          <form action="/auth/logout" method="POST" class="mobile-logout-form">
+            <button type="submit" class="mobile-you-logout-btn">
+              <%- include('./icon', { name: 'logout', size: '1.25rem', ariaHidden: true }) %>
+              <span>LOG OUT</span>
+            </button>
+          </form>
+        </div>
+      <% } else { %>
+        <div class="mobile-you-auth-actions">
+          <a href="/auth/login" class="btn btn-primary btn-lg mobile-auth-btn">SIGN IN</a>
+          <a href="/auth/signup" class="btn btn-outline btn-lg mobile-auth-btn">CREATE ACCOUNT</a>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
 
 <script>
   (function() {
-    var toggle = document.getElementById('nav-toggle-btn');
-    var menu = document.getElementById('primary-nav-list');
-    if (!toggle || !menu) return;
+    // Desktop dropdown handler
+    var desktopTrigger = document.getElementById('desktop-you-trigger');
+    var desktopMenu = document.getElementById('desktop-you-menu');
 
-    toggle.addEventListener('click', function() {
-      var expanded = toggle.getAttribute('aria-expanded') === 'true';
-      toggle.setAttribute('aria-expanded', String(!expanded));
-      if (!expanded) {
-        menu.classList.add('is-open');
-      } else {
-        menu.classList.remove('is-open');
+    function closeDesktopMenu() {
+      if (!desktopTrigger || !desktopMenu) return;
+      desktopTrigger.setAttribute('aria-expanded', 'false');
+      desktopMenu.hidden = true;
+      desktopMenu.classList.remove('is-open');
+    }
+
+    function openDesktopMenu() {
+      if (!desktopTrigger || !desktopMenu) return;
+      desktopTrigger.setAttribute('aria-expanded', 'true');
+      desktopMenu.hidden = false;
+      desktopMenu.classList.add('is-open');
+      // Focus first item
+      var firstFocusable = desktopMenu.querySelector('a, button');
+      if (firstFocusable) firstFocusable.focus();
+    }
+
+    if (desktopTrigger && desktopMenu) {
+      desktopTrigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var isOpen = desktopTrigger.getAttribute('aria-expanded') === 'true';
+        if (isOpen) {
+          closeDesktopMenu();
+        } else {
+          openDesktopMenu();
+        }
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!desktopMenu.contains(e.target) && !desktopTrigger.contains(e.target)) {
+          closeDesktopMenu();
+        }
+      });
+    }
+
+    // Mobile surface overlay handler
+    var mobileTrigger = document.getElementById('mobile-you-trigger');
+    var mobileSurface = document.getElementById('mobile-you-surface');
+    var mobileCloseBtn = document.getElementById('mobile-you-close-btn');
+    var mobileBackdrop = document.getElementById('mobile-you-backdrop');
+
+    function closeMobileSurface() {
+      if (!mobileSurface) return;
+      mobileSurface.hidden = true;
+      mobileSurface.classList.remove('is-open');
+      document.body.classList.remove('account-surface-open');
+      if (mobileTrigger) {
+        mobileTrigger.setAttribute('aria-expanded', 'false');
+        mobileTrigger.focus();
       }
-    });
+    }
 
+    function openMobileSurface() {
+      if (!mobileSurface) return;
+      mobileSurface.hidden = false;
+      mobileSurface.classList.add('is-open');
+      document.body.classList.add('account-surface-open');
+      if (mobileTrigger) {
+        mobileTrigger.setAttribute('aria-expanded', 'true');
+      }
+      if (mobileCloseBtn) {
+        mobileCloseBtn.focus();
+      }
+    }
+
+    if (mobileTrigger) {
+      mobileTrigger.addEventListener('click', function() {
+        var isOpen = mobileTrigger.getAttribute('aria-expanded') === 'true';
+        if (isOpen) {
+          closeMobileSurface();
+        } else {
+          openMobileSurface();
+        }
+      });
+    }
+
+    if (mobileCloseBtn) {
+      mobileCloseBtn.addEventListener('click', closeMobileSurface);
+    }
+
+    if (mobileBackdrop) {
+      mobileBackdrop.addEventListener('click', closeMobileSurface);
+    }
+
+    // Keyboard navigation: Escape key & focus trap
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
-        toggle.setAttribute('aria-expanded', 'false');
-        menu.classList.remove('is-open');
-        toggle.focus();
+      if (e.key === 'Escape') {
+        if (desktopTrigger && desktopTrigger.getAttribute('aria-expanded') === 'true') {
+          closeDesktopMenu();
+          desktopTrigger.focus();
+        }
+        if (mobileSurface && !mobileSurface.hidden) {
+          closeMobileSurface();
+        }
+      }
+
+      // Focus trap in mobile surface when open
+      if (e.key === 'Tab' && mobileSurface && !mobileSurface.hidden) {
+        var focusables = mobileSurface.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]');
+        if (focusables.length === 0) return;
+        var firstEl = focusables[0];
+        var lastEl = focusables[focusables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl.focus();
+          }
+        } else {
+          if (document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
       }
     });
   })();
