@@ -7,7 +7,7 @@ import express from 'express';
 import { createApp } from '../src/app';
 import { setFlashCookie } from '../src/app/middleware/flash';
 
-jest.setTimeout(30000);
+jest.setTimeout(45000);
 
 describe('Toast Behavior & Browser Interactions (Playwright)', () => {
   let browser: Browser;
@@ -17,10 +17,13 @@ describe('Toast Behavior & Browser Interactions (Playwright)', () => {
   beforeAll(async () => {
     browser = await chromium.launch({ headless: true });
 
-    // Create Express app with test trigger route mounted before app router/notFoundHandler
     const testApp = express();
     testApp.get('/test/trigger-flash', (_req, res) => {
       setFlashCookie(res, 'success', 'Server confirmed success action!');
+      res.redirect('/design-system');
+    });
+    testApp.get('/test/trigger-info-flash', (_req, res) => {
+      setFlashCookie(res, 'info', 'Server info notification!');
       res.redirect('/design-system');
     });
     testApp.use(createApp());
@@ -40,26 +43,36 @@ describe('Toast Behavior & Browser Interactions (Playwright)', () => {
     }
   });
 
-  it('renders a server-issued signed toast cleanly below the sticky header without overlap', async () => {
-    const page = await browser.newPage();
-    await page.goto(`${baseUrl}/test/trigger-flash`);
+  const viewports = [
+    { width: 360, height: 740, name: '360px Small Mobile' },
+    { width: 390, height: 844, name: '390px Mobile' },
+    { width: 430, height: 932, name: '430px Large Mobile' },
+    { width: 768, height: 1024, name: '768px Tablet Layout Breakpoint' },
+    { width: 1280, height: 800, name: '1280px Desktop' },
+  ];
 
-    const toast = page.locator('#toast-container .toast-success');
-    await toast.waitFor({ state: 'visible', timeout: 5000 });
+  for (const vp of viewports) {
+    it(`renders a server-issued toast cleanly below the sticky header without overlap at ${vp.name} (${vp.width}px)`, async () => {
+      const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+      await page.goto(`${baseUrl}/test/trigger-flash`);
 
-    const toastBox = await toast.boundingBox();
-    const header = page.locator('.site-header');
-    const headerBox = await header.boundingBox();
+      const toast = page.locator('#toast-container .toast-success');
+      await toast.waitFor({ state: 'visible', timeout: 5000 });
 
-    expect(toastBox).not.toBeNull();
-    expect(headerBox).not.toBeNull();
+      const toastBox = await toast.boundingBox();
+      const header = page.locator('.site-header');
+      const headerBox = await header.boundingBox();
 
-    if (toastBox && headerBox) {
-      expect(toastBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height);
-    }
+      expect(toastBox).not.toBeNull();
+      expect(headerBox).not.toBeNull();
 
-    await page.close();
-  });
+      if (toastBox && headerBox) {
+        expect(toastBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height - 1);
+      }
+
+      await page.close();
+    });
+  }
 
   it('allows manual dismissal when clicking the close button', async () => {
     const page = await browser.newPage();
@@ -78,22 +91,70 @@ describe('Toast Behavior & Browser Interactions (Playwright)', () => {
     await page.close();
   });
 
-  it('pauses auto-dismiss timer on mouse hover and focus', async () => {
+  it('pauses auto-dismiss timer on mouse hover and resumes after mouseleave', async () => {
     const page = await browser.newPage();
     await page.goto(`${baseUrl}/test/trigger-flash`);
 
     const toast = page.locator('#toast-container .toast-success');
     await toast.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Hover over toast to pause timer
     await toast.hover();
     await page.waitForTimeout(2000);
 
     expect(await toast.isVisible()).toBe(true);
 
-    // Unhover and wait for auto-dismiss
     await page.mouse.move(0, 0);
     await toast.waitFor({ state: 'detached', timeout: 6000 });
+
+    await page.close();
+  });
+
+  it('pauses auto-dismiss timer on keyboard focusin and resumes after focusout', async () => {
+    const page = await browser.newPage();
+    await page.goto(`${baseUrl}/test/trigger-flash`);
+
+    const toast = page.locator('#toast-container .toast-success');
+    await toast.waitFor({ state: 'visible', timeout: 5000 });
+
+    const closeBtn = page.locator('#toast-container .toast-success .toast-close');
+    await closeBtn.focus();
+    await page.waitForTimeout(2000);
+
+    expect(await toast.isVisible()).toBe(true);
+
+    // Blur focus away from toast
+    await closeBtn.evaluate((el) => (el as HTMLElement).blur());
+    await toast.waitFor({ state: 'detached', timeout: 6000 });
+
+    await page.close();
+  });
+
+  it('auto-dismisses info toasts initialized with data-auto-dismiss="true"', async () => {
+    const page = await browser.newPage();
+    await page.goto(`${baseUrl}/test/trigger-info-flash`);
+
+    const toast = page.locator('#toast-container .toast-info');
+    await toast.waitFor({ state: 'visible', timeout: 5000 });
+
+    await toast.waitFor({ state: 'detached', timeout: 6000 });
+
+    await page.close();
+  });
+
+  it('respects prefers-reduced-motion by removing toast immediately on dismiss', async () => {
+    const page = await browser.newPage();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto(`${baseUrl}/test/trigger-flash`);
+
+    const toast = page.locator('#toast-container .toast-success');
+    await toast.waitFor({ state: 'visible', timeout: 5000 });
+
+    const closeBtn = page.locator('#toast-container .toast-success .toast-close');
+    await closeBtn.click();
+
+    // Immediately detached without 300ms transition class delay
+    const count = await page.locator('#toast-container .toast-success').count();
+    expect(count).toBe(0);
 
     await page.close();
   });

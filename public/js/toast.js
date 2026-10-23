@@ -107,7 +107,7 @@
   }
 
   function initToasts() {
-    var toasts = document.querySelectorAll('.toast-success[data-auto-dismiss="true"]');
+    var toasts = document.querySelectorAll('.toast[data-auto-dismiss="true"]');
     toasts.forEach(function (toast) {
       setupToastTimer(toast);
     });

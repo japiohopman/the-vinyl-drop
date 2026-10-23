@@ -2,7 +2,12 @@ import path from 'path';
 import ejs from 'ejs';
 import request from 'supertest';
 import express, { Request, Response } from 'express';
-import { flashMiddleware, setFlashCookie, FLASH_COOKIE_NAME } from '../src/app/middleware/flash';
+import {
+  flashMiddleware,
+  setFlashCookie,
+  verifyAndParseFlashCookie,
+  FLASH_COOKIE_NAME,
+} from '../src/app/middleware/flash';
 import { createApp } from '../src/app';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 
@@ -102,8 +107,51 @@ describe('Flash Messages and Toast System', () => {
       expect(mockRes.locals?.flashMessages).toEqual([]);
     });
 
-    it('does not set an empty flash cookie', () => {
+    it('rejects missing, invalid, or expired expiresAt timestamps', () => {
+      expect(verifyAndParseFlashCookie('invalid.signature')).toBeNull();
+
+      // Expired timestamp
+      const expiredPayload = JSON.stringify({
+        type: 'success',
+        message: 'Old message',
+        expiresAt: Date.now() - 1000,
+      });
+
+      expect(verifyAndParseFlashCookie(expiredPayload)).toBeNull();
+
+      // Missing expiresAt
+      const missingExpiryPayload = JSON.stringify({
+        type: 'success',
+        message: 'No expiry',
+      });
+
+      expect(verifyAndParseFlashCookie(missingExpiryPayload)).toBeNull();
+    });
+
+    it('rejects unallowed message types and oversized payloads or messages', () => {
+      // Invalid type
+      const invalidTypePayload = JSON.stringify({
+        type: 'unallowed_type',
+        message: 'Test message',
+        expiresAt: Date.now() + 10000,
+      });
+      expect(verifyAndParseFlashCookie(invalidTypePayload)).toBeNull();
+
+      // Oversized message
+      const oversizedMsg = 'A'.repeat(2001);
+      const oversizedPayload = JSON.stringify({
+        type: 'success',
+        message: oversizedMsg,
+        expiresAt: Date.now() + 10000,
+      });
+      expect(verifyAndParseFlashCookie(oversizedPayload)).toBeNull();
+    });
+
+    it('does not set an empty or oversized flash cookie', () => {
       setFlashCookie(mockRes as Response, 'success', '   ');
+      expect(mockRes.cookie).not.toHaveBeenCalled();
+
+      setFlashCookie(mockRes as Response, 'success', 'B'.repeat(2001));
       expect(mockRes.cookie).not.toHaveBeenCalled();
     });
   });
@@ -126,6 +174,19 @@ describe('Flash Messages and Toast System', () => {
       expect(html).toContain('data-auto-dismiss="true"');
       expect(html).toContain('icon-confirmed');
       expect(html).toContain('icon-close');
+    });
+
+    it('renders info toast with auto-dismiss attributes', async () => {
+      const html = await ejs.renderFile(flashTemplatePath, {
+        flashMessages: [{ type: 'info', message: 'System maintenance scheduled' }],
+        getIconSvg,
+      });
+
+      expect(html).toContain('role="status"');
+      expect(html).toContain('aria-live="polite"');
+      expect(html).toContain('toast toast-info');
+      expect(html).toContain('System maintenance scheduled');
+      expect(html).toContain('data-auto-dismiss="true"');
     });
 
     it('escapes message text rather than interpreting it as HTML', async () => {

@@ -194,7 +194,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
         });
 
       expect(res.status).toBe(302);
-      expect(res.header.location).toContain('/profiles/alice_new_handle');
+      expect(res.header.location).toBe('/profiles/alice_new_handle');
       expect(updateSpy).toHaveBeenCalledWith(
         mockUserAlice.id,
         expect.objectContaining({

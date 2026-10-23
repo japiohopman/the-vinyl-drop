@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
 import { config } from '../../config/env';
+import { shouldUseSecureCookies } from '../../config/cookiePolicy';
 
 export interface FlashMessage {
   type: 'success' | 'error' | 'info';
@@ -10,13 +11,19 @@ export interface FlashMessage {
 export const FLASH_COOKIE_NAME = 'tvd-flash';
 const FLASH_SECRET = config.RECOVERY_SIGNING_SECRET || 'fallback-secret-for-flash-messages';
 
+const MAX_MESSAGE_LENGTH = 2000;
+const MAX_COOKIE_LENGTH = 4096;
+const ALLOWED_TYPES: Set<string> = new Set(['success', 'error', 'info']);
+
 function signFlashPayload(payloadStr: string): string {
   const hmac = crypto.createHmac('sha256', FLASH_SECRET).update(payloadStr).digest('hex');
   return `${payloadStr}.${hmac}`;
 }
 
-function verifyAndParseFlashCookie(cookieVal: string): FlashMessage | null {
+export function verifyAndParseFlashCookie(cookieVal: string): FlashMessage | null {
   if (!cookieVal || typeof cookieVal !== 'string') return null;
+  if (cookieVal.length > MAX_COOKIE_LENGTH) return null;
+
   const lastDot = cookieVal.lastIndexOf('.');
   if (lastDot === -1) return null;
 
@@ -39,14 +46,22 @@ function verifyAndParseFlashCookie(cookieVal: string): FlashMessage | null {
   try {
     const parsed = JSON.parse(payloadStr);
     if (!parsed || typeof parsed.message !== 'string' || !parsed.message.trim()) return null;
-    if (parsed.expiresAt && typeof parsed.expiresAt === 'number' && Date.now() > parsed.expiresAt) {
+    if (parsed.message.length > MAX_MESSAGE_LENGTH) return null;
+
+    if (!parsed.type || !ALLOWED_TYPES.has(parsed.type)) return null;
+
+    if (
+      typeof parsed.expiresAt !== 'number' ||
+      !Number.isFinite(parsed.expiresAt) ||
+      parsed.expiresAt <= Date.now()
+    ) {
       return null;
     }
 
-    const type: 'success' | 'error' | 'info' =
-      parsed.type === 'error' ? 'error' : parsed.type === 'info' ? 'info' : 'success';
-
-    return { type, message: parsed.message.trim() };
+    return {
+      type: parsed.type as 'success' | 'error' | 'info',
+      message: parsed.message.trim(),
+    };
   } catch {
     return null;
   }
@@ -61,14 +76,22 @@ export function setFlashCookie(
   message: string
 ): void {
   if (!message || !message.trim()) return;
+  if (!ALLOWED_TYPES.has(type)) return;
+
+  const trimmedMessage = message.trim();
+  if (trimmedMessage.length > MAX_MESSAGE_LENGTH) return;
+
   const payload = {
     type,
-    message: message.trim(),
+    message: trimmedMessage,
     expiresAt: Date.now() + 15000, // 15 seconds
   };
   const signed = signFlashPayload(JSON.stringify(payload));
+  if (signed.length > MAX_COOKIE_LENGTH) return;
+
   res.cookie(FLASH_COOKIE_NAME, signed, {
     httpOnly: true,
+    secure: shouldUseSecureCookies(config.NODE_ENV),
     maxAge: 15000,
     path: '/',
     sameSite: 'lax',

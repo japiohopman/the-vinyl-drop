@@ -246,7 +246,7 @@
             <div class="toast-content">
               <span class="toast-message">Listing photo uploaded successfully.</span>
             </div>
-            <button type="button" class="toast-close" aria-label="Dismiss notification">
+            <button type="button" class="toast-close" aria-label="Dismiss notification" onclick="window.dismissToast ? window.dismissToast(this.closest('.toast')) : this.closest('.toast').remove()">
               <%- include('../partials/icon', { name: 'close', size: 16, ariaHidden: true }) %>
             </button>
           </div>
