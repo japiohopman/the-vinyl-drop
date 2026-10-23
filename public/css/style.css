@@ -2489,3 +2489,65 @@ select.form-control {
     align-items: flex-start;
   }
 }
+
+/* ==========================================================================
+   My Listings Management - Artwork Thumbnails (#146)
+   ========================================================================== */
+.my-listings-item-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 250px;
+}
+
+.my-listings-thumbnail-frame {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper-muted);
+  flex-shrink: 0;
+}
+
+.my-listings-thumbnail-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.my-listings-terminal-fallback {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: var(--color-paper-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  color: var(--color-ink-muted);
+  font-weight: 700;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .my-listings-item-row {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .my-listings-thumbnail-frame {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+  }
+}
