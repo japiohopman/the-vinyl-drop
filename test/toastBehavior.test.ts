@@ -68,6 +68,9 @@ describe('Toast Behavior & Browser Interactions (Playwright)', () => {
 
       if (toastBox && headerBox) {
         expect(toastBox.y).toBeGreaterThanOrEqual(headerBox.y + headerBox.height - 1);
+        expect(toastBox.x).toBeGreaterThanOrEqual(0);
+        expect(toastBox.x + toastBox.width).toBeLessThanOrEqual(vp.width);
+        expect(toastBox.y + toastBox.height).toBeLessThanOrEqual(vp.height);
       }
 
       await page.close();
@@ -126,6 +129,29 @@ describe('Toast Behavior & Browser Interactions (Playwright)', () => {
     await closeBtn.evaluate((el) => (el as HTMLElement).blur());
     await toast.waitFor({ state: 'detached', timeout: 6000 });
 
+    await page.close();
+  });
+
+  it('keeps the timer paused after hover ends while keyboard focus remains inside the toast', async () => {
+    const page = await browser.newPage();
+    await page.goto(`${baseUrl}/test/trigger-flash`);
+
+    const toast = page.locator('#toast-container .toast-success');
+    await toast.waitFor({ state: 'visible', timeout: 5000 });
+    const closeBtn = page.locator('#toast-container .toast-success .toast-close');
+
+    await toast.hover();
+    await closeBtn.focus();
+    await page.waitForTimeout(2000);
+    expect(await toast.isVisible()).toBe(true);
+
+    // Leaving with the pointer must not restart the timer while keyboard focus remains.
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(1500);
+    expect(await toast.isVisible()).toBe(true);
+
+    await closeBtn.evaluate((el) => (el as HTMLElement).blur());
+    await toast.waitFor({ state: 'detached', timeout: 6000 });
     await page.close();
   });
 

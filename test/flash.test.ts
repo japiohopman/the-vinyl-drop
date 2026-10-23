@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import path from 'path';
 import ejs from 'ejs';
 import request from 'supertest';
@@ -10,6 +11,16 @@ import {
 } from '../src/app/middleware/flash';
 import { createApp } from '../src/app';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
+import { config } from '../src/config/env';
+import { shouldUseSecureCookies } from '../src/config/cookiePolicy';
+
+/** Sign test payloads with the same key used by the flash-cookie verifier. */
+function signFlashTestPayload(payload: Record<string, unknown>): string {
+  const payloadText = JSON.stringify(payload);
+  const secret = config.RECOVERY_SIGNING_SECRET || 'fallback-secret-for-flash-messages';
+  const signature = crypto.createHmac('sha256', secret).update(payloadText).digest('hex');
+  return `${payloadText}.${signature}`;
+}
 
 describe('Flash Messages and Toast System', () => {
   describe('flashMiddleware Unit Tests', () => {
@@ -51,6 +62,8 @@ describe('Flash Messages and Toast System', () => {
         expect.stringMatching(/^\{.*\}\.[a-f0-9]{64}$/),
         expect.objectContaining({
           httpOnly: true,
+          secure: shouldUseSecureCookies(config.NODE_ENV),
+          maxAge: 15000,
           path: '/',
           sameSite: 'lax',
         })
@@ -107,44 +120,51 @@ describe('Flash Messages and Toast System', () => {
       expect(mockRes.locals?.flashMessages).toEqual([]);
     });
 
-    it('rejects missing, invalid, or expired expiresAt timestamps', () => {
-      expect(verifyAndParseFlashCookie('invalid.signature')).toBeNull();
-
-      // Expired timestamp
-      const expiredPayload = JSON.stringify({
+    it('rejects missing, invalid, or expired expiresAt timestamps even with a valid signature', () => {
+      const expiredCookie = signFlashTestPayload({
         type: 'success',
         message: 'Old message',
         expiresAt: Date.now() - 1000,
       });
+      expect(verifyAndParseFlashCookie(expiredCookie)).toBeNull();
 
-      expect(verifyAndParseFlashCookie(expiredPayload)).toBeNull();
-
-      // Missing expiresAt
-      const missingExpiryPayload = JSON.stringify({
+      const missingExpiryCookie = signFlashTestPayload({
         type: 'success',
         message: 'No expiry',
       });
+      expect(verifyAndParseFlashCookie(missingExpiryCookie)).toBeNull();
 
-      expect(verifyAndParseFlashCookie(missingExpiryPayload)).toBeNull();
+      const invalidExpiryCookie = signFlashTestPayload({
+        type: 'success',
+        message: 'Invalid expiry',
+        expiresAt: 'tomorrow',
+      });
+      expect(verifyAndParseFlashCookie(invalidExpiryCookie)).toBeNull();
+
+      const nonFiniteExpiryCookie = signFlashTestPayload({
+        type: 'success',
+        message: 'Non-finite expiry',
+        expiresAt: null,
+      });
+      expect(verifyAndParseFlashCookie(nonFiniteExpiryCookie)).toBeNull();
     });
 
-    it('rejects unallowed message types and oversized payloads or messages', () => {
-      // Invalid type
-      const invalidTypePayload = JSON.stringify({
+    it('rejects signed cookies with unallowed types or oversized messages and cookies', () => {
+      const invalidTypeCookie = signFlashTestPayload({
         type: 'unallowed_type',
         message: 'Test message',
         expiresAt: Date.now() + 10000,
       });
-      expect(verifyAndParseFlashCookie(invalidTypePayload)).toBeNull();
+      expect(verifyAndParseFlashCookie(invalidTypeCookie)).toBeNull();
 
-      // Oversized message
-      const oversizedMsg = 'A'.repeat(2001);
-      const oversizedPayload = JSON.stringify({
+      const oversizedMessageCookie = signFlashTestPayload({
         type: 'success',
-        message: oversizedMsg,
+        message: 'A'.repeat(2001),
         expiresAt: Date.now() + 10000,
       });
-      expect(verifyAndParseFlashCookie(oversizedPayload)).toBeNull();
+      expect(verifyAndParseFlashCookie(oversizedMessageCookie)).toBeNull();
+
+      expect(verifyAndParseFlashCookie('x'.repeat(4097))).toBeNull();
     });
 
     it('does not set an empty or oversized flash cookie', () => {
