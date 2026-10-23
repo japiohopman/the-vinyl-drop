@@ -3,7 +3,15 @@
 
   document.addEventListener('error', (event) => {
     const image = event.target;
-    if (!(image instanceof HTMLImageElement) || !image.hasAttribute('data-artwork-image')) return;
+    if (!(image instanceof HTMLImageElement)) return;
+
+    if (image.hasAttribute('data-avatar-image')) {
+      image.hidden = true;
+      const fallback = image.nextElementSibling;
+      if (fallback instanceof HTMLElement) fallback.hidden = false;
+      return;
+    }
+    if (!image.hasAttribute('data-artwork-image')) return;
 
     const currentSource = image.getAttribute('src') || '';
     const preferredFallback = image.dataset.artworkFallback || '';
