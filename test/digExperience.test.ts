@@ -191,7 +191,8 @@ describe('Dig photo-role contract', () => {
     expect(script).toContain("slide.inert = true");
 
     const view = fs.readFileSync(path.join(process.cwd(), 'views/browse/dig.ejs'), 'utf8');
-    const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const css = rawCss.replace(/\r\n/g, '\n');
     expect(css).toContain('.dig-sleeve-image');
     expect(css).toContain('object-fit: contain');
     expect(css).toContain('touch-action: pinch-zoom;');
@@ -387,7 +388,8 @@ describe('GET /browse/dig HTTP route integration', () => {
 describe('Responsive listing page', () => {
   it('keeps the focused listing detail grid within narrow mobile viewports', () => {
     const view = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
-    const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const css = rawCss.replace(/\r\n/g, '\n');
 
     expect(view).not.toContain('minmax(320px, 1fr)');
     expect(view).toContain('class="listing-detail-grid"');
