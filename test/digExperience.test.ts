@@ -7,6 +7,7 @@ import supertest from 'supertest';
 import { createApp } from '../src/app';
 import * as listingService from '../src/app/services/listingService';
 import { resolveDigArtwork, DigPhotoCandidate } from '../src/domain/digExperience';
+import { buildListingCardFromDetails } from '../src/app/view-models/listingCardViewModel';
 import { listingPhotoRoleSchema, newListingPhotoRoleSchema } from '../src/validators/listing';
 import digState from '../public/js/dig-state.js';
 
@@ -44,6 +45,42 @@ describe('Dig navigation and flip state', () => {
     expect(flipped).toBe(true);
     expect(digState.nextFlipState(flipped)).toBe(false);
     expect(initialIndex).toBe(1);
+  });
+});
+
+describe('Shared listing artwork priority', () => {
+  it('prefers an explicit seller front cover and retains release artwork as the broken-image fallback', () => {
+    const card = buildListingCardFromDetails({
+      listing: { id: 'listing-artwork-1', price: 2400, tradeAvailable: false },
+      release: {
+        title: 'Blue Lines',
+        artist: 'Massive Attack',
+        format: 'LP',
+        coverArtUrl: 'https://catalog.example/blue-lines.webp',
+      },
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG' },
+      seller: { username: 'record_seller' },
+      photos: [
+        { publicUrl: '/seller/record-label.webp', role: 'record', displayOrder: 0 },
+        { publicUrl: '/seller/front-cover.webp', role: 'front_cover', displayOrder: 4 },
+      ],
+    });
+
+    expect(card.imageUrl).toBe('/seller/front-cover.webp');
+    expect(card.fallbackImageUrl).toBe('https://catalog.example/blue-lines.webp');
+  });
+
+  it('leaves a missing cover to the shared local placeholder instead of inventing catalogue artwork', () => {
+    const card = buildListingCardFromDetails({
+      listing: { id: 'listing-artwork-2', price: 1800, tradeAvailable: false },
+      release: { title: 'Unknown Pleasures', artist: 'Joy Division', format: 'LP', coverArtUrl: null },
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG' },
+      seller: { username: 'record_seller' },
+      photos: [],
+    });
+
+    expect(card.imageUrl).toBeUndefined();
+    expect(card.fallbackImageUrl).toBeUndefined();
   });
 });
 
@@ -172,6 +209,21 @@ describe('Dig photo-role contract', () => {
     expect(html).toContain('/js/dig-mode.js');
     expect(html).not.toContain('src="/seller/record.webp"');
     expect(html).toContain('href="/listings/listing-1"');
+  });
+
+  it('uses one shared client fallback handler for artwork and broken profile avatars', () => {
+    const fallbackScript = fs.readFileSync(path.join(process.cwd(), 'public/js/artwork-fallback.js'), 'utf8');
+    const activityView = fs.readFileSync(path.join(process.cwd(), 'views/activity/index.ejs'), 'utf8');
+    const listingCardView = fs.readFileSync(path.join(process.cwd(), 'views/partials/listing-card.ejs'), 'utf8');
+
+    expect(fallbackScript).toContain('data-artwork-image');
+    expect(fallbackScript).toContain('data-avatar-image');
+    expect(fallbackScript).toContain("'/assets/vinyl-placeholder.svg'");
+    expect(activityView).toContain('data-avatar-image');
+    expect(activityView).toContain('item.listingArtworkUrl');
+    expect(activityView).toContain("name: 'talk'");
+    expect(activityView).not.toMatch(/[🏷️💬❤️📻]/);
+    expect(listingCardView).toContain('data-artwork-fallback');
   });
 
   it('ships keyboard, vertical pointer gesture and reduced-motion behavior in the Dig controller', () => {
