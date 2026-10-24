@@ -1,4 +1,5 @@
 import path from 'path';
+import { readFileSync } from 'fs';
 import ejs from 'ejs';
 import { formatPrice, buildListingImageAlt, buildListingCardViewModel } from '../src/app/view-models/listingCardViewModel';
 import { formatZodFormErrors, demoListingFormSchema } from '../src/app/view-models/formViewModel';
@@ -192,5 +193,45 @@ describe('Compact mobile layout surfaces', () => {
     expect(html).toContain('id="filter-max-price"');
     expect(html).toContain('id="filter-sort"');
     expect(html).toContain('class="browse-filter-actions"');
+  });
+});
+
+
+describe('Compact release selection on mobile', () => {
+  const templatePath = path.resolve(__dirname, '../views/listings/select-release.ejs');
+  const stylesheetPath = path.resolve(__dirname, '../public/css/style.css');
+
+  it('keeps release artwork, metadata, and the selection action in the result template', async () => {
+    const html = await ejs.renderFile(templatePath, {
+      query: '',
+      searchResults: [],
+      releases: [{
+        id: 'release-1',
+        title: 'Kind of Blue',
+        artist: 'Miles Davis',
+        label: 'Columbia',
+        releaseYear: 1959,
+        format: '12" LP',
+        coverArtUrl: '',
+      }],
+    });
+
+    expect(html).toContain('class="select-release-result"');
+    expect(html).toContain('class="select-release-result-content"');
+    expect(html).toContain('Kind of Blue');
+    expect(html).toContain('Select Release');
+  });
+
+  it('uses a compact two-column action layout and clamps long release metadata on mobile', () => {
+    const stylesheet = readFileSync(stylesheetPath, 'utf8');
+    const mobileReleaseStyles = stylesheet.slice(
+      stylesheet.lastIndexOf('/* Compact release selection rows on mobile:'),
+    );
+
+    expect(mobileReleaseStyles).toContain('@media (max-width: 767px)');
+    expect(mobileReleaseStyles).toContain('.select-release-result {');
+    expect(mobileReleaseStyles).toContain('grid-template-columns: minmax(0, 1fr) auto;');
+    expect(mobileReleaseStyles).toContain('-webkit-line-clamp: 2;');
+    expect(mobileReleaseStyles).toContain('.select-release-search-form {');
   });
 });
