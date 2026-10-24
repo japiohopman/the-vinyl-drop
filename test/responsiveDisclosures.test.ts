@@ -4,6 +4,7 @@ import { AddressInfo } from 'net';
 import express from 'express';
 import path from 'path';
 import ejs from 'ejs';
+import { getIconSvg } from '../src/app/utils/iconRegistry';
 
 jest.setTimeout(45000);
 
@@ -15,6 +16,17 @@ describe('Responsive disclosure browser behavior', () => {
   const browseTemplatePath = path.resolve(process.cwd(), 'views/browse/index.ejs');
   const releaseTemplatePath = path.resolve(process.cwd(), 'views/listings/select-release.ejs');
   const footerTemplatePath = path.resolve(process.cwd(), 'views/partials/footer.ejs');
+  const navTemplatePath = path.resolve(process.cwd(), 'views/partials/nav.ejs');
+
+  async function renderNav(): Promise<string> {
+    return ejs.renderFile(navTemplatePath, {
+      getIconSvg,
+      currentPath: '/dig',
+      currentUser: null,
+      currentProfile: null,
+      messagingEnabled: false,
+    });
+  }
 
   beforeAll(async () => {
     browser = await chromium.launch({ headless: true });
@@ -44,7 +56,8 @@ describe('Responsive disclosure browser behavior', () => {
           errorMessage: null,
         });
         const footerHtml = await ejs.renderFile(footerTemplatePath);
-        res.send(wrapPage(browseHtml, footerHtml));
+        const navHtml = await renderNav();
+        res.send(wrapPage(browseHtml, footerHtml, navHtml));
       } catch (error) {
         next(error);
       }
@@ -67,7 +80,8 @@ describe('Responsive disclosure browser behavior', () => {
           }],
         });
         const footerHtml = await ejs.renderFile(footerTemplatePath);
-        res.send(wrapPage(releaseHtml, footerHtml));
+        const navHtml = await renderNav();
+        res.send(wrapPage(releaseHtml, footerHtml, navHtml));
       } catch (error) {
         next(error);
       }
@@ -79,7 +93,7 @@ describe('Responsive disclosure browser behavior', () => {
     baseUrl = `http://127.0.0.1:${address.port}`;
   });
 
-  function wrapPage(bodyHtml: string, footerHtml: string): string {
+  function wrapPage(bodyHtml: string, footerHtml: string, navHtml: string): string {
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -89,6 +103,7 @@ describe('Responsive disclosure browser behavior', () => {
   <script src="/js/responsive-disclosures.js" defer></script>
 </head>
 <body>
+  ${navHtml}
   <main class="main-content container">${bodyHtml}</main>
   ${footerHtml}
 </body>
@@ -109,7 +124,7 @@ describe('Responsive disclosure browser behavior', () => {
     await page.goto(`${baseUrl}/test/responsive-browse`, { waitUntil: 'networkidle' });
 
     expect(await page.locator('#search-q').isVisible()).toBe(true);
-    expect(await page.locator('a[href="/contact"]').isVisible()).toBe(true);
+    expect(await page.locator('.footer-links-menu a[href="/contact"]').isVisible()).toBe(true);
     expect(await page.locator('.browse-mobile-filter-panel').getAttribute('open')).not.toBeNull();
     expect(await page.locator('.footer-links-menu').getAttribute('open')).not.toBeNull();
 
@@ -121,7 +136,7 @@ describe('Responsive disclosure browser behavior', () => {
     await page.goto(`${baseUrl}/test/responsive-browse`, { waitUntil: 'networkidle' });
 
     const search = page.locator('#search-q');
-    const contact = page.locator('a[href="/contact"]');
+    const contact = page.locator('.mobile-you-info-links a[href="/contact"]');
     expect(await search.isVisible()).toBe(false);
     expect(await contact.isVisible()).toBe(false);
 
@@ -137,16 +152,19 @@ describe('Responsive disclosure browser behavior', () => {
     expect(formatChipBox).not.toBeNull();
     if (formatChipBox) expect(formatChipBox.height).toBeGreaterThanOrEqual(44);
 
-    const footerSummary = page.locator('.footer-links-menu > summary');
-    const footerSummaryBox = await footerSummary.boundingBox();
-    expect(footerSummaryBox).not.toBeNull();
-    if (footerSummaryBox) expect(footerSummaryBox.height).toBeGreaterThanOrEqual(44);
+    expect(await page.locator('.site-footer').isVisible()).toBe(false);
+    expect(await contact.isVisible()).toBe(false);
 
-    await footerSummary.click();
-    expect(await contact.isVisible()).toBe(true);
-    const contactBox = await contact.boundingBox();
-    expect(contactBox).not.toBeNull();
-    if (contactBox) expect(contactBox.height).toBeGreaterThanOrEqual(44);
+    await page.locator('#mobile-you-trigger').click();
+    expect(await page.locator('#mobile-you-surface').isVisible()).toBe(true);
+
+    for (const href of ['/contact', '/privacy', '/terms', '/community-rules']) {
+      const link = page.locator(`.mobile-you-info-links a[href="${href}"]`);
+      expect(await link.isVisible()).toBe(true);
+      const linkBox = await link.boundingBox();
+      expect(linkBox).not.toBeNull();
+      if (linkBox) expect(linkBox.height).toBeGreaterThanOrEqual(44);
+    }
 
     await page.close();
   });
