@@ -180,6 +180,31 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#selected-photo-info').textContent()).toContain('300 × 500 px');
   });
 
+  it('blocks a cover upload when the selected image cannot be previewed', async () => {
+    await renderEditPage();
+    await page.evaluate("document.querySelector('form[action$=\\\"/photos\\\"]').addEventListener('submit', event => event.preventDefault(), true)");
+    await page.locator('#newPhotoRole').selectOption('back_cover');
+    await page.locator('#altText').fill('Back cover photo');
+    await page.locator('#photoFile').setInputFiles({
+      name: 'broken-back-cover.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.from('not a decodable image'),
+    });
+
+    await page.waitForFunction(
+      "document.querySelector('#selected-photo-info').textContent.includes('could not be previewed')",
+      undefined,
+      { timeout: 5000 }
+    );
+    await page.locator('form[action$="/photos"] button[type="submit"]').click({ timeout: 5000 });
+    expect(await page.locator('#square-cover-status').textContent()).toContain(
+      'This photo cannot be previewed'
+    );
+    expect(await page.locator('#photoFile').evaluate("(input) => input.files[0].name")).toBe(
+      'broken-back-cover.jpg'
+    );
+  });
+
   it('warns when a previously saved back-cover photo is still portrait', async () => {
     await renderEditPage({
       id: '22222222-2222-4222-8222-222222222222',
