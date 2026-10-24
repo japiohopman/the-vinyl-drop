@@ -341,11 +341,11 @@
       document.body.classList.add('account-surface-open');
       if (mobileTrigger) mobileTrigger.setAttribute('aria-expanded', 'true');
       if (mobileCloseBtn) mobileCloseBtn.focus();
-      window.requestAnimationFrame(function() {
-        if (mobileSurface && !mobileSurface.hidden && mobileSurface.getAttribute('aria-hidden') === 'false') {
-          mobileSurface.classList.add('is-open');
-        }
-      });
+      if (mobileSurface && !mobileSurface.hidden && mobileSurface.getAttribute('aria-hidden') === 'false') {
+        // Force the closed opacity state to be committed before starting the fade.
+        void mobileSurface.offsetWidth;
+        mobileSurface.classList.add('is-open');
+      }
     }
 
     if (mobileTrigger) {

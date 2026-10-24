@@ -374,8 +374,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       // Open surface with opacity fade.
       await page.click(mobileTriggerSel);
       expect(await isElementVisible(mobileSurfaceSel)).toBe(true);
-      expect(await page.locator(mobileSurfaceSel).evaluate((el) => getComputedStyle(el).transitionDuration)).toContain('0.18s');
-      expect(await page.locator('.mobile-you-surface-backdrop').evaluate((el) => getComputedStyle(el).transitionDuration)).toContain('0.18s');
+      expect(stylesheetContent).toContain('transition: opacity 180ms ease, visibility 0s linear 180ms;');
+      expect(stylesheetContent).toContain('transition: opacity 180ms ease;');
       expect(await isBodyScrollLocked()).toBe(true);
       expect(await getAttribute(mobileTriggerSel, 'aria-expanded')).toBe('true');
       expect(await isFocused(closeBtnSel)).toBe(true);
@@ -384,6 +384,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       await page.click(closeBtnSel);
       expect(await isElementVisible(mobileSurfaceSel)).toBe(false);
       expect(await getAttribute(mobileSurfaceSel, 'aria-hidden')).toBe('true');
+      expect(await page.locator(mobileSurfaceSel).evaluate((el) => el.classList.contains('is-closing'))).toBe(true);
       expect(await isBodyScrollLocked()).toBe(false);
       await page.waitForTimeout(220);
       expect(await page.locator(mobileSurfaceSel).getAttribute('hidden')).not.toBeNull();
