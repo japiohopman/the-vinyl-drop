@@ -264,7 +264,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await getAttribute('#mobile-you-about-trigger', 'aria-expanded')).toBe('true');
       expect(await isFocused('#mobile-you-about-back')).toBe(true);
 
-      const aboutLinks = await page.locator('#mobile-you-about-view .mobile-you-info-links a').evaluateAll((els) => els.map((el) => (el as HTMLAnchorElement).getAttribute('href')));
+      const aboutLinks = await page.locator('#mobile-you-about-view .mobile-you-info-links a').evaluateAll((els) => els.map((el) => (el as { getAttribute: (name: string) => string | null }).getAttribute('href')));
       expect(aboutLinks).toEqual(['/contact', '/privacy', '/terms', '/community-rules']);
 
       await page.click('#mobile-you-about-back');
@@ -302,11 +302,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         for (const width of viewports) {
           await page.setViewportSize({ width, height: 780 });
           await page.setContent(html);
-          const overflow = await page.evaluate(() => ({
+          const overflow = await page.evaluate(String.raw`(() => ({
             viewport: window.innerWidth,
             document: document.documentElement.scrollWidth,
             body: document.body.scrollWidth,
-          }));
+          }))()`) as { viewport: number; document: number; body: number };
           expect(overflow.document).toBeLessThanOrEqual(width + 1);
           expect(overflow.body).toBeLessThanOrEqual(width + 1);
         }
@@ -323,23 +323,23 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
 
       await page.setViewportSize({ width: 320, height: 700 });
       await page.setContent(fullHtml);
-      const backdrop = await page.evaluate(() => {
+      const backdrop = await page.evaluate(String.raw`(() => {
         const el = document.querySelector('.mobile-you-surface-backdrop');
         if (!el) return null;
         const color = getComputedStyle(el).backgroundColor;
         const alphaMatch = color.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\s*\)/);
         return { color, alpha: Number(alphaMatch?.[1] ?? 1) };
-      });
+      })()`) as { color: string; alpha: number } | null;
       expect(backdrop).not.toBeNull();
       expect(backdrop!.alpha).toBeGreaterThanOrEqual(0.85);
 
       await page.click('#mobile-you-trigger');
-      const insets = await page.evaluate(() => {
-        const panel = document.querySelector('.mobile-you-surface-content') as HTMLElement | null;
+      const insets = await page.evaluate(String.raw`(() => {
+        const panel = document.querySelector('.mobile-you-surface-content');
         if (!panel) return null;
         const rect = panel.getBoundingClientRect();
         return { left: rect.left, right: window.innerWidth - rect.right };
-      });
+      })()`) as { left: number; right: number } | null;
       expect(insets).not.toBeNull();
       expect(insets!.left).toBeGreaterThanOrEqual(8);
       expect(insets!.right).toBeGreaterThanOrEqual(8);
