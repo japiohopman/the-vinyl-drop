@@ -106,111 +106,98 @@
   role="dialog"
   aria-modal="true"
   aria-label="Me"
+  aria-hidden="true"
   hidden
 >
   <div class="mobile-you-surface-backdrop" id="mobile-you-backdrop"></div>
   <div class="mobile-you-surface-content">
     <div class="mobile-you-header">
-      <div class="mobile-you-identity">
-        <%- include('./icon', { name: 'user', size: '1.75rem', ariaHidden: true }) %>
-        <div class="mobile-you-user-info">
-          <strong class="mobile-you-username"><%= user ? (username ? '@' + username : 'Account') : 'Guest' %></strong>
-          <% if (user && user.email) { %>
-            <span class="mobile-you-email"><%= user.email %></span>
-          <% } %>
-        </div>
-      </div>
-      <button
-        type="button"
-        class="mobile-you-close-btn"
-        id="mobile-you-close-btn"
-        aria-label="Close account surface"
-      >
-        <%- include('./icon', { name: 'close', size: '1.5rem', ariaHidden: true }) %>
-      </button>
-    </div>
-
-    <div class="mobile-you-body mobile-you-view" id="mobile-you-main-view">
-      <% if (user) { %>
-        <nav aria-label="Account Actions">
-          <ul class="mobile-you-actions-list">
-            <li>
-              <a href="<%= profileUrl %>" class="mobile-you-action-link">
-                <span>View Profile</span>
-              </a>
-            </li>
-            <li>
-              <a href="/profile/edit" class="mobile-you-action-link">
-                <span>Edit Profile</span>
-              </a>
-            </li>
-            <li>
-              <a href="/listings" class="mobile-you-action-link">
-                <span>My Listings</span>
-              </a>
-            </li>
-            <% if (isMessagingEnabled) { %>
-              <li>
-                <a href="/messages" class="mobile-you-action-link">
-                  <span>Messages</span>
-                </a>
-              </li>
-            <% } %>
-          </ul>
-        </nav>
-
-        <div class="mobile-you-footer">
-          <form action="/auth/logout" method="POST" class="mobile-logout-form">
-            <button type="submit" class="mobile-you-logout-btn">
-              <%- include('./icon', { name: 'logout', size: '1.25rem', ariaHidden: true }) %>
-              <span>LOG OUT</span>
-            </button>
-          </form>
-        </div>
-      <% } else { %>
-        <div class="mobile-you-auth-actions">
-          <a href="/auth/login" class="btn btn-primary btn-lg mobile-auth-btn">SIGN IN</a>
-          <a href="/auth/signup" class="btn btn-outline btn-lg mobile-auth-btn">CREATE ACCOUNT</a>
-        </div>
-      <% } %>
-
-      <nav class="mobile-you-about-entry" aria-label="Information">
-        <button
-          type="button"
-          class="mobile-you-action-link mobile-you-about-trigger"
-          id="mobile-you-about-trigger"
-          aria-controls="mobile-you-about-view"
-          aria-expanded="false"
-        >
-          <span>About</span>
-          <span aria-hidden="true">→</span>
-        </button>
-      </nav>
-    </div>
-
-    <div class="mobile-you-body mobile-you-view mobile-you-about-view" id="mobile-you-about-view" hidden>
-      <div class="mobile-you-about-header">
+      <div class="mobile-you-header-leading">
         <button
           type="button"
           class="mobile-you-about-back"
           id="mobile-you-about-back"
           aria-label="Back to Me"
           aria-controls="mobile-you-main-view"
+          hidden
         >
           <span aria-hidden="true">←</span>
-          <span>Back to Me</span>
         </button>
-        <h2 class="mobile-you-about-title">About</h2>
+        <h2 class="mobile-you-title" id="mobile-you-title">Me</h2>
       </div>
-      <nav class="mobile-you-info-section" aria-label="Information and legal links">
-        <ul class="mobile-you-info-links">
-          <li><a href="/contact">Contact</a></li>
-          <li><a href="/privacy">Privacy</a></li>
-          <li><a href="/terms">Terms</a></li>
-          <li><a href="/community-rules">Community Rules</a></li>
-        </ul>
-      </nav>
+      <button
+        type="button"
+        class="mobile-you-close-btn"
+        id="mobile-you-close-btn"
+        aria-label="Close Me menu"
+      >
+        <%- include('./icon', { name: 'close', size: '1.5rem', ariaHidden: true }) %>
+      </button>
     </div>
+
+    <div class="mobile-you-views" id="mobile-you-views">
+      <div class="mobile-you-body mobile-you-view is-active" id="mobile-you-main-view" aria-hidden="false">
+        <% if (user) { %>
+          <nav aria-label="Account Actions">
+            <ul class="mobile-you-actions-list">
+              <li>
+                <a href="<%= profileUrl %>" class="mobile-you-action-link"><span>View Profile</span></a>
+              </li>
+              <li>
+                <a href="/profile/edit" class="mobile-you-action-link"><span>Edit Profile</span></a>
+              </li>
+              <li>
+                <a href="/listings" class="mobile-you-action-link"><span>My Listings</span></a>
+              </li>
+              <% if (isMessagingEnabled) { %>
+                <li>
+                  <a href="/messages" class="mobile-you-action-link"><span>Messages</span></a>
+                </li>
+              <% } %>
+            </ul>
+          </nav>
+        <% } else { %>
+          <div class="mobile-you-auth-actions">
+            <a href="/auth/login" class="btn btn-primary btn-lg mobile-auth-btn">SIGN IN</a>
+            <a href="/auth/signup" class="btn btn-outline btn-lg mobile-auth-btn">CREATE ACCOUNT</a>
+          </div>
+        <% } %>
+
+        <nav class="mobile-you-about-entry" aria-label="Information">
+          <button
+            type="button"
+            class="mobile-you-action-link mobile-you-about-trigger"
+            id="mobile-you-about-trigger"
+            aria-controls="mobile-you-about-view"
+            aria-expanded="false"
+          >
+            <span>About</span><span aria-hidden="true">→</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="mobile-you-body mobile-you-view mobile-you-about-view" id="mobile-you-about-view" aria-hidden="true">
+        <nav class="mobile-you-info-section" aria-label="Information and legal links">
+          <ul class="mobile-you-info-links">
+            <li><a href="/community-rules">Community Rules</a></li>
+            <li><a href="/terms">Terms</a></li>
+            <li><a href="/privacy">Privacy</a></li>
+            <li><a href="/contact">Contact</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+
+    <% if (user) { %>
+      <div class="mobile-you-footer">
+        <form action="/auth/logout" method="POST" class="mobile-logout-form">
+          <button type="submit" class="mobile-you-logout-btn">
+            <%- include('./icon', { name: 'logout', size: '1.25rem', ariaHidden: true }) %>
+            <span>LOG OUT</span>
+          </button>
+        </form>
+      </div>
+    <% } %>
   </div>
 </div>
 
@@ -262,96 +249,127 @@
       });
     }
 
-    // Mobile surface overlay handler
+    // Mobile Me/About overlay handler.
     var mobileTrigger = document.getElementById('mobile-you-trigger');
     var mobileSurface = document.getElementById('mobile-you-surface');
     var mobileCloseBtn = document.getElementById('mobile-you-close-btn');
     var mobileBackdrop = document.getElementById('mobile-you-backdrop');
+    var mobileTitle = document.getElementById('mobile-you-title');
     var mobileMainView = document.getElementById('mobile-you-main-view');
     var mobileAboutView = document.getElementById('mobile-you-about-view');
     var mobileAboutTrigger = document.getElementById('mobile-you-about-trigger');
     var mobileAboutBack = document.getElementById('mobile-you-about-back');
+    var mobileCloseTimer = null;
+    var mobileCloseDelay = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 190;
+
+    function setMobileView(isAbout) {
+      if (!mobileMainView || !mobileAboutView) return;
+      mobileMainView.classList.toggle('is-active', !isAbout);
+      mobileMainView.setAttribute('aria-hidden', isAbout ? 'true' : 'false');
+      mobileAboutView.classList.toggle('is-active', isAbout);
+      mobileAboutView.setAttribute('aria-hidden', isAbout ? 'false' : 'true');
+      if (mobileAboutTrigger) mobileAboutTrigger.setAttribute('aria-expanded', isAbout ? 'true' : 'false');
+      if (mobileAboutBack) mobileAboutBack.hidden = !isAbout;
+      if (mobileTitle) mobileTitle.textContent = isAbout ? 'About' : 'Me';
+      if (mobileSurface) mobileSurface.setAttribute('aria-label', isAbout ? 'About' : 'Me');
+    }
 
     function resetMobileAbout() {
-      if (mobileAboutView) mobileAboutView.hidden = true;
-      if (mobileMainView) mobileMainView.hidden = false;
-      if (mobileAboutTrigger) mobileAboutTrigger.setAttribute('aria-expanded', 'false');
+      setMobileView(false);
     }
 
     function openMobileAbout() {
-      if (!mobileMainView || !mobileAboutView) return;
-      mobileMainView.hidden = true;
-      mobileAboutView.hidden = false;
-      if (mobileAboutTrigger) mobileAboutTrigger.setAttribute('aria-expanded', 'true');
+      if (!mobileMainView || !mobileAboutView || !mobileSurface || mobileSurface.hidden) return;
+      setMobileView(true);
       if (mobileAboutBack) mobileAboutBack.focus();
     }
 
     function closeMobileAbout() {
-      if (!mobileMainView || !mobileAboutView) return;
+      if (!mobileMainView || !mobileAboutView || !mobileSurface || mobileSurface.hidden) return;
       resetMobileAbout();
       if (mobileAboutTrigger) mobileAboutTrigger.focus();
     }
 
-    function closeMobileSurface(skipFocus) {
+    function finishClosingMobileSurface() {
       if (!mobileSurface) return;
-      resetMobileAbout();
+      if (mobileCloseTimer !== null) {
+        window.clearTimeout(mobileCloseTimer);
+        mobileCloseTimer = null;
+      }
       mobileSurface.hidden = true;
-      mobileSurface.classList.remove('is-open');
+      mobileSurface.classList.remove('is-open', 'is-closing');
+    }
+
+    function closeMobileSurface(skipFocus, immediate) {
+      if (!mobileSurface) return;
+      if (mobileSurface.hidden) {
+        resetMobileAbout();
+        return;
+      }
+      if (mobileCloseTimer !== null) {
+        window.clearTimeout(mobileCloseTimer);
+        mobileCloseTimer = null;
+      }
+
+      resetMobileAbout();
+      mobileSurface.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('account-surface-open');
       if (mobileTrigger) {
         mobileTrigger.setAttribute('aria-expanded', 'false');
-        if (!skipFocus) {
-          mobileTrigger.focus();
-        }
+        if (!skipFocus) mobileTrigger.focus();
+      }
+
+      if (immediate || mobileCloseDelay === 0) {
+        finishClosingMobileSurface();
+      } else {
+        mobileSurface.classList.remove('is-open');
+        mobileSurface.classList.add('is-closing');
+        mobileCloseTimer = window.setTimeout(finishClosingMobileSurface, mobileCloseDelay);
       }
     }
 
     function openMobileSurface() {
       if (!mobileSurface) return;
+      if (mobileCloseTimer !== null) {
+        window.clearTimeout(mobileCloseTimer);
+        mobileCloseTimer = null;
+      }
+      resetMobileAbout();
       mobileSurface.hidden = false;
-      mobileSurface.classList.add('is-open');
+      mobileSurface.setAttribute('aria-hidden', 'false');
+      mobileSurface.classList.remove('is-closing');
       document.body.classList.add('account-surface-open');
-      if (mobileTrigger) {
-        mobileTrigger.setAttribute('aria-expanded', 'true');
-      }
-      if (mobileCloseBtn) {
-        mobileCloseBtn.focus();
-      }
+      if (mobileTrigger) mobileTrigger.setAttribute('aria-expanded', 'true');
+      if (mobileCloseBtn) mobileCloseBtn.focus();
+      window.requestAnimationFrame(function() {
+        if (mobileSurface && !mobileSurface.hidden && mobileSurface.getAttribute('aria-hidden') === 'false') {
+          mobileSurface.classList.add('is-open');
+        }
+      });
     }
 
     if (mobileTrigger) {
       mobileTrigger.addEventListener('click', function(e) {
         e.stopPropagation();
         var isOpen = mobileTrigger.getAttribute('aria-expanded') === 'true';
-        if (isOpen) {
-          closeMobileSurface();
-        } else {
-          openMobileSurface();
-        }
+        if (isOpen) closeMobileSurface();
+        else openMobileSurface();
       });
     }
 
-    if (mobileCloseBtn) {
-      mobileCloseBtn.addEventListener('click', closeMobileSurface);
-    }
-
-    if (mobileAboutTrigger) {
-      mobileAboutTrigger.addEventListener('click', openMobileAbout);
-    }
-
-    if (mobileAboutBack) {
-      mobileAboutBack.addEventListener('click', closeMobileAbout);
-    }
+    if (mobileCloseBtn) mobileCloseBtn.addEventListener('click', function() { closeMobileSurface(); });
+    if (mobileAboutTrigger) mobileAboutTrigger.addEventListener('click', openMobileAbout);
+    if (mobileAboutBack) mobileAboutBack.addEventListener('click', closeMobileAbout);
 
     if (mobileBackdrop) {
-      mobileBackdrop.addEventListener('click', closeMobileSurface);
-      mobileBackdrop.addEventListener('pointerdown', closeMobileSurface);
+      mobileBackdrop.addEventListener('click', function() { closeMobileSurface(); });
+      mobileBackdrop.addEventListener('pointerdown', function() { closeMobileSurface(); });
     }
 
     // Breakpoint change listener to clean up mobile surface and scroll lock if viewport resizes to desktop
     function checkDesktopBreakpoint() {
       if (window.innerWidth >= 768) {
-        closeMobileSurface(true);
+        closeMobileSurface(true, true);
       }
     }
 
@@ -359,7 +377,7 @@
       var desktopMedia = window.matchMedia('(min-width: 768px)');
       function handleBreakpointChange(e) {
         if (e.matches) {
-          closeMobileSurface(true);
+          closeMobileSurface(true, true);
         }
       }
       if (desktopMedia.addEventListener) {
@@ -378,16 +396,16 @@
           closeDesktopMenu();
           desktopTrigger.focus();
         }
-        if (mobileSurface && !mobileSurface.hidden) {
+        if (mobileSurface && !mobileSurface.hidden && !mobileSurface.classList.contains('is-closing')) {
           closeMobileSurface();
         }
       }
 
       // Focus trap in mobile surface when open
-      if (e.key === 'Tab' && mobileSurface && !mobileSurface.hidden) {
+      if (e.key === 'Tab' && mobileSurface && !mobileSurface.hidden && !mobileSurface.classList.contains('is-closing')) {
         var allFocusable = mobileSurface.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]');
         var focusables = Array.prototype.filter.call(allFocusable, function(el) {
-          return !el.closest('[hidden]') && el.getAttribute('aria-hidden') !== 'true';
+          return !el.closest('[hidden]') && !el.closest('[aria-hidden="true"]') && el.getAttribute('aria-hidden') !== 'true';
         });
         if (focusables.length === 0) return;
         var firstEl = focusables[0];
