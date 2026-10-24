@@ -200,9 +200,9 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#square-cover-status').textContent()).toContain(
       'This photo cannot be previewed'
     );
-    expect(await page.locator('#photoFile').evaluate("(input) => input.files[0].name")).toBe(
-      'broken-back-cover.jpg'
-    );
+    expect(
+      await page.locator('form[action$="/photos"]').getAttribute('data-square-crop-ready')
+    ).toBeNull();
   });
 
   it('warns when a previously saved back-cover photo is still portrait', async () => {
