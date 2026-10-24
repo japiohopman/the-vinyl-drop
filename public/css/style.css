@@ -3555,7 +3555,9 @@ select.form-control {
   }
 
   .mobile-you-about-trigger {
+    box-sizing: border-box;
     width: 100%;
+    min-width: 0;
     justify-content: space-between;
     cursor: pointer;
     text-align: left;
