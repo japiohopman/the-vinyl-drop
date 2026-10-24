@@ -80,6 +80,7 @@ describe('Square cover photo cropper', () => {
 
   async function selectPortrait(role: string): Promise<void> {
     await page.locator('#newPhotoRole').selectOption(role);
+    await page.locator('#altText').fill('Full physical sleeve cover');
     await page.locator('#photoFile').setInputFiles({
       name: role + '-phone-photo.jpg',
       mimeType: 'image/jpeg',
