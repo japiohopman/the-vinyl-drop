@@ -33,6 +33,7 @@ describe('Square cover photo cropper', () => {
 
   beforeEach(async () => {
     page = await browser.newPage();
+    page.on('pageerror', (error) => console.error('[cropper browser error]', error.message));
     await page.setViewportSize({ width: 375, height: 850 });
   });
 
@@ -113,7 +114,11 @@ describe('Square cover photo cropper', () => {
     for (let index = 0; index < roles.length; index += 1) {
       const role = roles[index];
       await selectPortrait(role);
-      await page.waitForFunction("document.querySelector('#square-cover-source').height === 320");
+      await page.waitForFunction(
+        "document.querySelector('#square-cover-source').height === 320",
+        undefined,
+        { timeout: 5000 }
+      );
 
       expect(await page.locator('#square-cover-cropper').isVisible()).toBe(true);
       expect(await page.locator('#square-cover-title').textContent()).toBe(
@@ -143,8 +148,12 @@ describe('Square cover photo cropper', () => {
         expect(layout.cropperScroll).toBeLessThanOrEqual(layout.cropper + 1);
       }
 
-      await page.locator('form[action$="/photos"] button[type="submit"]').click();
-      await page.waitForFunction('window.__capturedUploads.length === ' + (index + 1));
+      await page.locator('form[action$="/photos"] button[type="submit"]').click({ timeout: 5000 });
+      await page.waitForFunction(
+        'window.__capturedUploads.length === ' + (index + 1),
+        undefined,
+        { timeout: 5000 }
+      );
       const uploaded = await page.evaluate('window.__capturedUploads[' + index + ']') as {
         name: string;
         type: string;
