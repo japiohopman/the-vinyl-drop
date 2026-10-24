@@ -85,3 +85,53 @@
     }) %>
   </section>
 </div>
+
+<script>
+  // Keep the separate top search form and filter disclosure in sync so that
+  // typing a query and then applying a quick filter cannot drop either value.
+  (() => {
+    const searchForm = document.querySelector('.dig-primary-search-form');
+    const searchInput = document.getElementById('dig-primary-search');
+    const filterForm = document.querySelector('.browse-filter-form');
+
+    if (!searchForm || !searchInput || !filterForm) return;
+
+    const filterQuery = filterForm.querySelector('input[type="hidden"][name="q"]');
+    const filterMappings = [
+      { name: 'genre', selector: '#filter-genre' },
+      { name: 'condition', selector: '#filter-condition' },
+      { name: 'minPrice', selector: '#filter-min-price' },
+      { name: 'maxPrice', selector: '#filter-max-price' },
+      { name: 'sort', selector: '#filter-sort' },
+    ];
+
+    const syncQueryToFilters = () => {
+      if (filterQuery) filterQuery.value = searchInput.value;
+    };
+
+    const syncFiltersToSearch = () => {
+      filterMappings.forEach(({ name, selector }) => {
+        const control = filterForm.querySelector(selector);
+        const searchHidden = searchForm.querySelector('input[type="hidden"][name="' + name + '"]');
+        if (control && searchHidden) searchHidden.value = control.value;
+      });
+    };
+
+    searchInput.addEventListener('input', syncQueryToFilters);
+
+    filterMappings.forEach(({ name, selector }) => {
+      const control = filterForm.querySelector(selector);
+      const searchHidden = searchForm.querySelector('input[type="hidden"][name="' + name + '"]');
+      if (!control || !searchHidden) return;
+
+      const syncField = () => { searchHidden.value = control.value; };
+      control.addEventListener('input', syncField);
+      control.addEventListener('change', syncField);
+    });
+
+    searchForm.addEventListener('submit', () => {
+      syncQueryToFilters();
+      syncFiltersToSearch();
+    });
+  })();
+</script>
