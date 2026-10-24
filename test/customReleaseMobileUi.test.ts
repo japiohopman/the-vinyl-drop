@@ -89,6 +89,45 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(dropLink).toContain('+ DROP');
   });
 
+  it('fits About context labels and icon-only back targets on narrow mobile widths', async () => {
+    const pages = [
+      ['/terms', 'ABOUT / TERMS'],
+      ['/contact', 'ABOUT / CONTACT'],
+      ['/privacy', 'ABOUT / PRIVACY'],
+      ['/community-rules', 'ABOUT / RULES'],
+      ['/releases/new', 'DROP'],
+    ] as const;
+
+    for (const [route, label] of pages) {
+      const headerHtml = await renderHeader(route);
+      for (const width of [320, 360, 375, 414]) {
+        await page.setViewportSize({ width, height: 740 });
+        await page.setContent(`<!doctype html>
+          <html lang="en"><head><meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>${stylesheetContent}</style></head>
+          <body>${headerHtml}</body></html>`);
+
+        expect(await page.locator('.mobile-context-heading').textContent()).toBe(label);
+        const back = page.locator('.mobile-context-back-icon-only');
+        expect(await back.isVisible()).toBe(true);
+        const box = await back.boundingBox();
+        expect(box).not.toBeNull();
+        if (box) {
+          expect(box.width).toBeGreaterThanOrEqual(44);
+          expect(box.height).toBeGreaterThanOrEqual(44);
+        }
+        const dimensions = await page.evaluate(() => ({
+          viewport: window.innerWidth,
+          document: document.documentElement.scrollWidth,
+          body: document.body.scrollWidth,
+        }));
+        expect(dimensions.document).toBeLessThanOrEqual(width + 1);
+        expect(dimensions.body).toBeLessThanOrEqual(width + 1);
+      }
+    }
+  });
+
   it('provides an accessible camera action and announces the chosen artwork filename', async () => {
     const headerHtml = await renderHeader('/releases/new');
     const releaseHtml = await renderReleasePage();
