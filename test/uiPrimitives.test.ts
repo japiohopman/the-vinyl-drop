@@ -199,6 +199,35 @@ describe('Compact mobile layout surfaces', () => {
 });
 
 
+describe('Mobile information actions and compact form controls', () => {
+  it('marks legal-page action rows for responsive stacking without changing page copy', () => {
+    const infoTemplates = [
+      'contact.ejs',
+      'privacy.ejs',
+      'terms.ejs',
+      'community-rules.ejs',
+    ].map((name) => readFileSync(path.resolve(__dirname, '../views/info', name), 'utf8'));
+    const stylesheet = readFileSync(path.resolve(__dirname, '../public/css/style.css'), 'utf8');
+
+    expect(infoTemplates.every((template) => template.includes('class="info-page-actions"'))).toBe(true);
+    expect(stylesheet).toContain('.info-page-actions {');
+    expect(stylesheet).toContain('flex-direction: column;');
+    expect(stylesheet).toContain('overflow-wrap: anywhere;');
+    expect(stylesheet).toContain('min-height: 44px');
+  });
+
+  it('provides Save and Cancel icons on mobile while retaining accessible action names and desktop labels', () => {
+    const profileEdit = readFileSync(path.resolve(__dirname, '../views/profiles/edit.ejs'), 'utf8');
+    expect(profileEdit).toContain('aria-label="Save changes"');
+    expect(profileEdit).toContain('aria-label="Cancel editing profile"');
+    expect(profileEdit).toContain("name: 'save'");
+    expect(profileEdit).toContain("name: 'close'");
+    expect(profileEdit).toContain('<span class="mobile-action-label">Save Changes</span>');
+    expect(profileEdit).toContain('<span class="mobile-action-label">Cancel</span>');
+  });
+});
+
+
 describe('Compact release selection on mobile', () => {
   const templatePath = path.resolve(__dirname, '../views/listings/select-release.ejs');
   const stylesheetPath = path.resolve(__dirname, '../public/css/style.css');
