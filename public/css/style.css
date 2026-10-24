@@ -3629,6 +3629,15 @@ select.form-control {
     word-break: break-word;
   }
 
+  .info-page input,
+  .info-page textarea,
+  .info-page select {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .info-page-actions {
     display: flex;
     flex-direction: column;
