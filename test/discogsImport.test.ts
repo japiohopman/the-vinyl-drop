@@ -52,6 +52,21 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
       } as any);
     });
 
+    it('redirects unauthenticated users before running a Discogs metadata lookup', async () => {
+      setSupabaseClient({
+        auth: {
+          getUser: jest.fn().mockResolvedValue({
+            data: { user: null },
+            error: null,
+          }),
+        },
+      } as any);
+
+      const response = await supertest(app).get('/releases/lookup-metadata');
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toContain('/auth/login?next=%2Freleases%2Flookup-metadata');
+    });
+
     it('returns the confident Discogs match and available metadata', async () => {
       jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([{
         id: 'discogs:123',
