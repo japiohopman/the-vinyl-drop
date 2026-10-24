@@ -154,6 +154,27 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
       expect(response.body).toEqual({ found: false });
     });
 
+    it('does not auto-match a generic single-word title to a longer release title', async () => {
+      jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([{
+        id: 'discogs:778',
+        providerName: 'discogs',
+        externalId: '778',
+        artist: 'James Brown',
+        title: 'Blue Note',
+        matchScore: 0,
+        matchedEvidence: [],
+        provenance: { provider: 'discogs', externalId: '778', fetchedAt: '2026-01-01T00:00:00.000Z' },
+      }]);
+
+      const response = await supertest(app)
+        .get('/releases/lookup-metadata')
+        .query({ artist: 'James Brown', title: 'Blue' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ found: false });
+    });
+
     it('falls back to a track-title search when no confident album-title match exists', async () => {
       const calls: Array<{ artist?: string; title?: string; track?: string }> = [];
       jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockImplementation(async (query) => {
