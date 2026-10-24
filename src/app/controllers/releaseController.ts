@@ -101,6 +101,15 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
     }
 
     if (!match) {
+      // Some valid releases are omitted by Discogs' structured filters. Try one
+      // broad query as a final candidate source, while keeping the same strict
+      // normalized artist/title confidence rule before auto-filling.
+      const broadCandidates = await provider.searchCandidates({ ocrText: `${artist} ${title}` });
+      match = chooseConfidentDiscogsMatch(broadCandidates, artist, title);
+      matchType = 'release';
+    }
+
+    if (!match) {
       res.setHeader('Cache-Control', 'no-store');
       res.status(200).json({ found: false });
       return;
