@@ -48,7 +48,7 @@
     ].filter(Boolean).length; %>
     <details class="browse-mobile-filter-panel">
       <summary class="browse-mobile-filter-summary">
-        <span>Search &amp; filters</span>
+        <span><%= (typeof responsiveDig !== 'undefined' && responsiveDig) ? 'Filters' : 'Search &amp; filters' %></span>
         <span class="browse-mobile-filter-status"><%= activeMobileFilterCount ? activeMobileFilterCount + ' active' : 'Refine your Dig' %></span>
       </summary>
       <div class="browse-mobile-filter-content">
