@@ -222,9 +222,14 @@
       setStatus('This photo cannot be previewed. Choose a valid JPEG, PNG or WebP file.', true);
       return;
     }
-    if (!image || !sourceFile) {
+    if (!image || !sourceFile || !image.complete || image.naturalWidth === 0 || image.naturalHeight === 0) {
       event.preventDefault();
-      setStatus('Select a photo and review the square crop preview before uploading.', true);
+      setStatus(
+        image && sourceFile
+          ? 'Wait for the photo preview to finish loading before uploading.'
+          : 'Select a photo and review the square crop preview before uploading.',
+        true
+      );
       return;
     }
     event.preventDefault();
