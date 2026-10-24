@@ -281,7 +281,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await isElementVisible(mobileSurfaceSel)).toBe(true);
       expect(await isFocused(closeBtnSel)).toBe(true);
       await page.keyboard.press('Shift+Tab');
-      expect(await isFocused('.mobile-you-info-links a:last-child')).toBe(true);
+      expect(await isFocused('.mobile-you-info-links li:last-child a')).toBe(true);
 
       // Escape key
       await page.keyboard.press('Escape');
