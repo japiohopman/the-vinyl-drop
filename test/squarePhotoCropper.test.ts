@@ -145,7 +145,7 @@ describe('Square cover photo cropper', () => {
         undefined,
         { timeout: 5000 }
       );
-      const uploaded = await page.evaluate("async () => {" +
+      const uploaded = await page.evaluate("(async () => {" +
         "const fileInput = document.querySelector('#photoFile');" +
         "const file = fileInput && fileInput.files && fileInput.files[0];" +
         "if (!file) throw new Error('The cropper did not replace the selected photo.');" +
@@ -153,7 +153,7 @@ describe('Square cover photo cropper', () => {
         "const result = { name: file.name, type: file.type, width: bitmap.width, height: bitmap.height };" +
         "bitmap.close();" +
         "return result;" +
-      "}") as {
+      "})()") as {
         name: string;
         type: string;
         width: number;
