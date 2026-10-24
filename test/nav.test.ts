@@ -78,6 +78,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('ACTIVITY');
     expect(html).toContain('SIGN IN');
     expect(html).toContain('id="mobile-you-surface"');
+    expect(html).toContain('class="mobile-you-info-section"');
+    expect(html).toContain('href="/contact"');
+    expect(html).toContain('href="/privacy"');
+    expect(html).toContain('href="/terms"');
+    expect(html).toContain('href="/community-rules"');
     expect(html).not.toContain('/messages');
     expect(html).not.toContain('LOG OUT');
   });
@@ -96,6 +101,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('My Listings');
     expect(html).toContain('/auth/logout');
     expect(html).toContain('LOG OUT');
+    expect(html).toContain('class="mobile-you-info-section"');
+    expect(html).toContain('href="/contact"');
+    expect(html).toContain('href="/privacy"');
+    expect(html).toContain('href="/terms"');
+    expect(html).toContain('href="/community-rules"');
     expect(html).not.toContain('/messages');
   });
 
@@ -270,7 +280,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await isElementVisible(mobileSurfaceSel)).toBe(true);
       expect(await isFocused(closeBtnSel)).toBe(true);
       await page.keyboard.press('Shift+Tab');
-      expect(await isFocused('.mobile-you-logout-btn')).toBe(true);
+      expect(await isFocused('.mobile-you-info-links a:last-child')).toBe(true);
 
       // Escape key
       await page.keyboard.press('Escape');
