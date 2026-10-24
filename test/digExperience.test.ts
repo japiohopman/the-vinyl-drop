@@ -48,6 +48,48 @@ describe('Dig navigation and flip state', () => {
   });
 });
 
+describe('Dig search-first responsive shell', () => {
+  it('keeps search and Grid/List controls above the results and preserves the current query/filter state', async () => {
+    const viewPath = path.join(process.cwd(), 'views/browse/responsive-dig.ejs');
+    const html = await ejs.renderFile(viewPath, {
+      title: 'Dig Vinyl Records',
+      listings: [],
+      formatOptions: [{ value: 'lp', label: 'LP', description: 'Long-play records' }],
+      whiteLabelAvailable: true,
+      filters: {
+        q: 'De La Soul',
+        genre: 'Hip Hop',
+        condition: 'VG+',
+        minPrice: '10.00',
+        maxPrice: '50.00',
+        sort: 'price_asc',
+        formats: ['lp', '7-inch'],
+        whiteLabel: true,
+        view: 'list',
+      },
+      pagination: { page: 3, totalPages: 4, totalCount: 40 },
+      errorMessage: null,
+      items: [],
+      totalCount: 40,
+      hasMore: false,
+    });
+
+    expect(html.indexOf('class="dig-search-control-bar"')).toBeLessThan(
+      html.indexOf('class="dig-responsive-desktop"')
+    );
+    expect(html).toContain('id="dig-primary-search"');
+    expect(html).toContain('value="De La Soul"');
+    expect(html).toContain('aria-label="Search records"');
+    expect(html).toContain('class="view-mode-toggle" role="group" aria-label="Dig presentation mode"');
+    expect(html).toContain('href="/dig?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;page=3&amp;view=grid"');
+    expect(html).toContain('href="/dig?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;page=3&amp;view=list"');
+    expect(html).toContain('<h1 class="dig-mobile-semantic-title">Dig Vinyl Records</h1>');
+    expect(html).not.toContain('Find your next record. Swipe up through the crate, or flip a sleeve to see the back.');
+    expect(html).toContain('class="mobile-back-control" aria-label="Back to Dig results"');
+  });
+});
+
+
 describe('Shared listing artwork priority', () => {
   it('prefers an explicit seller front cover and retains release artwork as the broken-image fallback', () => {
     const card = buildListingCardFromDetails({
