@@ -40,6 +40,7 @@
   let objectUrl = null;
   let sourceFile = null;
   let processing = false;
+  let previewError = false;
   let previewSequence = 0;
   const maxUploadBytes = 5 * 1024 * 1024;
 
@@ -75,6 +76,7 @@
   function clearPreview() {
     previewSequence += 1;
     processing = false;
+    previewError = false;
     cropper.hidden = true;
     selectionPreview.hidden = true;
     originalPreview.hidden = true;
@@ -180,6 +182,8 @@
     };
     previewImage.onerror = () => {
       if (previewSequence !== currentSequence || image !== previewImage) return;
+      image = null;
+      previewError = true;
       fileInfo.textContent = file.name + ' — this image could not be previewed. Choose a JPEG, PNG or WebP file.';
       fileInfo.style.color = 'var(--color-error-border)';
       if (coverRole) setStatus('This image cannot be previewed. Choose a JPEG, PNG or WebP file.', true);
@@ -213,6 +217,11 @@
       return;
     }
     if (!isCoverRole() || form.dataset.squareCropReady === 'true') return;
+    if (previewError) {
+      event.preventDefault();
+      setStatus('This photo cannot be previewed. Choose a valid JPEG, PNG or WebP file.', true);
+      return;
+    }
     if (!image || !sourceFile) {
       event.preventDefault();
       setStatus('Select a photo and review the square crop preview before uploading.', true);
