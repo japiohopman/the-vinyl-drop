@@ -27,9 +27,13 @@ function hasConfidentTextMatch(query: string, candidate: string | undefined, max
 
   const queryWords = normalizedQuery.split(' ');
   const candidateWords = normalizedCandidate.split(' ');
-  if (normalizedCandidate.includes(normalizedQuery) && candidateWords.length - queryWords.length <= maxExtraWords) return true;
-  if (normalizedQuery.includes(normalizedCandidate) && queryWords.length - candidateWords.length <= maxExtraWords) return true;
-  return false;
+  if (Math.abs(candidateWords.length - queryWords.length) > maxExtraWords) return false;
+
+  // Match whole normalized words/phrases, never a query embedded inside another word
+  // (for example, "Smith" must not match "Blacksmith").
+  const queryPhrase = ` ${normalizedQuery} `;
+  const candidatePhrase = ` ${normalizedCandidate} `;
+  return candidatePhrase.includes(queryPhrase) || queryPhrase.includes(candidatePhrase);
 }
 
 /** Only auto-fill album results when both artist and release title match closely. */
