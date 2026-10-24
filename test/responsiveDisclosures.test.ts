@@ -231,6 +231,33 @@ describe('Responsive disclosure browser behavior', () => {
     await desktopPage.close();
   });
 
+  it('syncs pending search terms and filter controls between the separate Dig forms', async () => {
+    const filterPage = await browser.newPage({ viewport: { width: 375, height: 812 } });
+    await filterPage.goto(`${baseUrl}/test/responsive-dig`, { waitUntil: 'networkidle' });
+    await filterPage.locator('.browse-mobile-filter-summary').click();
+    await filterPage.locator('#dig-primary-search').fill('Fresh needle');
+    await filterPage.locator('.browse-format-chip').first().click();
+    await filterPage.waitForURL((url) => url.pathname === '/dig');
+
+    const filterUrl = new URL(filterPage.url());
+    expect(filterUrl.searchParams.get('q')).toBe('Fresh needle');
+    expect(filterUrl.searchParams.get('formatToggle')).toBe('12-inch');
+    await filterPage.close();
+
+    const searchPage = await browser.newPage({ viewport: { width: 375, height: 812 } });
+    await searchPage.goto(`${baseUrl}/test/responsive-dig`, { waitUntil: 'networkidle' });
+    await searchPage.locator('.browse-mobile-filter-summary').click();
+    await searchPage.locator('#filter-genre').selectOption('Jazz');
+    await searchPage.locator('#dig-primary-search').fill('New genre query');
+    await searchPage.locator('.dig-primary-search-form button').click();
+    await searchPage.waitForURL((url) => url.pathname === '/dig');
+
+    const searchUrl = new URL(searchPage.url());
+    expect(searchUrl.searchParams.get('q')).toBe('New genre query');
+    expect(searchUrl.searchParams.get('genre')).toBe('Jazz');
+    await searchPage.close();
+  });
+
   it('keeps release search and selection actions at least 44px high on narrow screens', async () => {
     const page = await browser.newPage({ viewport: { width: 320, height: 740 } });
     await page.goto(`${baseUrl}/test/select-release`, { waitUntil: 'networkidle' });
