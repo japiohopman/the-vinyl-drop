@@ -683,6 +683,11 @@ export async function updateListingPhotoRole(
       }
     } catch (error) {
       if (error instanceof ValidationError) throw error;
+      console.error(JSON.stringify({
+        event: 'cover_role_image_check_failed',
+        listingId,
+        photoId,
+      }));
       throw new ValidationError(
         'This saved photo could not be checked. Upload it again through the square crop preview before assigning a cover role.'
       );
