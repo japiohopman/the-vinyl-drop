@@ -542,6 +542,10 @@ body.account-surface-open {
     z-index: 500;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 12px;
   }
 
   .mobile-you-surface[hidden] {
@@ -551,8 +555,8 @@ body.account-surface-open {
   .mobile-you-surface-backdrop {
     position: absolute;
     inset: 0;
-    background-color: rgba(21, 21, 21, 0.6);
-    backdrop-filter: blur(2px);
+    background-color: rgba(21, 21, 21, 0.9);
+    backdrop-filter: blur(4px);
   }
 
   .mobile-you-surface-content {
@@ -560,9 +564,14 @@ body.account-surface-open {
     z-index: 501;
     display: flex;
     flex-direction: column;
-    width: 100%;
-    height: 100%;
+    width: calc(100% - 24px);
+    max-width: 560px;
+    height: auto;
+    max-height: calc(100vh - 24px);
     background-color: var(--color-paper);
+    border: var(--border-heavy);
+    border-radius: var(--radius-md);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
     overflow-y: auto;
   }
 
@@ -3528,3 +3537,179 @@ select.form-control {
   }
 }
 
+
+
+/* Issue #182: nested Me/About navigation and compact, overflow-safe mobile actions. */
+@media (max-width: 767px) {
+  .mobile-you-view[hidden] {
+    display: none !important;
+  }
+
+  .mobile-you-about-entry {
+    padding-top: var(--space-4);
+    border-top: var(--border-heavy);
+  }
+
+  .mobile-you-about-trigger {
+    width: 100%;
+    justify-content: space-between;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .mobile-you-about-trigger > span:last-child {
+    font-size: var(--font-size-lg);
+    line-height: 1;
+  }
+
+  .mobile-you-about-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  .mobile-you-about-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--font-size-lg);
+  }
+
+  .mobile-you-about-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-width: 44px;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    border: var(--border-thick);
+    border-radius: var(--radius-sm);
+    background: var(--color-white);
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: var(--shadow-tactile);
+  }
+
+  .mobile-you-about-trigger:focus-visible,
+  .mobile-you-about-back:focus-visible,
+  .profile-edit-actions .mobile-compact-action:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .info-page {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: var(--space-3) !important;
+    padding-right: var(--space-3) !important;
+  }
+
+  .info-page > .card,
+  .info-page > article.card {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    padding: var(--space-4) !important;
+  }
+
+  .info-page a {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .info-page-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2) !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .info-page-actions .btn {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .profile-edit-page {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 0 var(--space-3);
+  }
+
+  .profile-edit-page > .card {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    padding: var(--space-4) !important;
+  }
+
+  .profile-edit-form input,
+  .profile-edit-form textarea,
+  .profile-edit-form select {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+
+  .profile-edit-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2) !important;
+    min-width: 0;
+  }
+
+  .profile-edit-actions .mobile-compact-action {
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .profile-edit-actions .mobile-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .profile-edit-actions .mobile-action-label {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .info-page > .card,
+  .info-page > article.card,
+  .profile-edit-page > .card {
+    padding: var(--space-3) !important;
+  }
+}
