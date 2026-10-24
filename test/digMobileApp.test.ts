@@ -112,26 +112,13 @@ describe('Mobile Dig app-like viewport', () => {
     await page.addScriptTag({ content: digMode });
   }
 
-  it('puts the live session counter and a filter-preserving back link in the mobile header', async () => {
+  it('keeps the live session counter in the mobile header without a Dig back link', async () => {
     await loadPage(375, 812);
     expect(await page.locator('.mobile-context-heading').textContent()).toBe('DIG');
     expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
     expect(await page.locator('[data-dig-header-position]').getAttribute('aria-live')).toBe('polite');
-
-    const back = page.locator('.mobile-dig-back');
-    expect(await back.isVisible()).toBe(true);
-    expect(await back.getAttribute('aria-label')).toBe('Back to browse results');
-    const href = new URL((await back.getAttribute('href')) || '', 'https://vinyl-drop.test');
-    expect(href.pathname).toBe('/browse');
-    expect(href.searchParams.get('q')).toBe('De La Soul');
-    expect(href.searchParams.get('genre')).toBe('Hip Hop');
-    expect(href.searchParams.get('condition')).toBe('VG+');
-    expect(href.searchParams.get('minPrice')).toBe('10.00');
-    expect(href.searchParams.get('maxPrice')).toBe('50.00');
-    expect(href.searchParams.getAll('format')).toEqual(['LP', '7-inch']);
-    expect(href.searchParams.get('whiteLabel')).toBe('1');
-    expect(href.searchParams.get('page')).toBe('2');
-    expect(href.searchParams.get('view')).toBe('grid');
+    expect(await page.locator('.mobile-dig-back').count()).toBe(0);
+    expect(await page.locator('.mobile-context-back').count()).toBe(0);
 
     const heading = await page.locator('.dig-page-header').boundingBox();
     expect(heading).not.toBeNull();
