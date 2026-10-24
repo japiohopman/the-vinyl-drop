@@ -16,7 +16,7 @@
       <a href="/dig" class="nav-link<%= (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' active' : '' %>"<%- (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' aria-current="page"' : '' %>>DIG</a>
     </li>
     <li class="nav-item">
-      <a href="/drop/new" class="nav-link nav-link-action<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' aria-current="page"' : '' %>>+ DROP</a>
+      <a href="/drop/new" class="nav-link nav-link-action<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' aria-current="page"' : '' %>>+ DROP</a>
     </li>
     <li class="nav-item">
       <a href="/activity" class="nav-link<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>ACTIVITY</a>
@@ -77,8 +77,8 @@
       <%- include('./icon', { name: 'cardboard-box-closed', size: '1.25rem', ariaHidden: true }) %>
       <span>DIG</span>
     </a>
-    <a href="/drop/new" class="mobile-nav-item mobile-nav-drop<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' aria-current="page"' : '' %>>
-      <%- include('./icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>
+    <a href="/drop/new" class="mobile-nav-item mobile-nav-drop<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' aria-current="page"' : '' %>>
+      <%- include('./icon', { name: 'plain-arrow', size: '1.25rem', ariaHidden: true }) %>
       <span>+ DROP</span>
     </a>
     <a href="/activity" class="mobile-nav-item<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>

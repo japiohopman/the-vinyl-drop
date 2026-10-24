@@ -1,6 +1,6 @@
 <div class="custom-release-page" style="max-width: 600px; margin: var(--space-8) auto;">
   <div style="margin-bottom: var(--space-6);">
-    <a href="/drop/new" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: none;">&larr; Back to Catalog Search</a>
+    <a href="/drop/new" class="custom-release-back-link" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: none;">&larr; Back to Catalog Search</a>
     <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-top: var(--space-2); margin-bottom: var(--space-1);">Add Custom Release</h1>
     <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
       For unindexed white labels, test pressings, promos, or local records not found in external databases.
@@ -29,14 +29,22 @@
       <p style="margin: 0; font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
         This image belongs to the release record (the general edition), not to your individual copy. It is never used as the front or back of a Crate Dig sleeve.
       </p>
-      <label for="releaseCoverArt" style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm);">Upload separate catalogue artwork (JPEG, PNG, WebP; up to 5MB)</label>
-      <input id="releaseCoverArt" type="file" name="coverArt" accept="image/jpeg,image/png,image/webp" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" />
+      <p id="releaseCoverArtDescription" class="custom-release-file-description">Upload separate catalogue artwork (JPEG, PNG, WebP; up to 5MB).</p>
+      <div class="custom-release-file-picker">
+        <input id="releaseCoverArt" type="file" name="coverArt" accept="image/jpeg,image/png,image/webp" class="custom-release-file-input" aria-describedby="releaseCoverArtDescription releaseCoverArtFilename" />
+        <label for="releaseCoverArt" class="btn btn-outline custom-release-file-trigger">
+          <%- include('../partials/icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>
+          <span class="custom-release-file-mobile-label">Use this device</span>
+          <span class="custom-release-file-desktop-label">Choose file</span>
+        </label>
+        <span id="releaseCoverArtFilename" class="custom-release-file-name" role="status" aria-live="polite">No file selected</span>
+      </div>
       <p style="margin: 0; font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
         Selling a specific physical record? Leave this optional field blank if you only have a photo of that copy. After creating the listing, upload the physical photo once under <strong>Photos of this physical copy</strong> and choose <strong>Front cover</strong> or <strong>Back cover</strong>. Those listing photos are what Crate Dig displays.
       </p>
     </fieldset>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+    <div class="custom-release-grid">
       <div>
         <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Record Label</label>
         <input type="text" name="label" value="<%= form.values.label || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Self-Released" />
@@ -48,7 +56,7 @@
       </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+    <div class="custom-release-grid">
       <div>
         <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Release Year</label>
         <input type="number" name="releaseYear" value="<%= form.values.releaseYear || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. 1995" />
@@ -66,7 +74,7 @@
       </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);">
+    <div class="custom-release-grid">
       <div>
         <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Barcode (EAN/UPC)</label>
         <input type="text" name="barcode" value="<%= form.values.barcode || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="Optional" />
@@ -83,3 +91,4 @@
     </div>
   </form>
 </div>
+<script src="/js/release-file-picker.js" defer></script>

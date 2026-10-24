@@ -1,3 +1,22 @@
+<%
+  const headerPath = typeof currentPath !== 'undefined' ? currentPath : '/';
+  const isCustomReleasePage = headerPath === '/releases/new';
+  let mobileSectionLabel = 'THE VINYL DROP';
+
+  if (headerPath === '/') {
+    mobileSectionLabel = 'HOME';
+  } else if (headerPath.startsWith('/dig') || headerPath.startsWith('/browse')) {
+    mobileSectionLabel = 'DIG';
+  } else if (headerPath.startsWith('/drop') || headerPath.startsWith('/listings') || headerPath.startsWith('/releases')) {
+    mobileSectionLabel = 'DROP';
+  } else if (headerPath.startsWith('/activity') || headerPath.startsWith('/messages')) {
+    mobileSectionLabel = 'ACTIVITY';
+  } else if (headerPath.startsWith('/profile') || headerPath.startsWith('/profiles') || headerPath.startsWith('/auth')) {
+    mobileSectionLabel = 'ME';
+  } else if (['/contact', '/privacy', '/terms', '/community-rules'].includes(headerPath)) {
+    mobileSectionLabel = 'ABOUT';
+  }
+%>
 <header class="site-header">
   <div class="container header-container">
     <a href="/" class="brand-logo" aria-label="The Vinyl Drop Home">
@@ -7,6 +26,15 @@
         <span class="logo-tagline">BUY. TRADE. DIG.</span>
       </span>
     </a>
+    <nav class="mobile-context-header" aria-label="Page navigation">
+      <span class="mobile-context-heading"><%= mobileSectionLabel %></span>
+      <% if (isCustomReleasePage) { %>
+        <a href="/drop/new" class="mobile-context-back" aria-label="Back to catalog search">
+          <span class="mobile-context-back-icon" aria-hidden="true">←</span>
+          <span>Back to catalog</span>
+        </a>
+      <% } %>
+    </nav>
     <%- include('./nav') %>
   </div>
 </header>

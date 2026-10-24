@@ -3728,3 +3728,192 @@ select.form-control {
     padding: var(--space-3) !important;
   }
 }
+
+
+/* Issue #184: contextual mobile header and compact custom-release artwork picker. */
+.mobile-context-header {
+  display: none;
+}
+
+.custom-release-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 600px;
+  min-width: 0;
+  margin: var(--space-4) auto !important;
+}
+
+.custom-release-page .card,
+.custom-release-page input,
+.custom-release-page select {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.custom-release-page input:not([type="file"]),
+.custom-release-page select {
+  width: 100%;
+}
+
+.custom-release-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.custom-release-file-description {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+}
+
+.custom-release-file-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.custom-release-file-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.custom-release-file-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 44px;
+  max-width: 100%;
+  cursor: pointer;
+  white-space: normal;
+}
+
+.custom-release-file-input:focus-visible + .custom-release-file-trigger {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.custom-release-file-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.custom-release-file-mobile-label {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .header-container {
+    gap: var(--space-3);
+  }
+
+  .brand-logo {
+    display: none;
+  }
+
+  .mobile-context-header {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mobile-context-heading {
+    flex: 0 0 auto;
+    font-family: var(--font-display);
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    letter-spacing: var(--letter-spacing-wide);
+    color: var(--color-ink);
+  }
+
+  .mobile-context-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--space-2);
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .mobile-context-back:hover {
+    color: var(--color-rust-accessible);
+    text-decoration: underline;
+  }
+
+  .mobile-context-back:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .mobile-context-back-icon {
+    font-size: var(--font-size-lg);
+    line-height: 1;
+  }
+
+  .custom-release-page {
+    padding: 0;
+    margin-top: var(--space-3) !important;
+    margin-bottom: var(--space-4) !important;
+  }
+
+  .custom-release-page > form.card {
+    width: 100%;
+    min-width: 0;
+    padding: var(--space-4) !important;
+  }
+
+  .custom-release-page .custom-release-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .custom-release-page .custom-release-file-mobile-label {
+    display: inline;
+  }
+
+  .custom-release-page .custom-release-file-desktop-label {
+    display: none;
+  }
+
+  .custom-release-page .custom-release-back-link {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .custom-release-page .custom-release-file-mobile-label {
+    display: none;
+  }
+
+  .custom-release-page .custom-release-file-desktop-label {
+    display: inline;
+  }
+}
