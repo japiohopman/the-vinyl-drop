@@ -89,6 +89,7 @@
       type="button"
       class="mobile-nav-item mobile-you-trigger<%= activePath.startsWith('/profile') || activePath.startsWith('/profiles') || activePath.startsWith('/auth') ? ' active' : '' %>"
       id="mobile-you-trigger"
+      aria-label="Me"
       aria-expanded="false"
       aria-controls="mobile-you-surface"
     >
@@ -98,7 +99,7 @@
   </div>
 </nav>
 
-<!-- Mobile Full-Screen YOU Account Surface Overlay -->
+<!-- Mobile Me Account Surface Overlay -->
 <div
   class="mobile-you-surface"
   id="mobile-you-surface"
