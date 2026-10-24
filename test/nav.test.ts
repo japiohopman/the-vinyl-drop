@@ -84,7 +84,9 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     const mobileTrigger = html.slice(html.indexOf('id="mobile-you-trigger"'), html.indexOf('>', html.indexOf('id="mobile-you-trigger"')));
     expect(mobileTrigger).toContain('aria-label="Me"');
     expect(html).toContain('id="mobile-you-about-trigger"');
-    expect(html).toContain('id="mobile-you-about-view" hidden');
+    expect(html).toContain('id="mobile-you-about-view" aria-hidden="true"');
+    expect(html).toContain('<h2 class="mobile-you-title" id="mobile-you-title">Me</h2>');
+    expect(html).not.toContain('class="mobile-you-email"');
     expect(html).toContain('class="mobile-you-info-section"');
     expect(html).toContain('href="/contact"');
     expect(html).toContain('href="/privacy"');
@@ -108,6 +110,9 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('My Listings');
     expect(html).toContain('/auth/logout');
     expect(html).toContain('LOG OUT');
+    expect(html).not.toContain('class="mobile-you-email"');
+    expect(html.indexOf('id="mobile-you-views"')).toBeLessThan(html.indexOf('class="mobile-you-footer"'));
+    expect(html.indexOf('class="mobile-you-footer"')).toBeGreaterThan(html.indexOf('id="mobile-you-about-view"'));
     expect(html).toContain('class="mobile-you-info-section"');
     expect(html).toContain('href="/contact"');
     expect(html).toContain('href="/privacy"');
@@ -262,10 +267,12 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await isElementVisible('#mobile-you-main-view')).toBe(false);
       expect(await isElementVisible('#mobile-you-about-view')).toBe(true);
       expect(await getAttribute('#mobile-you-about-trigger', 'aria-expanded')).toBe('true');
+      expect(await page.locator('#mobile-you-title').textContent()).toBe('About');
+      expect(await page.locator('#mobile-you-about-back').evaluate((el) => el.closest('.mobile-you-header') !== null)).toBe(true);
       expect(await isFocused('#mobile-you-about-back')).toBe(true);
 
       const aboutLinks = await page.locator('#mobile-you-about-view .mobile-you-info-links a').evaluateAll((els) => els.map((el) => (el as { getAttribute: (name: string) => string | null }).getAttribute('href')));
-      expect(aboutLinks).toEqual(['/contact', '/privacy', '/terms', '/community-rules']);
+      expect(aboutLinks).toEqual(['/community-rules', '/terms', '/privacy', '/contact']);
 
       await page.click('#mobile-you-about-back');
       expect(await isElementVisible('#mobile-you-main-view')).toBe(true);
@@ -364,9 +371,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await isElementVisible(mobileSurfaceSel)).toBe(false);
       expect(await isBodyScrollLocked()).toBe(false);
 
-      // Open surface
+      // Open surface with opacity fade.
       await page.click(mobileTriggerSel);
       expect(await isElementVisible(mobileSurfaceSel)).toBe(true);
+      expect(stylesheetContent).toContain('transition: opacity 180ms ease, visibility 0s linear 180ms;');
+      expect(stylesheetContent).toContain('transition: opacity 180ms ease;');
       expect(await isBodyScrollLocked()).toBe(true);
       expect(await getAttribute(mobileTriggerSel, 'aria-expanded')).toBe('true');
       expect(await isFocused(closeBtnSel)).toBe(true);
@@ -374,7 +383,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       // Close button
       await page.click(closeBtnSel);
       expect(await isElementVisible(mobileSurfaceSel)).toBe(false);
+      expect(await getAttribute(mobileSurfaceSel, 'aria-hidden')).toBe('true');
+      expect(await page.locator(mobileSurfaceSel).evaluate((el) => el.classList.contains('is-closing'))).toBe(true);
       expect(await isBodyScrollLocked()).toBe(false);
+      await page.waitForTimeout(220);
+      expect(await page.locator(mobileSurfaceSel).getAttribute('hidden')).not.toBeNull();
       expect(await getAttribute(mobileTriggerSel, 'aria-expanded')).toBe('false');
 
       // Backdrop click
@@ -389,7 +402,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await isElementVisible(mobileSurfaceSel)).toBe(true);
       expect(await isFocused(closeBtnSel)).toBe(true);
       await page.keyboard.press('Shift+Tab');
-      expect(await isFocused('.mobile-you-about-trigger')).toBe(true);
+      expect(await isFocused('.mobile-you-logout-btn')).toBe(true);
 
       // Escape key
       await page.keyboard.press('Escape');
