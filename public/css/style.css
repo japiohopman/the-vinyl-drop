@@ -2945,18 +2945,53 @@ select.form-control {
     padding-left: var(--space-3);
   }
   .activity-header h1 { font-size: var(--font-size-xl); }
+
+  /* Keep the Activity feed as one readable, full-width stream on mobile. */
+  .activity-feed-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
   .activity-card {
-    grid-template-columns: 64px minmax(0, 1fr);
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
     padding: var(--space-3);
   }
-  .activity-artwork-link { width: 64px; }
-  .activity-card-content { grid-template-columns: minmax(0, 1fr) 30px; gap: var(--space-2); }
-  .activity-icon-badge { width: 30px; height: 30px; }
-  .activity-card-header { align-items: flex-start; }
+
+  .activity-artwork-link {
+    width: 76px;
+    margin-bottom: 0;
+  }
+
+  .activity-card-content {
+    display: block;
+    min-width: 0;
+  }
+
+  .activity-card-header {
+    align-items: flex-start;
+    padding-right: 40px;
+  }
+
+  .activity-icon-badge {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    width: 30px;
+    height: 30px;
+  }
+
+  .activity-actor-row {
+    flex-wrap: wrap;
+  }
+
   .activity-time { font-size: var(--font-size-3xs); }
-  .activity-actor { font-size: var(--font-size-3xs); }
-  .activity-release-link h2 { font-size: var(--font-size-md); }
+  .activity-actor { font-size: var(--font-size-xs); }
+  .activity-release-link h2 { font-size: var(--font-size-lg); }
+  .activity-release-artist { font-size: var(--font-size-md); }
   .activity-empty-state { padding: var(--space-8) var(--space-3); }
 
   .select-release-page {
