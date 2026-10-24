@@ -180,7 +180,8 @@ describe('Mobile Dig app-like viewport', () => {
   it('keeps the conventional Dig heading and browse controls unchanged on desktop', async () => {
     await loadPage(1280, 900);
     expect(await page.locator('.mobile-context-header').isVisible()).toBe(false);
-    expect(await page.locator('.dig-page-header h1').isVisible()).toBe(true);
+    expect(await page.locator('.browse-header h1').isVisible()).toBe(true);
+    expect(await page.locator('.dig-page-header h1').isVisible()).toBe(false);
     expect(await page.locator('.dig-search-control-bar').isVisible()).toBe(true);
     expect(await page.locator('.dig-responsive-desktop').isVisible()).toBe(true);
     expect(await page.locator('.mobile-dig-back').isVisible()).toBe(false);
