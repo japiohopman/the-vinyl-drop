@@ -48,7 +48,7 @@
     ].filter(Boolean).length; %>
     <details class="browse-mobile-filter-panel">
       <summary class="browse-mobile-filter-summary">
-        <span>Search &amp; filters</span>
+        <span><%= (typeof responsiveDig !== 'undefined' && responsiveDig) ? 'Filters' : 'Search & filters' %></span>
         <span class="browse-mobile-filter-status"><%= activeMobileFilterCount ? activeMobileFilterCount + ' active' : 'Refine your Dig' %></span>
       </summary>
       <div class="browse-mobile-filter-content">
@@ -76,11 +76,15 @@
           <% }); %>
         </select>
       </div>
-      <div class="browse-keyword-control">
-        <label for="search-q">Search keyword</label>
-        <input type="search" id="search-q" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
-      </div>
-      <button type="submit" class="btn btn-primary browse-search-submit">Search</button>
+      <% if (typeof responsiveDig === 'undefined' || !responsiveDig) { %>
+        <div class="browse-keyword-control">
+          <label for="search-q">Search keyword</label>
+          <input type="search" id="search-q" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn-primary browse-search-submit">Search</button>
+      <% } else { %>
+        <input type="hidden" name="q" value="<%= filters.q || '' %>">
+      <% } %>
     </div>
 
     <details class="browse-secondary-filters" <%= (filters.condition || filters.minPrice || filters.maxPrice || filters.sort !== 'newest') ? 'open' : '' %>>
@@ -133,6 +137,7 @@
       Showing <strong><%= listings.length %></strong> of <strong><%= pagination.totalCount %></strong> drops
     </p>
 
+    <% if (typeof responsiveDig === 'undefined' || !responsiveDig) { %>
     <!-- View Mode Switcher -->
     <div class="view-mode-toggle" role="group" aria-label="Dig presentation mode" style="display: flex; gap: var(--space-1); border: var(--border-thick); border-radius: var(--radius-sm); padding: 2px; background: var(--color-white);">
       <a
@@ -166,6 +171,7 @@
         <span>List</span>
       </a>
     </div>
+    <% } %>
   </div>
 
   <!-- Listings Grid/List or Empty State -->
