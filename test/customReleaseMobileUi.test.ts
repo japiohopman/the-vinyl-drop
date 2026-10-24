@@ -321,6 +321,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
       { timeout: 3000 }
     );
     expect(await page.locator('#releaseArtist').inputValue()).toBe('Local artist');
+    expect(await page.locator('#releaseMetadataDetails').getAttribute('open')).not.toBeNull();
 
     responseStatus = 503;
     responseBody = { error: 'Unavailable' };
@@ -334,6 +335,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('#releaseArtist').inputValue()).toBe('Another artist');
     expect(await page.locator('#releaseTitle').inputValue()).toBe('Another title');
     expect(await page.locator('#releaseMetadataDetails').isVisible()).toBe(true);
+    expect(await page.locator('#releaseMetadataDetails').getAttribute('open')).not.toBeNull();
     const dimensions = await page.evaluate(() => ({
       document: document.documentElement.scrollWidth,
       body: document.body.scrollWidth
