@@ -2896,7 +2896,7 @@ select.form-control {
     padding: 0 var(--space-3) !important;
   }
   .dig-responsive-mobile { display: block; }
-  .dig-responsive-mobile .dig-page-header { display: none; }
+  /* Keep the compact "Dig" heading visible; only the redundant intro is hidden. */
   .dig-responsive-mobile .dig-page { margin-top: 0; padding-top: 0; }
   .dig-responsive-mobile .dig-context-row { margin-top: var(--space-2); }
   .dig-responsive-mobile .dig-filter-summary { margin-top: var(--space-2); }
