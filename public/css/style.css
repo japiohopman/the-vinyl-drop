@@ -4452,6 +4452,30 @@ select.form-control {
 .custom-release-details[open] > summary::after { content: "−"; }
 .custom-release-grid { gap: var(--space-3); padding-bottom: var(--space-3); }
 .custom-release-field-full { grid-column: 1 / -1; }
+.discogs-cover-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-2);
+  border: var(--border-thin);
+  background: var(--color-paper);
+}
+.discogs-cover-preview[hidden] { display: none; }
+.discogs-cover-preview img {
+  display: block;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  object-fit: contain;
+  background: var(--color-white);
+}
+.discogs-cover-preview p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+}
 .custom-release-artwork-copy {
   margin: 0;
   color: var(--color-ink-muted);
