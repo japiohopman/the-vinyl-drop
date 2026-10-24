@@ -3265,6 +3265,10 @@ select.form-control {
 }
 
 /* Mobile You information links and Dig search-first layout */
+.dig-responsive-page {
+  margin-top: calc(-1 * var(--space-4));
+}
+
 .dig-mobile-semantic-title {
   display: none;
 }
@@ -3369,6 +3373,10 @@ select.form-control {
 }
 
 @media (max-width: 767px) {
+  .dig-responsive-page {
+    margin-top: 0;
+  }
+
   /* The same four links live in You; the site footer must not add page height. */
   .site-footer {
     display: none !important;
