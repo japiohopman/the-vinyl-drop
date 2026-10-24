@@ -53,18 +53,18 @@ function chooseConfidentDiscogsMatch(
 }
 
 /**
- * The track filter is a fallback search, not permission to silently substitute a
- * different album. Keep auto-fill strict: both the artist and returned release
- * title must still closely match the text the seller entered.
+ * Discogs track-filter results identify releases containing the queried track.
+ * CandidateRelease.title is the containing release/album title, not the matched
+ * track name, so compare the artist here and use the track-filter query itself as
+ * evidence for the track title. Comparing the query to candidate.title incorrectly
+ * rejects songs that appear on an album with a different title.
  */
 function chooseConfidentTrackMatch(
   candidates: CandidateRelease[],
-  artist: string,
-  title: string
+  artist: string
 ): CandidateRelease | null {
   return candidates.find((candidate) =>
-    hasConfidentTextMatch(artist, candidate.artist, 1) &&
-    hasConfidentTextMatch(title, candidate.title, 2)
+    hasConfidentTextMatch(artist, candidate.artist, 1)
   ) || null;
 }
 
@@ -86,7 +86,7 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
     if (!match) {
       // The input title may be a song on a release rather than the release/album title.
       const trackCandidates = await provider.searchCandidates({ artist, track: title });
-      match = chooseConfidentTrackMatch(trackCandidates, artist, title);
+      match = chooseConfidentTrackMatch(trackCandidates, artist);
       matchType = 'track';
     }
 
