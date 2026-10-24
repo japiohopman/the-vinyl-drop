@@ -337,7 +337,7 @@ export async function postUpdatePhotoRole(req: Request, res: Response, next: Nex
   const listingId = req.params.id;
   const photoId = req.params.photoId;
   try {
-    await updateListingPhotoRole(listingId, photoId, req.user.id, req.body.role);
+    await updateListingPhotoRole(listingId, photoId, req.user.id, req.body.role, undefined, { req });
     setFlashCookie(res, 'success', 'Photo role updated.');
     return res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {

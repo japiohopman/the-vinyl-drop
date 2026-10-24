@@ -4,20 +4,32 @@
 
   const fileInput = form.querySelector('#photoFile');
   const roleSelect = form.querySelector('#newPhotoRole');
-  const cropper = document.querySelector('#square-cover-cropper');
-  const sourceCanvas = document.querySelector('#square-cover-source');
-  const resultCanvas = document.querySelector('#square-cover-result');
-  const zoomControl = document.querySelector('#square-cover-zoom');
-  const positionControl = document.querySelector('#square-cover-position');
-  const status = document.querySelector('#square-cover-status');
+  const roleGuidance = form.querySelector('#photo-role-guidance');
+  const selectionPreview = form.querySelector('#photo-selection-preview');
+  const fileInfo = form.querySelector('#selected-photo-info');
+  const originalPreview = form.querySelector('#photo-original-preview');
+  const cropper = form.querySelector('#square-cover-cropper');
+  const sourceCanvas = form.querySelector('#square-cover-source');
+  const resultCanvas = form.querySelector('#square-cover-result');
+  const zoomControl = form.querySelector('#square-cover-zoom');
+  const positionControl = form.querySelector('#square-cover-position');
+  const cropTitle = form.querySelector('#square-cover-title');
+  const cropDescription = form.querySelector('#square-cover-description');
+  const status = form.querySelector('#square-cover-status');
 
   if (!(fileInput instanceof HTMLInputElement) ||
       !(roleSelect instanceof HTMLSelectElement) ||
+      !(roleGuidance instanceof HTMLElement) ||
+      !(selectionPreview instanceof HTMLElement) ||
+      !(fileInfo instanceof HTMLElement) ||
+      !(originalPreview instanceof HTMLImageElement) ||
       !(cropper instanceof HTMLElement) ||
       !(sourceCanvas instanceof HTMLCanvasElement) ||
       !(resultCanvas instanceof HTMLCanvasElement) ||
       !(zoomControl instanceof HTMLInputElement) ||
       !(positionControl instanceof HTMLInputElement) ||
+      !(cropTitle instanceof HTMLElement) ||
+      !(cropDescription instanceof HTMLElement) ||
       !(status instanceof HTMLElement)) return;
 
   const sourceContext = sourceCanvas.getContext('2d');
@@ -28,21 +40,60 @@
   let objectUrl = null;
   let sourceFile = null;
   let processing = false;
+  let previewError = false;
+  let previewSequence = 0;
   const maxUploadBytes = 5 * 1024 * 1024;
+
+  function isCoverRole() {
+    return roleSelect.value === 'front_cover' || roleSelect.value === 'back_cover';
+  }
+
+  function coverSideLabel() {
+    return roleSelect.value === 'front_cover' ? 'front cover' : 'back cover';
+  }
 
   function setStatus(message, isError = false) {
     status.textContent = message;
     status.style.color = isError ? 'var(--color-error-border)' : 'var(--color-ink-muted)';
   }
 
-  function clearCropper() {
+  function updateRoleGuidance() {
+    const selectedOption = roleSelect.options[roleSelect.selectedIndex];
+    const roleHint = selectedOption && selectedOption.dataset.guidance;
+    roleGuidance.textContent = roleHint || 'Choose a photo type first. Front and back covers show a square crop preview; other photo types keep their original framing.';
+
+    if (isCoverRole()) {
+      const side = coverSideLabel();
+      cropTitle.textContent = 'Square ' + side + ' crop';
+      cropDescription.textContent = 'Adjust the crop until the complete ' + side + ' fits inside the square. The square preview is the image that will be saved for Crate Dig.';
+    }
+  }
+
+  function clearCanvas(canvas, context) {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function clearPreview() {
+    previewSequence += 1;
+    processing = false;
+    previewError = false;
     cropper.hidden = true;
+    selectionPreview.hidden = true;
+    originalPreview.hidden = true;
+    originalPreview.removeAttribute('src');
+    fileInfo.textContent = '';
     image = null;
     sourceFile = null;
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = null;
-    sourceContext.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
-    resultContext.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
+    clearCanvas(sourceCanvas, sourceContext);
+    clearCanvas(resultCanvas, resultContext);
+  }
+
+  function formatFileSize(bytes) {
+    return bytes >= 1024 * 1024
+      ? (bytes / (1024 * 1024)).toFixed(1) + ' MiB'
+      : Math.max(1, Math.round(bytes / 1024)) + ' KiB';
   }
 
   function cropGeometry() {
@@ -61,7 +112,7 @@
   }
 
   function redraw() {
-    if (!image) return;
+    if (!image || !isCoverRole()) return;
     const maxPreview = 320;
     const scale = Math.min(maxPreview / image.naturalWidth, maxPreview / image.naturalHeight, 1);
     sourceCanvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -86,61 +137,109 @@
     resultContext.drawImage(image, crop.left, crop.top, crop.side, crop.side, 0, 0, resultCanvas.width, resultCanvas.height);
     positionControl.disabled = crop.width === crop.height;
     setStatus(crop.width === crop.height
-      ? 'De bron is al vierkant. Controleer of alle randen van de hoes zichtbaar zijn.'
+      ? 'The source is already square. Check that the whole sleeve is visible.'
       : crop.width < crop.height
-        ? 'Schuif verticaal om de volledige hoes in het vierkant te plaatsen.'
-        : 'Schuif horizontaal om de volledige hoes in het vierkant te plaatsen.');
+        ? 'Move the slider vertically to position the square along the full sleeve.'
+        : 'Move the slider horizontally to position the square over the full sleeve.');
   }
 
   function preparePreview() {
-    if (roleSelect.value !== 'front_cover') {
-      clearCropper();
-      return;
-    }
+    clearPreview();
     const file = fileInput.files && fileInput.files[0];
-    if (!file) {
-      clearCropper();
-      return;
-    }
-    if (file.size > maxUploadBytes) {
-      clearCropper();
-      cropper.hidden = false;
-      setStatus('Kies eerst een foto van maximaal 5 MiB.', true);
-      return;
-    }
+    if (!file) return;
+
     sourceFile = file;
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-    objectUrl = URL.createObjectURL(file);
-    image = new Image();
-    image.onload = redraw;
-    image.onerror = () => {
-      image = null;
-      cropper.hidden = false;
-      setStatus('Deze foto kan niet worden voorvertoond. Kies een JPEG-, PNG- of WebP-foto.', true);
+    selectionPreview.hidden = false;
+    fileInfo.textContent = file.name + ' · ' + formatFileSize(file.size);
+    const coverRole = isCoverRole();
+    cropper.hidden = !coverRole;
+
+    if (file.size > maxUploadBytes) {
+      fileInfo.textContent += ' — larger than 5 MiB. Choose a smaller file.';
+      fileInfo.style.color = 'var(--color-error-border)';
+      if (coverRole) setStatus('Choose a photo no larger than 5 MiB.', true);
+      return;
+    }
+    fileInfo.style.color = 'var(--color-ink-muted)';
+
+    const currentSequence = previewSequence;
+    const currentUrl = URL.createObjectURL(file);
+    objectUrl = currentUrl;
+    const previewImage = new Image();
+    image = previewImage;
+    if (coverRole) setStatus('Preparing the square crop preview…');
+
+    previewImage.onload = () => {
+      if (previewSequence !== currentSequence || image !== previewImage || objectUrl !== currentUrl) return;
+      fileInfo.textContent = file.name + ' · ' + formatFileSize(file.size) + ' · ' +
+        previewImage.naturalWidth + ' × ' + previewImage.naturalHeight + ' px';
+      if (coverRole) {
+        redraw();
+      } else {
+        originalPreview.src = currentUrl;
+        originalPreview.hidden = false;
+      }
     };
-    cropper.hidden = false;
-    image.src = objectUrl;
+    previewImage.onerror = () => {
+      if (previewSequence !== currentSequence || image !== previewImage) return;
+      image = null;
+      previewError = true;
+      fileInfo.textContent = file.name + ' — this image could not be previewed. Choose a JPEG, PNG or WebP file.';
+      fileInfo.style.color = 'var(--color-error-border)';
+      if (coverRole) setStatus('This image cannot be previewed. Choose a JPEG, PNG or WebP file.', true);
+    };
+    previewImage.src = currentUrl;
   }
 
   fileInput.addEventListener('change', () => {
     delete form.dataset.squareCropReady;
     preparePreview();
   });
-  roleSelect.addEventListener('change', preparePreview);
+
+  roleSelect.addEventListener('change', () => {
+    delete form.dataset.squareCropReady;
+    updateRoleGuidance();
+    preparePreview();
+  });
+
   zoomControl.addEventListener('input', redraw);
   positionControl.addEventListener('input', redraw);
 
   form.addEventListener('submit', (event) => {
-    if (roleSelect.value !== 'front_cover' || form.dataset.squareCropReady === 'true') return;
-    if (!image || !sourceFile) {
+    if (sourceFile && sourceFile.size > maxUploadBytes) {
       event.preventDefault();
-      setStatus('Selecteer een foto en bekijk de vierkante uitsnede voordat je uploadt.', true);
+      if (isCoverRole()) {
+        setStatus('Choose a photo no larger than 5 MiB.', true);
+      } else {
+        fileInfo.textContent = sourceFile.name + ' — larger than 5 MiB. Choose a smaller file.';
+        fileInfo.style.color = 'var(--color-error-border)';
+      }
+      return;
+    }
+    if (!isCoverRole() || form.dataset.squareCropReady === 'true') return;
+    if (previewError) {
+      event.preventDefault();
+      setStatus('This photo cannot be previewed. Choose a valid JPEG, PNG or WebP file.', true);
+      return;
+    }
+    if (!image || !sourceFile || !image.complete || image.naturalWidth === 0 || image.naturalHeight === 0) {
+      event.preventDefault();
+      setStatus(
+        image && sourceFile
+          ? 'Wait for the photo preview to finish loading before uploading.'
+          : 'Select a photo and review the square crop preview before uploading.',
+        true
+      );
       return;
     }
     event.preventDefault();
     if (processing) return;
     processing = true;
-    setStatus('Vierkante foto voorbereiden…');
+    setStatus('Preparing the square image…');
+    const cropSequence = previewSequence;
+    const cropSource = sourceFile;
+    const cropImage = image;
+    const cropRole = roleSelect.value;
     const crop = cropGeometry();
     const output = document.createElement('canvas');
     output.width = 1024;
@@ -148,31 +247,58 @@
     const context = output.getContext('2d');
     if (!context) {
       processing = false;
-      setStatus('De uitsnede kan niet worden gemaakt in deze browser.', true);
+      setStatus('The crop cannot be created in this browser.', true);
       return;
     }
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, output.width, output.height);
-    context.drawImage(image, crop.left, crop.top, crop.side, crop.side, 0, 0, output.width, output.height);
+    context.drawImage(cropImage, crop.left, crop.top, crop.side, crop.side, 0, 0, output.width, output.height);
     output.toBlob((blob) => {
+      // A new selection/role invalidates work started for the previous photo.
+      if (previewSequence !== cropSequence || sourceFile !== cropSource ||
+          image !== cropImage || roleSelect.value !== cropRole) return;
+
       if (!blob) {
         processing = false;
-        setStatus('De vierkante foto kon niet worden gemaakt. Probeer een andere foto.', true);
+        setStatus('The square image could not be created. Try a different photo.', true);
         return;
       }
-      const stem = sourceFile.name.replace(/\.[^.]+$/, '') || 'album-cover';
-      const croppedFile = new File([blob], stem + '-square.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+      const stem = cropSource.name.replace(/\.[^.]+$/, '') || 'album-cover';
+      const croppedFile = new File([blob], stem + '-' + cropRole + '-square.jpg', {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
       const transfer = new DataTransfer();
       transfer.items.add(croppedFile);
       fileInput.files = transfer.files;
       form.dataset.squareCropReady = 'true';
+      processing = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       objectUrl = null;
       form.requestSubmit();
     }, 'image/jpeg', 0.92);
   });
 
-  roleSelect.addEventListener('change', () => {
-    delete form.dataset.squareCropReady;
+  updateRoleGuidance();
+
+  // Warn about old portrait cover images because the new crop is not retroactive.
+  document.querySelectorAll('.listing-photo-card[data-photo-role]').forEach((card) => {
+    if (!(card instanceof HTMLElement)) return;
+    const role = card.getAttribute('data-photo-role');
+    const photoImage = card.querySelector('.listing-photo-image');
+    const warning = card.querySelector('.listing-photo-square-warning');
+    if (!(photoImage instanceof HTMLImageElement) || !(warning instanceof HTMLElement)) return;
+    if (role !== 'front_cover' && role !== 'back_cover') return;
+
+    const checkSquare = () => {
+      if (photoImage.naturalWidth > 0 && photoImage.naturalHeight > 0 &&
+          photoImage.naturalWidth !== photoImage.naturalHeight) {
+        const side = role === 'front_cover' ? 'front-cover' : 'back-cover';
+        warning.textContent = 'This saved ' + side + ' photo is not square. Delete it and upload it again with the same role to use the crop preview.';
+        warning.hidden = false;
+      }
+    };
+    photoImage.addEventListener('load', checkSquare);
+    if (photoImage.complete) checkSquare();
   });
 })();
