@@ -14,6 +14,7 @@ describe('Responsive disclosure browser behavior', () => {
   let baseUrl: string;
 
   const browseTemplatePath = path.resolve(process.cwd(), 'views/browse/index.ejs');
+  const responsiveDigTemplatePath = path.resolve(process.cwd(), 'views/browse/responsive-dig.ejs');
   const releaseTemplatePath = path.resolve(process.cwd(), 'views/listings/select-release.ejs');
   const footerTemplatePath = path.resolve(process.cwd(), 'views/partials/footer.ejs');
   const navTemplatePath = path.resolve(process.cwd(), 'views/partials/nav.ejs');
@@ -58,6 +59,38 @@ describe('Responsive disclosure browser behavior', () => {
         const footerHtml = await ejs.renderFile(footerTemplatePath);
         const navHtml = await renderNav();
         res.send(wrapPage(browseHtml, footerHtml, navHtml));
+      } catch (error) {
+        next(error);
+      }
+    });
+
+    app.get('/test/responsive-dig', async (_req, res, next) => {
+      try {
+        const digHtml = await ejs.renderFile(responsiveDigTemplatePath, {
+          title: 'Dig Vinyl Records',
+          listings: [],
+          formatOptions: [{ value: '12-inch', label: '12-inch', description: '12-inch records' }],
+          whiteLabelAvailable: false,
+          filters: {
+            q: 'De La Soul',
+            genre: 'Hip Hop',
+            condition: '',
+            minPrice: '',
+            maxPrice: '',
+            sort: 'newest',
+            formats: [],
+            whiteLabel: false,
+            view: 'grid',
+          },
+          pagination: { page: 1, totalPages: 1, totalCount: 0 },
+          errorMessage: null,
+          items: [],
+          totalCount: 0,
+          hasMore: false,
+        });
+        const footerHtml = await ejs.renderFile(footerTemplatePath);
+        const navHtml = await renderNav();
+        res.send(wrapPage(digHtml, footerHtml, navHtml));
       } catch (error) {
         next(error);
       }
@@ -167,6 +200,35 @@ describe('Responsive disclosure browser behavior', () => {
     }
 
     await page.close();
+  });
+
+  it('puts Dig search first on mobile and desktop while preserving the desktop Grid/List control', async () => {
+    const mobilePage = await browser.newPage({ viewport: { width: 375, height: 812 } });
+    await mobilePage.goto(`${baseUrl}/test/responsive-dig`, { waitUntil: 'networkidle' });
+
+    expect(await mobilePage.locator('#dig-primary-search').isVisible()).toBe(true);
+    expect(await mobilePage.locator('.dig-primary-search-form button').isVisible()).toBe(true);
+    expect(await mobilePage.locator('.view-mode-toggle').isVisible()).toBe(false);
+    expect(await mobilePage.locator('.dig-mobile-semantic-title').isVisible()).toBe(true);
+    expect(await mobilePage.locator('.browse-header h1').isVisible()).toBe(false);
+    expect(await mobilePage.locator('.dig-responsive-mobile-header').isVisible()).toBe(false);
+    expect(await mobilePage.locator('.site-footer').isVisible()).toBe(false);
+
+    const searchBox = await mobilePage.locator('.dig-search-control-bar').boundingBox();
+    const resultsBox = await mobilePage.locator('.dig-responsive-desktop').boundingBox();
+    expect(searchBox).not.toBeNull();
+    expect(resultsBox).not.toBeNull();
+    if (searchBox && resultsBox) expect(searchBox.y).toBeLessThan(resultsBox.y);
+    await mobilePage.close();
+
+    const desktopPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await desktopPage.goto(`${baseUrl}/test/responsive-dig`, { waitUntil: 'networkidle' });
+
+    expect(await desktopPage.locator('#dig-primary-search').isVisible()).toBe(true);
+    expect(await desktopPage.locator('.view-mode-toggle').isVisible()).toBe(true);
+    expect(await desktopPage.locator('.browse-header h1').isVisible()).toBe(true);
+    expect(await desktopPage.locator('.site-footer').isVisible()).toBe(true);
+    await desktopPage.close();
   });
 
   it('keeps release search and selection actions at least 44px high on narrow screens', async () => {
