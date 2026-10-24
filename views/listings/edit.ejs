@@ -22,50 +22,60 @@
     <section class="photos-section" style="margin-bottom: var(--space-8); padding-bottom: var(--space-6); border-bottom: 2px dashed var(--color-border-subtle);">
       <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-2);">Photos of this physical copy — used by Crate Dig</h2>
       <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin-bottom: var(--space-4);">
-        Upload up to 5 photos of the exact copy offered in this listing (JPEG, PNG or WebP; max 5MB each). Only photos uploaded here and classified as <strong>Front cover</strong> or <strong>Back cover</strong> appear on the Crate Dig sleeve flip. Optional catalogue artwork added on the New Release form belongs to a separate release record and does not fill these roles. If you only have a photo of your actual sleeve, leave catalogue artwork blank and upload that photo here once.
+        Upload up to 5 photos of the exact copy offered in this listing (JPEG, PNG or WebP; max 5 MiB each). Choose what the photo shows before selecting the file. Front and back cover photos are cropped to a square so both sides line up in Crate Dig; other photo types keep their original framing so condition details are not cut off. Existing photos are not recropped automatically — if an older cover is still portrait, delete it and upload it again with the correct cover role.
       </p>
 
       <!-- Photos Upload Form -->
       <% if (photos.length < 5) { %>
         <form action="/listings/<%= listing.id %>/photos" method="POST" enctype="multipart/form-data" style="margin-bottom: var(--space-6); background: var(--color-surface-bg); padding: var(--space-4); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-sm);">
           <div style="display: flex; flex-direction: column; gap: var(--space-3);">
-            <label for="photoFile" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm);">
-              Select Photo to Upload
-            </label>
-            <input type="file" id="photoFile" name="photo" accept="image/jpeg,image/png,image/webp" required style="font-family: var(--font-mono); font-size: var(--font-size-sm);" />
-            <div id="square-cover-cropper" hidden style="padding: var(--space-3); border: 1px solid var(--color-border-subtle); background: var(--color-white);">
-              <p style="font-size: var(--font-size-sm); margin-bottom: var(--space-2);"><strong>Vierkante albumhoes</strong> — pas de uitsnede aan tot alle randen van de hoes zichtbaar zijn. Deze uitsnede wordt opgeslagen; andere fototaken blijven ongewijzigd.</p>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); align-items: start;">
-                <div>
-                  <p style="font-size: var(--font-size-xs); font-weight: 700; margin-bottom: var(--space-1);">Origineel en uitsnede</p>
-                  <canvas id="square-cover-source" aria-label="Originele foto met vierkante uitsnede" style="display:block;width:100%;max-width:320px;height:auto;background:var(--color-paper-muted);"></canvas>
-                </div>
-                <div>
-                  <p style="font-size: var(--font-size-xs); font-weight: 700; margin-bottom: var(--space-1);">Opgeslagen vierkant voorbeeld</p>
-                  <canvas id="square-cover-result" aria-label="Voorbeeld van de vierkante foto die wordt opgeslagen" width="512" height="512" style="display:block;width:100%;max-width:280px;height:auto;background:var(--color-paper-muted);"></canvas>
-                </div>
-              </div>
-              <label for="square-cover-zoom" style="display:block;font-size:var(--font-size-sm);font-weight:700;margin-top:var(--space-3);">Uitsnede / zoom</label>
-              <input id="square-cover-zoom" type="range" min="55" max="100" value="100" step="1" style="width:100%;max-width:320px;" />
-              <label for="square-cover-position" style="display:block;font-size:var(--font-size-sm);font-weight:700;margin-top:var(--space-2);">Positie langs de lange zijde</label>
-              <input id="square-cover-position" type="range" min="0" max="100" value="50" step="1" style="width:100%;max-width:320px;" />
-              <p id="square-cover-status" role="status" style="font-size:var(--font-size-xs);color:var(--color-ink-muted);margin-top:var(--space-2);">Kies de volledige hoes; controleer het voorbeeld voor upload.</p>
-            </div>
-            <label for="newPhotoRole" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm);">Wat staat er op deze foto? (verplicht)</label>
+            <label for="newPhotoRole" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm);">What is shown in this photo? (required)</label>
             <select id="newPhotoRole" name="role" required class="form-control">
-              <option value="">Kies de fotorol</option>
+              <option value="">Choose a photo type</option>
               <% newPhotoRoles.forEach(function(role) { %>
-                <option value="<%= role %>"><%= photoRoleLabels[role] %></option>
+                <option value="<%= role %>" data-guidance="<%= photoRoleGuidance[role] %>"><%= photoRoleLabels[role] %></option>
               <% }); %>
             </select>
+            <p id="photo-role-guidance" role="status" aria-live="polite" style="font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0;">
+              Choose a photo type first. Front and back covers show a square crop preview; other photo types keep their original framing.
+            </p>
             <details>
-              <summary>Fototips per rol</summary>
+              <summary>Photo tips by type</summary>
               <ul style="padding-left: var(--space-5); font-size: var(--font-size-sm);">
                 <% newPhotoRoles.forEach(function(role) { %>
                   <li style="margin: var(--space-2) 0;"><strong><%= photoRoleLabels[role] %>:</strong> <%= photoRoleGuidance[role] %></li>
                 <% }); %>
               </ul>
             </details>
+            <label for="photoFile" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm);">
+              Choose one photo (JPEG, PNG or WebP; max 5 MiB)
+            </label>
+            <input type="file" id="photoFile" name="photo" accept="image/jpeg,image/png,image/webp" required style="font-family: var(--font-mono); font-size: var(--font-size-sm);" />
+            <div id="photo-selection-preview" hidden style="padding: var(--space-3); margin-top: var(--space-1); border: 1px solid var(--color-border-subtle); background: var(--color-white);">
+              <p id="selected-photo-info" role="status" aria-live="polite" style="font-size: var(--font-size-xs); color: var(--color-ink-muted); margin: 0 0 var(--space-2);"></p>
+              <img id="photo-original-preview" alt="Preview of the selected photo" hidden style="display: block; width: 100%; max-width: 320px; max-height: 240px; object-fit: contain; background: var(--color-paper-muted);" />
+            </div>
+            <div id="square-cover-cropper" hidden style="padding: var(--space-3); border: 1px solid var(--color-border-subtle); background: var(--color-white);">
+              <p style="font-size: var(--font-size-sm); margin-bottom: var(--space-2);">
+                <strong id="square-cover-title">Square cover crop</strong> —
+                <span id="square-cover-description">Adjust the crop until the complete sleeve fits inside the square. The preview below is what will be saved.</span>
+              </p>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); align-items: start;">
+                <div>
+                  <p style="font-size: var(--font-size-xs); font-weight: 700; margin-bottom: var(--space-1);">Original photo and crop area</p>
+                  <canvas id="square-cover-source" aria-label="Original photo with square crop area" style="display:block;width:100%;max-width:320px;height:auto;background:var(--color-paper-muted);"></canvas>
+                </div>
+                <div>
+                  <p style="font-size: var(--font-size-xs); font-weight: 700; margin-bottom: var(--space-1);">Square image that will be saved</p>
+                  <canvas id="square-cover-result" aria-label="Preview of the saved square photo" width="512" height="512" style="display:block;width:100%;max-width:280px;height:auto;background:var(--color-paper-muted);"></canvas>
+                </div>
+              </div>
+              <label for="square-cover-zoom" style="display:block;font-size:var(--font-size-sm);font-weight:700;margin-top:var(--space-3);">Zoom</label>
+              <input id="square-cover-zoom" type="range" min="55" max="100" value="100" step="1" style="width:100%;max-width:320px;min-height:32px;" />
+              <label for="square-cover-position" style="display:block;font-size:var(--font-size-sm);font-weight:700;margin-top:var(--space-2);">Position along the long edge</label>
+              <input id="square-cover-position" type="range" min="0" max="100" value="50" step="1" style="width:100%;max-width:320px;min-height:32px;" />
+              <p id="square-cover-status" role="status" aria-live="polite" style="font-size:var(--font-size-xs);color:var(--color-ink-muted);margin-top:var(--space-2);">Review the complete sleeve and the square preview before uploading.</p>
+            </div>
             <label for="altText" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm);">Alt-tekst (beschrijf wat zichtbaar is)</label>
             <input type="text" id="altText" name="altText" placeholder="Bijvoorbeeld: Side A-label of slijtage aan de rechterhoek" required maxlength="250" style="padding: 8px; border: var(--border-thin); font-size: var(--font-size-sm);" />
             <div>
@@ -92,8 +102,9 @@
       <% if (photos.length > 0) { %>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-4);">
           <% photos.forEach(function(photo, idx) { %>
-            <div style="border: var(--border-thin); padding: var(--space-2); border-radius: var(--radius-sm); background: #fff; text-align: center;">
-              <img src="<%= photo.publicUrl %>" alt="<%= photo.altText || 'Listing photo' %>" style="width: 100%; height: 140px; object-fit: cover; border-radius: var(--radius-xs);" />
+            <div class="listing-photo-card" data-photo-role="<%= photo.role %>" style="border: var(--border-thin); padding: var(--space-2); border-radius: var(--radius-sm); background: #fff; text-align: center;">
+              <img class="listing-photo-image" src="<%= photo.publicUrl %>" alt="<%= photo.altText || 'Listing photo' %>" style="width: 100%; height: 140px; object-fit: cover; border-radius: var(--radius-xs);" />
+              <p class="listing-photo-square-warning" hidden role="status" style="font-size: var(--font-size-xs); color: var(--color-error-border); text-align: left; margin: var(--space-2) 0;"></p>
               <div style="margin-top: var(--space-2); font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
                 Foto #<%= idx + 1 %> · <strong><%= photoRoleLabels[photo.role] || photoRoleLabels.legacy_unclassified %></strong>
               </div>
