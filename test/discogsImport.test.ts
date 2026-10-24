@@ -232,6 +232,55 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
       ]);
     });
 
+    it('tries a broad query when structured release and track searches have no confident match', async () => {
+      const calls: Array<{ artist?: string; title?: string; track?: string; ocrText?: string }> = [];
+      jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockImplementation(async (query) => {
+        calls.push(query);
+        if (query.ocrText) {
+          return [{
+            id: 'discogs:992',
+            providerName: 'discogs',
+            externalId: '992',
+            artist: 'James Brown',
+            title: 'Sex Machine',
+            label: 'Polydor',
+            releaseYear: 1970,
+            matchScore: 0,
+            matchedEvidence: [],
+            provenance: { provider: 'discogs', externalId: '992', fetchedAt: '2026-01-01T00:00:00.000Z' },
+          }];
+        }
+        if (query.track) return [];
+        return [{
+          id: 'discogs:993',
+          providerName: 'discogs',
+          externalId: '993',
+          artist: 'Different Artist',
+          title: 'Different Album',
+          matchScore: 0,
+          matchedEvidence: [],
+          provenance: { provider: 'discogs', externalId: '993', fetchedAt: '2026-01-01T00:00:00.000Z' },
+        }];
+      });
+
+      const response = await supertest(app)
+        .get('/releases/lookup-metadata')
+        .query({ artist: 'James Brown', title: 'Sex Machine' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        found: true,
+        matchType: 'release',
+        metadata: { label: 'Polydor', releaseYear: '1970' },
+      });
+      expect(calls).toEqual([
+        { artist: 'James Brown', title: 'Sex Machine' },
+        { artist: 'James Brown', track: 'Sex Machine' },
+        { ocrText: 'James Brown Sex Machine' },
+      ]);
+    });
+
     it('normalizes accents and punctuation before auto-filling', async () => {
       jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([{
         id: 'discogs:789',
