@@ -377,7 +377,10 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       deleteStorageSpy.mockRestore();
     });
 
-    it('should reject a non-square front-cover photo rather than silently cropping unknown edges', async () => {
+    it.each([
+      ['front_cover', 'front-cover'],
+      ['back_cover', 'back-cover'],
+    ])('should reject a non-square %s image rather than silently saving camera framing', async (role, sideLabel) => {
       const portraitImage = await sharp({
         create: { width: 100, height: 160, channels: 3, background: { r: 128, g: 128, b: 128 } },
       }).jpeg().toBuffer();
@@ -390,8 +393,8 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
           buffer: portraitImage,
           mimetype: 'image/jpeg',
           originalname: 'phone-portrait.jpg',
-        }, 'Front cover', undefined, undefined, 'front_cover')
-      ).rejects.toThrow('Crop the front-cover photo to a square');
+        }, sideLabel, undefined, undefined, role)
+      ).rejects.toThrow('Crop the ' + sideLabel + ' photo to a square');
 
       expect(uploadSpy).not.toHaveBeenCalled();
       uploadSpy.mockRestore();
@@ -426,7 +429,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
 
     it('persists the seller-selected back_cover role with the uploaded photo metadata', async () => {
       const backImage = await sharp({
-        create: { width: 120, height: 160, channels: 3, background: { r: 60, g: 60, b: 60 } },
+        create: { width: 100, height: 100, channels: 3, background: { r: 60, g: 60, b: 60 } },
       }).jpeg().toBuffer();
       const storageModule = await import('../src/app/services/storageService');
       const uploadSpy = jest.spyOn(storageModule, 'uploadListingPhotoToStorage')
@@ -691,8 +694,48 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       await expect(reorderListingPhotos(listingId, sellerId, [p1Id, foreignId])).rejects.toThrow(ValidationError);
     });
 
+    it('should reject reclassifying a portrait photo as a sleeve cover', async () => {
+      const photoId = '60000000-0000-4000-8000-000000000008';
+      const portraitImage = await sharp({
+        create: { width: 100, height: 160, channels: 3, background: { r: 30, g: 80, b: 155 } },
+      }).jpeg().toBuffer();
+      const storageModule = await import('../src/app/services/storageService');
+      await storageModule.uploadListingPhotoToStorage({
+        listingId,
+        photoId,
+        buffer: portraitImage,
+        contentType: 'image/jpeg',
+      });
+      const samplePhoto = {
+        id: photoId,
+        listingId,
+        storagePath: `listings/${listingId}/${photoId}.webp`,
+        displayOrder: 0,
+        altText: 'Portrait back cover',
+        role: 'legacy_unclassified',
+      };
+
+      (photoRepo.findPhotoById as jest.Mock).mockResolvedValueOnce(samplePhoto);
+      (photoRepo.findPhotosByListingId as jest.Mock).mockResolvedValueOnce([samplePhoto]);
+
+      await expect(
+        updateListingPhotoRole(listingId, photoId, sellerId, 'back_cover')
+      ).rejects.toThrow('Crop this back-cover photo to a square');
+      expect(photoRepo.updateListingPhotoRole).not.toHaveBeenCalled();
+    });
+
     it('should report a validation error when concurrent role updates hit a front-cover uniqueness conflict', async () => {
       const photoId = '60000000-0000-4000-8000-000000000001';
+      const storageModule = await import('../src/app/services/storageService');
+      const squareImage = await sharp({
+        create: { width: 100, height: 100, channels: 3, background: { r: 60, g: 60, b: 60 } },
+      }).jpeg().toBuffer();
+      await storageModule.uploadListingPhotoToStorage({
+        listingId,
+        photoId,
+        buffer: squareImage,
+        contentType: 'image/jpeg',
+      });
       const samplePhoto = {
         id: photoId,
         listingId,
