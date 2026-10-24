@@ -1,4 +1,5 @@
 import path from 'path';
+import { readFileSync } from 'fs';
 import ejs from 'ejs';
 import { formatPrice, buildListingImageAlt, buildListingCardViewModel } from '../src/app/view-models/listingCardViewModel';
 import { formatZodFormErrors, demoListingFormSchema } from '../src/app/view-models/formViewModel';
@@ -138,5 +139,99 @@ describe('UI Primitives View Models and Helpers', () => {
       expect(html).toContain('data-artwork-fallback=""');
       expect(html).not.toContain('class="listing-card-image-fallback"');
     });
+  });
+});
+
+
+describe('Compact mobile layout surfaces', () => {
+  const footerTemplatePath = path.resolve(__dirname, '../views/partials/footer.ejs');
+  const browseTemplatePath = path.resolve(__dirname, '../views/browse/index.ejs');
+
+  it('keeps secondary footer links available in a labelled disclosure', async () => {
+    const html = await ejs.renderFile(footerTemplatePath);
+
+    expect(html).toContain('<details class="footer-links-menu">');
+    expect(html).toContain('<summary>Info &amp; contact</summary>');
+    expect(html).toContain('href="/contact"');
+    expect(html).toContain('href="/privacy"');
+    expect(html).toContain('href="/terms"');
+    expect(html).toContain('href="/community-rules"');
+  });
+
+  it('groups browse search and filter controls without dropping existing filter fields', async () => {
+    const html = await ejs.renderFile(browseTemplatePath, {
+      title: 'Dig Vinyl Records',
+      formatOptions: [],
+      whiteLabelAvailable: false,
+      filters: {
+        q: '',
+        genre: '',
+        condition: '',
+        minPrice: '',
+        maxPrice: '',
+        sort: 'newest',
+        formats: [],
+        whiteLabel: false,
+        view: 'grid',
+      },
+      listings: [],
+      pagination: {
+        page: 1,
+        totalPages: 1,
+        totalCount: 0,
+      },
+      errorMessage: null,
+    });
+
+    expect(html).toContain('class="browse-mobile-filter-panel"');
+    expect(html).toContain('class="browse-mobile-filter-summary"');
+    expect(html).toContain('Refine your Dig');
+    expect(html).toContain('id="search-q"');
+    expect(html).toContain('id="filter-genre"');
+    expect(html).toContain('id="filter-condition"');
+    expect(html).toContain('id="filter-min-price"');
+    expect(html).toContain('id="filter-max-price"');
+    expect(html).toContain('id="filter-sort"');
+    expect(html).toContain('class="browse-filter-actions"');
+  });
+});
+
+
+describe('Compact release selection on mobile', () => {
+  const templatePath = path.resolve(__dirname, '../views/listings/select-release.ejs');
+  const stylesheetPath = path.resolve(__dirname, '../public/css/style.css');
+
+  it('keeps release artwork, metadata, and the selection action in the result template', async () => {
+    const html = await ejs.renderFile(templatePath, {
+      query: '',
+      searchResults: [],
+      releases: [{
+        id: 'release-1',
+        title: 'Kind of Blue',
+        artist: 'Miles Davis',
+        label: 'Columbia',
+        releaseYear: 1959,
+        format: '12" LP',
+        coverArtUrl: '',
+      }],
+    });
+
+    expect(html).toContain('class="card select-release-result"');
+    expect(html).toContain('class="select-release-result-content"');
+    expect(html).toContain('Kind of Blue');
+    expect(html).toContain('Select Release');
+  });
+
+  it('uses a compact two-column action layout and clamps long release metadata on mobile', () => {
+    const stylesheet = readFileSync(stylesheetPath, 'utf8');
+    const mobileReleaseStyles = stylesheet.slice(
+      stylesheet.lastIndexOf('/* Compact release selection rows on mobile:'),
+    );
+
+    expect(mobileReleaseStyles).toContain('@media (max-width: 767px)');
+    expect(mobileReleaseStyles).toContain('.select-release-result {');
+    expect(mobileReleaseStyles).toContain('grid-template-columns: minmax(0, 1fr) auto;');
+    expect(mobileReleaseStyles).toContain('-webkit-line-clamp: 2;');
+    expect(mobileReleaseStyles).toContain('.select-release-search-form {');
   });
 });

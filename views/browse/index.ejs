@@ -36,6 +36,22 @@
     <% }); %>
     <input type="hidden" name="whiteLabel" value="<%= filters.whiteLabel ? '1' : '' %>">
 
+    <% const activeMobileFilterCount = [
+      filters.q,
+      filters.genre,
+      filters.condition,
+      filters.minPrice,
+      filters.maxPrice,
+      filters.sort && filters.sort !== 'newest',
+      selectedFormats.length > 0,
+      filters.whiteLabel
+    ].filter(Boolean).length; %>
+    <details class="browse-mobile-filter-panel">
+      <summary class="browse-mobile-filter-summary">
+        <span>Search &amp; filters</span>
+        <span class="browse-mobile-filter-status"><%= activeMobileFilterCount ? activeMobileFilterCount + ' active' : 'Refine your Dig' %></span>
+      </summary>
+      <div class="browse-mobile-filter-content">
     <fieldset class="browse-format-quick-filters">
       <legend>Dig by format</legend>
       <div class="browse-format-chip-row">
@@ -106,7 +122,9 @@
       <% if (filters.q || filters.genre || filters.condition || filters.minPrice || filters.maxPrice || filters.sort !== 'newest' || selectedFormats.length > 0 || filters.whiteLabel) { %>
         <a href="<%= routeBase %>?view=<%= currentView %>" class="btn btn-outline btn-sm">Clear all</a>
       <% } %>
+      </div>
     </div>
+    </details>
   </form>
 
   <!-- Results Count & View Switcher -->
