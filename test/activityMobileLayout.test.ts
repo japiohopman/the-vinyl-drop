@@ -85,7 +85,7 @@ describe('Mobile Activity single-column layout', () => {
 
       expect(measurements.document).toBeLessThanOrEqual(width + 1);
       expect(measurements.bodyScroll).toBeLessThanOrEqual(width + 1);
-      expect(measurements.cardColumns.trim().split(/\\s+/).length).toBe(1);
+      expect(measurements.cardColumns.trim().split(/\s+/).length).toBe(1);
       expect(measurements.contentDisplay).toBe('block');
       expect(measurements.contentWidth).toBeGreaterThan(measurements.artworkWidth * 2);
       expect(measurements.badgePosition).toBe('absolute');
@@ -102,7 +102,7 @@ describe('Mobile Activity single-column layout', () => {
       childCount: el.children.length,
     }));
     expect(feed.display).toBe('grid');
-    expect(feed.columns.trim().split(/\\s+/).length).toBe(1);
+    expect(feed.columns.trim().split(/\s+/).length).toBe(1);
     expect(feed.childCount).toBe(1);
   });
 });
