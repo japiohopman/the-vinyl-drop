@@ -29,6 +29,13 @@ describe('Mobile Activity single-column layout', () => {
     if (page) await page.close();
   });
 
+  async function expectText(locator: import('playwright').Locator, expected: string): Promise<void> {
+    const text = (await locator.textContent())?.replace(/\\s+/g, ' ').trim();
+    if (!text?.includes(expected)) {
+      throw new Error(`Expected element text to include "${expected}", received "${text || ''}"`);
+    }
+  }
+
   async function renderActivity(): Promise<string> {
     const view = await ejs.renderFile(viewPath, {
       getIconSvg,
@@ -92,7 +99,7 @@ describe('Mobile Activity single-column layout', () => {
       </head><body><main class="main-content">${view}</main></body></html>`;
   }
 
-  it('uses one full-width mobile card column and prevents horizontal overflow', async () => {
+  it('keeps the artwork row compact, release details full-width, and prevents overflow', async () => {
     const html = await renderActivity();
 
     for (const width of [320, 360, 375, 414]) {
@@ -183,6 +190,18 @@ describe('Mobile Activity single-column layout', () => {
       expect(Math.abs(card.left - feed.cards[0].left)).toBeLessThanOrEqual(1);
       expect(Math.abs(card.width - feed.cards[0].width)).toBeLessThanOrEqual(1);
     }
+
+    const commentCard = page.locator('.activity-card').nth(1);
+    await expectText(commentCard.locator('.activity-release-link h2'), 'Take It Back (Extended Club Mix)');
+    await expectText(commentCard.locator('.activity-release-artist'), 'A Different Artist Name');
+    await expectText(
+      commentCard.locator('.activity-comment'),
+      'A deliberately longer comment that should wrap naturally across the available card width without forcing horizontal scrolling on narrow phones.'
+    );
+
+    const privateCard = page.locator('.activity-card').nth(2);
+    await expectText(privateCard.locator('.private-badge'), 'Private to you');
+    await expectText(privateCard.locator('.activity-price'), '€7.00');
   });
 
   it('preserves the desktop card and badge columns', async () => {
