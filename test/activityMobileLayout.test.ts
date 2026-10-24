@@ -30,7 +30,7 @@ describe('Mobile Activity single-column layout', () => {
   });
 
   async function expectText(locator: import('playwright').Locator, expected: string): Promise<void> {
-    const text = (await locator.textContent())?.replace(/\\s+/g, ' ').trim();
+    const text = (await locator.textContent())?.replace(/\s+/g, ' ').trim();
     if (!text?.includes(expected)) {
       throw new Error(`Expected element text to include "${expected}", received "${text || ''}"`);
     }
