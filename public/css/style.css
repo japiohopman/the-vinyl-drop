@@ -2962,7 +2962,7 @@ select.form-control {
   }
 
   .activity-artwork-link {
-    width: 76px;
+    width: 64px;
     margin-bottom: 0;
   }
 
@@ -2973,7 +2973,6 @@ select.form-control {
 
   .activity-card-header {
     align-items: flex-start;
-    padding-right: 40px;
   }
 
   .activity-icon-badge {
