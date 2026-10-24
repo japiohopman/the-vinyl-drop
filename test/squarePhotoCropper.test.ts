@@ -1,5 +1,4 @@
 import ejs from 'ejs';
-import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { chromium, Browser, Page } from 'playwright';
