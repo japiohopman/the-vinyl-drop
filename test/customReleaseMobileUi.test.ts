@@ -226,7 +226,9 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('[name="genre"]').inputValue()).toBe('Funk, Soul');
     expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('https://i.discogs.com/example-cover.jpg');
     expect(await page.locator('#discogsLookupStatus').getAttribute('role')).toBe('status');
-    expect(await page.locator('#releaseMetadataDetails').getAttribute('open')).toBeNull();
+    expect(await page.locator('#releaseMetadataDetails').getAttribute('open')).not.toBeNull();
+    expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
+    expect(await page.locator('[data-discogs-cover-preview] img').getAttribute('src')).toBe('https://i.discogs.com/example-cover.jpg');
 
     const dimensions = await page.evaluate(() => ({
       document: document.documentElement.scrollWidth,
