@@ -141,7 +141,7 @@ describe('Square cover photo cropper', () => {
 
       await page.locator('form[action$="/photos"] button[type="submit"]').click({ timeout: 5000 });
       await page.waitForFunction(
-        "document.forms[0].dataset.squareCropReady === 'true'",
+        "document.querySelector(\'form[action$="/photos"]\').dataset.squareCropReady === 'true'",
         undefined,
         { timeout: 5000 }
       );
