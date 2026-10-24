@@ -276,7 +276,7 @@ describe('Dig photo-role contract', () => {
     expect(html).not.toContain('Omhoog swipen');
     expect(html).not.toContain('data-dig-progress-label');
     expect(html).toContain('class="dig-keyboard-note"');
-    expect(html).toContain('href="/dig?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
+    expect(html).toContain('href="/browse?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
     expect(html).toContain('/js/dig-state.js');
     expect(html).toContain('/js/dig-mode.js');
     expect(html).not.toContain('src="/seller/record.webp"');

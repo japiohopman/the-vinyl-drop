@@ -10,7 +10,7 @@
     ...selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }),
     filters.whiteLabel ? 'whiteLabel=1' : '',
   ].filter(Boolean).join('&');
-  const browseReturnUrl = '/dig?' + baseQueryParams + '&view=grid';
+  const browseReturnUrl = '/browse?' + baseQueryParams + '&view=grid';
   const visibleItems = Array.isArray(items) ? items : [];
 %>
 

@@ -3917,3 +3917,216 @@ select.form-control {
     display: inline;
   }
 }
+
+
+/* Issue #185: keep active mobile Crate Dig within the screen, like an app view. */
+.mobile-dig-position {
+  flex: 0 0 auto;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mobile-dig-back {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 767px) {
+  body.mobile-dig-session {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: 0 !important;
+  }
+
+  body.mobile-dig-session .site-footer {
+    display: none !important;
+  }
+
+  body.mobile-dig-session .main-content {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: var(--space-1) 0 calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-responsive-page {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    max-width: none;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-search-control-bar,
+  body.mobile-dig-session .dig-responsive-desktop {
+    display: none !important;
+  }
+
+  body.mobile-dig-session .dig-responsive-mobile {
+    display: flex !important;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-page {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 var(--space-2);
+    overflow: hidden;
+  }
+
+  /* Keep one semantic H1 for assistive technology without repeating "Dig" visually. */
+  body.mobile-dig-session .dig-page-header {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  body.mobile-dig-session .dig-page-header .dig-back-to-browse {
+    display: none !important;
+  }
+
+  body.mobile-dig-session .dig-context-row,
+  body.mobile-dig-session .dig-filter-summary,
+  body.mobile-dig-session .dig-keyboard-note,
+  body.mobile-dig-session .dig-navigation {
+    display: none !important;
+  }
+
+  body.mobile-dig-session .dig-explorer {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    margin: 0;
+    padding: var(--space-1);
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-viewer {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-crate-stack {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+  }
+
+  body.mobile-dig-session .dig-slide.is-active {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 0;
+  }
+
+  body.mobile-dig-session .dig-listing-meta {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin: 0 auto var(--space-1);
+    padding: 0;
+  }
+
+  body.mobile-dig-session .dig-listing-meta h2 {
+    font-size: clamp(1.05rem, 4vw, 1.4rem);
+    line-height: 1.05;
+  }
+
+  body.mobile-dig-session .dig-artist {
+    margin-top: 2px;
+    font-size: var(--font-size-sm);
+    line-height: 1.15;
+  }
+
+  body.mobile-dig-session .dig-sleeve-interaction {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-sleeve-stage {
+    flex: 0 1 auto;
+    width: min(100%, calc(100vw - 24px), calc(100dvh - 320px));
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+  }
+
+  body.mobile-dig-session .dig-card-actions {
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-1) 0 0;
+    padding: 0;
+  }
+
+  body.mobile-dig-session .dig-price {
+    gap: var(--space-1);
+  }
+
+  body.mobile-dig-session .dig-price-label,
+  body.mobile-dig-session .dig-trade-note {
+    display: none;
+  }
+
+  body.mobile-dig-session .dig-price strong {
+    font-size: clamp(1.2rem, 4.5vw, 1.5rem);
+  }
+
+  body.mobile-dig-session .dig-listing-link {
+    min-height: 40px;
+    padding: 2px var(--space-1);
+    font-size: var(--font-size-sm);
+  }
+
+  body.mobile-dig-session .dig-missing-front,
+  body.mobile-dig-session .dig-missing-back {
+    gap: var(--space-1);
+    padding: var(--space-3);
+  }
+
+  body.mobile-dig-session .dig-missing-front p,
+  body.mobile-dig-session .dig-missing-back p {
+    display: none;
+  }
+}
