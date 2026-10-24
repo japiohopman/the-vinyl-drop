@@ -53,6 +53,7 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
     });
 
     it('redirects unauthenticated users before running a Discogs metadata lookup', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setSupabaseClient({
         auth: {
           getUser: jest.fn().mockResolvedValue({
