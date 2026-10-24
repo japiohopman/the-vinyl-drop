@@ -98,17 +98,7 @@ describe('Square cover photo cropper', () => {
 
     await page.evaluate("(() => {" +
       "const form = document.querySelector('form[action$=\"/photos\"]');" +
-      "window.__capturedUploads = [];" +
-      "form.addEventListener('submit', (event) => {" +
-        "if (form.dataset.squareCropReady !== 'true') return;" +
-        "event.preventDefault();" +
-        "const file = new FormData(form).get('photo');" +
-        "if (!(file instanceof File)) return;" +
-        "createImageBitmap(file).then((bitmap) => {" +
-          "window.__capturedUploads.push({ name: file.name, type: file.type, width: bitmap.width, height: bitmap.height });" +
-          "bitmap.close();" +
-        "});" +
-      "}, true);" +
+      "form.addEventListener('submit', (event) => event.preventDefault(), true);" +
     "})()");
 
     const roles = ['front_cover', 'back_cover'];
@@ -151,11 +141,19 @@ describe('Square cover photo cropper', () => {
 
       await page.locator('form[action$="/photos"] button[type="submit"]').click({ timeout: 5000 });
       await page.waitForFunction(
-        'window.__capturedUploads.length === ' + (index + 1),
+        "document.querySelector('form[action$=\\"/photos\\"]').dataset.squareCropReady === 'true'",
         undefined,
         { timeout: 5000 }
       );
-      const uploaded = await page.evaluate('window.__capturedUploads[' + index + ']') as {
+      const uploaded = await page.evaluate("async () => {" +
+        "const fileInput = document.querySelector('#photoFile');" +
+        "const file = fileInput && fileInput.files && fileInput.files[0];" +
+        "if (!file) throw new Error('The cropper did not replace the selected photo.');" +
+        "const bitmap = await createImageBitmap(file);" +
+        "const result = { name: file.name, type: file.type, width: bitmap.width, height: bitmap.height };" +
+        "bitmap.close();" +
+        "return result;" +
+      "}") as {
         name: string;
         type: string;
         width: number;
