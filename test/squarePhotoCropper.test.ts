@@ -106,6 +106,7 @@ describe('Square cover photo cropper', () => {
       const role = roles[index];
       await selectPortrait(role);
       await page.waitForFunction(
+        "document.querySelector('#selected-photo-info').textContent.includes('300 × 500 px') && " +
         "document.querySelector('#square-cover-source').height === 320",
         undefined,
         { timeout: 5000 }
