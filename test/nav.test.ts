@@ -81,6 +81,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('id="mobile-you-surface"');
     expect(html).toContain('<span>ME</span>');
     expect(html).toContain('aria-label="Me"');
+    const mobileTrigger = html.slice(html.indexOf('id="mobile-you-trigger"'), html.indexOf('>', html.indexOf('id="mobile-you-trigger"')));
+    expect(mobileTrigger).toContain('aria-label="Me"');
     expect(html).toContain('id="mobile-you-about-trigger"');
     expect(html).toContain('id="mobile-you-about-view" hidden');
     expect(html).toContain('class="mobile-you-info-section"');
@@ -271,6 +273,44 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await getAttribute('#mobile-you-about-trigger', 'aria-expanded')).toBe('false');
       expect(await isFocused('#mobile-you-about-trigger')).toBe(true);
       expect(await isElementVisible('#mobile-you-surface')).toBe(true);
+    });
+
+    it('prevents horizontal page overflow on information pages at narrow mobile widths', async () => {
+      const contactForm = {
+        values: { name: '', email: '', message: '' },
+        fieldErrors: {},
+        feedback: undefined,
+      };
+      const pageSpecs = [
+        { name: 'contact.ejs', locals: { contactEmail: 'support@example.com', contactForm } },
+        { name: 'privacy.ejs', locals: { contactEmail: 'support@example.com', noticeStatus: 'current' } },
+        { name: 'terms.ejs', locals: { contactEmail: 'support@example.com', termsVersion: 'test-version' } },
+        { name: 'community-rules.ejs', locals: {} },
+      ];
+      const viewports = [320, 360, 375, 414];
+
+      for (const spec of pageSpecs) {
+        const templatePath = path.join(__dirname, '../views/info', spec.name);
+        const content = await ejs.renderFile(templatePath, spec.locals, { filename: templatePath });
+        const html = `<!DOCTYPE html>
+          <html lang="en"><head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>${stylesheetContent}</style>
+          </head><body>${content}</body></html>`;
+
+        for (const width of viewports) {
+          await page.setViewportSize({ width, height: 780 });
+          await page.setContent(html);
+          const overflow = await page.evaluate(() => ({
+            viewport: window.innerWidth,
+            document: document.documentElement.scrollWidth,
+            body: document.body.scrollWidth,
+          }));
+          expect(overflow.document).toBeLessThanOrEqual(width + 1);
+          expect(overflow.body).toBeLessThanOrEqual(width + 1);
+        }
+      }
     });
 
     it('uses a near-opaque backdrop while keeping the mobile account panel inset from the viewport', async () => {
