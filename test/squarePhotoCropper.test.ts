@@ -77,19 +77,20 @@ describe('Square cover photo cropper', () => {
       '<!doctype html><html lang="en"><head><meta charset="UTF-8">' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<style>' + stylesheet + '</style></head>' +
-      '<body><main class="main-content">' + body + '</main></body></html>'
+      '<body><main class="main-content">' + body + '</main></body></html>',
+      { waitUntil: 'domcontentloaded', timeout: 5000 }
     );
-    await page.addScriptTag({ path: cropperPath });
+    await page.addScriptTag({ path: cropperPath, timeout: 5000 });
   }
 
   async function selectPortrait(role: string): Promise<void> {
-    await page.locator('#newPhotoRole').selectOption(role);
-    await page.locator('#altText').fill('Full physical sleeve cover');
+    await page.locator('#newPhotoRole').selectOption(role, { timeout: 5000 });
+    await page.locator('#altText').fill('Full physical sleeve cover', { timeout: 5000 });
     await page.locator('#photoFile').setInputFiles({
       name: role + '-phone-photo.jpg',
       mimeType: 'image/jpeg',
       buffer: portraitImage,
-    });
+    }, { timeout: 5000 });
   }
 
   it('crops both front and back cover uploads to the exact square preview', async () => {
@@ -171,7 +172,11 @@ describe('Square cover photo cropper', () => {
     await renderEditPage();
     await selectPortrait('detail');
 
-    await page.waitForFunction("document.querySelector('#photo-original-preview').naturalWidth === 300");
+    await page.waitForFunction(
+      "document.querySelector('#photo-original-preview').naturalWidth === 300",
+      undefined,
+      { timeout: 5000 }
+    );
     expect(await page.locator('#square-cover-cropper').isVisible()).toBe(false);
     expect(await page.locator('#photo-original-preview').isVisible()).toBe(true);
     expect(await page.locator('#selected-photo-info').textContent()).toContain('300 × 500 px');
@@ -185,7 +190,7 @@ describe('Square cover photo cropper', () => {
       altText: 'Portrait back-cover photo',
     });
 
-    await page.locator('.listing-photo-square-warning').waitFor({ state: 'visible' });
+    await page.locator('.listing-photo-square-warning').waitFor({ state: 'visible', timeout: 5000 });
     expect(await page.locator('.listing-photo-square-warning').textContent()).toContain(
       'Delete it and upload it again'
     );
