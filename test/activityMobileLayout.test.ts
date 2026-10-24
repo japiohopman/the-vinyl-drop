@@ -36,7 +36,7 @@ describe('Mobile Activity single-column layout', () => {
         listingUrl: '/listings/example-listing',
         releaseTitle: 'Sex machine',
         releaseArtist: 'James Brown',
-        listingArtworkUrl: 'https://example.test/cover.webp',
+        listingArtworkUrl: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
         releaseCoverArtUrl: null,
         artworkFallbackUrl: '/assets/vinyl-placeholder.svg',
         actorAvatarUrl: null,
@@ -70,6 +70,10 @@ describe('Mobile Activity single-column layout', () => {
         const body = document.querySelector('.activity-card-body') as HTMLElement;
         const artwork = document.querySelector('.activity-artwork-link') as HTMLElement;
         const content = document.querySelector('.activity-card-content') as HTMLElement;
+        const header = document.querySelector('.activity-card-header') as HTMLElement;
+        const badge = document.querySelector('.activity-icon-badge') as HTMLElement;
+        const headerRect = header.getBoundingClientRect();
+        const badgeRect = badge.getBoundingClientRect();
         return {
           viewport: window.innerWidth,
           document: document.documentElement.scrollWidth,
@@ -79,7 +83,9 @@ describe('Mobile Activity single-column layout', () => {
           cardWidth: card.getBoundingClientRect().width,
           contentWidth: body.getBoundingClientRect().width,
           artworkWidth: artwork.getBoundingClientRect().width,
-          badgePosition: getComputedStyle(document.querySelector('.activity-icon-badge') as HTMLElement).position,
+          badgePosition: getComputedStyle(badge).position,
+          badgeLeft: badgeRect.left,
+          headerContentRight: headerRect.right - parseFloat(getComputedStyle(header).paddingRight),
         };
       });
 
@@ -89,6 +95,7 @@ describe('Mobile Activity single-column layout', () => {
       expect(measurements.contentDisplay).toBe('block');
       expect(measurements.contentWidth).toBeGreaterThan(measurements.artworkWidth * 2);
       expect(measurements.badgePosition).toBe('absolute');
+      expect(measurements.badgeLeft).toBeGreaterThanOrEqual(measurements.headerContentRight);
     }
   });
 
