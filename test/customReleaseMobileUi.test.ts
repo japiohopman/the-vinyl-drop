@@ -163,12 +163,14 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('.custom-release-file-desktop-label').isVisible()).toBe(true);
   });
 
-  it('fills editable release metadata after a confident Discogs match', async () => {
+  it('fills editable release metadata after a debounced confident Discogs match', async () => {
     const headerHtml = await renderHeader('/drop/new');
     const releaseHtml = await renderReleasePage();
     await page.setViewportSize({ width: 375, height: 800 });
     await page.setContent(documentHtml(headerHtml, releaseHtml));
+    let lookupRequests = 0;
     await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      lookupRequests += 1;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -197,6 +199,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
       { timeout: 3000 }
     );
 
+    expect(lookupRequests).toBe(1);
     expect(await page.locator('#releaseArtist').inputValue()).toBe('James Brown');
     expect(await page.locator('#releaseTitle').inputValue()).toBe('Sex Machine');
     expect(await page.locator('[name="label"]').inputValue()).toBe('Polydor');
@@ -216,6 +219,67 @@ describe('Custom release mobile navigation and artwork picker', () => {
     }));
     expect(dimensions.document).toBeLessThanOrEqual(376);
     expect(dimensions.body).toBeLessThanOrEqual(376);
+  });
+
+  it('preserves manually corrected metadata when a later lookup runs', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+
+    let lookupRequests = 0;
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      lookupRequests += 1;
+      const metadata = lookupRequests === 1
+        ? {
+            label: 'Polydor',
+            catalogueNumber: 'PD 123',
+            releaseYear: '1970',
+            format: 'Vinyl, LP, Album',
+            barcode: '0123456789012',
+            country: 'UK',
+            genre: 'Funk, Soul',
+            coverArtUrl: 'https://i.discogs.com/first-cover.jpg',
+          }
+        : {
+            label: 'Replacement Label',
+            catalogueNumber: 'PD 456',
+            releaseYear: '1971',
+            format: 'Vinyl, LP, Album',
+            barcode: '9988776655443',
+            country: 'US',
+            genre: 'Funk',
+            coverArtUrl: 'https://i.discogs.com/second-cover.jpg',
+          };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ found: true, matchType: 'release', metadata }),
+      });
+    });
+    await page.addScriptTag({ content: discogsLookupScript });
+
+    await page.locator('#releaseArtist').fill('James Brown');
+    await page.locator('#releaseTitle').fill('Sex Machine');
+    await page.waitForFunction(
+      () => document.getElementById('discogsLookupStatus')?.getAttribute('data-state') === 'found',
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(lookupRequests).toBe(1);
+
+    await page.locator('#releaseMetadataDetails > summary').click();
+    await page.locator('[name="label"]').fill('My corrected label');
+    await page.locator('#releaseTitle').fill('Sex Machine edit');
+    await page.waitForFunction(
+      () => document.getElementById('discogsLookupStatus')?.getAttribute('data-state') === 'found',
+      undefined,
+      { timeout: 3000 }
+    );
+
+    expect(lookupRequests).toBe(2);
+    expect(await page.locator('[name="label"]').inputValue()).toBe('My corrected label');
+    expect(await page.locator('[name="catalogueNumber"]').inputValue()).toBe('PD 456');
+    expect(await page.locator('[name="releaseYear"]').inputValue()).toBe('1971');
   });
 
   it('keeps manual entry available when lookup returns no match or a temporary error', async () => {
