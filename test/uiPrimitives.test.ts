@@ -216,7 +216,7 @@ describe('Compact release selection on mobile', () => {
       }],
     });
 
-    expect(html).toContain('class="select-release-result"');
+    expect(html).toContain('class="card select-release-result"');
     expect(html).toContain('class="select-release-result-content"');
     expect(html).toContain('Kind of Blue');
     expect(html).toContain('Select Release');
