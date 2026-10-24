@@ -128,7 +128,13 @@ describe('Square cover photo cropper', () => {
             "cropper: cropper.getBoundingClientRect().width," +
             "cropperScroll: cropper.scrollWidth" +
           "};" +
-        "})()");
+        "})()") as {
+          viewport: number;
+          section: number;
+          sectionScroll: number;
+          cropper: number;
+          cropperScroll: number;
+        };
         expect(layout.sectionScroll).toBeLessThanOrEqual(layout.section + 1);
         expect(layout.cropperScroll).toBeLessThanOrEqual(layout.cropper + 1);
       }
