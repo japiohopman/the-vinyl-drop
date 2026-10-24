@@ -1705,6 +1705,10 @@ select.form-control {
     min-width: 112px;
   }
 
+  .browse-secondary-filters summary {
+    min-height: 44px;
+  }
+
   .browse-secondary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2924,10 +2928,6 @@ select.form-control {
   min-width: 0;
 }
 
-.browse-mobile-filter-panel:not([open]) > .browse-mobile-filter-content {
-  display: flex;
-}
-
 /* Compact, disclosure-based mobile shell and browse controls */
 @media (max-width: 767px) {
   .main-content {
@@ -2956,7 +2956,7 @@ select.form-control {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 var(--space-1);
     border-top: 1px solid var(--color-border-subtle);
     border-bottom: 1px solid var(--color-border-subtle);
@@ -2995,6 +2995,9 @@ select.form-control {
   }
 
   .footer-links a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
     padding: var(--space-2) var(--space-1);
     border-bottom: 1px solid var(--color-border-subtle);
   }
@@ -3019,7 +3022,7 @@ select.form-control {
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
-    min-height: 42px;
+    min-height: 44px;
     padding: 0 var(--space-2);
     border: var(--border-thick);
     border-radius: var(--radius-sm);
@@ -3075,7 +3078,7 @@ select.form-control {
 
   .browse-format-chip {
     min-width: 56px;
-    min-height: 40px;
+    min-height: 44px;
     padding: var(--space-2) var(--space-3);
   }
 
@@ -3098,6 +3101,7 @@ select.form-control {
 
   .browse-filter-actions .btn {
     flex: 1 1 auto;
+    min-height: 44px;
   }
 
   .dig-responsive-mobile-header {
@@ -3128,12 +3132,14 @@ select.form-control {
   .select-release-search-form input {
     width: auto !important;
     min-width: 0;
+    min-height: 44px;
     padding: var(--space-2) !important;
     font-size: var(--font-size-sm) !important;
   }
 
   .select-release-search-form button {
     width: auto !important;
+    min-height: 44px;
     flex: 0 0 auto;
     padding: 0 var(--space-2) !important;
     font-size: var(--font-size-xs) !important;
@@ -3166,6 +3172,7 @@ select.form-control {
 
   .select-release-custom-option > a {
     width: auto !important;
+    min-height: 44px;
     max-width: 116px;
     justify-self: end;
     padding: var(--space-2) !important;
@@ -3235,7 +3242,7 @@ select.form-control {
   .select-release-result > form button,
   .select-release-result > a,
   .select-release-result > span {
-    min-height: 36px;
+    min-height: 44px;
     padding: var(--space-2) !important;
     font-size: var(--font-size-3xs) !important;
     line-height: var(--line-height-snug);
