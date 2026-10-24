@@ -55,6 +55,7 @@ import { findReleaseById } from '../repositories/releaseRepository';
 import { ProcessedImage, processAndValidateImage } from '../utils/imageProcessor';
 import {
   deleteListingPhotoFromStorage,
+  downloadListingPhotoFromStorage,
   getPhotoPublicUrl,
   StorageOptions,
   uploadListingPhotoToStorage,
@@ -569,10 +570,11 @@ export async function addPhotoToListing(
     throw new ValidationError((err as Error).message);
   }
 
-  // Album front covers must be stored as square pixels, not merely displayed in a square CSS frame.
-  // The browser cropper creates this output before upload; never guess a destructive server-side crop.
-  if (role === 'front_cover' && processed.width !== processed.height) {
-    throw new ValidationError('Crop the front-cover photo to a square in the preview before uploading.');
+  // Both sleeve faces must be stored as square pixels so Dig renders the two sides consistently.
+  // The seller confirms the crop in the browser; never guess a destructive server-side crop.
+  if ((role === 'front_cover' || role === 'back_cover') && processed.width !== processed.height) {
+    const side = role === 'front_cover' ? 'front-cover' : 'back-cover';
+    throw new ValidationError('Crop the ' + side + ' photo to a square in the preview before uploading.');
   }
 
   const photoId = crypto.randomUUID();
@@ -642,7 +644,8 @@ export async function updateListingPhotoRole(
   photoId: string,
   requestingUserId: string,
   roleInput: unknown,
-  dbOverride?: DbInstance
+  dbOverride?: DbInstance,
+  storageOptions?: StorageOptions
 ): Promise<ListingPhotoWithUrl> {
   const listing = await findListingById(listingId, dbOverride);
   if (!listing) throw new NotFoundError('Listing not found');
@@ -665,6 +668,24 @@ export async function updateListingPhotoRole(
     if (conflictingPhoto) {
       const side = role === 'front_cover' ? 'front cover' : 'back cover';
       throw new ValidationError(`This listing already has a ${side}. Change that photo's role first.`);
+    }
+
+    // Existing photos can be reclassified from this form, so check their stored pixels too.
+    // Otherwise a portrait image could bypass the crop requirement via "Save role".
+    try {
+      const storedBuffer = await downloadListingPhotoFromStorage(photo.storagePath, storageOptions);
+      const storedImage = await processAndValidateImage(storedBuffer);
+      if (storedImage.width !== storedImage.height) {
+        throw new ValidationError(
+          'Crop this ' + (role === 'front_cover' ? 'front-cover' : 'back-cover') +
+          ' photo to a square before assigning it this role. Delete it and upload it again using the square crop preview.'
+        );
+      }
+    } catch (error) {
+      if (error instanceof ValidationError) throw error;
+      throw new ValidationError(
+        'This saved photo could not be checked. Upload it again through the square crop preview before assigning a cover role.'
+      );
     }
   }
 
