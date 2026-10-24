@@ -185,6 +185,8 @@ describe('Compact mobile layout surfaces', () => {
 
     expect(html).toContain('class="browse-mobile-filter-panel"');
     expect(html).toContain('class="browse-mobile-filter-summary"');
+    expect(html).toContain('Search &amp; filters');
+    expect(html).not.toContain('Search &amp;amp; filters');
     expect(html).toContain('Refine your Dig');
     expect(html).toContain('id="search-q"');
     expect(html).toContain('id="filter-genre"');
