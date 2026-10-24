@@ -327,3 +327,61 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
     expect(response.text).toContain('Track or album title *');
   });
 });
+
+
+describe('Discogs metadata provider search fallback (Issue #190)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('retries an empty structured artist/title lookup with a broad query', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ results: [] }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          results: [{
+            id: 123,
+            title: 'James Brown - Sex Machine',
+            year: '1970',
+            country: 'UK',
+            format: ['Vinyl', 'LP', 'Album'],
+            label: ['Polydor'],
+            catno: 'PD 123',
+            barcode: ['0123456789012'],
+            cover_image: 'https://i.discogs.com/example-cover.jpg',
+            genre: ['Funk', 'Soul'],
+            uri: '/release/123',
+          }],
+        }),
+      } as Response);
+
+    const provider = new DiscogsMetadataProvider({ timeoutMs: 1000, throwOnError: true });
+    const results = await provider.searchCandidates({ artist: 'James Brown', title: 'Sex Machine' });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    const structuredUrl = new URL(String(fetchSpy.mock.calls[0][0]));
+    expect(structuredUrl.searchParams.get('artist')).toBe('James Brown');
+    expect(structuredUrl.searchParams.get('release_title')).toBe('Sex Machine');
+
+    const fallbackUrl = new URL(String(fetchSpy.mock.calls[1][0]));
+    expect(fallbackUrl.searchParams.get('q')).toBe('James Brown Sex Machine');
+    expect(fallbackUrl.searchParams.get('type')).toBe('release');
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      artist: 'James Brown',
+      title: 'Sex Machine',
+      label: 'Polydor',
+      catalogueNumber: 'PD 123',
+      releaseYear: 1970,
+      country: 'UK',
+      format: 'Vinyl, LP, Album',
+      genre: 'Funk, Soul',
+      coverArtUrl: 'https://i.discogs.com/example-cover.jpg',
+    });
+  });
+});
