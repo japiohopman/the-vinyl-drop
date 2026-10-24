@@ -123,9 +123,11 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
 
     const parsedYear = releaseYear ? parseInt(releaseYear, 10) : undefined;
 
-    let coverArtUrl: string | undefined = typeof submittedCoverArtUrl === 'string' && /^https?:\\/\\//i.test(submittedCoverArtUrl)
-      ? submittedCoverArtUrl
-      : undefined;
+    let coverArtUrl: string | undefined =
+      typeof submittedCoverArtUrl === 'string' &&
+      (submittedCoverArtUrl.startsWith('https://') || submittedCoverArtUrl.startsWith('http://'))
+        ? submittedCoverArtUrl
+        : undefined;
 
     if (req.files && req.files.length > 0) {
       const coverFile = req.files.find((f) => f.fieldname === 'coverArt') || req.files[0];
