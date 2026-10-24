@@ -16,7 +16,7 @@
       <a href="/dig" class="nav-link<%= (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' active' : '' %>"<%- (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' aria-current="page"' : '' %>>DIG</a>
     </li>
     <li class="nav-item">
-      <a href="/drop/new" class="nav-link nav-link-action<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' aria-current="page"' : '' %>>+ DROP</a>
+      <a href="/drop/new" class="nav-link nav-link-action<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' aria-current="page"' : '' %>>+ DROP</a>
     </li>
     <li class="nav-item">
       <a href="/activity" class="nav-link<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>ACTIVITY</a>
@@ -77,8 +77,8 @@
       <%- include('./icon', { name: 'cardboard-box-closed', size: '1.25rem', ariaHidden: true }) %>
       <span>DIG</span>
     </a>
-    <a href="/drop/new" class="mobile-nav-item mobile-nav-drop<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') ? ' aria-current="page"' : '' %>>
-      <%- include('./icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>
+    <a href="/drop/new" class="mobile-nav-item mobile-nav-drop<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' aria-current="page"' : '' %>>
+      <%- include('./icon', { name: 'plain-arrow', size: '1.25rem', ariaHidden: true }) %>
       <span>+ DROP</span>
     </a>
     <a href="/activity" class="mobile-nav-item<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>
@@ -89,22 +89,23 @@
       type="button"
       class="mobile-nav-item mobile-you-trigger<%= activePath.startsWith('/profile') || activePath.startsWith('/profiles') || activePath.startsWith('/auth') ? ' active' : '' %>"
       id="mobile-you-trigger"
+      aria-label="Me"
       aria-expanded="false"
       aria-controls="mobile-you-surface"
     >
       <%- include('./icon', { name: 'user', size: '1.25rem', ariaHidden: true }) %>
-      <span>YOU</span>
+      <span>ME</span>
     </button>
   </div>
 </nav>
 
-<!-- Mobile Full-Screen YOU Account Surface Overlay -->
+<!-- Mobile Me Account Surface Overlay -->
 <div
   class="mobile-you-surface"
   id="mobile-you-surface"
   role="dialog"
   aria-modal="true"
-  aria-label="Account Surface"
+  aria-label="Me"
   hidden
 >
   <div class="mobile-you-surface-backdrop" id="mobile-you-backdrop"></div>
@@ -129,7 +130,7 @@
       </button>
     </div>
 
-    <div class="mobile-you-body">
+    <div class="mobile-you-body mobile-you-view" id="mobile-you-main-view">
       <% if (user) { %>
         <nav aria-label="Account Actions">
           <ul class="mobile-you-actions-list">
@@ -173,8 +174,35 @@
         </div>
       <% } %>
 
+      <nav class="mobile-you-about-entry" aria-label="Information">
+        <button
+          type="button"
+          class="mobile-you-action-link mobile-you-about-trigger"
+          id="mobile-you-about-trigger"
+          aria-controls="mobile-you-about-view"
+          aria-expanded="false"
+        >
+          <span>About</span>
+          <span aria-hidden="true">→</span>
+        </button>
+      </nav>
+    </div>
+
+    <div class="mobile-you-body mobile-you-view mobile-you-about-view" id="mobile-you-about-view" hidden>
+      <div class="mobile-you-about-header">
+        <button
+          type="button"
+          class="mobile-you-about-back"
+          id="mobile-you-about-back"
+          aria-label="Back to Me"
+          aria-controls="mobile-you-main-view"
+        >
+          <span aria-hidden="true">←</span>
+          <span>Back to Me</span>
+        </button>
+        <h2 class="mobile-you-about-title">About</h2>
+      </div>
       <nav class="mobile-you-info-section" aria-label="Information and legal links">
-        <h2 class="mobile-you-info-heading">Information &amp; support</h2>
         <ul class="mobile-you-info-links">
           <li><a href="/contact">Contact</a></li>
           <li><a href="/privacy">Privacy</a></li>
@@ -239,9 +267,34 @@
     var mobileSurface = document.getElementById('mobile-you-surface');
     var mobileCloseBtn = document.getElementById('mobile-you-close-btn');
     var mobileBackdrop = document.getElementById('mobile-you-backdrop');
+    var mobileMainView = document.getElementById('mobile-you-main-view');
+    var mobileAboutView = document.getElementById('mobile-you-about-view');
+    var mobileAboutTrigger = document.getElementById('mobile-you-about-trigger');
+    var mobileAboutBack = document.getElementById('mobile-you-about-back');
+
+    function resetMobileAbout() {
+      if (mobileAboutView) mobileAboutView.hidden = true;
+      if (mobileMainView) mobileMainView.hidden = false;
+      if (mobileAboutTrigger) mobileAboutTrigger.setAttribute('aria-expanded', 'false');
+    }
+
+    function openMobileAbout() {
+      if (!mobileMainView || !mobileAboutView) return;
+      mobileMainView.hidden = true;
+      mobileAboutView.hidden = false;
+      if (mobileAboutTrigger) mobileAboutTrigger.setAttribute('aria-expanded', 'true');
+      if (mobileAboutBack) mobileAboutBack.focus();
+    }
+
+    function closeMobileAbout() {
+      if (!mobileMainView || !mobileAboutView) return;
+      resetMobileAbout();
+      if (mobileAboutTrigger) mobileAboutTrigger.focus();
+    }
 
     function closeMobileSurface(skipFocus) {
       if (!mobileSurface) return;
+      resetMobileAbout();
       mobileSurface.hidden = true;
       mobileSurface.classList.remove('is-open');
       document.body.classList.remove('account-surface-open');
@@ -280,6 +333,14 @@
 
     if (mobileCloseBtn) {
       mobileCloseBtn.addEventListener('click', closeMobileSurface);
+    }
+
+    if (mobileAboutTrigger) {
+      mobileAboutTrigger.addEventListener('click', openMobileAbout);
+    }
+
+    if (mobileAboutBack) {
+      mobileAboutBack.addEventListener('click', closeMobileAbout);
     }
 
     if (mobileBackdrop) {
@@ -324,7 +385,10 @@
 
       // Focus trap in mobile surface when open
       if (e.key === 'Tab' && mobileSurface && !mobileSurface.hidden) {
-        var focusables = mobileSurface.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]');
+        var allFocusable = mobileSurface.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), [tabindex="0"]');
+        var focusables = Array.prototype.filter.call(allFocusable, function(el) {
+          return !el.closest('[hidden]') && el.getAttribute('aria-hidden') !== 'true';
+        });
         if (focusables.length === 0) return;
         var firstEl = focusables[0];
         var lastEl = focusables[focusables.length - 1];

@@ -1,3 +1,40 @@
+<%
+  const headerPath = typeof currentPath !== 'undefined' ? currentPath : '/';
+  const isCustomReleasePage = headerPath === '/releases/new';
+  const isDigRoute = headerPath === '/dig';
+  const headerFilters = typeof filters !== 'undefined' && filters ? filters : {};
+  const selectedDigFormats = Array.isArray(headerFilters.formats) ? headerFilters.formats : [];
+  const digItemCount = typeof items !== 'undefined' && Array.isArray(items) ? items.length : 0;
+  const currentBrowsePage = typeof pagination !== 'undefined' && pagination && pagination.page ? pagination.page : 1;
+  const digReturnParams = [
+    'q=' + encodeURIComponent(headerFilters.q || ''),
+    'genre=' + encodeURIComponent(headerFilters.genre || ''),
+    'condition=' + encodeURIComponent(headerFilters.condition || ''),
+    'minPrice=' + encodeURIComponent(headerFilters.minPrice || ''),
+    'maxPrice=' + encodeURIComponent(headerFilters.maxPrice || ''),
+    'sort=' + encodeURIComponent(headerFilters.sort || 'newest'),
+    ...selectedDigFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }),
+    headerFilters.whiteLabel ? 'whiteLabel=1' : '',
+    'page=' + encodeURIComponent(currentBrowsePage),
+    'view=grid',
+  ].filter(Boolean).join('&');
+  const digReturnUrl = '/browse?' + digReturnParams;
+  let mobileSectionLabel = 'THE VINYL DROP';
+
+  if (headerPath === '/') {
+    mobileSectionLabel = 'HOME';
+  } else if (headerPath.startsWith('/dig') || headerPath.startsWith('/browse')) {
+    mobileSectionLabel = 'DIG';
+  } else if (headerPath.startsWith('/drop') || headerPath.startsWith('/listings') || headerPath.startsWith('/releases')) {
+    mobileSectionLabel = 'DROP';
+  } else if (headerPath.startsWith('/activity') || headerPath.startsWith('/messages')) {
+    mobileSectionLabel = 'ACTIVITY';
+  } else if (headerPath.startsWith('/profile') || headerPath.startsWith('/profiles') || headerPath.startsWith('/auth')) {
+    mobileSectionLabel = 'ME';
+  } else if (['/contact', '/privacy', '/terms', '/community-rules'].includes(headerPath)) {
+    mobileSectionLabel = 'ABOUT';
+  }
+%>
 <header class="site-header">
   <div class="container header-container">
     <a href="/" class="brand-logo" aria-label="The Vinyl Drop Home">
@@ -7,6 +44,23 @@
         <span class="logo-tagline">BUY. TRADE. DIG.</span>
       </span>
     </a>
+    <nav class="mobile-context-header" aria-label="Page navigation">
+      <span class="mobile-context-heading"><%= mobileSectionLabel %></span>
+      <% if (isDigRoute) { %>
+        <% if (digItemCount > 0) { %>
+          <span class="mobile-dig-position" data-dig-header-position aria-live="polite" aria-atomic="true">1 of <%= digItemCount %></span>
+        <% } %>
+        <a href="<%= digReturnUrl %>" class="mobile-context-back mobile-dig-back" aria-label="Back to browse results">
+          <span class="mobile-context-back-icon" aria-hidden="true">←</span>
+          <span>Back</span>
+        </a>
+      <% } else if (isCustomReleasePage) { %>
+        <a href="/drop/new" class="mobile-context-back" aria-label="Back to catalog search">
+          <span class="mobile-context-back-icon" aria-hidden="true">←</span>
+          <span>Back to catalog</span>
+        </a>
+      <% } %>
+    </nav>
     <%- include('./nav') %>
   </div>
 </header>

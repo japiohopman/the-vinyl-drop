@@ -20,6 +20,9 @@
   <script src="/js/responsive-disclosures.js" defer></script>
 </head>
 <body>
+  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig' && typeof items !== 'undefined' && Array.isArray(items) && items.length > 0) { %>
+    <script>document.body.classList.add('mobile-dig-session');</script>
+  <% } %>
   <%- include('../partials/header') %>
   <%- include('../partials/flash') %>
 

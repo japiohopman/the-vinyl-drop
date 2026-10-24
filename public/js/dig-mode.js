@@ -8,6 +8,7 @@
   const previousButton = root.querySelector('[data-dig-prev]');
   const nextButton = root.querySelector('[data-dig-next]');
   const position = root.querySelector('[data-dig-position]');
+  const headerPosition = document.querySelector('[data-dig-header-position]');
   const progress = root.querySelector('[data-dig-progress]');
   const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
   const transitionMs = 440;
@@ -57,7 +58,9 @@
   }
 
   function updateNavigation() {
-    if (position) position.textContent = `${activeIndex + 1} of ${slides.length}`;
+    const positionText = String(activeIndex + 1) + ' of ' + String(slides.length);
+    if (position) position.textContent = positionText;
+    if (headerPosition) headerPosition.textContent = positionText;
     if (progress) {
       progress.max = slides.length;
       progress.value = activeIndex + 1;

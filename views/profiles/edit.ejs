@@ -69,15 +69,16 @@
         error: form.fieldErrors.bio
       }) %>
 
-      <div style="margin-top: var(--space-6); display: flex; gap: var(--space-3);">
-        <%- include('../partials/button', {
-          text: 'Save Changes',
-          type: 'submit',
-          variant: 'primary',
-          size: 'md'
-        }) %>
+      <div class="profile-edit-actions" style="margin-top: var(--space-6); display: flex; gap: var(--space-3);">
+        <button type="submit" class="btn btn-primary btn-md mobile-compact-action" aria-label="Save changes" title="Save changes">
+          <span class="mobile-action-icon" aria-hidden="true"><%- include('../partials/icon', { name: 'save', size: '1.125rem', ariaHidden: true }) %></span>
+          <span class="mobile-action-label">Save Changes</span>
+        </button>
 
-        <a href="/profiles/<%= encodeURIComponent(profile.username) %>" class="btn btn-outline btn-md">Cancel</a>
+        <a href="/profiles/<%= encodeURIComponent(profile.username) %>" class="btn btn-outline btn-md mobile-compact-action" aria-label="Cancel editing profile" title="Cancel">
+          <span class="mobile-action-icon" aria-hidden="true"><%- include('../partials/icon', { name: 'close', size: '1.125rem', ariaHidden: true }) %></span>
+          <span class="mobile-action-label">Cancel</span>
+        </a>
       </div>
     </form>
   </div>
