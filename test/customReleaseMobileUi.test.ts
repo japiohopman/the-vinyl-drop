@@ -283,8 +283,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
       { timeout: 3000 }
     );
     expect(lookupRequests).toBe(1);
+    expect(await page.locator('#releaseMetadataDetails').getAttribute('open')).not.toBeNull();
 
-    await page.locator('#releaseMetadataDetails > summary').click();
     await page.locator('[name="label"]').fill('My corrected label');
     await page.locator('#releaseTitle').fill('Sex Machine edit');
     await page.waitForFunction(
