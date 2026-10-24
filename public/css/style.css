@@ -564,7 +564,7 @@ body.account-surface-open {
     z-index: 501;
     display: flex;
     flex-direction: column;
-    width: calc(100% - 24px);
+    width: 100%;
     max-width: 560px;
     height: auto;
     max-height: calc(100vh - 24px);
@@ -3540,6 +3540,10 @@ select.form-control {
 
 
 /* Issue #182: nested Me/About navigation and compact, overflow-safe mobile actions. */
+.profile-edit-actions .mobile-action-icon {
+  display: none;
+}
+
 @media (max-width: 767px) {
   .mobile-you-view[hidden] {
     display: none !important;
