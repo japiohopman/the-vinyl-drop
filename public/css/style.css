@@ -3383,6 +3383,7 @@ select.form-control {
   }
 
   .dig-mobile-semantic-title {
+    display: block !important;
     position: absolute !important;
     width: 1px !important;
     height: 1px !important;
