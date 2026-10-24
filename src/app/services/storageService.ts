@@ -48,6 +48,32 @@ export async function uploadListingPhotoToStorage(params: UploadPhotoParams): Pr
   return storagePath;
 }
 
+
+/**
+ * Reads an existing listing photo for server-side role validation.
+ * The test adapter reads only from its isolated in-memory map.
+ */
+export async function downloadListingPhotoFromStorage(
+  storagePath: string,
+  options?: StorageOptions
+): Promise<Buffer> {
+  if (config.NODE_ENV === 'test') {
+    const storedPhoto = inMemoryStorage.get(storagePath);
+    if (!storedPhoto) {
+      throw new Error('Listing photo was not found in test storage.');
+    }
+    return Buffer.from(storedPhoto.buffer);
+  }
+
+  const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
+  const { data, error } = await supabase.storage.from(BUCKET_NAME).download(storagePath);
+  if (error || !data) {
+    throw new Error('Supabase Storage photo download failed.');
+  }
+
+  return Buffer.from(await data.arrayBuffer());
+}
+
 /**
  * Deletes a photo file from Supabase Storage (and in-memory mock during tests) using authenticated context.
  * Surfaces deletion errors in non-test environments.
