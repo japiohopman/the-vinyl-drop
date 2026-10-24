@@ -42,6 +42,14 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
 
     afterEach(() => {
       jest.restoreAllMocks();
+      setSupabaseClient({
+        auth: {
+          getUser: jest.fn().mockResolvedValue({
+            data: { user: null },
+            error: null,
+          }),
+        },
+      } as any);
     });
 
     it('returns the confident Discogs match and available metadata', async () => {
