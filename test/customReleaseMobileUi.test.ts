@@ -143,6 +143,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
 
     await page.setViewportSize({ width: 375, height: 780 });
     await page.setContent(documentHtml(headerHtml, releaseHtml));
+    await page.locator('#releaseMetadataDetails > summary').click();
     await page.addScriptTag({ content: pickerScript });
 
     expect(await page.locator('.custom-release-file-mobile-label').isVisible()).toBe(true);
