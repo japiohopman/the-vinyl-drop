@@ -2998,6 +2998,12 @@ select.form-control {
 
   .activity-release-info { margin-top: 0; }
 
+  /* The grid gap already separates these rows; avoid doubling their margins. */
+  .activity-comment,
+  .activity-card-footer {
+    margin: 0;
+  }
+
   .activity-icon-badge {
     position: absolute;
     top: var(--space-3);
