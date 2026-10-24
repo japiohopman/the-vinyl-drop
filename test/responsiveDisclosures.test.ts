@@ -164,7 +164,7 @@ describe('Responsive disclosure browser behavior', () => {
     await page.close();
   });
 
-  it('reveals browse filters on demand and moves information links into You on mobile', async () => {
+  it('reveals browse filters on demand and moves information links into About on mobile', async () => {
     const page = await browser.newPage({ viewport: { width: 375, height: 812 } });
     await page.goto(`${baseUrl}/test/responsive-browse`, { waitUntil: 'networkidle' });
 
@@ -191,6 +191,19 @@ describe('Responsive disclosure browser behavior', () => {
     await page.locator('#mobile-you-trigger').click();
     expect(await page.locator('#mobile-you-surface').isVisible()).toBe(true);
 
+    const aboutTrigger = page.locator('#mobile-you-about-trigger');
+    expect(await aboutTrigger.isVisible()).toBe(true);
+    const aboutBox = await aboutTrigger.boundingBox();
+    expect(aboutBox).not.toBeNull();
+    if (aboutBox) expect(aboutBox.height).toBeGreaterThanOrEqual(44);
+
+    for (const href of ['/contact', '/privacy', '/terms', '/community-rules']) {
+      expect(await page.locator(`.mobile-you-info-links a[href="${href}"]`).isVisible()).toBe(false);
+    }
+
+    await aboutTrigger.click();
+    expect(await page.locator('#mobile-you-about-view').isVisible()).toBe(true);
+
     for (const href of ['/contact', '/privacy', '/terms', '/community-rules']) {
       const link = page.locator(`.mobile-you-info-links a[href="${href}"]`);
       expect(await link.isVisible()).toBe(true);
@@ -199,6 +212,8 @@ describe('Responsive disclosure browser behavior', () => {
       if (linkBox) expect(linkBox.height).toBeGreaterThanOrEqual(44);
     }
 
+    await page.locator('#mobile-you-about-back').click();
+    expect(await page.locator('#mobile-you-main-view').isVisible()).toBe(true);
     await page.close();
   });
 
