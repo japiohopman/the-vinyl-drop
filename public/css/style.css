@@ -2905,6 +2905,29 @@ select.form-control {
 }
 
 
+/* Browse filter details are visually expanded on desktop, collapsed on mobile. */
+.browse-mobile-filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.browse-mobile-filter-summary {
+  display: none;
+}
+
+.browse-mobile-filter-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.browse-mobile-filter-panel:not([open]) > .browse-mobile-filter-content {
+  display: flex;
+}
+
 /* Compact, disclosure-based mobile shell and browse controls */
 @media (max-width: 767px) {
   .main-content {
@@ -3015,7 +3038,7 @@ select.form-control {
 
   .browse-mobile-filter-summary::after {
     content: "+";
-    margin-left: auto;
+    margin-left: 0;
     font-family: var(--font-mono);
     font-size: var(--font-size-lg);
   }
@@ -3086,27 +3109,4 @@ select.form-control {
   .dig-responsive-mobile-header h1 {
     font-size: var(--font-size-xl);
   }
-}
-
-/* Desktop keeps the full browse filter panel expanded and the footer links visible. */
-.browse-mobile-filter-panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-.browse-mobile-filter-summary {
-  display: none;
-}
-
-.browse-mobile-filter-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  min-width: 0;
-}
-
-.browse-mobile-filter-panel:not([open]) > .browse-mobile-filter-content {
-  display: flex;
 }
