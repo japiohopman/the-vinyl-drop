@@ -844,6 +844,156 @@ body.account-surface-open {
   }
 }
 
+/* Drop entry: focus on artist/title, with optional metadata in a review panel. */
+.custom-release-intro { margin-bottom: var(--space-4); }
+.custom-release-intro h1 {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xl);
+}
+.custom-release-intro p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-sm);
+}
+.custom-release-errors {
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid #ef4444;
+  background: #fee2e2;
+  color: #991b1b;
+  overflow-wrap: anywhere;
+}
+.custom-release-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4) !important;
+  border: var(--border-thick);
+  background: var(--color-surface-card);
+}
+.custom-release-primary-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  min-width: 0;
+}
+.custom-release-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.custom-release-field label {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+.custom-release-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-thick);
+  background: var(--color-white);
+}
+.custom-release-primary-fields input { font-size: var(--font-size-md); }
+.discogs-lookup-status {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--color-border-subtle);
+  background: var(--color-paper);
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+  overflow-wrap: anywhere;
+}
+.discogs-lookup-status[data-state="searching"] {
+  border-left-color: var(--color-focus);
+  color: var(--color-ink);
+}
+.discogs-lookup-status[data-state="found"] {
+  border-left-color: var(--color-deep-green);
+  color: var(--color-ink);
+}
+.discogs-lookup-status[data-state="error"] {
+  border-left-color: var(--color-rust);
+  color: var(--color-ink);
+}
+.custom-release-details {
+  min-width: 0;
+  border-top: var(--border-thin);
+}
+.custom-release-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-2) 0;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+.custom-release-details > summary::-webkit-details-marker { display: none; }
+.custom-release-details > summary::after {
+  content: "+";
+  font-family: var(--font-mono);
+  font-size: var(--font-size-lg);
+}
+.custom-release-details[open] > summary::after { content: "−"; }
+.custom-release-grid { gap: var(--space-3); padding-bottom: var(--space-3); }
+.custom-release-field-full { grid-column: 1 / -1; }
+.custom-release-artwork-copy {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+}
+.release-catalog-artwork {
+  margin: 0;
+  padding: var(--space-3);
+  border: var(--border-thin);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.release-catalog-artwork legend {
+  padding: 0 var(--space-1);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+.custom-release-submit {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  white-space: normal;
+}
+@media (max-width: 767px) {
+  .custom-release-page {
+    margin: var(--space-3) auto !important;
+    padding: 0 var(--space-3);
+  }
+  .custom-release-intro { margin-bottom: var(--space-3); }
+  .custom-release-intro h1 { font-size: var(--font-size-lg); }
+  .custom-release-intro p { font-size: var(--font-size-xs); }
+  .custom-release-form { padding: var(--space-3) !important; gap: var(--space-3); }
+  .custom-release-primary-fields { gap: var(--space-3); }
+  .custom-release-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .custom-release-artwork-copy { font-size: var(--font-size-3xs); }
+  .custom-release-submit { min-height: 48px; }
+}
+
 /* Footer Component */
 .site-footer {
   background-color: var(--color-white);

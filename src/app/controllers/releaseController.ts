@@ -5,6 +5,87 @@ import { createRelease } from '../services/releaseService';
 import { FormViewModel } from '../view-models/formViewModel';
 
 import { processAndValidateImage } from '../utils/imageProcessor';
+import { DiscogsMetadataProvider } from '../services/metadata/discogsProvider';
+import { CandidateRelease } from '../services/metadata/types';
+
+function normalizeLookupText(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/[\\u0300-\\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\\s+/g, ' ');
+}
+
+function hasConfidentTextMatch(query: string, candidate: string | undefined, maxExtraWords: number): boolean {
+  if (!candidate) return false;
+  const normalizedQuery = normalizeLookupText(query);
+  const normalizedCandidate = normalizeLookupText(candidate);
+  if (!normalizedQuery || !normalizedCandidate) return false;
+  if (normalizedQuery === normalizedCandidate) return true;
+
+  const queryWords = normalizedQuery.split(' ');
+  const candidateWords = normalizedCandidate.split(' ');
+  if (normalizedCandidate.includes(normalizedQuery) && candidateWords.length - queryWords.length <= maxExtraWords) return true;
+  if (normalizedQuery.includes(normalizedCandidate) && queryWords.length - candidateWords.length <= maxExtraWords) return true;
+  return false;
+}
+
+/** Only auto-fill when artist and title both match closely; uncertain candidates stay manual. */
+function chooseConfidentDiscogsMatch(candidates: CandidateRelease[], artist: string, title: string): CandidateRelease | null {
+  const matched = candidates.filter((candidate) =>
+    hasConfidentTextMatch(artist, candidate.artist, 1) &&
+    hasConfidentTextMatch(title, candidate.title, 2)
+  );
+
+  matched.sort((a, b) => {
+    const score = (candidate: CandidateRelease) =>
+      (normalizeLookupText(candidate.artist) === normalizeLookupText(artist) ? 2 : 0) +
+      (normalizeLookupText(candidate.title) === normalizeLookupText(title) ? 2 : 0);
+    return score(b) - score(a);
+  });
+  return matched[0] || null;
+}
+
+export async function getDiscogsMetadataLookup(req: Request, res: Response, _next: NextFunction): Promise<void> {
+  const artist = typeof req.query.artist === 'string' ? req.query.artist.trim() : '';
+  const title = typeof req.query.title === 'string' ? req.query.title.trim() : '';
+
+  if (artist.length < 2 || title.length < 2 || artist.length > 120 || title.length > 160) {
+    res.status(400).json({ error: 'Enter an artist and title within the supported length.' });
+    return;
+  }
+
+  try {
+    const provider = new DiscogsMetadataProvider({ timeoutMs: 5000, throwOnError: true });
+    const candidates = await provider.searchCandidates({ artist, title });
+    const match = chooseConfidentDiscogsMatch(candidates, artist, title);
+
+    if (!match) {
+      res.status(200).json({ found: false });
+      return;
+    }
+
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).json({
+      found: true,
+      metadata: {
+        label: match.label || '',
+        catalogueNumber: match.catalogueNumber || '',
+        releaseYear: match.releaseYear ? String(match.releaseYear) : '',
+        format: match.format || '',
+        barcode: match.barcode || '',
+        country: match.country || '',
+        genre: match.genre || '',
+        coverArtUrl: match.coverArtUrl || '',
+      },
+    });
+  } catch (_error) {
+    // Fail closed for this lookup but keep manual release entry available.
+    res.status(503).json({ error: 'Discogs lookup is temporarily unavailable.' });
+  }
+}
 
 export async function getCreateCustomReleasePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -17,6 +98,8 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
       format?: string;
       barcode?: string;
       genre?: string;
+      country?: string;
+      coverArtUrl?: string;
     }> = {
       values: {
         format: 'LP',
@@ -36,11 +119,13 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
 
 export async function postCreateCustomRelease(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { artist, title, label, catalogueNumber, releaseYear, format, barcode, genre } = req.body;
+    const { artist, title, label, catalogueNumber, releaseYear, format, barcode, genre, country, coverArtUrl: submittedCoverArtUrl } = req.body;
 
     const parsedYear = releaseYear ? parseInt(releaseYear, 10) : undefined;
 
-    let coverArtUrl: string | undefined = undefined;
+    let coverArtUrl: string | undefined = typeof submittedCoverArtUrl === 'string' && /^https?:\\/\\//i.test(submittedCoverArtUrl)
+      ? submittedCoverArtUrl
+      : undefined;
 
     if (req.files && req.files.length > 0) {
       const coverFile = req.files.find((f) => f.fieldname === 'coverArt') || req.files[0];
@@ -60,6 +145,7 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
         format: format || 'LP',
         barcode: barcode || undefined,
         genre: genre || undefined,
+        country: country || undefined,
         coverArtUrl,
         externalSource: 'custom',
       });

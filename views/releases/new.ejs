@@ -1,94 +1,79 @@
-<div class="custom-release-page" style="max-width: 600px; margin: var(--space-8) auto;">
-  <div style="margin-bottom: var(--space-6);">
-    <a href="/drop/new" class="custom-release-back-link" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: none;">&larr; Back to Catalog Search</a>
-    <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-top: var(--space-2); margin-bottom: var(--space-1);">Add Custom Release</h1>
-    <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
-      For unindexed white labels, test pressings, promos, or local records not found in external databases.
-    </p>
-  </div>
+<div class="custom-release-page">
+  <header class="custom-release-intro">
+    <h1>Add a record</h1>
+    <p>Enter the artist and track or album title. Discogs fills in the release details when it finds a confident match.</p>
+  </header>
 
   <% if (form && form.generalErrors && form.generalErrors.length > 0) { %>
-    <div style="padding: var(--space-3); background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; border-radius: var(--radius-sm); margin-bottom: var(--space-4); font-family: var(--font-mono); font-size: var(--font-size-sm);">
-      <%= form.generalErrors.join(', ') %>
-    </div>
+    <div class="custom-release-errors" role="alert"><%= form.generalErrors.join(', ') %></div>
   <% } %>
 
-  <form action="/releases/new" method="POST" enctype="multipart/form-data" class="card" style="padding: var(--space-6); border: var(--border-thick); background: var(--color-surface-card); display: flex; flex-direction: column; gap: var(--space-4);">
-    <div>
-      <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Artist Name *</label>
-      <input type="text" name="artist" value="<%= form.values.artist || '' %>" required class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Unknown Artist or White Label" />
-    </div>
-
-    <div>
-      <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Release / Track Title *</label>
-      <input type="text" name="title" value="<%= form.values.title || '' %>" required class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Untitled White Label EP" />
-    </div>
-
-    <fieldset class="release-catalog-artwork" style="margin: 0; padding: var(--space-3); border: 1px solid var(--color-border-subtle); display: flex; flex-direction: column; gap: var(--space-2);">
-      <legend style="padding: 0 var(--space-1); font-family: var(--font-heading); font-size: var(--font-size-sm); font-weight: bold;">Optional release catalogue artwork</legend>
-      <p style="margin: 0; font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
-        This image belongs to the release record (the general edition), not to your individual copy. It is never used as the front or back of a Crate Dig sleeve.
-      </p>
-      <p id="releaseCoverArtDescription" class="custom-release-file-description">Upload separate catalogue artwork (JPEG, PNG, WebP; up to 5MB).</p>
-      <div class="custom-release-file-picker">
-        <input id="releaseCoverArt" type="file" name="coverArt" accept="image/jpeg,image/png,image/webp" class="custom-release-file-input" aria-describedby="releaseCoverArtDescription releaseCoverArtFilename" />
-        <label for="releaseCoverArt" class="btn btn-outline custom-release-file-trigger">
-          <%- include('../partials/icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>
-          <span class="custom-release-file-mobile-label">Use this device</span>
-          <span class="custom-release-file-desktop-label">Choose file</span>
-        </label>
-        <span id="releaseCoverArtFilename" class="custom-release-file-name" role="status" aria-live="polite">No file selected</span>
+  <form action="/releases/new" method="POST" enctype="multipart/form-data" class="card custom-release-form" data-discogs-lookup-form>
+    <div class="custom-release-primary-fields">
+      <div class="custom-release-field">
+        <label for="releaseArtist">Artist *</label>
+        <input id="releaseArtist" type="text" name="artist" value="<%= form.values.artist || '' %>" required maxlength="120" autocomplete="off" class="form-input" placeholder="e.g. James Brown" data-discogs-lookup-artist />
       </div>
-      <p style="margin: 0; font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
-        Selling a specific physical record? Leave this optional field blank if you only have a photo of that copy. After creating the listing, upload the physical photo once under <strong>Photos of this physical copy</strong> and choose <strong>Front cover</strong> or <strong>Back cover</strong>. Those listing photos are what Crate Dig displays.
-      </p>
-    </fieldset>
-
-    <div class="custom-release-grid">
-      <div>
-        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Record Label</label>
-        <input type="text" name="label" value="<%= form.values.label || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Self-Released" />
-      </div>
-
-      <div>
-        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Catalog Number</label>
-        <input type="text" name="catalogueNumber" value="<%= form.values.catalogueNumber || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. WL-001" />
+      <div class="custom-release-field">
+        <label for="releaseTitle">Track or album title *</label>
+        <input id="releaseTitle" type="text" name="title" value="<%= form.values.title || '' %>" required maxlength="160" autocomplete="off" class="form-input" placeholder="e.g. Sex Machine" data-discogs-lookup-title />
       </div>
     </div>
 
-    <div class="custom-release-grid">
-      <div>
-        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Release Year</label>
-        <input type="number" name="releaseYear" value="<%= form.values.releaseYear || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. 1995" />
+    <p class="discogs-lookup-status" id="discogsLookupStatus" role="status" aria-live="polite" aria-atomic="true" data-state="idle">Enter an artist and title to check Discogs.</p>
+    <input type="hidden" name="coverArtUrl" id="discogsCoverArtUrl" value="<%= form.values.coverArtUrl || '' %>" data-discogs-field="coverArtUrl" />
+
+    <details class="custom-release-details" id="releaseMetadataDetails">
+      <summary>Release details</summary>
+      <div class="custom-release-grid">
+        <div class="custom-release-field">
+          <label for="releaseLabel">Label</label>
+          <input id="releaseLabel" type="text" name="label" value="<%= form.values.label || '' %>" maxlength="160" class="form-input" placeholder="Record label" data-discogs-field="label" />
+        </div>
+        <div class="custom-release-field">
+          <label for="releaseCatalogueNumber">Catalogue number</label>
+          <input id="releaseCatalogueNumber" type="text" name="catalogueNumber" value="<%= form.values.catalogueNumber || '' %>" maxlength="120" class="form-input" placeholder="e.g. WL-001" data-discogs-field="catalogueNumber" />
+        </div>
+        <div class="custom-release-field">
+          <label for="releaseYear">Year</label>
+          <input id="releaseYear" type="number" min="1880" max="<%= new Date().getFullYear() + 1 %>" name="releaseYear" value="<%= form.values.releaseYear || '' %>" class="form-input" placeholder="Year" data-discogs-field="releaseYear" />
+        </div>
+        <div class="custom-release-field">
+          <label for="releaseFormat">Format</label>
+          <input id="releaseFormat" type="text" name="format" value="<%= form.values.format || 'LP' %>" maxlength="120" class="form-input" placeholder="e.g. Vinyl, LP, Album" data-discogs-field="format" />
+        </div>
+        <div class="custom-release-field">
+          <label for="releaseBarcode">Barcode (EAN/UPC)</label>
+          <input id="releaseBarcode" type="text" name="barcode" value="<%= form.values.barcode || '' %>" maxlength="120" class="form-input" placeholder="Optional" data-discogs-field="barcode" />
+        </div>
+        <div class="custom-release-field">
+          <label for="releaseCountry">Country</label>
+          <input id="releaseCountry" type="text" name="country" value="<%= form.values.country || '' %>" maxlength="120" class="form-input" placeholder="Country" data-discogs-field="country" />
+        </div>
+        <div class="custom-release-field custom-release-field-full">
+          <label for="releaseGenre">Genre / style</label>
+          <input id="releaseGenre" type="text" name="genre" value="<%= form.values.genre || '' %>" maxlength="160" class="form-input" placeholder="e.g. Hip Hop, Funk" data-discogs-field="genre" />
+        </div>
       </div>
 
-      <div>
-        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Format</label>
-        <select name="format" class="form-select" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);">
-          <option value="12&quot;" <%= form.values.format === '12"' ? 'selected' : '' %>>12" Single / EP</option>
-          <option value="LP" <%= form.values.format === 'LP' ? 'selected' : '' %>>LP (Album)</option>
-          <option value="7&quot;" <%= form.values.format === '7"' ? 'selected' : '' %>>7" Single</option>
-          <option value="10&quot;" <%= form.values.format === '10"' ? 'selected' : '' %>>10" EP</option>
-          <option value="2xLP" <%= form.values.format === '2xLP' ? 'selected' : '' %>>2xLP</option>
-        </select>
-      </div>
-    </div>
+      <fieldset class="release-catalog-artwork">
+        <legend>Catalogue artwork (optional)</legend>
+        <p class="custom-release-artwork-copy">This artwork represents the release edition. Photos of your physical copy are added in the next step.</p>
+        <p id="releaseCoverArtDescription" class="custom-release-file-description">Upload artwork if the Discogs image is missing or incorrect (JPEG, PNG, WebP; up to 5MB).</p>
+        <div class="custom-release-file-picker">
+          <input id="releaseCoverArt" type="file" name="coverArt" accept="image/jpeg,image/png,image/webp" class="custom-release-file-input" aria-describedby="releaseCoverArtDescription releaseCoverArtFilename" />
+          <label for="releaseCoverArt" class="btn btn-outline custom-release-file-trigger">
+            <%- include('../partials/icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>
+            <span class="custom-release-file-mobile-label">Use this device</span>
+            <span class="custom-release-file-desktop-label">Choose file</span>
+          </label>
+          <span id="releaseCoverArtFilename" class="custom-release-file-name" role="status" aria-live="polite">No file selected</span>
+        </div>
+      </fieldset>
+    </details>
 
-    <div class="custom-release-grid">
-      <div>
-        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Barcode (EAN/UPC)</label>
-        <input type="text" name="barcode" value="<%= form.values.barcode || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="Optional" />
-      </div>
-
-      <div>
-        <label style="display: block; font-family: var(--font-heading); font-size: var(--font-size-sm); margin-bottom: var(--space-1);">Genre / Style</label>
-        <input type="text" name="genre" value="<%= form.values.genre || '' %>" class="form-input" style="width: 100%; padding: var(--space-2); font-family: var(--font-body); border: var(--border-thin);" placeholder="e.g. Hip Hop, Boom Bap" />
-      </div>
-    </div>
-
-    <div style="margin-top: var(--space-2);">
-      <button type="submit" class="btn btn-primary" style="width: 100%;">Create Release & Continue &rarr;</button>
-    </div>
+    <button type="submit" class="btn btn-primary custom-release-submit">Continue to listing <span aria-hidden="true">→</span></button>
   </form>
 </div>
 <script src="/js/release-file-picker.js" defer></script>
+<script src="/js/discogs-release-lookup.js" defer></script>

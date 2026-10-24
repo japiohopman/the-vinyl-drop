@@ -6,7 +6,7 @@ import { getContactPage, postContactMessage, getCommunityRulesPage, getPrivacyNo
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
 import { requireAuth } from '../middleware/auth';
 import { validateSameOrigin } from '../middleware/csrf';
-import { getSelectReleasePage } from '../controllers/listingController';
+import { getCreateCustomReleasePage } from '../controllers/releaseController';
 import authRoutes from './authRoutes';
 import profileRoutes from './profileRoutes';
 import listingRoutes from './listingRoutes';
@@ -32,8 +32,8 @@ router.use('/listings', listingRoutes);
 router.use('/releases', releaseRoutes);
 router.use('/messages', messagingRoutes);
 
-// Narrow route compatibility for the + DROP product navigation contract
-router.get('/drop/new', requireAuth, getSelectReleasePage);
+// The + DROP destination starts the Discogs-assisted custom release flow.
+router.get('/drop/new', requireAuth, getCreateCustomReleasePage);
 
 router.get('/design-system', getDesignSystemPage);
 router.post('/design-system/demo', postDesignSystemDemo);

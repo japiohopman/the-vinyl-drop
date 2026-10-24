@@ -5,9 +5,11 @@ export class DiscogsMetadataProvider implements MetadataProvider {
 
   private readonly baseUrl = 'https://api.discogs.com/database/search';
   private readonly timeoutMs: number;
+  private readonly throwOnError: boolean;
 
-  constructor(options?: { timeoutMs?: number }) {
+  constructor(options?: { timeoutMs?: number; throwOnError?: boolean }) {
     this.timeoutMs = options?.timeoutMs ?? 5000;
+    this.throwOnError = options?.throwOnError ?? false;
   }
 
   async searchCandidates(query: IdentificationQuery): Promise<CandidateRelease[]> {
@@ -63,6 +65,7 @@ export class DiscogsMetadataProvider implements MetadataProvider {
 
         if (!res.ok) {
           console.warn(`Discogs provider search failed with status ${res.status}`);
+          if (this.throwOnError) throw new Error(`Discogs provider returned HTTP ${res.status}`);
           return [];
         }
 
@@ -147,6 +150,7 @@ export class DiscogsMetadataProvider implements MetadataProvider {
       }
     } catch (err) {
       console.warn('DiscogsMetadataProvider search error:', err);
+      if (this.throwOnError) throw err;
       return [];
     }
   }
