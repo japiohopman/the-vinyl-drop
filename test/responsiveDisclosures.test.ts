@@ -209,7 +209,7 @@ describe('Responsive disclosure browser behavior', () => {
     expect(await mobilePage.locator('#dig-primary-search').isVisible()).toBe(true);
     expect(await mobilePage.locator('.dig-primary-search-form button').isVisible()).toBe(true);
     expect(await mobilePage.locator('.view-mode-toggle').isVisible()).toBe(false);
-    expect(await mobilePage.locator('.dig-mobile-semantic-title').isVisible()).toBe(true);
+    expect(await mobilePage.locator('.dig-page-header h1').isVisible()).toBe(true);
     expect(await mobilePage.locator('.browse-header h1').isVisible()).toBe(false);
     expect(await mobilePage.locator('.dig-responsive-mobile-header').isVisible()).toBe(false);
     expect(await mobilePage.locator('.site-footer').isVisible()).toBe(false);
