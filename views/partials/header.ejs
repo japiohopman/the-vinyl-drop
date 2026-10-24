@@ -4,7 +4,7 @@
   const isDigRoute = headerPath === '/dig';
   const headerFilters = typeof filters !== 'undefined' && filters ? filters : {};
   const selectedDigFormats = Array.isArray(headerFilters.formats) ? headerFilters.formats : [];
-  const digItemCount = Array.isArray(items) ? items.length : 0;
+  const digItemCount = typeof items !== 'undefined' && Array.isArray(items) ? items.length : 0;
   const currentBrowsePage = typeof pagination !== 'undefined' && pagination && pagination.page ? pagination.page : 1;
   const digReturnParams = [
     'q=' + encodeURIComponent(headerFilters.q || ''),
