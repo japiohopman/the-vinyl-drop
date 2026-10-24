@@ -164,7 +164,7 @@ describe('Responsive disclosure browser behavior', () => {
     await page.close();
   });
 
-  it('reveals browse and footer contents only after tapping their summaries on mobile', async () => {
+  it('reveals browse filters on demand and moves information links into You on mobile', async () => {
     const page = await browser.newPage({ viewport: { width: 375, height: 812 } });
     await page.goto(`${baseUrl}/test/responsive-browse`, { waitUntil: 'networkidle' });
 
