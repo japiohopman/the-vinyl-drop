@@ -136,7 +136,7 @@
     setStatus(crop.width === crop.height
       ? 'The source is already square. Check that the whole sleeve is visible.'
       : crop.width < crop.height
-        ? 'Move the slider horizontally in the page to position the square over the full sleeve.'
+        ? 'Move the slider vertically to position the square along the full sleeve.'
         : 'Move the slider horizontally to position the square over the full sleeve.');
   }
 
@@ -201,6 +201,16 @@
   positionControl.addEventListener('input', redraw);
 
   form.addEventListener('submit', (event) => {
+    if (sourceFile && sourceFile.size > maxUploadBytes) {
+      event.preventDefault();
+      if (isCoverRole()) {
+        setStatus('Choose a photo no larger than 5 MiB.', true);
+      } else {
+        fileInfo.textContent = sourceFile.name + ' — larger than 5 MiB. Choose a smaller file.';
+        fileInfo.style.color = 'var(--color-error-border)';
+      }
+      return;
+    }
     if (!isCoverRole() || form.dataset.squareCropReady === 'true') return;
     if (!image || !sourceFile) {
       event.preventDefault();
