@@ -4,21 +4,6 @@ import path from 'path';
 import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 
-// The project test tsconfig omits DOM libs; these globals are only referenced
-// inside functions serialized and executed by Playwright in a browser page.
-interface PlaywrightTestStatusElement {
-  getAttribute(name: string): string | null;
-}
-interface PlaywrightTestDocument {
-  documentElement: { scrollWidth: number };
-  body: { scrollWidth: number };
-  getElementById(id: string): PlaywrightTestStatusElement | null;
-  querySelector(selector: string): object | null;
-}
-declare const window: { innerWidth: number };
-declare const document: PlaywrightTestDocument;
-declare const getComputedStyle: (element: object) => { gridTemplateColumns: string };
-
 describe('Custom release mobile navigation and artwork picker', () => {
   jest.setTimeout(30000);
 
