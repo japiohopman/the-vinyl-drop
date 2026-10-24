@@ -53,22 +53,19 @@ function chooseConfidentDiscogsMatch(
 }
 
 /**
- * A track search returns the release containing that track, so its release title
- * is not expected to equal the input track title. Only accept a closely matching
- * artist; Discogs itself has already filtered the candidate set by the track title.
+ * The track filter is a fallback search, not permission to silently substitute a
+ * different album. Keep auto-fill strict: both the artist and returned release
+ * title must still closely match the text the seller entered.
  */
 function chooseConfidentTrackMatch(
   candidates: CandidateRelease[],
-  artist: string
+  artist: string,
+  title: string
 ): CandidateRelease | null {
-  const matched = candidates.filter((candidate) =>
-    hasConfidentTextMatch(artist, candidate.artist, 1)
-  );
-  matched.sort((a, b) =>
-    Number(normalizeLookupText(b.artist) === normalizeLookupText(artist)) -
-    Number(normalizeLookupText(a.artist) === normalizeLookupText(artist))
-  );
-  return matched[0] || null;
+  return candidates.find((candidate) =>
+    hasConfidentTextMatch(artist, candidate.artist, 1) &&
+    hasConfidentTextMatch(title, candidate.title, 2)
+  ) || null;
 }
 
 export async function getDiscogsMetadataLookup(req: Request, res: Response, _next: NextFunction): Promise<void> {
@@ -89,7 +86,7 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
     if (!match) {
       // The input title may be a song on a release rather than the release/album title.
       const trackCandidates = await provider.searchCandidates({ artist, track: title });
-      match = chooseConfidentTrackMatch(trackCandidates, artist);
+      match = chooseConfidentTrackMatch(trackCandidates, artist, title);
       matchType = 'track';
     }
 

@@ -118,7 +118,7 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
     });
 
     it('falls back to a track-title search when no confident album-title match exists', async () => {
-      const calls: Array<{ artist: string; title?: string; track?: string }> = [];
+      const calls: Array<{ artist?: string; title?: string; track?: string }> = [];
       jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockImplementation(async (query) => {
         calls.push(query);
         if (query.track) {
@@ -127,7 +127,7 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
             providerName: 'discogs',
             externalId: '990',
             artist: 'James Brown',
-            title: 'The Original Funky Divas',
+            title: 'Sex Machine',
             label: 'Polydor',
             releaseYear: 1971,
             country: 'US',
