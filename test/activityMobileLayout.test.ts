@@ -106,36 +106,56 @@ describe('Mobile Activity single-column layout', () => {
         const content = document.querySelector('.activity-card-content') as HTMLElement;
         const header = document.querySelector('.activity-card-header') as HTMLElement;
         const badge = document.querySelector('.activity-icon-badge') as HTMLElement;
+        const cardRect = card.getBoundingClientRect();
+        const artworkRect = artwork.getBoundingClientRect();
         const headerRect = header.getBoundingClientRect();
         const badgeRect = badge.getBoundingClientRect();
+        const releaseInfo = card.querySelector('.activity-release-info') as HTMLElement;
+        const releaseRect = releaseInfo.getBoundingClientRect();
+        const headerPaddingRight = parseFloat(getComputedStyle(header).paddingRight) || 0;
         return {
           viewport: window.innerWidth,
           document: document.documentElement.scrollWidth,
           bodyScroll: document.body.scrollWidth,
           cardColumns: getComputedStyle(card).gridTemplateColumns,
           contentDisplay: getComputedStyle(content).display,
-          cardWidth: card.getBoundingClientRect().width,
-          contentWidth: body.getBoundingClientRect().width,
-          headerWidth: headerRect.width,
-          artworkWidth: artwork.getBoundingClientRect().width,
-          artworkRight: artwork.getBoundingClientRect().right,
-          contentTop: content.getBoundingClientRect().top,
+          bodyDisplay: getComputedStyle(body).display,
+          cardWidth: cardRect.width,
+          releaseWidth: releaseRect.width,
+          releaseLeft: releaseRect.left,
+          releaseRight: releaseRect.right,
+          releaseTop: releaseRect.top,
+          artworkWidth: artworkRect.width,
+          artworkRight: artworkRect.right,
+          artworkBottom: artworkRect.bottom,
+          headerLeft: headerRect.left,
+          headerRight: headerRect.right,
+          headerBottom: headerRect.bottom,
+          headerContentRight: headerRect.right - headerPaddingRight,
           badgePosition: getComputedStyle(badge).position,
           badgeLeft: badgeRect.left,
           badgeBottom: badgeRect.bottom,
+          cardContentLeft: cardRect.left + card.clientLeft + parseFloat(getComputedStyle(card).paddingLeft),
+          cardContentRight: cardRect.right - card.clientLeft - parseFloat(getComputedStyle(card).paddingRight),
         };
       });
 
       expect(measurements.document).toBeLessThanOrEqual(width + 1);
       expect(measurements.bodyScroll).toBeLessThanOrEqual(width + 1);
-      expect(measurements.cardColumns.trim().split(/\s+/).length).toBe(1);
-      expect(measurements.contentDisplay).toBe('block');
-      expect(measurements.contentWidth).toBeGreaterThanOrEqual(measurements.cardWidth - 40);
-      expect(measurements.headerWidth).toBeGreaterThanOrEqual(measurements.contentWidth - 1);
+      expect(measurements.cardColumns.trim().split(/\s+/).length).toBe(2);
+      expect(measurements.contentDisplay).toBe('contents');
+      expect(measurements.bodyDisplay).toBe('contents');
       expect(measurements.artworkWidth).toBe(64);
+      expect(measurements.headerLeft).toBeGreaterThanOrEqual(measurements.artworkRight);
+      expect(measurements.releaseLeft).toBeCloseTo(measurements.cardContentLeft, 0);
+      expect(measurements.releaseRight).toBeCloseTo(measurements.cardContentRight, 0);
+      expect(measurements.releaseWidth).toBeGreaterThan(measurements.cardWidth - 40);
+      expect(measurements.releaseTop).toBeGreaterThanOrEqual(
+        Math.max(measurements.artworkBottom, measurements.headerBottom)
+      );
       expect(measurements.badgePosition).toBe('absolute');
-      expect(measurements.badgeLeft).toBeGreaterThanOrEqual(measurements.artworkRight);
-      expect(measurements.badgeBottom).toBeLessThanOrEqual(measurements.contentTop);
+      expect(measurements.badgeLeft).toBeGreaterThanOrEqual(measurements.headerContentRight);
+      expect(measurements.badgeLeft).toBeGreaterThan(measurements.artworkRight);
     }
   });
 
