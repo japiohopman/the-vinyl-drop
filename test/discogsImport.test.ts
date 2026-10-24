@@ -109,6 +109,31 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
       expect(response.body).toEqual({ found: false });
     });
 
+    it('normalizes accents and punctuation before auto-filling', async () => {
+      jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([{
+        id: 'discogs:789',
+        providerName: 'discogs',
+        externalId: '789',
+        artist: 'Beyonce',
+        title: 'Deja Vu',
+        label: 'Columbia',
+        matchScore: 0,
+        matchedEvidence: [],
+        provenance: { provider: 'discogs', externalId: '789', fetchedAt: '2026-01-01T00:00:00.000Z' },
+      }]);
+
+      const response = await supertest(app)
+        .get('/releases/lookup-metadata')
+        .query({ artist: 'Beyoncé', title: 'Déjà Vu' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        found: true,
+        metadata: { label: 'Columbia' },
+      });
+    });
+
     it('rejects empty and oversized lookup queries without calling Discogs', async () => {
       const providerSpy = jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates');
       const empty = await supertest(app)

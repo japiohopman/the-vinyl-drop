@@ -11,11 +11,11 @@ import { CandidateRelease } from '../services/metadata/types';
 function normalizeLookupText(value: string): string {
   return value
     .normalize('NFKD')
-    .replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/\p{M}/gu, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
-    .replace(/\\s+/g, ' ');
+    .replace(/\s+/g, ' ');
 }
 
 function hasConfidentTextMatch(query: string, candidate: string | undefined, maxExtraWords: number): boolean {
