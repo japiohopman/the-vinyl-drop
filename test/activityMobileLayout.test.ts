@@ -198,10 +198,12 @@ describe('Mobile Activity single-column layout', () => {
       commentCard.locator('.activity-comment'),
       'A deliberately longer comment that should wrap naturally across the available card width without forcing horizontal scrolling on narrow phones.'
     );
+    expect(await commentCard.locator('.activity-comment').evaluate((el) => getComputedStyle(el).marginTop)).toBe('0px');
 
     const privateCard = page.locator('.activity-card').nth(2);
     await expectText(privateCard.locator('.private-badge'), 'Private to you');
     await expectText(privateCard.locator('.activity-price'), '€7.00');
+    expect(await privateCard.locator('.activity-card-footer').evaluate((el) => getComputedStyle(el).marginTop)).toBe('0px');
   });
 
   it('preserves the desktop card and badge columns', async () => {
