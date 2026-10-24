@@ -127,7 +127,8 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
             providerName: 'discogs',
             externalId: '990',
             artist: 'James Brown',
-            title: 'Sex Machine',
+            // The result title is the containing release, not the searched track.
+            title: 'Different Release Album',
             label: 'Polydor',
             releaseYear: 1971,
             country: 'US',
@@ -261,7 +262,7 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
     expect(response.text).toContain('Add a record');
     expect(response.text).toContain('data-discogs-lookup-form');
     expect(response.text).toContain('Use this device');
-    expect(response.text).toContain('Artist Name');
-    expect(response.text).toContain('Release / Track Title');
+    expect(response.text).toContain('Artist *');
+    expect(response.text).toContain('Track or album title *');
   });
 });
