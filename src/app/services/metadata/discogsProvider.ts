@@ -73,7 +73,7 @@ export class DiscogsMetadataProvider implements MetadataProvider {
           return [];
         }
 
-        type DiscogsSearchResponse = {
+        const data = (await res.json()) as {
           results?: Array<{
             id: number;
             title: string;
@@ -89,33 +89,6 @@ export class DiscogsMetadataProvider implements MetadataProvider {
             uri?: string;
           }>;
         };
-
-        let data = (await res.json()) as DiscogsSearchResponse;
-
-        // Discogs' structured filters can be overly restrictive for real-world
-        // artist/title input. Retry an empty result with a broad query; the
-        // controller still applies its strict artist/title confidence checks
-        // before any returned metadata is allowed to auto-fill the form.
-        const hasLookupText = Boolean(query.artist && (query.title || query.track));
-        if ((!Array.isArray(data.results) || data.results.length === 0) && hasLookupText) {
-          const fallbackUrl = new URL(this.baseUrl);
-          fallbackUrl.searchParams.set('type', 'release');
-          fallbackUrl.searchParams.set('per_page', '15');
-          fallbackUrl.searchParams.set('q', [query.artist, query.title || query.track].filter(Boolean).join(' '));
-
-          const fallbackRes = await fetch(fallbackUrl.toString(), {
-            headers,
-            signal: controller.signal,
-          });
-
-          if (!fallbackRes.ok) {
-            console.warn(`Discogs provider fallback search failed with status ${fallbackRes.status}`);
-            if (this.throwOnError) throw new Error(`Discogs provider fallback returned HTTP ${fallbackRes.status}`);
-            return [];
-          }
-
-          data = (await fallbackRes.json()) as DiscogsSearchResponse;
-        }
 
         if (!data.results || !Array.isArray(data.results)) {
           return [];
