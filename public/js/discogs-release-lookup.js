@@ -82,7 +82,12 @@
       var result = await response.json();
       if (result && result.found && result.metadata) {
         applyMetadata(result.metadata);
-        setStatus('Discogs match found. Details filled in — open Release details to review or correct them.', 'found');
+        setStatus(
+          result.matchType === 'track'
+            ? 'Discogs track match found. Release details filled in — review or correct them.'
+            : 'Discogs release match found. Details filled in — review or correct them.',
+          'found'
+        );
       } else {
         setStatus('No confident match found. You can enter the release details manually.', 'empty');
       }

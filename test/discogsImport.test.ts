@@ -117,6 +117,59 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
       expect(response.body).toEqual({ found: false });
     });
 
+    it('falls back to a track-title search when no confident album-title match exists', async () => {
+      const calls: Array<{ artist: string; title?: string; track?: string }> = [];
+      jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockImplementation(async (query) => {
+        calls.push(query);
+        if (query.track) {
+          return [{
+            id: 'discogs:990',
+            providerName: 'discogs',
+            externalId: '990',
+            artist: 'James Brown',
+            title: 'The Original Funky Divas',
+            label: 'Polydor',
+            releaseYear: 1971,
+            country: 'US',
+            format: 'Vinyl, LP, Album',
+            matchScore: 0,
+            matchedEvidence: [],
+            provenance: { provider: 'discogs', externalId: '990', fetchedAt: '2026-01-01T00:00:00.000Z' },
+          }];
+        }
+        return [{
+          id: 'discogs:991',
+          providerName: 'discogs',
+          externalId: '991',
+          artist: 'Different Artist',
+          title: 'Sex Machine',
+          matchScore: 0,
+          matchedEvidence: [],
+          provenance: { provider: 'discogs', externalId: '991', fetchedAt: '2026-01-01T00:00:00.000Z' },
+        }];
+      });
+
+      const response = await supertest(app)
+        .get('/releases/lookup-metadata')
+        .query({ artist: 'James Brown', title: 'Sex Machine' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        found: true,
+        matchType: 'track',
+        metadata: {
+          label: 'Polydor',
+          releaseYear: '1971',
+          country: 'US',
+        },
+      });
+      expect(calls).toEqual([
+        { artist: 'James Brown', title: 'Sex Machine' },
+        { artist: 'James Brown', track: 'Sex Machine' },
+      ]);
+    });
+
     it('normalizes accents and punctuation before auto-filling', async () => {
       jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([{
         id: 'discogs:789',

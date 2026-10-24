@@ -32,8 +32,12 @@ function hasConfidentTextMatch(query: string, candidate: string | undefined, max
   return false;
 }
 
-/** Only auto-fill when artist and title both match closely; uncertain candidates stay manual. */
-function chooseConfidentDiscogsMatch(candidates: CandidateRelease[], artist: string, title: string): CandidateRelease | null {
+/** Only auto-fill album results when both artist and release title match closely. */
+function chooseConfidentDiscogsMatch(
+  candidates: CandidateRelease[],
+  artist: string,
+  title: string
+): CandidateRelease | null {
   const matched = candidates.filter((candidate) =>
     hasConfidentTextMatch(artist, candidate.artist, 1) &&
     hasConfidentTextMatch(title, candidate.title, 2)
@@ -48,6 +52,25 @@ function chooseConfidentDiscogsMatch(candidates: CandidateRelease[], artist: str
   return matched[0] || null;
 }
 
+/**
+ * A track search returns the release containing that track, so its release title
+ * is not expected to equal the input track title. Only accept a closely matching
+ * artist; Discogs itself has already filtered the candidate set by the track title.
+ */
+function chooseConfidentTrackMatch(
+  candidates: CandidateRelease[],
+  artist: string
+): CandidateRelease | null {
+  const matched = candidates.filter((candidate) =>
+    hasConfidentTextMatch(artist, candidate.artist, 1)
+  );
+  matched.sort((a, b) =>
+    Number(normalizeLookupText(b.artist) === normalizeLookupText(artist)) -
+    Number(normalizeLookupText(a.artist) === normalizeLookupText(artist))
+  );
+  return matched[0] || null;
+}
+
 export async function getDiscogsMetadataLookup(req: Request, res: Response, _next: NextFunction): Promise<void> {
   const artist = typeof req.query.artist === 'string' ? req.query.artist.trim() : '';
   const title = typeof req.query.title === 'string' ? req.query.title.trim() : '';
@@ -59,10 +82,19 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
 
   try {
     const provider = new DiscogsMetadataProvider({ timeoutMs: 5000, throwOnError: true });
-    const candidates = await provider.searchCandidates({ artist, title });
-    const match = chooseConfidentDiscogsMatch(candidates, artist, title);
+    const releaseCandidates = await provider.searchCandidates({ artist, title });
+    let match = chooseConfidentDiscogsMatch(releaseCandidates, artist, title);
+    let matchType: 'release' | 'track' = 'release';
 
     if (!match) {
+      // The input title may be a song on a release rather than the release/album title.
+      const trackCandidates = await provider.searchCandidates({ artist, track: title });
+      match = chooseConfidentTrackMatch(trackCandidates, artist);
+      matchType = 'track';
+    }
+
+    if (!match) {
+      res.setHeader('Cache-Control', 'no-store');
       res.status(200).json({ found: false });
       return;
     }
@@ -70,6 +102,7 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
     res.setHeader('Cache-Control', 'no-store');
     res.status(200).json({
       found: true,
+      matchType,
       metadata: {
         label: match.label || '',
         catalogueNumber: match.catalogueNumber || '',

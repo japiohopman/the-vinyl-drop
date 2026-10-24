@@ -36,6 +36,10 @@ export class DiscogsMetadataProvider implements MetadataProvider {
         searchUrl.searchParams.set('release_title', query.title);
         hasSpecificParam = true;
       }
+      if (query.track) {
+        searchUrl.searchParams.set('track', query.track);
+        hasSpecificParam = true;
+      }
 
       if (!hasSpecificParam) {
         const qParts = [query.ocrText, query.matrixRunout, query.label, query.country]
