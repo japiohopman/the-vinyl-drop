@@ -4,6 +4,21 @@ import path from 'path';
 import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 
+// The project test tsconfig omits DOM libs; these globals are only referenced
+// inside functions serialized and executed by Playwright in a browser page.
+interface PlaywrightTestStatusElement {
+  getAttribute(name: string): string | null;
+}
+interface PlaywrightTestDocument {
+  documentElement: { scrollWidth: number };
+  body: { scrollWidth: number };
+  getElementById(id: string): PlaywrightTestStatusElement | null;
+  querySelector(selector: string): object | null;
+}
+declare const window: { innerWidth: number };
+declare const document: PlaywrightTestDocument;
+declare const getComputedStyle: (element: object) => { gridTemplateColumns: string };
+
 describe('Custom release mobile navigation and artwork picker', () => {
   jest.setTimeout(30000);
 
@@ -121,9 +136,11 @@ describe('Custom release mobile navigation and artwork picker', () => {
           expect(box.width).toBeGreaterThanOrEqual(44);
           expect(box.height).toBeGreaterThanOrEqual(44);
         }
-        const dimensions = await page.evaluate(
-          '() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth })'
-        ) as { viewport: number; document: number; body: number };
+        const dimensions = await page.evaluate(() => ({
+          viewport: window.innerWidth,
+          document: document.documentElement.scrollWidth,
+          body: document.body.scrollWidth,
+        }));
         expect(dimensions.document).toBeLessThanOrEqual(width + 1);
         expect(dimensions.body).toBeLessThanOrEqual(width + 1);
       }
@@ -192,7 +209,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.locator('#releaseArtist').fill('James Brown');
     await page.locator('#releaseTitle').fill('Sex Machine');
     await page.waitForFunction(
-      '() => document.getElementById("discogsLookupStatus")?.getAttribute("data-state") === "found"',
+      () => document.getElementById('discogsLookupStatus')?.getAttribute('data-state') === 'found',
       undefined,
       { timeout: 3000 }
     );
@@ -211,9 +228,10 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('#discogsLookupStatus').getAttribute('role')).toBe('status');
     expect(await page.locator('#releaseMetadataDetails').getAttribute('open')).toBeNull();
 
-    const dimensions = await page.evaluate(
-      '() => ({ document: document.documentElement.scrollWidth, body: document.body.scrollWidth })'
-    ) as { document: number; body: number };
+    const dimensions = await page.evaluate(() => ({
+      document: document.documentElement.scrollWidth,
+      body: document.body.scrollWidth
+    }));
     expect(dimensions.document).toBeLessThanOrEqual(376);
     expect(dimensions.body).toBeLessThanOrEqual(376);
   });
@@ -258,7 +276,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.locator('#releaseArtist').fill('James Brown');
     await page.locator('#releaseTitle').fill('Sex Machine');
     await page.waitForFunction(
-      '() => document.getElementById("discogsLookupStatus")?.getAttribute("data-state") === "found"',
+      () => document.getElementById('discogsLookupStatus')?.getAttribute('data-state') === 'found',
       undefined,
       { timeout: 3000 }
     );
@@ -268,7 +286,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.locator('[name="label"]').fill('My corrected label');
     await page.locator('#releaseTitle').fill('Sex Machine edit');
     await page.waitForFunction(
-      '() => document.getElementById("discogsLookupStatus")?.getAttribute("data-state") === "found"',
+      () => document.getElementById('discogsLookupStatus')?.getAttribute('data-state') === 'found',
       undefined,
       { timeout: 3000 }
     );
@@ -296,7 +314,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.locator('#releaseArtist').fill('Local artist');
     await page.locator('#releaseTitle').fill('Unindexed white label');
     await page.waitForFunction(
-      '() => document.getElementById("discogsLookupStatus")?.getAttribute("data-state") === "empty"',
+      () => document.getElementById('discogsLookupStatus')?.getAttribute('data-state') === 'empty',
       undefined,
       { timeout: 3000 }
     );
@@ -307,16 +325,17 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.locator('#releaseArtist').fill('Another artist');
     await page.locator('#releaseTitle').fill('Another title');
     await page.waitForFunction(
-      '() => document.getElementById("discogsLookupStatus")?.getAttribute("data-state") === "error"',
+      () => document.getElementById('discogsLookupStatus')?.getAttribute('data-state') === 'error',
       undefined,
       { timeout: 3000 }
     );
     expect(await page.locator('#releaseArtist').inputValue()).toBe('Another artist');
     expect(await page.locator('#releaseTitle').inputValue()).toBe('Another title');
     expect(await page.locator('#releaseMetadataDetails').isVisible()).toBe(true);
-    const dimensions = await page.evaluate(
-      '() => ({ document: document.documentElement.scrollWidth, body: document.body.scrollWidth })'
-    ) as { document: number; body: number };
+    const dimensions = await page.evaluate(() => ({
+      document: document.documentElement.scrollWidth,
+      body: document.body.scrollWidth
+    }));
     expect(dimensions.document).toBeLessThanOrEqual(321);
     expect(dimensions.body).toBeLessThanOrEqual(321);
   });
@@ -329,9 +348,12 @@ describe('Custom release mobile navigation and artwork picker', () => {
     for (const width of [320, 360, 375, 414]) {
       await page.setViewportSize({ width, height: 820 });
       await page.setContent(html);
-      const dimensions = await page.evaluate(
-        '() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth, columns: getComputedStyle(document.querySelector(".custom-release-grid")).gridTemplateColumns })'
-      ) as { viewport: number; document: number; body: number; columns: string };
+      const dimensions = await page.evaluate(() => ({
+        viewport: window.innerWidth,
+        document: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth,
+        columns: getComputedStyle(document.querySelector('.custom-release-grid') as object).gridTemplateColumns,
+      }));
       expect(dimensions.document).toBeLessThanOrEqual(width + 1);
       expect(dimensions.body).toBeLessThanOrEqual(width + 1);
       expect(dimensions.columns.split(' ').length).toBe(1);
