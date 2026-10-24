@@ -79,6 +79,10 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('ACTIVITY');
     expect(html).toContain('SIGN IN');
     expect(html).toContain('id="mobile-you-surface"');
+    expect(html).toContain('<span>ME</span>');
+    expect(html).toContain('aria-label="Me"');
+    expect(html).toContain('id="mobile-you-about-trigger"');
+    expect(html).toContain('id="mobile-you-about-view" hidden');
     expect(html).toContain('class="mobile-you-info-section"');
     expect(html).toContain('href="/contact"');
     expect(html).toContain('href="/privacy"');
@@ -237,6 +241,70 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await isElementVisible(menuSel)).toBe(false);
     });
 
+    it('opens About as a nested view and returns to Me without closing the overlay', async () => {
+      const fullHtml = await renderFullHtmlPage({
+        currentPath: '/',
+        currentUser: null,
+        currentProfile: null,
+        messagingEnabled: false,
+      });
+
+      await page.setViewportSize({ width: 320, height: 700 });
+      await page.setContent(fullHtml);
+      await page.click('#mobile-you-trigger');
+
+      expect(await isElementVisible('#mobile-you-main-view')).toBe(true);
+      expect(await isElementVisible('#mobile-you-about-view')).toBe(false);
+
+      await page.click('#mobile-you-about-trigger');
+      expect(await isElementVisible('#mobile-you-main-view')).toBe(false);
+      expect(await isElementVisible('#mobile-you-about-view')).toBe(true);
+      expect(await getAttribute('#mobile-you-about-trigger', 'aria-expanded')).toBe('true');
+      expect(await isFocused('#mobile-you-about-back')).toBe(true);
+
+      const aboutLinks = await page.locator('#mobile-you-about-view .mobile-you-info-links a').evaluateAll((els) => els.map((el) => (el as HTMLAnchorElement).getAttribute('href')));
+      expect(aboutLinks).toEqual(['/contact', '/privacy', '/terms', '/community-rules']);
+
+      await page.click('#mobile-you-about-back');
+      expect(await isElementVisible('#mobile-you-main-view')).toBe(true);
+      expect(await isElementVisible('#mobile-you-about-view')).toBe(false);
+      expect(await getAttribute('#mobile-you-about-trigger', 'aria-expanded')).toBe('false');
+      expect(await isFocused('#mobile-you-about-trigger')).toBe(true);
+      expect(await isElementVisible('#mobile-you-surface')).toBe(true);
+    });
+
+    it('uses a near-opaque backdrop while keeping the mobile account panel inset from the viewport', async () => {
+      const fullHtml = await renderFullHtmlPage({
+        currentPath: '/',
+        currentUser: null,
+        currentProfile: null,
+        messagingEnabled: false,
+      });
+
+      await page.setViewportSize({ width: 320, height: 700 });
+      await page.setContent(fullHtml);
+      const backdrop = await page.evaluate(() => {
+        const el = document.querySelector('.mobile-you-surface-backdrop');
+        if (!el) return null;
+        const color = getComputedStyle(el).backgroundColor;
+        const alphaMatch = color.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\s*\)/);
+        return { color, alpha: Number(alphaMatch?.[1] ?? 1) };
+      });
+      expect(backdrop).not.toBeNull();
+      expect(backdrop!.alpha).toBeGreaterThanOrEqual(0.85);
+
+      await page.click('#mobile-you-trigger');
+      const insets = await page.evaluate(() => {
+        const panel = document.querySelector('.mobile-you-surface-content') as HTMLElement | null;
+        if (!panel) return null;
+        const rect = panel.getBoundingClientRect();
+        return { left: rect.left, right: window.innerWidth - rect.right };
+      });
+      expect(insets).not.toBeNull();
+      expect(insets!.left).toBeGreaterThanOrEqual(8);
+      expect(insets!.right).toBeGreaterThanOrEqual(8);
+    });
+
     it('executes mobile YOU surface open, scroll-lock, close, backdrop click, Escape key, Shift+Tab focus trap, and resize breakpoint cleanup', async () => {
       const fullHtml = await renderFullHtmlPage({
         currentPath: '/',
@@ -281,7 +349,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await isElementVisible(mobileSurfaceSel)).toBe(true);
       expect(await isFocused(closeBtnSel)).toBe(true);
       await page.keyboard.press('Shift+Tab');
-      expect(await isFocused('.mobile-you-info-links li:last-child a')).toBe(true);
+      expect(await isFocused('.mobile-you-about-trigger')).toBe(true);
 
       // Escape key
       await page.keyboard.press('Escape');
