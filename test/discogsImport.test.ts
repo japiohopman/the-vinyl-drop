@@ -133,6 +133,27 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
       expect(response.body).toEqual({ found: false });
     });
 
+    it('rejects artist matches embedded inside a different word', async () => {
+      jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([{
+        id: 'discogs:777',
+        providerName: 'discogs',
+        externalId: '777',
+        artist: 'Blacksmith',
+        title: 'Sex Machine',
+        matchScore: 0,
+        matchedEvidence: [],
+        provenance: { provider: 'discogs', externalId: '777', fetchedAt: '2026-01-01T00:00:00.000Z' },
+      }]);
+
+      const response = await supertest(app)
+        .get('/releases/lookup-metadata')
+        .query({ artist: 'Smith', title: 'Sex Machine' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ found: false });
+    });
+
     it('falls back to a track-title search when no confident album-title match exists', async () => {
       const calls: Array<{ artist?: string; title?: string; track?: string }> = [];
       jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockImplementation(async (query) => {
