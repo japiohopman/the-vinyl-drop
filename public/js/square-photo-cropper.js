@@ -74,6 +74,7 @@
 
   function clearPreview() {
     previewSequence += 1;
+    processing = false;
     cropper.hidden = true;
     selectionPreview.hidden = true;
     originalPreview.hidden = true;
@@ -221,6 +222,10 @@
     if (processing) return;
     processing = true;
     setStatus('Preparing the square image…');
+    const cropSequence = previewSequence;
+    const cropSource = sourceFile;
+    const cropImage = image;
+    const cropRole = roleSelect.value;
     const crop = cropGeometry();
     const output = document.createElement('canvas');
     output.width = 1024;
@@ -233,15 +238,19 @@
     }
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, output.width, output.height);
-    context.drawImage(image, crop.left, crop.top, crop.side, crop.side, 0, 0, output.width, output.height);
+    context.drawImage(cropImage, crop.left, crop.top, crop.side, crop.side, 0, 0, output.width, output.height);
     output.toBlob((blob) => {
+      // A new selection/role invalidates work started for the previous photo.
+      if (previewSequence !== cropSequence || sourceFile !== cropSource ||
+          image !== cropImage || roleSelect.value !== cropRole) return;
+
       if (!blob) {
         processing = false;
         setStatus('The square image could not be created. Try a different photo.', true);
         return;
       }
-      const stem = sourceFile.name.replace(/\.[^.]+$/, '') || 'album-cover';
-      const croppedFile = new File([blob], stem + '-' + roleSelect.value + '-square.jpg', {
+      const stem = cropSource.name.replace(/\.[^.]+$/, '') || 'album-cover';
+      const croppedFile = new File([blob], stem + '-' + cropRole + '-square.jpg', {
         type: 'image/jpeg',
         lastModified: Date.now()
       });
@@ -249,6 +258,7 @@
       transfer.items.add(croppedFile);
       fileInput.files = transfer.files;
       form.dataset.squareCropReady = 'true';
+      processing = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       objectUrl = null;
       form.requestSubmit();
