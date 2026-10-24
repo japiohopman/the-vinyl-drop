@@ -71,7 +71,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
   it('shows the current section in the mobile header and moves the custom-release back link into it', async () => {
     const digHeader = await renderHeader('/dig');
     expect(digHeader).toContain('<span class="mobile-context-heading">DIG</span>');
-    expect(digHeader).not.toContain('mobile-context-back');
+    expect(digHeader).toContain('class="mobile-context-back mobile-dig-back"');
+    expect(digHeader).toContain('aria-label="Back to browse results"');
 
     const releaseHeader = await renderHeader('/releases/new');
     expect(releaseHeader).toContain('<span class="mobile-context-heading">DROP</span>');
