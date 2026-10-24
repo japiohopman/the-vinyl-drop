@@ -378,17 +378,13 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
 });
 
 
-describe('Discogs metadata provider search fallback (Issue #190)', () => {
+describe('Discogs metadata provider free-text lookup (Issue #190)', () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it('retries an empty structured artist/title lookup with a broad query', async () => {
+  it('uses Discogs free-text query for a broad candidate search', async () => {
     const fetchSpy = jest.spyOn(global, 'fetch')
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ results: [] }),
-      } as Response)
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
@@ -409,16 +405,14 @@ describe('Discogs metadata provider search fallback (Issue #190)', () => {
       } as Response);
 
     const provider = new DiscogsMetadataProvider({ timeoutMs: 1000, throwOnError: true });
-    const results = await provider.searchCandidates({ artist: 'James Brown', title: 'Sex Machine' });
+    const results = await provider.searchCandidates({ ocrText: 'James Brown Sex Machine' });
 
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
-    const structuredUrl = new URL(String(fetchSpy.mock.calls[0][0]));
-    expect(structuredUrl.searchParams.get('artist')).toBe('James Brown');
-    expect(structuredUrl.searchParams.get('release_title')).toBe('Sex Machine');
-
-    const fallbackUrl = new URL(String(fetchSpy.mock.calls[1][0]));
-    expect(fallbackUrl.searchParams.get('q')).toBe('James Brown Sex Machine');
-    expect(fallbackUrl.searchParams.get('type')).toBe('release');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const searchUrl = new URL(String(fetchSpy.mock.calls[0][0]));
+    expect(searchUrl.searchParams.get('q')).toBe('James Brown Sex Machine');
+    expect(searchUrl.searchParams.get('type')).toBe('release');
+    expect(searchUrl.searchParams.has('artist')).toBe(false);
+    expect(searchUrl.searchParams.has('release_title')).toBe(false);
 
     expect(results).toHaveLength(1);
     expect(results[0]).toMatchObject({
