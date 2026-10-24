@@ -2,23 +2,9 @@
   const headerPath = typeof currentPath !== 'undefined' ? currentPath : '/';
   const isCustomReleasePage = headerPath === '/releases/new';
   const isDigRoute = headerPath === '/dig';
-  const headerFilters = typeof filters !== 'undefined' && filters ? filters : {};
-  const selectedDigFormats = Array.isArray(headerFilters.formats) ? headerFilters.formats : [];
   const digItemCount = typeof items !== 'undefined' && Array.isArray(items) ? items.length : 0;
-  const currentBrowsePage = typeof pagination !== 'undefined' && pagination && pagination.page ? pagination.page : 1;
-  const digReturnParams = [
-    'q=' + encodeURIComponent(headerFilters.q || ''),
-    'genre=' + encodeURIComponent(headerFilters.genre || ''),
-    'condition=' + encodeURIComponent(headerFilters.condition || ''),
-    'minPrice=' + encodeURIComponent(headerFilters.minPrice || ''),
-    'maxPrice=' + encodeURIComponent(headerFilters.maxPrice || ''),
-    'sort=' + encodeURIComponent(headerFilters.sort || 'newest'),
-    ...selectedDigFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }),
-    headerFilters.whiteLabel ? 'whiteLabel=1' : '',
-    'page=' + encodeURIComponent(currentBrowsePage),
-    'view=grid',
-  ].filter(Boolean).join('&');
-  const digReturnUrl = '/browse?' + digReturnParams;
+  const aboutPagePaths = ['/contact', '/privacy', '/terms', '/community-rules'];
+  const isAboutPage = aboutPagePaths.includes(headerPath);
   let mobileSectionLabel = 'THE VINYL DROP';
 
   if (headerPath === '/') {
@@ -31,8 +17,14 @@
     mobileSectionLabel = 'ACTIVITY';
   } else if (headerPath.startsWith('/profile') || headerPath.startsWith('/profiles') || headerPath.startsWith('/auth')) {
     mobileSectionLabel = 'ME';
-  } else if (['/contact', '/privacy', '/terms', '/community-rules'].includes(headerPath)) {
-    mobileSectionLabel = 'ABOUT';
+  } else if (headerPath === '/terms') {
+    mobileSectionLabel = 'ABOUT / TERMS';
+  } else if (headerPath === '/contact') {
+    mobileSectionLabel = 'ABOUT / CONTACT';
+  } else if (headerPath === '/privacy') {
+    mobileSectionLabel = 'ABOUT / PRIVACY';
+  } else if (headerPath === '/community-rules') {
+    mobileSectionLabel = 'ABOUT / RULES';
   }
 %>
 <header class="site-header">
@@ -46,18 +38,15 @@
     </a>
     <nav class="mobile-context-header" aria-label="Page navigation">
       <span class="mobile-context-heading"><%= mobileSectionLabel %></span>
-      <% if (isDigRoute) { %>
-        <% if (digItemCount > 0) { %>
-          <span class="mobile-dig-position" data-dig-header-position aria-live="polite" aria-atomic="true">1 of <%= digItemCount %></span>
-        <% } %>
-        <a href="<%= digReturnUrl %>" class="mobile-context-back mobile-dig-back" aria-label="Back to browse results">
+      <% if (isDigRoute && digItemCount > 0) { %>
+        <span class="mobile-dig-position" data-dig-header-position aria-live="polite" aria-atomic="true">1 of <%= digItemCount %></span>
+      <% } else if (isAboutPage) { %>
+        <a href="/" class="mobile-context-back mobile-context-back-icon-only mobile-context-home" aria-label="Back to Home">
           <span class="mobile-context-back-icon" aria-hidden="true">←</span>
-          <span>Back</span>
         </a>
       <% } else if (isCustomReleasePage) { %>
-        <a href="/drop/new" class="mobile-context-back" aria-label="Back to catalog search">
+        <a href="/drop/new" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to catalog search">
           <span class="mobile-context-back-icon" aria-hidden="true">←</span>
-          <span>Back to catalog</span>
         </a>
       <% } %>
     </nav>

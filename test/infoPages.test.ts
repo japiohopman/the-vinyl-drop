@@ -10,6 +10,9 @@ describe('Contact & Community Rules Pages (Phase 6A - Issue #46)', () => {
 
       expect(res.status).toBe(200);
       expect(res.text).toContain('Contact The Vinyl Drop');
+      expect(res.text).toContain('placeholder="Your name"');
+      expect(res.text).toContain('placeholder="you@example.com"');
+      expect(res.text).toContain('placeholder="Tell us how we can help..."');
       expect(res.text).toContain('yepyouknowhim@gmail.com');
       expect(res.text).toContain('Bugs &amp; Technical Problems');
       expect(res.text).toContain('Tips &amp; Feedback');
@@ -72,6 +75,25 @@ describe('Contact & Community Rules Pages (Phase 6A - Issue #46)', () => {
       expect(res.status).toBe(200);
       expect(res.text).toContain("sex, drugs &amp; rock 'n' roll");
       expect(res.text).toContain('disrespecting fellow human beings is strictly forbidden');
+    });
+  });
+
+  describe('Mobile About contextual header', () => {
+    it('identifies the active information page and provides an icon-only Back to Home action', async () => {
+      const pages = [
+        ['/terms', 'ABOUT / TERMS'],
+        ['/contact', 'ABOUT / CONTACT'],
+        ['/privacy', 'ABOUT / PRIVACY'],
+        ['/community-rules', 'ABOUT / RULES'],
+      ] as const;
+
+      for (const [route, label] of pages) {
+        const res = await request(app).get(route);
+        expect(res.status).toBe(200);
+        expect(res.text).toContain('<span class="mobile-context-heading">' + label + '</span>');
+        expect(res.text).toContain('class="mobile-context-back mobile-context-back-icon-only mobile-context-home" aria-label="Back to Home"');
+        expect(res.text).toContain('<span class="mobile-context-back-icon" aria-hidden="true">←</span>');
+      }
     });
   });
 
