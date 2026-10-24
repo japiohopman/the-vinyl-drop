@@ -340,12 +340,13 @@
       mobileSurface.classList.remove('is-closing');
       document.body.classList.add('account-surface-open');
       if (mobileTrigger) mobileTrigger.setAttribute('aria-expanded', 'true');
-      if (mobileCloseBtn) mobileCloseBtn.focus();
       if (mobileSurface && !mobileSurface.hidden && mobileSurface.getAttribute('aria-hidden') === 'false') {
-        // Force the closed opacity state to be committed before starting the fade.
+        // Make the panel focusable/visible before moving focus into it.
+        // Commit the closed opacity state first so the entrance fade still runs.
         void mobileSurface.offsetWidth;
         mobileSurface.classList.add('is-open');
       }
+      if (mobileCloseBtn) mobileCloseBtn.focus();
     }
 
     if (mobileTrigger) {
