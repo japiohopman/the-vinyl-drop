@@ -91,6 +91,34 @@ describe('Dig search-first responsive shell', () => {
 });
 
 
+describe('Compact mobile back navigation', () => {
+  it('uses explicit destinations and accessible labels on the affected record screens', () => {
+    const digView = fs.readFileSync(path.join(process.cwd(), 'views/browse/dig.ejs'), 'utf8');
+    const listingDetailView = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
+    const listingEditView = fs.readFileSync(path.join(process.cwd(), 'views/listings/edit.ejs'), 'utf8');
+    const listingPreviewView = fs.readFileSync(path.join(process.cwd(), 'views/listings/preview.ejs'), 'utf8');
+    const releaseSelectView = fs.readFileSync(path.join(process.cwd(), 'views/listings/select-release.ejs'), 'utf8');
+    const mobileStyles = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+
+    expect(digView).toContain('aria-label="Back to Dig results"');
+    expect(digView).toContain('href="<%= browseReturnUrl %>"');
+    expect(listingDetailView).toContain('href="/dig"');
+    expect(listingDetailView).toContain('aria-label="Back to Dig results"');
+
+    for (const view of [listingEditView, listingPreviewView, releaseSelectView]) {
+      expect(view).toContain('class="mobile-back-control"');
+      expect(view).toContain('aria-label="Back to My Listings"');
+      expect(view).toContain('href="/listings"');
+    }
+
+    expect(mobileStyles).toContain('.mobile-back-control');
+    expect(mobileStyles).toContain('min-height: 44px;');
+    expect(mobileStyles).toContain('.listing-preview-header .mobile-back-control');
+    expect(mobileStyles).toContain('.select-release-header > .mobile-back-control');
+  });
+});
+
+
 describe('Shared listing artwork priority', () => {
   it('prefers an explicit seller front cover and retains release artwork as the broken-image fallback', () => {
     const card = buildListingCardFromDetails({
