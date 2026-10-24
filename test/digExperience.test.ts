@@ -84,7 +84,7 @@ describe('Dig search-first responsive shell', () => {
     expect(html).toContain('<span>Filters</span>');
     expect(html).toContain('href="/dig?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;page=3&amp;view=grid"');
     expect(html).toContain('href="/dig?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;page=3&amp;view=list"');
-    expect(html).toContain('<h1 class="dig-mobile-semantic-title">Dig Vinyl Records</h1>');
+    expect(html).toContain('<h1>Dig</h1>');
     expect(html).not.toContain('Find your next record. Swipe up through the crate, or flip a sleeve to see the back.');
     expect(html).toContain('class="btn btn-outline dig-back-to-browse"');
     expect(html).toContain('aria-label="Back to Dig results"');
