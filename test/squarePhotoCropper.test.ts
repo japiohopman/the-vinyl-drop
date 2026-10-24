@@ -80,7 +80,7 @@ describe('Square cover photo cropper', () => {
       '<body><main class="main-content">' + body + '</main></body></html>',
       { waitUntil: 'domcontentloaded', timeout: 5000 }
     );
-    await page.addScriptTag({ path: cropperPath, timeout: 5000 });
+    await page.addScriptTag({ path: cropperPath });
   }
 
   async function selectPortrait(role: string): Promise<void> {
