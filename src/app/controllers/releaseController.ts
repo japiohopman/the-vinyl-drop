@@ -81,7 +81,7 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
         coverArtUrl: match.coverArtUrl || '',
       },
     });
-  } catch (_error) {
+  } catch {
     // Fail closed for this lookup but keep manual release entry available.
     res.status(503).json({ error: 'Discogs lookup is temporarily unavailable.' });
   }
