@@ -79,7 +79,7 @@ describe('Dig search-first responsive shell', () => {
     );
     expect(html).toContain('id="dig-primary-search"');
     expect(html).toContain('value="De La Soul"');
-    expect(html).toContain('aria-label="Search records"');
+    expect(html).toContain('<label class="dig-search-visually-hidden" for="dig-primary-search">Search records</label>');
     expect(html).toContain('class="view-mode-toggle" role="group" aria-label="Dig presentation mode"');
     expect(html).toContain('href="/dig?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;page=3&amp;view=grid"');
     expect(html).toContain('href="/dig?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;page=3&amp;view=list"');
@@ -557,7 +557,8 @@ describe('GET /dig responsive presentation', () => {
     try {
       const response = await supertest(app).get('/dig?q=Theory');
       expect(response.status).toBe(200);
-      expect(response.text).toContain('class="dig-responsive-mobile-header"');
+      expect(response.text).toContain('class="dig-search-control-bar"');
+      expect(response.text).toContain('id="dig-primary-search"');
       expect(response.text).toContain('class="dig-responsive-desktop"');
       expect(response.text).toContain('class="dig-responsive-mobile"');
       expect(response.text).toContain('class="listing-grid"');
