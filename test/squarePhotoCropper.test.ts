@@ -1,4 +1,5 @@
 import ejs from 'ejs';
+import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { chromium, Browser, Page } from 'playwright';
@@ -13,6 +14,7 @@ describe('Square cover photo cropper', () => {
   jest.setTimeout(30000);
 
   const viewPath = path.join(__dirname, '../views/listings/edit.ejs');
+  const stylesheet = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
   const cropperPath = path.join(__dirname, '../public/js/square-photo-cropper.js');
   let browser: Browser;
   let page: Page;
@@ -72,8 +74,9 @@ describe('Square cover photo cropper', () => {
     );
     await page.setContent(
       '<!doctype html><html lang="en"><head><meta charset="UTF-8">' +
-      '<meta name="viewport" content="width=device-width, initial-scale=1"></head>' +
-      '<body>' + body + '</body></html>'
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<style>' + stylesheet + '</style></head>' +
+      '<body><main class="main-content">' + body + '</main></body></html>'
     );
     await page.addScriptTag({ path: cropperPath });
   }
