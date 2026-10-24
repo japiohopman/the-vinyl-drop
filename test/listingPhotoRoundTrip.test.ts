@@ -146,9 +146,9 @@ describe('Seller cover photo HTTP round trip', () => {
 
     const releaseForm = await supertest(app).get('/releases/new');
     expect(releaseForm.status).toBe(200);
-    expect(releaseForm.text).toContain('Optional release catalogue artwork');
-    expect(releaseForm.text).toContain('not to your individual copy');
-    expect(releaseForm.text).toContain('It is never used as the front or back of a Crate Dig sleeve');
+    expect(releaseForm.text).toContain('Catalogue artwork (optional)');
+    expect(releaseForm.text).toContain('This artwork represents the release edition.');
+    expect(releaseForm.text).toContain('Photos of your physical copy are added in the next step.');
     expect(releaseForm.text).toContain('name="coverArt"');
     expect(releaseForm.text).not.toContain('name="photo"');
     expect(releaseForm.text).not.toContain('name="role"');

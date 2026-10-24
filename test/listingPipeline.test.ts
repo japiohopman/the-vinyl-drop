@@ -850,7 +850,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(response.headers.location).toContain('/auth/login?next=%2Fdrop%2Fnew');
     });
 
-    it('GET /drop/new should render release selection page for authenticated seller (Blocker 1)', async () => {
+    it('GET /drop/new should render custom release entry for authenticated seller', async () => {
       const mockSupabase = {
         auth: {
           getUser: jest.fn().mockResolvedValue({
@@ -877,8 +877,13 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         .set('Cookie', ['sb-access-token=mock-valid-token']);
 
       expect(response.status).toBe(200);
-      expect(response.text).toContain('Select a Release to Sell');
-      expect(response.text).toContain('A Kind of Blue');
+      expect(response.text).toContain('Add a record');
+      expect(response.text).toContain('data-discogs-lookup-form');
+      expect(response.text).toContain('Discogs fills in the release details');
+      expect(response.text).not.toContain('Select a Release to Sell');
+      expect(response.text).not.toContain('Recent Catalog Releases');
+      expect(response.text).toContain('name="artist"');
+      expect(response.text).toContain('name="title"');
     });
 
     it('GET /listings/new should redirect unauthenticated requests to login', async () => {

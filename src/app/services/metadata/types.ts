@@ -7,6 +7,7 @@ export const identificationQuerySchema = z.object({
   barcode: z.string().trim().optional(),
   artist: z.string().trim().optional(),
   title: z.string().trim().optional(),
+  track: z.string().trim().optional(),
   catalogueNumber: z.string().trim().optional(),
   label: z.string().trim().optional(),
   country: z.string().trim().optional(),
