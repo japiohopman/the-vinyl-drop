@@ -302,7 +302,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       await route.fulfill({
         status: 200,
         contentType: 'text/html',
-        body: '<!doctype html><html><body><main id="full-inbox-page">Inbox — Messages</main></body></html>',
+        body: '<!doctype html><html lang="en"><head><meta charset="utf-8"></head><body><main id="full-inbox-page">Inbox — Messages</main></body></html>',
       });
     });
     const html = await renderFullHtmlPage({
