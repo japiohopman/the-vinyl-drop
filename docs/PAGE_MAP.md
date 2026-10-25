@@ -24,8 +24,10 @@ Canonical UI interaction contracts and specification notes:
 | `/contact` | `GET` | `infoController.getContactPage` | Contact & support details |
 | `/community-rules` | `GET` | `infoController.getCommunityRulesPage` | Conduct rules and guidelines |
 | `/listings/:id` | `GET` | `listingController.getListingDetailPage` | Listing detail page (release metadata, physical copy, photos, seller, comments) |
-| `/profiles/:username` | `GET` | `profileController.getPublicProfile` | Public seller profile and active listings grid |
-| `/profile/:username` | `GET` | `profileController.getPublicProfile` | Public seller profile alias |
+| `/profiles/:username` | `GET` | `profileController.getPublicProfile` | Compact public profile summary and Crate entry/count |
+| `/profiles/:username/crate` | `GET` | `profileController.getPublicProfileCrate` | Paginated grid of the user's published Crate records |
+| `/profile/:username` | `GET` | `profileController.getPublicProfile` | Legacy alias for compact public profile; `?page=N` redirects to canonical Crate route |
+| `/profile/:username/crate` | `GET` | `profileController.getPublicProfileCrate` | Legacy alias for public Crate listings |
 | `/auth/login` | `GET` | `authController.getLoginPage` | User login form |
 | `/auth/signup` | `GET` | `authController.getSignUpPage` | User registration form |
 | `/auth/google` | `GET` | `authController.getGoogleOAuth` | Initiate Google OAuth PKCE flow |
