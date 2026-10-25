@@ -162,6 +162,12 @@ describe('Custom release mobile navigation and artwork picker', () => {
       await page.setViewportSize({ width, height: 780 });
       await page.setContent(documentHtml(headerHtml, createHtml));
 
+      const cardCorners = await page.evaluate(
+        "({ card: getComputedStyle(document.querySelector('.create-listing-card')).borderRadius, release: getComputedStyle(document.querySelector('.create-listing-release')).borderRadius })"
+      ) as { card: string; release: string };
+      expect(cardCorners.card).toBe('0px');
+      expect(cardCorners.release).toBe('0px');
+
       const mobileBack = page.locator('.mobile-context-back');
       expect(await mobileBack.getAttribute('href')).toBe('/drop/new');
       expect(await mobileBack.isVisible()).toBe(true);
