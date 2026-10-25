@@ -1,108 +1,58 @@
-<div class="profile-page" style="max-width: 1080px; margin: var(--space-8) auto; padding: 0 var(--space-4);">
+<main class="profile-landing-page">
   <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
-    <div class="alert alert-error" style="padding: var(--space-4); margin-bottom: var(--space-6); background: #fee2e2; border: 2px solid #ef4444; border-radius: var(--radius-sm); color: #991b1b; font-family: var(--font-body);">
-      <%= errorMessage %>
-    </div>
+    <div class="alert alert-error profile-page-alert" role="alert"><%= errorMessage %></div>
   <% } %>
 
-  <div class="profile-header-card" style="padding: var(--space-6); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card); margin-bottom: var(--space-8);">
-    <div style="display: flex; gap: var(--space-6); align-items: flex-start; flex-wrap: wrap;">
-      <div class="profile-avatar" style="width: 96px; height: 96px; border-radius: 50%; border: var(--border-thick); overflow: hidden; background-color: var(--color-paper-muted); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 2rem;">
+  <section class="profile-landing-card" aria-labelledby="profile-display-name">
+    <div class="profile-landing-identity">
+      <div class="profile-landing-avatar">
         <% if (profile.avatarUrl) { %>
-          <img src="<%= profile.avatarUrl %>" alt="<%= profile.displayName || profile.username %>'s avatar" style="width: 100%; height: 100%; object-fit: cover;">
+          <img src="<%= profile.avatarUrl %>" alt="<%= profile.displayName || profile.username %>'s avatar">
         <% } else { %>
-          <span><%= (profile.displayName || profile.username).substring(0, 1).toUpperCase() %></span>
+          <span aria-hidden="true"><%= (profile.displayName || profile.username).substring(0, 1).toUpperCase() %></span>
         <% } %>
       </div>
 
-      <div class="profile-details" style="flex: 1; min-width: 240px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4);">
-          <div>
-            <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-1);"><%= profile.displayName || profile.username %></h1>
-            <p style="font-family: var(--font-mono); color: var(--color-ink-muted); font-size: var(--font-size-sm);">@<%= profile.username %></p>
-          </div>
-
-          <% if (isOwner) { %>
-            <div style="display: flex; gap: var(--space-2);">
-              <a href="/listings" class="btn btn-outline btn-sm">My Listings</a>
-              <a href="/profile/edit" class="btn btn-primary btn-sm">Edit Profile</a>
-            </div>
-          <% } %>
-        </div>
+      <div class="profile-landing-details">
+        <p class="profile-eyebrow">DIGGER PROFILE</p>
+        <h1 id="profile-display-name"><%= profile.displayName || profile.username %></h1>
+        <p class="profile-username">@<%= profile.username %></p>
 
         <% if (profile.location) { %>
-          <p style="margin-top: var(--space-3); font-size: var(--font-size-sm); color: var(--color-ink-muted); display: flex; align-items: center; gap: var(--space-1);">
-            📍 <%= profile.location %>
-          </p>
-        <% } %>
-
-        <% if (profile.websiteUrl) { %>
-          <p style="margin-top: var(--space-2); font-size: var(--font-size-sm); color: var(--color-ink-muted); display: flex; align-items: center; gap: var(--space-1);">
-            🔗 <a href="<%= profile.websiteUrl %>" target="_blank" rel="noopener noreferrer" style="color: var(--color-rust-accessible); text-decoration: underline;"><%= profile.websiteUrl %></a>
-          </p>
+          <p class="profile-location"><%- include('../partials/icon', { name: 'position-marker', size: '1rem', ariaHidden: true }) %><span><%= profile.location %></span></p>
         <% } %>
 
         <% if (profile.bio) { %>
-          <p style="margin-top: var(--space-4); line-height: 1.5; font-size: var(--font-size-md);"><%= profile.bio %></p>
+          <p class="profile-bio"><%= profile.bio %></p>
         <% } %>
 
-        <div style="margin-top: var(--space-4); font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
-          Member since <%= new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) %>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Seller's Published Record Drops -->
-  <% const sellerListings = (typeof listings !== 'undefined' && listings) ? listings : ((typeof crateListings !== 'undefined' && crateListings) ? crateListings : []); %>
-  <% const pageInfo = (typeof pagination !== 'undefined' && pagination) ? pagination : { totalCount: sellerListings.length, page: 1, limit: 12, totalPages: 1 }; %>
-  <section class="seller-listings-section">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); border-bottom: var(--border-thick); padding-bottom: var(--space-2);">
-      <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin: 0; display: flex; align-items: center; gap: var(--space-2);">
-        📦 <%= isOwner ? 'My Crate (Active Listings)' : (profile.displayName || profile.username) + "'s Crate" %>
-      </h2>
-      <span style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">
-        <%= pageInfo.totalCount %> <%= pageInfo.totalCount === 1 ? 'record' : 'records' %> for sale
-      </span>
-    </div>
-
-    <% if (sellerListings && sellerListings.length > 0) { %>
-      <div class="listing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-6); margin-bottom: var(--space-8);">
-        <% sellerListings.forEach(function(item) { %>
-          <%- include('../partials/listing-card', { listing: item }) %>
-        <% }); %>
-      </div>
-
-      <% if (pageInfo.totalPages > 1) { %>
-        <nav class="pagination-nav" aria-label="Seller crate pagination" style="display: flex; justify-content: center; align-items: center; gap: var(--space-4); margin-top: var(--space-8);">
-          <% const profilePath = `/profiles/${encodeURIComponent(profile.username)}`; %>
-
-          <% if (pageInfo.page > 1) { %>
-            <a href="<%= profilePath %>?page=<%= pageInfo.page - 1 %>" class="btn btn-outline btn-sm">
-              ← Previous
-            </a>
-          <% } %>
-
-          <span style="font-family: var(--font-mono); font-size: var(--font-size-sm);">
-            Page <%= pageInfo.page %> of <%= pageInfo.totalPages %>
-          </span>
-
-          <% if (pageInfo.page < pageInfo.totalPages) { %>
-            <a href="<%= profilePath %>?page=<%= pageInfo.page + 1 %>" class="btn btn-outline btn-sm">
-              Next →
-            </a>
-          <% } %>
-        </nav>
-      <% } %>
-    <% } else { %>
-      <div class="empty-state" style="padding: var(--space-8); text-align: center; border: 2px dashed var(--color-border-subtle); border-radius: var(--radius-md);">
-        <p style="color: var(--color-ink-muted);">
-          <%= isOwner ? 'Your crate is currently empty.' : '@' + profile.username + ' has no active record drops available right now.' %>
-        </p>
-        <% if (isOwner) { %>
-          <a href="/drop/new" class="btn btn-primary btn-sm" style="margin-top: var(--space-3);">+ Drop a Record for Sale</a>
+        <% if (profile.websiteUrl) { %>
+          <p class="profile-website"><a href="<%= profile.websiteUrl %>" target="_blank" rel="noopener noreferrer"><%= profile.websiteUrl %></a></p>
         <% } %>
+
+        <p class="profile-member-since">Member since <%= new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) %></p>
+      </div>
+    </div>
+
+    <% if (isOwner) { %>
+      <div class="profile-owner-actions">
+        <a href="/profile/edit" class="btn btn-outline btn-sm">Edit Profile</a>
       </div>
     <% } %>
   </section>
-</div>
+
+  <% const recordCount = typeof crateTotalCount === 'number' ? crateTotalCount : 0; %>
+  <a class="profile-crate-entry" href="/profiles/<%= encodeURIComponent(profile.username) %>/crate" aria-label="View <%= profile.displayName || profile.username %>'s Crate, <%= recordCount %> published <%= recordCount === 1 ? 'record' : 'records' %>">
+    <span class="profile-crate-entry-icon" aria-hidden="true">
+      <%- include('../partials/icon', { name: 'cardboard-box-closed', size: '2rem', ariaHidden: true }) %>
+    </span>
+    <span class="profile-crate-entry-main">
+      <span class="profile-crate-entry-title">Crate</span>
+      <span class="profile-crate-entry-count"><%= recordCount %> published <%= recordCount === 1 ? 'record' : 'records' %></span>
+      <span class="profile-crate-entry-action">View Crate</span>
+    </span>
+    <span class="profile-crate-entry-chevron" aria-hidden="true">
+      <%- include('../partials/icon', { name: 'next-button', size: '1.25rem', ariaHidden: true }) %>
+    </span>
+  </a>
+</main>
