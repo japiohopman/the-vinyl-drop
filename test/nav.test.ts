@@ -68,6 +68,42 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     `;
   }
 
+  async function renderProfilePage(view: 'show' | 'crate', isOwner = false): Promise<string> {
+    const templatePath = path.join(__dirname, '../views/profiles', view === 'show' ? 'show.ejs' : 'crate.ejs');
+    const renderedView = await ejs.renderFile(templatePath, {
+      getIconSvg,
+      title: 'Profile layout test',
+      profile: {
+        id: 'test-profile',
+        username: 'a_very_long_username_for_small_screens',
+        displayName: 'The Extraordinarily Long Collector Name',
+        avatarUrl: null,
+        websiteUrl: 'https://example.test',
+        bio: 'A long but realistic profile bio about finding rare soul, jazz and funk records in local crates.',
+        location: 'Amsterdam Oost',
+        createdAt: new Date('2024-01-01T00:00:00Z'),
+      },
+      isOwner,
+      crateTotalCount: 12,
+      listings: [],
+      pagination: { totalCount: 12, page: 1, limit: 12, totalPages: 1 },
+    }, { filename: templatePath });
+
+    return `
+      <!doctype html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>${stylesheetContent}</style>
+      </head>
+      <body>
+        <main class="main-content container">${renderedView}</main>
+      </body>
+      </html>
+    `;
+  }
+
   it('renders primary desktop destinations and mobile bottom bar for unauthenticated users', async () => {
     const html = await renderNav({
       currentPath: '/',
@@ -319,6 +355,44 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(await page.locator('#full-inbox-page').textContent()).toContain('Inbox - Messages');
   });
 
+
+  it('keeps profile landing and empty Crate usable without horizontal overflow across phone, tablet, and desktop widths', async () => {
+    const viewports = [320, 360, 375, 414, 768, 1280];
+
+    for (const view of ['show', 'crate'] as const) {
+      const html = await renderProfilePage(view, view === 'crate');
+      for (const width of viewports) {
+        await page.setViewportSize({ width, height: 820 });
+        await page.setContent(html);
+
+        const measurements = await page.evaluate(() => {
+          const root = document.querySelector('.profile-landing-page, .profile-crate-page');
+          const crateLink = document.querySelector('.profile-crate-entry');
+          const bounds = root?.getBoundingClientRect();
+          const linkBounds = crateLink?.getBoundingClientRect();
+          return {
+            viewportWidth: window.innerWidth,
+            documentWidth: document.documentElement.scrollWidth,
+            rootRight: bounds?.right ?? 0,
+            crateLinkHeight: linkBounds?.height ?? 0,
+            crateLinkRight: linkBounds?.right ?? 0,
+          };
+        });
+
+        expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.viewportWidth);
+        expect(measurements.rootRight).toBeLessThanOrEqual(measurements.viewportWidth);
+        if (view === 'show') {
+          expect(measurements.crateLinkHeight).toBeGreaterThanOrEqual(44);
+          expect(measurements.crateLinkRight).toBeLessThanOrEqual(measurements.viewportWidth);
+          expect(await page.locator('.profile-crate-entry').getAttribute('href')).toBe('/profiles/a_very_long_username_for_small_screens/crate');
+          expect(await page.locator('.listing-grid').count()).toBe(0);
+        } else {
+          expect(await page.locator('.profile-crate-empty').isVisible()).toBe(true);
+          expect(await page.locator('a[href="/drop/new"]').count()).toBe(1);
+        }
+      }
+    }
+  });
 
   it('sets aria-current="page" on active route links', async () => {
     const html = await renderNav({
