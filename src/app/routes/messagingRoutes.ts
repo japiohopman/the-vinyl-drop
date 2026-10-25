@@ -27,6 +27,8 @@ router.get('/widget/data', getWidgetInbox);
 router.get('/widget/:conversationId', getWidgetConversation);
 router.get('/', getInboxPage);
 router.post('/listing/:listingId', validateSameOrigin, postStartConversation);
+// Preserve the original Listing message-start URL for existing callers.
+router.post('/:listingId', validateSameOrigin, postStartConversation);
 router.post('/profile/:profileId', validateSameOrigin, postStartDirectConversation);
 router.post('/saved-people/:profileId', validateSameOrigin, postSavedPersonAction);
 router.post('/:conversationId/send', validateSameOrigin, postSendMessage);

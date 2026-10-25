@@ -389,6 +389,46 @@ export async function verifyMigrations(): Promise<void> {
      VALUES ($1::uuid, 'listing', $2::uuid, $3::uuid, $4::uuid);`,
     [messagingFixture.conversationId, messagingFixture.publishedListingId, messagingFixture.buyerId, messagingFixture.sellerId]
   );
+  const directConversationId = 'da555555-5555-4555-8555-555555555555';
+  await pg.query(
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'direct', NULL, $2::uuid, $3::uuid);`,
+    [directConversationId, messagingFixture.buyerId, messagingFixture.outsiderId]
+  );
+  await expectTriggerRejection(
+    'Duplicate direct participant pair',
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'direct', NULL, $2::uuid, $3::uuid);`,
+    ['da666666-6666-4666-8666-666666666666', messagingFixture.buyerId, messagingFixture.outsiderId],
+    'conversations_direct_pair_unique_idx'
+  );
+  await expectTriggerRejection(
+    'Reversed direct participant pair',
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'direct', NULL, $2::uuid, $3::uuid);`,
+    ['da777777-7777-4777-8777-777777777777', messagingFixture.outsiderId, messagingFixture.buyerId],
+    'Direct conversations require a null listing and an ordered participant pair'
+  );
+  await pg.query(
+    `INSERT INTO public.messages (id, conversation_id, sender_id, body)
+     VALUES ('db222222-2222-4222-8222-222222222222', $1::uuid, $2::uuid, 'Direct DB trigger check');`,
+    [directConversationId, messagingFixture.buyerId]
+  );
+  const directSequence = await pg.query<{ message_seq: string }>(
+    'SELECT message_seq::text FROM public.messages WHERE conversation_id = $1::uuid;',
+    [directConversationId]
+  );
+  if (directSequence.rows.length !== 1 || directSequence.rows[0].message_seq !== '1') {
+    throw new Error('Direct conversation message trigger failed to allocate its first sequence number');
+  }
+  await expectTriggerRejection(
+    'Nonparticipant direct message sender',
+    `INSERT INTO public.messages (id, conversation_id, sender_id, body)
+     VALUES ('db333333-3333-4333-8333-333333333333', $1::uuid, $2::uuid, 'Must be rejected');`,
+    [directConversationId, messagingFixture.sellerId],
+    'not a participant'
+  );
+
   await expectTriggerRejection(
     'Seller opening a conversation on their own listing',
     `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
