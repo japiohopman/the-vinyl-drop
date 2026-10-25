@@ -11,7 +11,6 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
   const cssPath = path.join(__dirname, '../public/css/style.css');
   const stylesheetContent = fs.readFileSync(cssPath, 'utf8');
   const messagingWidgetScriptContent = fs.readFileSync(path.join(__dirname, '../public/js/messaging-widget.js'), 'utf8');
-  const messagingWidgetScriptContent = fs.readFileSync(path.join(__dirname, '../public/js/messaging-widget.js'), 'utf8');
 
   let browser: Browser;
   let page: Page;
