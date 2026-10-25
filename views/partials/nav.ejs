@@ -47,7 +47,7 @@
             <a href="/profile/edit" class="desktop-you-menu-item">Edit Profile</a>
             <a href="/listings" class="desktop-you-menu-item">My Listings</a>
             <% if (isMessagingEnabled) { %>
-              <a href="/messages" class="desktop-you-menu-item">Messages</a>
+              <a href="/messages" class="desktop-you-menu-item messaging-widget-trigger" data-messaging-widget-trigger aria-expanded="false" aria-haspopup="dialog">Messages <span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span></a>
             <% } %>
           </div>
           <div class="desktop-you-menu-footer">
@@ -151,7 +151,7 @@
               </li>
               <% if (isMessagingEnabled) { %>
                 <li>
-                  <a href="/messages" class="mobile-you-action-link"><span>Messages</span></a>
+                  <a href="/messages" class="mobile-you-action-link messaging-widget-trigger" data-messaging-widget-trigger aria-expanded="false" aria-haspopup="dialog"><span>Messages</span><span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span></a>
                 </li>
               <% } %>
             </ul>
@@ -200,6 +200,37 @@
     <% } %>
   </div>
 </div>
+
+<% if (user && isMessagingEnabled) { %>
+<section
+  class="messaging-floating-window"
+  id="messaging-floating-window"
+  role="region"
+  aria-label="Private messages"
+  aria-hidden="true"
+  hidden
+>
+  <header class="messaging-floating-header">
+    <button
+      type="button"
+      class="messaging-floating-drag-handle"
+      data-message-drag-handle
+      aria-label="Move Messages window with arrow keys"
+      title="Drag to move; use arrow keys to reposition"
+    >
+      <span class="messaging-floating-title" data-message-widget-title>Messages</span>
+    </button>
+    <div class="messaging-floating-controls">
+      <button type="button" class="messaging-floating-control" data-message-minimize aria-label="Minimize Messages window" title="Minimize">−</button>
+      <button type="button" class="messaging-floating-control" data-message-close aria-label="Close Messages window" title="Close">×</button>
+    </div>
+  </header>
+  <div class="messaging-floating-content" data-message-widget-content aria-live="polite">
+    <p class="messaging-widget-loading">Loading messages…</p>
+  </div>
+  <p class="messaging-widget-status visually-hidden" data-message-widget-status role="status" aria-live="polite"></p>
+</section>
+<% } %>
 
 <script>
   (function() {
