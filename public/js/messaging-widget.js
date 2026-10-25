@@ -32,7 +32,7 @@
     var button = element('button', 'messaging-widget-action' + (className ? ' ' + className : ''), text);
     button.type = 'button';
     if (label) button.setAttribute('aria-label', label);
-    button.addEventListener('click', handler);
+    button.addEventListener('click', function (event) { handler(button, event); });
     return button;
   }
 
@@ -286,7 +286,10 @@
     panel.classList.remove('is-minimized');
     activeConversationId = null;
     triggers.forEach(function (item) { item.setAttribute('aria-expanded', 'false'); });
-    if (restoreFocus && lastTrigger && document.contains(lastTrigger)) lastTrigger.focus();
+    if (restoreFocus && lastTrigger && document.contains(lastTrigger)) {
+      var focusTarget = lastTrigger.closest('[hidden]') ? document.getElementById('desktop-you-trigger') : lastTrigger;
+      if (focusTarget) focusTarget.focus();
+    }
   }
 
   function toggleMinimized() {
