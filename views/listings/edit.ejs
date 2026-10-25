@@ -120,7 +120,7 @@
         <% } %>
         <% if (photos.length < 5) { %>
           <form action="/listings/<%= listing.id %>/photos" method="POST" enctype="multipart/form-data" class="photo-upload-form">
-            <div class="photo-upload-field">
+            <div class="photo-upload-field photo-role-field">
               <label for="newPhotoRole">Photo type</label>
               <select id="newPhotoRole" name="role" required class="form-control">
                 <option value="">Choose a photo type</option>
