@@ -19,6 +19,67 @@ export function messagingFeatureGuard(req: Request, res: Response, next: NextFun
   next();
 }
 
+export async function getWidgetUnreadCount(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const unreadCount = await messagingService.getUnreadCountForUser(req.user!.id);
+    res.set('Cache-Control', 'no-store').json({ unreadCount });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getWidgetInbox(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const summaries = await messagingService.getInboxForUser(req.user!.id);
+    const conversations = summaries.map((item) => ({
+      id: item.conversation.id,
+      releaseArtist: item.release.artist,
+      releaseTitle: item.release.title,
+      otherParticipant: item.otherParticipant.displayName || `@${item.otherParticipant.username}`,
+      lastMessage: item.lastMessage?.body ?? '',
+      lastMessageAt: item.lastMessage?.createdAt ?? null,
+      unreadCount: item.unreadCount,
+    }));
+    const unreadCount = conversations.reduce((total, item) => total + item.unreadCount, 0);
+    res.set('Cache-Control', 'no-store').json({ unreadCount, conversations });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getWidgetConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const { conversationId } = req.params;
+    const { conversation, messages, userRole } = await messagingService.getConversationDetail(
+      conversationId,
+      userId
+    );
+    const otherParticipant = userRole === 'buyer' ? conversation.seller : conversation.buyer;
+    res.set('Cache-Control', 'no-store').json({
+      id: conversation.id,
+      release: {
+        artist: conversation.release.artist,
+        title: conversation.release.title,
+      },
+      listing: { id: conversation.listing.id },
+      userRole,
+      otherParticipant: {
+        username: otherParticipant.username,
+        displayName: otherParticipant.displayName,
+      },
+      messages: messages.map((message) => ({
+        id: message.id,
+        isOwnMessage: message.senderId === userId,
+        body: message.body,
+        createdAt: message.createdAt,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getInboxPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const userId = req.user!.id;
@@ -81,7 +142,19 @@ export async function postSendMessage(req: Request, res: Response, next: NextFun
       throw new ValidationError('Message body must be a text string');
     }
 
-    await messagingService.sendMessage(conversationId, userId, body);
+    const message = await messagingService.sendMessage(conversationId, userId, body);
+    if (req.is('application/json')) {
+      res.set('Cache-Control', 'no-store').status(201).json({
+        status: 'ok',
+        message: {
+          id: message.id,
+          isOwnMessage: true,
+          body: message.body,
+          createdAt: message.createdAt,
+        },
+      });
+      return;
+    }
     res.redirect(`/messages/${conversationId}`);
   } catch (err) {
     next(err);
