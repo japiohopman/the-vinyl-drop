@@ -174,8 +174,12 @@
 
   function renderConversation(conversation) {
     content.replaceChildren();
-    title.textContent = conversation.release.artist + ' — ' + conversation.release.title;
-    panel.setAttribute('aria-label', 'Conversation about ' + conversation.release.title);
+    title.textContent = conversation.title || (conversation.release
+      ? conversation.release.artist + ' — ' + conversation.release.title
+      : 'Direct conversation with @' + conversation.otherParticipant.username);
+    panel.setAttribute('aria-label', conversation.release
+      ? 'Conversation about ' + conversation.release.title
+      : 'Direct conversation with @' + conversation.otherParticipant.username);
 
     var toolbar = element('div', 'messaging-widget-toolbar');
     toolbar.appendChild(actionButton('← Conversations', '', loadInbox, 'Back to conversations'));
