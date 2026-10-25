@@ -4847,6 +4847,10 @@ select.form-control {
   gap: var(--space-1);
   min-width: 0;
 }
+/* Explicitly honour hidden on flex form fields, including role selection. */
+.photo-upload-field[hidden] {
+  display: none !important;
+}
 .photo-upload-field[hidden] {
   display: none !important;
 }
