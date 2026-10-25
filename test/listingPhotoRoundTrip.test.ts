@@ -117,7 +117,7 @@ describe('Seller cover photo HTTP round trip', () => {
       .set('Origin', new URL(config.APP_BASE_URL).origin)
       .attach('photo', frontImage, { filename: 'physical-front.jpg', contentType: 'image/jpeg' })
       .field('role', 'front_cover')
-      .field('altText', 'Physical front sleeve');
+      .field('altText', '');
 
     expect(frontResponse.status).toBe(302);
     expect(frontResponse.headers.location).toBe(`/listings/${listingId}/edit`);
@@ -127,7 +127,7 @@ describe('Seller cover photo HTTP round trip', () => {
       .set('Origin', new URL(config.APP_BASE_URL).origin)
       .attach('photo', backImage, { filename: 'physical-back.jpg', contentType: 'image/jpeg' })
       .field('role', 'back_cover')
-      .field('altText', 'Physical back sleeve');
+      .field('altText', '');
 
     expect(backResponse.status).toBe(302);
     expect(backResponse.headers.location).toBe(`/listings/${listingId}/edit`);
@@ -138,8 +138,8 @@ describe('Seller cover photo HTTP round trip', () => {
 
     expect(front).toBeDefined();
     expect(back).toBeDefined();
-    expect(front?.altText).toBe('Physical front sleeve');
-    expect(back?.altText).toBe('Physical back sleeve');
+    expect(front?.altText).toBe('Front cover of the record sleeve');
+    expect(back?.altText).toBe('Back cover of the record sleeve');
     expect(front?.storagePath).toBeTruthy();
     expect(back?.storagePath).toBeTruthy();
     expect(front?.storagePath).not.toBe(back?.storagePath);
@@ -155,10 +155,14 @@ describe('Seller cover photo HTTP round trip', () => {
 
     const listingPhotoForm = await supertest(app).get(`/listings/${listingId}/edit`);
     expect(listingPhotoForm.status).toBe(200);
-    expect(listingPhotoForm.text).toContain('Photos of this physical copy');
-    expect(listingPhotoForm.text).toContain('Choose what the photo shows before selecting the file.');
-    expect(listingPhotoForm.text).toContain('Front and back cover photos are cropped to a square');
-    expect(listingPhotoForm.text).toContain('Existing photos are not recropped automatically');
+    expect(listingPhotoForm.text).toContain('Front cover');
+    expect(listingPhotoForm.text).toContain('Back cover');
+    expect(listingPhotoForm.text).toContain('Additional photos');
+    expect(listingPhotoForm.text).toContain('Photo help');
+    expect(listingPhotoForm.text).toContain('Choose photo');
+    expect(listingPhotoForm.text).toContain('square-cover-cropper');
+    expect(listingPhotoForm.text).not.toContain('Photos of this physical copy');
+    expect(listingPhotoForm.text).not.toContain('Alt-tekst');
     expect(listingPhotoForm.text).toContain('name="photo"');
     expect(listingPhotoForm.text).toContain('name="role"');
 

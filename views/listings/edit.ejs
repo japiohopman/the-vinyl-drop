@@ -1,15 +1,13 @@
 <div class="edit-listing-page" style="max-width: 750px; margin: var(--space-8) auto;">
-  <a href="/listings" class="mobile-back-control" aria-label="Back to My Listings" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: none;"><span class="back-control-icon" aria-hidden="true">←</span><span class="back-control-label">Back to My Listings</span></a>
+  <div class="card edit-listing-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card);">
+    <header class="edit-listing-header">
+      <h1>Edit listing</h1>
+      <a href="/listings/<%= listing.id %>/preview" class="btn btn-outline btn-sm edit-listing-preview-link">Preview <span aria-hidden="true">→</span></a>
+    </header>
 
-  <div class="card" style="padding: var(--space-6); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card); margin-top: var(--space-4);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
-      <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin: 0;">Edit Listing & Photos</h1>
-      <a href="/listings/<%= listing.id %>/preview" class="btn btn-outline btn-sm">Preview Listing &rarr;</a>
-    </div>
-
-    <div style="padding: var(--space-3); background: var(--color-surface-bg); border-radius: var(--radius-sm); margin-bottom: var(--space-6); border: 1px solid var(--color-border-subtle);">
-      <h2 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin: 0;"><%= release.title %></h2>
-      <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0;">by <%= release.artist %> (<%= release.releaseYear || '' %>)</p>
+    <div class="edit-listing-record">
+      <h2><%= release.title %></h2>
+      <p>by <%= release.artist %><% if (release.releaseYear) { %> · <%= release.releaseYear %><% } %></p>
     </div>
 
     <%- include('../partials/form-errors', {
@@ -18,115 +16,187 @@
         : Object.values(form.fieldErrors)
     }) %>
 
-    <!-- Photos Management Section -->
-    <section class="photos-section" style="margin-bottom: var(--space-8); padding-bottom: var(--space-6); border-bottom: 2px dashed var(--color-border-subtle);">
-      <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-2);">Photos of this physical copy — used by Crate Dig</h2>
-      <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin-bottom: var(--space-4);">
-        Upload up to 5 photos of the exact copy offered in this listing (JPEG, PNG or WebP; max 5 MiB each). Choose what the photo shows before selecting the file. Front and back cover photos are cropped to a square so both sides line up in Crate Dig; other photo types keep their original framing so condition details are not cut off. Existing photos are not recropped automatically — if an older cover is still portrait, delete it and upload it again with the correct cover role.
-      </p>
-
-      <!-- Photos Upload Form -->
-      <% if (photos.length < 5) { %>
-        <form action="/listings/<%= listing.id %>/photos" method="POST" enctype="multipart/form-data" style="margin-bottom: var(--space-6); background: var(--color-surface-bg); padding: var(--space-4); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-sm);">
-          <div style="display: flex; flex-direction: column; gap: var(--space-3);">
-            <label for="newPhotoRole" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm);">What is shown in this photo? (required)</label>
-            <select id="newPhotoRole" name="role" required class="form-control">
-              <option value="">Choose a photo type</option>
-              <% newPhotoRoles.forEach(function(role) { %>
-                <option value="<%= role %>" data-guidance="<%= photoRoleGuidance[role] %>"><%= photoRoleLabels[role] %></option>
-              <% }); %>
-            </select>
-            <p id="photo-role-guidance" role="status" aria-live="polite" style="font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0;">
-              Choose a photo type first. Front and back covers show a square crop preview; other photo types keep their original framing.
-            </p>
-            <details>
-              <summary>Photo tips by type</summary>
-              <ul style="padding-left: var(--space-5); font-size: var(--font-size-sm);">
-                <% newPhotoRoles.forEach(function(role) { %>
-                  <li style="margin: var(--space-2) 0;"><strong><%= photoRoleLabels[role] %>:</strong> <%= photoRoleGuidance[role] %></li>
-                <% }); %>
-              </ul>
-            </details>
-            <label for="photoFile" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm);">
-              Choose one photo (JPEG, PNG or WebP; max 5 MiB)
-            </label>
-            <input type="file" id="photoFile" name="photo" accept="image/jpeg,image/png,image/webp" required style="font-family: var(--font-mono); font-size: var(--font-size-sm);" />
-            <div id="photo-selection-preview" hidden style="padding: var(--space-3); margin-top: var(--space-1); border: 1px solid var(--color-border-subtle); background: var(--color-white);">
-              <p id="selected-photo-info" role="status" aria-live="polite" style="font-size: var(--font-size-xs); color: var(--color-ink-muted); margin: 0 0 var(--space-2);"></p>
-              <img id="photo-original-preview" alt="Preview of the selected photo" hidden style="width: 100%; max-width: 320px; max-height: 240px; object-fit: contain; background: var(--color-paper-muted);" />
-            </div>
-            <div id="square-cover-cropper" hidden style="padding: var(--space-3); border: 1px solid var(--color-border-subtle); background: var(--color-white);">
-              <p style="font-size: var(--font-size-sm); margin-bottom: var(--space-2);">
-                <strong id="square-cover-title">Square cover crop</strong> —
-                <span id="square-cover-description">Adjust the crop until the complete sleeve fits inside the square. The preview below is what will be saved.</span>
-              </p>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); align-items: start;">
-                <div>
-                  <p style="font-size: var(--font-size-xs); font-weight: 700; margin-bottom: var(--space-1);">Original photo and crop area</p>
-                  <canvas id="square-cover-source" aria-label="Original photo with square crop area" style="display:block;width:100%;max-width:320px;height:auto;background:var(--color-paper-muted);"></canvas>
-                </div>
-                <div>
-                  <p style="font-size: var(--font-size-xs); font-weight: 700; margin-bottom: var(--space-1);">Square image that will be saved</p>
-                  <canvas id="square-cover-result" aria-label="Preview of the saved square photo" width="512" height="512" style="display:block;width:100%;max-width:280px;height:auto;background:var(--color-paper-muted);"></canvas>
-                </div>
-              </div>
-              <label for="square-cover-zoom" style="display:block;font-size:var(--font-size-sm);font-weight:700;margin-top:var(--space-3);">Zoom</label>
-              <input id="square-cover-zoom" type="range" min="55" max="100" value="100" step="1" style="width:100%;max-width:320px;min-height:32px;" />
-              <label for="square-cover-position" style="display:block;font-size:var(--font-size-sm);font-weight:700;margin-top:var(--space-2);">Position along the long edge</label>
-              <input id="square-cover-position" type="range" min="0" max="100" value="50" step="1" style="width:100%;max-width:320px;min-height:32px;" />
-              <p id="square-cover-status" role="status" aria-live="polite" style="font-size:var(--font-size-xs);color:var(--color-ink-muted);margin-top:var(--space-2);">Review the complete sleeve and the square preview before uploading.</p>
-            </div>
-            <label for="altText" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm);">Alt-tekst (beschrijf wat zichtbaar is)</label>
-            <input type="text" id="altText" name="altText" placeholder="Bijvoorbeeld: Side A-label of slijtage aan de rechterhoek" required maxlength="250" style="padding: 8px; border: var(--border-thin); font-size: var(--font-size-sm);" />
-            <div>
-              <%- include('../partials/button', {
-                text: 'Upload Photo',
-                type: 'submit',
-                variant: 'primary',
-                size: 'sm'
-              }) %>
-            </div>
-          </div>
-        </form>
-      <% } else { %>
-        <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-brand-primary); font-weight: bold;">
-          Maximum limit of 5 photos reached for this listing.
-        </p>
-      <% } %>
-
-      <% if (photoError) { %>
-        <p role="alert" style="padding: var(--space-3); border: 1px solid var(--color-error-border); color: var(--color-error-border); margin-bottom: var(--space-4);"><%= photoError %></p>
-      <% } %>
-
-      <!-- Existing Photos List -->
-      <% if (photos.length > 0) { %>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-4);">
-          <% photos.forEach(function(photo, idx) { %>
-            <div class="listing-photo-card" data-photo-role="<%= photo.role %>" style="border: var(--border-thin); padding: var(--space-2); border-radius: var(--radius-sm); background: #fff; text-align: center;">
-              <img class="listing-photo-image" src="<%= photo.publicUrl %>" alt="<%= photo.altText || 'Listing photo' %>" style="width: 100%; height: 140px; object-fit: cover; border-radius: var(--radius-xs);" />
-              <p class="listing-photo-square-warning" hidden role="status" style="font-size: var(--font-size-xs); color: var(--color-error-border); text-align: left; margin: var(--space-2) 0;"></p>
-              <div style="margin-top: var(--space-2); font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
-                Foto #<%= idx + 1 %> · <strong><%= photoRoleLabels[photo.role] || photoRoleLabels.legacy_unclassified %></strong>
-              </div>
-              <p style="font-size: var(--font-size-xs); color: var(--color-ink-muted); text-align: left;"><%= photoRoleGuidance[photo.role] || photoRoleGuidance.legacy_unclassified %></p>
-              <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/role" method="POST" style="margin-top: var(--space-2); text-align: left;">
-                <label for="photo-role-<%= idx %>" style="font-size: var(--font-size-xs); font-weight: 700;">Classificeer / wijzig fotorol</label>
-                <select id="photo-role-<%= idx %>" name="role" required class="form-control">
-                  <% photoRoles.forEach(function(role) { %>
-                    <option value="<%= role %>" <%= role === photo.role ? 'selected' : '' %>><%= photoRoleLabels[role] %></option>
-                  <% }); %>
-                </select>
-                <button type="submit" class="btn btn-outline btn-sm" style="width: 100%; margin-top: var(--space-2);">Rol opslaan</button>
-              </form>
-              <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/delete" method="POST" style="margin-top: var(--space-2);">
-                <button type="submit" class="btn btn-outline btn-sm" style="width: 100%; color: #dc2626; border-color: #fca5a5;">Delete Photo</button>
-              </form>
-            </div>
-          <% }); %>
+    <!-- Physical-copy photo management -->
+    <section class="photos-section">
+      <div class="photo-section-header">
+        <div>
+          <h2>Photos</h2>
+          <p>Show the exact copy you are selling.</p>
         </div>
-      <% } else { %>
-        <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">No photos uploaded yet.</p>
+        <button type="button" class="btn btn-outline btn-sm photo-help-trigger" data-open-photo-help>
+          <span class="photo-help-mark" aria-hidden="true">?</span>
+          <span>Help</span>
+        </button>
+      </div>
+
+      <% const frontCoverPhoto = photos.find(function(photo) { return photo.role === 'front_cover'; }); %>
+      <% const backCoverPhoto = photos.find(function(photo) { return photo.role === 'back_cover'; }); %>
+      <% const coverSlots = [ { role: 'front_cover', label: 'Front cover', photo: frontCoverPhoto }, { role: 'back_cover', label: 'Back cover', photo: backCoverPhoto } ]; %>
+      <% const displayedCoverPhotoIds = [frontCoverPhoto && frontCoverPhoto.id, backCoverPhoto && backCoverPhoto.id].filter(Boolean); %>
+
+      <div class="cover-photo-slots">
+        <% coverSlots.forEach(function(slot) { %>
+          <article class="cover-photo-slot<%= slot.photo ? ' is-filled' : ' is-empty' %>" data-cover-slot="<%= slot.role %>">
+            <div class="cover-photo-slot-heading">
+              <%- include('../partials/icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>
+              <h3><%= slot.label %></h3>
+            </div>
+            <% if (slot.photo) { %>
+              <div class="cover-photo-preview listing-photo-card" data-photo-role="<%= slot.role %>">
+                <img class="listing-photo-image" src="<%= slot.photo.publicUrl %>" alt="<%= slot.photo.altText || slot.label + ' photo' %>" />
+                <p class="listing-photo-square-warning" hidden role="status"></p>
+              </div>
+              <p class="cover-photo-status"><span aria-hidden="true">✓</span> Photo added</p>
+              <form action="/listings/<%= listing.id %>/photos/<%= slot.photo.id %>/delete" method="POST" class="cover-photo-remove-form">
+                <button type="submit" class="photo-remove-link">Remove photo</button>
+              </form>
+            <% } else { %>
+              <div class="cover-photo-empty-state">
+                <%- include('../partials/icon', { name: 'photo-camera', size: '1.75rem', ariaHidden: true }) %>
+                <span>No photo yet</span>
+              </div>
+              <% if (photos.length < 5) { %>
+                <button type="button" class="btn btn-primary cover-photo-upload-button" data-open-photo-upload data-photo-role="<%= slot.role %>" data-photo-label="<%= slot.label %>">Upload <%= slot.label.toLowerCase() %></button>
+              <% } else { %>
+                <p class="photo-limit-note">Photo limit reached</p>
+              <% } %>
+            <% } %>
+          </article>
+        <% }); %>
+      </div>
+
+      <% if (photos.length >= 5) { %>
+        <p class="photo-limit-note" role="status">You have reached the 5-photo limit. Remove a photo before adding another.</p>
       <% } %>
+
+      <details class="additional-photos">
+        <summary>Additional photos <span>Optional</span></summary>
+        <p class="additional-photos-copy">Add the record, inside sleeve, inserts, or condition details.</p>
+
+        <% const additionalPhotos = photos.filter(function(photo) { return displayedCoverPhotoIds.indexOf(photo.id) === -1; }); %>
+        <% if (additionalPhotos.length > 0) { %>
+          <div class="additional-photo-list">
+            <% additionalPhotos.forEach(function(photo, idx) { %>
+              <article class="additional-photo-card listing-photo-card" data-photo-role="<%= photo.role %>">
+                <img class="listing-photo-image" src="<%= photo.publicUrl %>" alt="<%= photo.altText || 'Additional listing photo' %>" />
+                <div class="additional-photo-meta">
+                  <strong><%= photoRoleLabels[photo.role] || photoRoleLabels.legacy_unclassified %></strong>
+                  <% if (photo.altText) { %><span><%= photo.altText %></span><% } %>
+                  <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/role" method="POST" class="additional-photo-role-form">
+                    <label for="photo-role-<%= idx %>">Photo type</label>
+                    <select id="photo-role-<%= idx %>" name="role" required class="form-control">
+                      <% photoRoles.forEach(function(role) { %>
+                        <option value="<%= role %>" <%= role === photo.role ? 'selected' : '' %>><%= photoRoleLabels[role] %></option>
+                      <% }); %>
+                    </select>
+                    <button type="submit" class="btn btn-outline btn-sm">Save type</button>
+                  </form>
+                  <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/delete" method="POST">
+                    <button type="submit" class="photo-remove-link">Remove photo</button>
+                  </form>
+                </div>
+              </article>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <p class="additional-photos-empty">No additional photos yet.</p>
+        <% } %>
+
+        <% if (photos.length < 5) { %>
+          <button type="button" class="btn btn-outline additional-photo-add-button" data-open-photo-upload data-photo-role="optional" data-photo-label="Additional photo">
+            <%- include('../partials/icon', { name: 'photo-camera', size: '1rem', ariaHidden: true }) %>
+            Add another photo
+          </button>
+        <% } %>
+      </details>
+
+      <dialog id="photoUploadDialog" class="photo-dialog" aria-labelledby="photoUploadTitle" data-open-on-load="<%= photoError ? 'true' : 'false' %>">
+        <div class="photo-dialog-header">
+          <h2 id="photoUploadTitle">Upload a photo</h2>
+          <button type="button" class="photo-dialog-close" data-close-photo-upload aria-label="Close upload dialog">×</button>
+        </div>
+        <% if (photoError) { %>
+          <p role="alert" class="photo-dialog-error"><%= photoError %></p>
+        <% } %>
+        <% if (photos.length < 5) { %>
+          <form action="/listings/<%= listing.id %>/photos" method="POST" enctype="multipart/form-data" class="photo-upload-form">
+            <div class="photo-upload-field photo-role-field">
+              <label for="newPhotoRole">Photo type</label>
+              <select id="newPhotoRole" name="role" required class="form-control">
+                <option value="">Choose a photo type</option>
+                <% newPhotoRoles.forEach(function(role) { %>
+                  <option value="<%= role %>" data-guidance="<%= photoRoleGuidance[role] %>"><%= photoRoleLabels[role] %></option>
+                <% }); %>
+              </select>
+            </div>
+            <p id="photo-role-guidance" role="status" aria-live="polite" class="photo-role-guidance">Choose what the photo shows.</p>
+
+            <div class="photo-upload-field">
+              <span class="photo-upload-label">Photo file</span>
+              <input type="file" id="photoFile" name="photo" accept="image/jpeg,image/png,image/webp" required class="photo-file-input" aria-describedby="photoFileHelp selected-photo-info" />
+              <label for="photoFile" class="btn btn-outline photo-file-trigger" tabindex="-1">
+                <%- include('../partials/icon', { name: 'photo-camera', size: '1.125rem', ariaHidden: true }) %>
+                <span>Choose photo</span>
+              </label>
+              <span id="photoFileHelp" class="photo-file-help">JPEG, PNG or WebP · max 5 MiB</span>
+            </div>
+
+            <div id="photo-selection-preview" class="photo-selection-preview" hidden>
+              <p id="selected-photo-info" role="status" aria-live="polite"></p>
+              <img id="photo-original-preview" alt="Preview of the selected photo" hidden />
+            </div>
+
+            <div id="square-cover-cropper" class="square-cover-cropper" hidden>
+              <p class="square-cover-intro">
+                <strong id="square-cover-title">Square cover crop</strong>
+                <span id="square-cover-description">Keep the complete sleeve inside the square.</span>
+              </p>
+              <div class="square-cover-preview-grid">
+                <div>
+                  <p>Original and crop area</p>
+                  <canvas id="square-cover-source" aria-label="Original photo with square crop area"></canvas>
+                </div>
+                <div>
+                  <p>Saved square preview</p>
+                  <canvas id="square-cover-result" aria-label="Preview of the saved square photo" width="512" height="512"></canvas>
+                </div>
+              </div>
+              <label for="square-cover-zoom">Zoom</label>
+              <input id="square-cover-zoom" type="range" min="55" max="100" value="100" step="1" />
+              <label for="square-cover-position">Position along the long edge</label>
+              <input id="square-cover-position" type="range" min="0" max="100" value="50" step="1" />
+              <p id="square-cover-status" role="status" aria-live="polite" class="square-cover-status">Review the square preview before uploading.</p>
+            </div>
+
+            <div class="photo-upload-field">
+              <label for="altText">Alt text <span>(describe what is visible)</span></label>
+              <input type="text" id="altText" name="altText" placeholder="Describe what is visible, e.g. a crease or Side A label" required maxlength="250" />
+            </div>
+
+            <div class="photo-dialog-actions">
+              <button type="button" class="btn btn-outline" data-close-photo-upload>Cancel</button>
+              <button type="submit" class="btn btn-primary">Upload photo</button>
+            </div>
+          </form>
+        <% } %>
+      </dialog>
+
+      <dialog id="photoHelpDialog" class="photo-dialog photo-help-dialog" aria-labelledby="photoHelpTitle">
+        <div class="photo-dialog-header">
+          <h2 id="photoHelpTitle">Photo help</h2>
+          <button type="button" class="photo-dialog-close" data-close-photo-help aria-label="Close photo help">×</button>
+        </div>
+        <ul class="photo-help-list">
+          <li>Use the front and back slots for the two sides of the actual sleeve.</li>
+          <li>For covers, keep the whole sleeve visible in the square crop. The preview is what Crate Dig will show.</li>
+          <li>Use Additional photos for the record, label, inserts, or visible wear.</li>
+          <li>Upload JPEG, PNG, or WebP images up to 5 MiB each. You can add up to five photos.</li>
+          <li>Describe important visible details in the alt text. Avoid glare and do not hide damage.</li>
+        </ul>
+        <div class="photo-dialog-actions">
+          <button type="button" class="btn btn-primary" data-close-photo-help>Got it</button>
+        </div>
+      </dialog>
     </section>
 
     <!-- Details Update Form -->

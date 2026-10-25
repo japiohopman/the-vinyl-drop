@@ -84,7 +84,24 @@ describe('Square cover photo cropper', () => {
   }
 
   async function selectPortrait(role: string): Promise<void> {
-    await page.locator('#newPhotoRole').selectOption(role, { timeout: 5000 });
+    const uploadDialog = page.locator('#photoUploadDialog');
+    if (await uploadDialog.isVisible()) {
+      await page.locator('[data-close-photo-upload]').first().click({ timeout: 5000 });
+    }
+
+    const slot = role === 'front_cover' || role === 'back_cover'
+      ? '[data-open-photo-upload][data-photo-role="' + role + '"]'
+      : '[data-open-photo-upload][data-photo-role="optional"]';
+    if (role !== 'front_cover' && role !== 'back_cover') {
+      const additional = page.locator('details.additional-photos');
+      if (!(await additional.evaluate((element) => (element as unknown as { open: boolean }).open))) {
+        await additional.locator('summary').click({ timeout: 5000 });
+      }
+    }
+    await page.locator(slot).click({ timeout: 5000 });
+    if (role !== 'front_cover' && role !== 'back_cover') {
+      await page.locator('#newPhotoRole').selectOption(role, { timeout: 5000 });
+    }
     await page.locator('#altText').fill('Full physical sleeve cover', { timeout: 5000 });
     await page.locator('#photoFile').setInputFiles({
       name: role + '-phone-photo.jpg',
@@ -92,6 +109,54 @@ describe('Square cover photo cropper', () => {
       buffer: portraitImage,
     }, { timeout: 5000 });
   }
+
+  it('shows existing cover photos in their own slots and opens help on demand', async () => {
+    await renderEditPage({
+      id: '22222222-2222-4222-8222-222222222222',
+      role: 'front_cover',
+      publicUrl: 'data:image/jpeg;base64,' + portraitImage.toString('base64'),
+      altText: 'Front sleeve with a small crease',
+    });
+
+    expect(await page.locator('[data-cover-slot="front_cover"] .listing-photo-image').count()).toBe(1);
+    expect(await page.locator('[data-cover-slot="back_cover"] .listing-photo-image').count()).toBe(0);
+    expect(await page.locator('[data-cover-slot="back_cover"] [data-open-photo-upload]').count()).toBe(1);
+    expect(await page.locator('[data-cover-slot="front_cover"] .cover-photo-status').textContent()).toContain('Photo added');
+
+    const pageHtml = await page.content();
+    expect(pageHtml).not.toContain('Alt-tekst');
+    expect(pageHtml).not.toContain('Voorkant');
+    expect(pageHtml).toContain('Front cover');
+    expect(pageHtml).toContain('Back cover');
+    expect(pageHtml).toContain('Choose photo');
+
+    await page.locator('[data-open-photo-help]').click({ timeout: 5000 });
+    expect(await page.locator('#photoHelpDialog').isVisible()).toBe(true);
+    expect(await page.locator('#photoHelpDialog').innerText()).toContain('whole sleeve visible');
+    await page.keyboard.press('Escape');
+    expect(await page.locator('#photoHelpDialog').isVisible()).toBe(false);
+  });
+
+  it('preselects the matching role when a front or back slot opens the uploader', async () => {
+    await renderEditPage();
+    await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
+    expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
+    expect(await page.locator('#newPhotoRole').inputValue()).toBe('front_cover');
+    expect(await page.locator('.photo-role-field').isVisible()).toBe(false);
+    expect(await page.locator('#photo-role-guidance').isVisible()).toBe(false);
+    expect(await page.evaluate("document.activeElement && document.activeElement.classList.contains('photo-file-trigger')")).toBe(true);
+    expect(await page.locator('#altText').getAttribute('placeholder')).toBe('Front cover of the record sleeve');
+    expect(await page.locator('#altText').getAttribute('required')).toBeNull();
+    expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload front cover');
+
+    await page.locator('[data-close-photo-upload]').first().click({ timeout: 5000 });
+    await page.locator('[data-open-photo-upload][data-photo-role="back_cover"]').click({ timeout: 5000 });
+    expect(await page.locator('#newPhotoRole').inputValue()).toBe('back_cover');
+    expect(await page.locator('.photo-role-field').isVisible()).toBe(false);
+    expect(await page.locator('#altText').getAttribute('placeholder')).toBe('Back cover of the record sleeve');
+    expect(await page.locator('#altText').getAttribute('required')).toBeNull();
+    expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload back cover');
+  });
 
   it('crops both front and back cover uploads to the exact square preview', async () => {
     await renderEditPage();
@@ -122,10 +187,13 @@ describe('Square cover photo cropper', () => {
         const layout = await page.evaluate("(() => {" +
           "const root = document.querySelector('.photos-section');" +
           "const cropper = document.querySelector('#square-cover-cropper');" +
+          "const coverSlots = document.querySelector('.cover-photo-slots');" +
           "return {" +
             "viewport: window.innerWidth," +
             "section: root.getBoundingClientRect().width," +
             "sectionScroll: root.scrollWidth," +
+            "coverSlots: coverSlots.getBoundingClientRect().width," +
+            "coverSlotsScroll: coverSlots.scrollWidth," +
             "cropper: cropper.getBoundingClientRect().width," +
             "cropperScroll: cropper.scrollWidth" +
           "};" +
@@ -133,10 +201,13 @@ describe('Square cover photo cropper', () => {
           viewport: number;
           section: number;
           sectionScroll: number;
+          coverSlots: number;
+          coverSlotsScroll: number;
           cropper: number;
           cropperScroll: number;
         };
         expect(layout.sectionScroll).toBeLessThanOrEqual(layout.section + 1);
+        expect(layout.coverSlotsScroll).toBeLessThanOrEqual(layout.coverSlots + 1);
         expect(layout.cropperScroll).toBeLessThanOrEqual(layout.cropper + 1);
       }
 
@@ -170,6 +241,10 @@ describe('Square cover photo cropper', () => {
   it('shows a normal preview without cropping condition/detail photos', async () => {
     await renderEditPage();
     await selectPortrait('detail');
+    expect(await page.locator('.photo-role-field').isVisible()).toBe(true);
+    expect(await page.locator('#photo-role-guidance').isVisible()).toBe(true);
+    expect(await page.locator('#altText').getAttribute('placeholder')).toBe('Describe what is visible, e.g. a crease or Side A label');
+    expect(await page.locator('#altText').getAttribute('required')).not.toBeNull();
 
     await page.waitForFunction(
       "document.querySelector('#photo-original-preview').naturalWidth === 300",
@@ -184,7 +259,7 @@ describe('Square cover photo cropper', () => {
   it('blocks a cover upload when the selected image cannot be previewed', async () => {
     await renderEditPage();
     await page.evaluate("document.querySelector('form[action$=\\\"/photos\\\"]').addEventListener('submit', event => event.preventDefault(), true)");
-    await page.locator('#newPhotoRole').selectOption('back_cover');
+    await page.locator('[data-open-photo-upload][data-photo-role="back_cover"]').click({ timeout: 5000 });
     await page.locator('#altText').fill('Back cover photo');
     await page.locator('#photoFile').setInputFiles({
       name: 'broken-back-cover.jpg',

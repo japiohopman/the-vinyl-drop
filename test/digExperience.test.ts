@@ -96,7 +96,6 @@ describe('Compact mobile back navigation', () => {
   it('uses explicit destinations and accessible labels on the affected record screens', () => {
     const digView = fs.readFileSync(path.join(process.cwd(), 'views/browse/dig.ejs'), 'utf8');
     const listingDetailView = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
-    const listingEditView = fs.readFileSync(path.join(process.cwd(), 'views/listings/edit.ejs'), 'utf8');
     const listingPreviewView = fs.readFileSync(path.join(process.cwd(), 'views/listings/preview.ejs'), 'utf8');
     const releaseSelectView = fs.readFileSync(path.join(process.cwd(), 'views/listings/select-release.ejs'), 'utf8');
     const mobileStyles = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
@@ -106,11 +105,18 @@ describe('Compact mobile back navigation', () => {
     expect(listingDetailView).toContain('href="/dig"');
     expect(listingDetailView).toContain('aria-label="Back to Dig results"');
 
-    for (const view of [listingEditView, listingPreviewView, releaseSelectView]) {
+    for (const view of [listingPreviewView, releaseSelectView]) {
       expect(view).toContain('class="mobile-back-control"');
       expect(view).toContain('aria-label="Back to My Listings"');
       expect(view).toContain('href="/listings"');
     }
+
+    const listingEditView = fs.readFileSync(path.join(process.cwd(), 'views/listings/edit.ejs'), 'utf8');
+    expect(listingEditView).not.toContain('class="mobile-back-control"');
+
+    const sharedHeader = fs.readFileSync(path.join(process.cwd(), 'views/partials/header.ejs'), 'utf8');
+    expect(sharedHeader).toContain('isListingEditPage');
+    expect(sharedHeader).toContain('href="/listings" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to My Listings"');
 
     expect(mobileStyles).toContain('.mobile-back-control');
     expect(mobileStyles).toContain('min-height: 44px;');
