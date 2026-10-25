@@ -172,7 +172,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
 
       const buttons = await page.locator('.create-listing-actions .btn').evaluateAll(
         "(elements) => elements.map((element) => { const rect = element.getBoundingClientRect(); return { x: rect.x, right: rect.right, width: rect.width, height: rect.height }; })"
-      );
+      ) as Array<{ x: number; right: number; width: number; height: number }>;
       expect(buttons).toHaveLength(2);
       for (const box of buttons) {
         expect(box.x).toBeGreaterThanOrEqual(0);
@@ -180,7 +180,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
         expect(box.height).toBeGreaterThanOrEqual(44);
       }
 
-      const dimensions = await page.evaluate("({document: document.documentElement.scrollWidth, body: document.body.scrollWidth})");
+      const dimensions = await page.evaluate("({document: document.documentElement.scrollWidth, body: document.body.scrollWidth})") as { document: number; body: number };
       expect(dimensions.document).toBeLessThanOrEqual(width + 1);
       expect(dimensions.body).toBeLessThanOrEqual(width + 1);
     }
