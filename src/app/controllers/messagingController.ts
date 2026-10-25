@@ -146,7 +146,7 @@ export async function postSendMessage(req: Request, res: Response, next: NextFun
     }
 
     const message = await messagingService.sendMessage(conversationId, userId, body);
-    if (req.is('application/json')) {
+    if (req.get('X-Messaging-Widget') === '1') {
       res.set('Cache-Control', 'no-store').status(201).json({
         status: 'ok',
         message: {
