@@ -5839,3 +5839,18 @@ select.form-control {
     padding: var(--space-3);
   }
 }
+
+
+/* Keep profile layouts inside the main flex item on narrow viewports. */
+.main-content {
+  min-width: 0;
+}
+.profile-landing-page,
+.profile-crate-page,
+.profile-landing-card,
+.profile-crate-entry,
+.profile-crate-empty {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
