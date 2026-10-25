@@ -1,6 +1,7 @@
 <%
   const headerPath = typeof currentPath !== 'undefined' ? currentPath : '/';
   const isCustomReleasePage = headerPath === '/releases/new';
+  const isListingCreatePage = headerPath === '/listings/create';
   const isListingEditPage = headerPath.startsWith('/listings/') && headerPath.endsWith('/edit') && headerPath.split('/').length === 4;
   const isDigRoute = headerPath === '/dig';
   const digItemCount = typeof items !== 'undefined' && Array.isArray(items) ? items.length : 0;
@@ -47,6 +48,10 @@
         </a>
       <% } else if (isCustomReleasePage) { %>
         <a href="/drop/new" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to catalog search">
+          <span class="mobile-context-back-icon" aria-hidden="true">←</span>
+        </a>
+      <% } else if (isListingCreatePage) { %>
+        <a href="/drop/new" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to release search">
           <span class="mobile-context-back-icon" aria-hidden="true">←</span>
         </a>
       <% } else if (isListingEditPage) { %>
