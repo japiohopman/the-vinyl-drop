@@ -113,6 +113,13 @@
       "when": 1792600000000,
       "tag": "0015_dismiss_completed_listings",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792962300000,
+      "tag": "0016_direct_conversations_and_sequence_cursor",
+      "breakpoints": true
     }
   ]
 }
