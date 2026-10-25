@@ -1,0 +1,62 @@
+<main class="profile-crate-page">
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <div class="alert alert-error profile-page-alert" role="alert"><%= errorMessage %></div>
+  <% } %>
+
+  <% const sellerListings = (typeof listings !== 'undefined' && listings) ? listings : []; %>
+  <% const pageInfo = (typeof pagination !== 'undefined' && pagination) ? pagination : { totalCount: sellerListings.length, page: 1, limit: 12, totalPages: 1 }; %>
+  <% const profileUrl = `/profiles/${encodeURIComponent(profile.username)}`; %>
+
+  <a href="<%= profileUrl %>" class="profile-crate-back">
+    <span aria-hidden="true">←</span> Back to @<%= profile.username %>
+  </a>
+
+  <header class="profile-crate-header">
+    <div>
+      <p class="profile-eyebrow">PUBLIC COLLECTION</p>
+      <h1><%= isOwner ? 'My Crate' : (profile.displayName || profile.username) + "'s Crate" %></h1>
+      <p class="profile-crate-count"><%= pageInfo.totalCount %> published <%= pageInfo.totalCount === 1 ? 'record' : 'records' %></p>
+    </div>
+    <% if (isOwner) { %>
+      <a href="/listings" class="btn btn-outline btn-sm">Manage Listings</a>
+    <% } %>
+  </header>
+
+  <% if (sellerListings.length > 0) { %>
+    <section aria-label="<%= profile.displayName || profile.username %>'s published records">
+      <div class="listing-grid profile-crate-grid">
+        <% sellerListings.forEach(function(item) { %>
+          <%- include('../partials/listing-card', { listing: item }) %>
+        <% }); %>
+      </div>
+
+      <% if (pageInfo.totalPages > 1) { %>
+        <nav class="pagination-nav profile-crate-pagination" aria-label="Crate pagination">
+          <% if (pageInfo.page > 1) { %>
+            <a href="<%= profileUrl %>/crate?page=<%= pageInfo.page - 1 %>" class="btn btn-outline btn-sm">← Previous</a>
+          <% } %>
+
+          <span>Page <%= pageInfo.page %> of <%= pageInfo.totalPages %></span>
+
+          <% if (pageInfo.page < pageInfo.totalPages) { %>
+            <a href="<%= profileUrl %>/crate?page=<%= pageInfo.page + 1 %>" class="btn btn-outline btn-sm">Next →</a>
+          <% } %>
+        </nav>
+      <% } %>
+    </section>
+  <% } else { %>
+    <section class="profile-crate-empty" aria-live="polite">
+      <span class="profile-crate-empty-icon" aria-hidden="true">
+        <%- include('../partials/icon', { name: 'cardboard-box-closed', size: '2.5rem', ariaHidden: true }) %>
+      </span>
+      <% if (isOwner) { %>
+        <h2>Your Crate is empty</h2>
+        <p>Published records you put up for sale will appear here. Drafts stay in My Listings.</p>
+        <a href="/drop/new" class="btn btn-primary btn-sm">+ Drop a Record</a>
+      <% } else { %>
+        <h2>This Crate is empty for now</h2>
+        <p>@<%= profile.username %> has no active record drops available right now.</p>
+      <% } %>
+    </section>
+  <% } %>
+</main>
