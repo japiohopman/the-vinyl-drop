@@ -313,6 +313,7 @@
       const label = trigger.dataset.photoLabel || 'Additional photo';
       const isDirectCoverSlot = requestedRole === 'front_cover' || requestedRole === 'back_cover';
       if (roleField instanceof HTMLElement) roleField.hidden = isDirectCoverSlot;
+      roleGuidance.hidden = isDirectCoverSlot;
       roleSelect.value = requestedRole === 'optional' ? '' : requestedRole;
       fileInput.value = '';
       if (altTextInput instanceof HTMLInputElement) altTextInput.value = '';
