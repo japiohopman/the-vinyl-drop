@@ -2789,6 +2789,9 @@ select.form-control {
   height: 100%;
   object-fit: contain;
 }
+.activity-record-artwork[hidden] {
+  display: none !important;
+}
 .activity-artwork-terminal-fallback {
   box-sizing: border-box;
   display: flex;
