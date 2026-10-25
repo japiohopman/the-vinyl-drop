@@ -305,11 +305,11 @@ export async function verifyMigrations(): Promise<void> {
      FROM pg_proc p
      JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'public'
-       AND p.proname IN ('check_conversation_validity', 'check_message_sender_validity')
+       AND p.proname IN ('check_conversation_validity', 'check_message_sender_validity', 'prevent_message_identity_mutation')
      ORDER BY p.proname;`
   );
-  if (messagingFunctionsRes.rows.length !== 2) {
-    throw new Error(`Expected both public messaging trigger functions, found ${messagingFunctionsRes.rows.length}`);
+  if (messagingFunctionsRes.rows.length !== 3) {
+    throw new Error(`Expected all three public messaging trigger functions, found ${messagingFunctionsRes.rows.length}`);
   }
   for (const fn of messagingFunctionsRes.rows) {
     if (!fn.empty_search_path) {
@@ -317,7 +317,9 @@ export async function verifyMigrations(): Promise<void> {
     }
     const qualifiedReferences = fn.proname === 'check_conversation_validity'
       ? ['public.listings', 'public.listing_status']
-      : ['public.conversations'];
+      : fn.proname === 'check_message_sender_validity'
+        ? ['public.conversations']
+        : [];
     for (const reference of qualifiedReferences) {
       if (!fn.function_body.includes(reference)) {
         throw new Error(`Messaging trigger function '${fn.proname}' does not schema-qualify '${reference}'`);
