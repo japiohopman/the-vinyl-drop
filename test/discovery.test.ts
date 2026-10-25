@@ -760,6 +760,26 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('href="/profiles/alice_records/crate?page=1"');
     });
 
+    it('redirects an out-of-range Crate page to the last page when published records exist', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+        items: [],
+        totalCount: 15,
+        page: 3,
+        limit: 12,
+        totalPages: 2,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/profiles/alice_records/crate?page=3');
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/profiles/alice_records/crate?page=2');
+      expect(listingService.getSellerPublishedListings).toHaveBeenCalledWith('alice_records', { page: 3 });
+      expect(res.text).not.toContain('Your Crate is empty');
+      expect(res.text).not.toContain('This Crate is empty for now');
+    });
+
     it('returns 400 for malformed page parameters on both legacy profile and Crate URLs', async () => {
       (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
 
