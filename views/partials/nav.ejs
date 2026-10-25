@@ -205,8 +205,9 @@
 <section
   class="messaging-floating-window"
   id="messaging-floating-window"
-  role="region"
-  aria-label="Private messages"
+  role="dialog"
+  aria-modal="false"
+  aria-labelledby="messaging-floating-title"
   aria-hidden="true"
   hidden
 >
@@ -218,7 +219,7 @@
       aria-label="Move Messages window with arrow keys"
       title="Drag to move; use arrow keys to reposition"
     >
-      <span class="messaging-floating-title" data-message-widget-title>Messages</span>
+      <span class="messaging-floating-title" id="messaging-floating-title" data-message-widget-title>Messages</span>
     </button>
     <div class="messaging-floating-controls">
       <button type="button" class="messaging-floating-control" data-message-minimize aria-label="Minimize Messages window" title="Minimize">−</button>
