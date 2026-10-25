@@ -5268,7 +5268,7 @@ select.form-control {
   min-height: 1.35rem;
   padding: 0 0.3rem;
   border-radius: 999px;
-  background: var(--color-rust);
+  background: var(--color-rust-accessible);
   color: var(--color-white);
   font-family: var(--font-mono);
   font-size: var(--font-size-3xs);
@@ -5291,12 +5291,13 @@ select.form-control {
   flex-direction: column;
   width: min(380px, calc(100vw - 24px));
   max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 48px);
   max-height: min(560px, calc(100dvh - 48px));
   min-height: 180px;
   overflow: hidden;
   border: var(--border-thick);
   border-radius: var(--radius-sm);
-  background: var(--color-surface-card);
+  background: var(--color-white);
   color: var(--color-ink);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.24);
 }
