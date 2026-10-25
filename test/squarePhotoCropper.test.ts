@@ -92,6 +92,12 @@ describe('Square cover photo cropper', () => {
     const slot = role === 'front_cover' || role === 'back_cover'
       ? '[data-open-photo-upload][data-photo-role="' + role + '"]'
       : '[data-open-photo-upload][data-photo-role="optional"]';
+    if (role !== 'front_cover' && role !== 'back_cover') {
+      const additional = page.locator('details.additional-photos');
+      if (!(await additional.evaluate((element) => element.open))) {
+        await additional.locator('summary').click({ timeout: 5000 });
+      }
+    }
     await page.locator(slot).click({ timeout: 5000 });
     await page.locator('#newPhotoRole').selectOption(role, { timeout: 5000 });
     await page.locator('#altText').fill('Full physical sleeve cover', { timeout: 5000 });
