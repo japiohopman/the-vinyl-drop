@@ -366,13 +366,22 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         await page.setContent(html);
 
         const measurements = await page.evaluate(() => {
-          const root = document.querySelector('.profile-landing-page, .profile-crate-page');
-          const crateLink = document.querySelector('.profile-crate-entry');
+          const browser = globalThis as unknown as {
+            document: {
+              querySelector: (selector: string) => {
+                getBoundingClientRect: () => { right: number; height: number };
+              } | null;
+              documentElement: { scrollWidth: number };
+            };
+            window: { innerWidth: number };
+          };
+          const root = browser.document.querySelector('.profile-landing-page, .profile-crate-page');
+          const crateLink = browser.document.querySelector('.profile-crate-entry');
           const bounds = root?.getBoundingClientRect();
           const linkBounds = crateLink?.getBoundingClientRect();
           return {
-            viewportWidth: window.innerWidth,
-            documentWidth: document.documentElement.scrollWidth,
+            viewportWidth: browser.window.innerWidth,
+            documentWidth: browser.document.documentElement.scrollWidth,
             rootRight: bounds?.right ?? 0,
             crateLinkHeight: linkBounds?.height ?? 0,
             crateLinkRight: linkBounds?.right ?? 0,
