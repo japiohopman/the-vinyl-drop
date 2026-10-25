@@ -9,6 +9,7 @@ import {
   getInboxPage,
   getConversationPage,
   postStartConversation,
+  postStartDirectConversation,
   postSendMessage,
   postMarkRead,
   postArchiveConversation,
@@ -24,10 +25,11 @@ router.get('/widget/unread-count', getWidgetUnreadCount);
 router.get('/widget/data', getWidgetInbox);
 router.get('/widget/:conversationId', getWidgetConversation);
 router.get('/', getInboxPage);
-router.get('/:conversationId', getConversationPage);
 router.post('/listing/:listingId', validateSameOrigin, postStartConversation);
+router.post('/profile/:profileId', validateSameOrigin, postStartDirectConversation);
 router.post('/:conversationId/send', validateSameOrigin, postSendMessage);
 router.post('/:conversationId/read', validateSameOrigin, postMarkRead);
 router.post('/:conversationId/archive', validateSameOrigin, postArchiveConversation);
+router.get('/:conversationId', getConversationPage);
 
 export default router;
