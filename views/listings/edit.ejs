@@ -36,6 +36,7 @@
       <% const frontCoverPhoto = photos.find(function(photo) { return photo.role === 'front_cover'; }); %>
       <% const backCoverPhoto = photos.find(function(photo) { return photo.role === 'back_cover'; }); %>
       <% const coverSlots = [ { role: 'front_cover', label: 'Front cover', photo: frontCoverPhoto }, { role: 'back_cover', label: 'Back cover', photo: backCoverPhoto } ]; %>
+      <% const displayedCoverPhotoIds = [frontCoverPhoto && frontCoverPhoto.id, backCoverPhoto && backCoverPhoto.id].filter(Boolean); %>
 
       <div class="cover-photo-slots">
         <% coverSlots.forEach(function(slot) { %>
@@ -76,7 +77,7 @@
         <summary>Additional photos <span>Optional</span></summary>
         <p class="additional-photos-copy">Add the record, inside sleeve, inserts, or condition details.</p>
 
-        <% const additionalPhotos = photos.filter(function(photo) { return photo.role !== 'front_cover' && photo.role !== 'back_cover'; }); %>
+        <% const additionalPhotos = photos.filter(function(photo) { return displayedCoverPhotoIds.indexOf(photo.id) === -1; }); %>
         <% if (additionalPhotos.length > 0) { %>
           <div class="additional-photo-list">
             <% additionalPhotos.forEach(function(photo, idx) { %>
