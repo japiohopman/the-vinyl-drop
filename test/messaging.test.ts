@@ -375,6 +375,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
           .set('Cookie', ['sb-access-token=buyer-token'])
           .set('Origin', config.APP_BASE_URL)
           .set('Accept', 'application/json')
+          .set('X-Messaging-Widget', '1')
           .send({ body: 'Sent from the floating widget' });
 
         expect(res.status).toBe(201);
