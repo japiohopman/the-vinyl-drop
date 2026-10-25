@@ -154,8 +154,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(createHtml).toContain('name="releaseId" value="release-mobile-test"');
     expect(createHtml).toContain('class="icon icon-save"');
     expect(createHtml).toContain('class="icon icon-close"');
-    expect(createHtml).toContain('class="create-listing-submit"');
-    expect(createHtml).toContain('class="create-listing-cancel"');
+    expect(createHtml).toContain('class="btn btn-primary btn-md create-listing-submit"');
+    expect(createHtml).toContain('class="btn btn-outline btn-md create-listing-cancel"');
 
     for (const width of [320, 360, 375, 414]) {
       await page.setViewportSize({ width, height: 780 });
