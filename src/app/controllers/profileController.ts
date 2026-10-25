@@ -133,6 +133,20 @@ export async function getPublicProfileCrate(req: Request, res: Response, next: N
     }
 
     const listingsResult = await getSellerPublishedListings(profile.username, { page: parsedPage.page });
+
+    // Keep an out-of-range but valid page request from looking like an empty Crate.
+    if (
+      listingsResult.totalCount > 0 &&
+      listingsResult.totalPages > 0 &&
+      parsedPage.page > listingsResult.totalPages
+    ) {
+      res.redirect(
+        302,
+        `/profiles/${encodeURIComponent(profile.username)}/crate?page=${listingsResult.totalPages}`
+      );
+      return;
+    }
+
     renderWithLayout(res, 'profiles/crate', {
       title,
       profile,
