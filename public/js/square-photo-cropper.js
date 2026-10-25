@@ -316,7 +316,19 @@
       roleGuidance.hidden = isDirectCoverSlot;
       roleSelect.value = requestedRole === 'optional' ? '' : requestedRole;
       fileInput.value = '';
-      if (altTextInput instanceof HTMLInputElement) altTextInput.value = '';
+      if (altTextInput instanceof HTMLInputElement) {
+        altTextInput.value = '';
+        if (requestedRole === 'front_cover') {
+          altTextInput.placeholder = 'Front cover of the record sleeve';
+          altTextInput.required = false;
+        } else if (requestedRole === 'back_cover') {
+          altTextInput.placeholder = 'Back cover of the record sleeve';
+          altTextInput.required = false;
+        } else {
+          altTextInput.placeholder = 'Describe what is visible, e.g. a crease or Side A label';
+          altTextInput.required = true;
+        }
+      }
       delete form.dataset.squareCropReady;
       updateRoleGuidance();
       preparePreview();
