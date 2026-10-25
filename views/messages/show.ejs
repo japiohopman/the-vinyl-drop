@@ -1,5 +1,4 @@
 <div class="conversation-container" style="max-width: 800px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
-  <!-- Top Navigation & Actions Bar -->
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
     <a href="/messages" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: underline;">
       ← Back to Inbox
@@ -9,24 +8,36 @@
     </form>
   </div>
 
-  <!-- Linked Listing Banner -->
-  <div class="linked-listing-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); margin-bottom: var(--space-6); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3);">
-    <div>
-      <div style="font-family: var(--font-mono); font-size: var(--font-size-2xs); text-transform: uppercase; color: var(--color-ink-muted);">
-        Listing Inquiry (<%= userRole === 'buyer' ? 'Seller: @' + conversation.seller.username : 'Buyer: @' + conversation.buyer.username %>)
+  <% if (conversation.conversationType === 'listing' && conversation.listing && conversation.release) { %>
+    <div class="linked-listing-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); margin-bottom: var(--space-6); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3);">
+      <div>
+        <div style="font-family: var(--font-mono); font-size: var(--font-size-2xs); text-transform: uppercase; color: var(--color-ink-muted);">
+          Listing Inquiry (<%= userRole === 'buyer' ? 'Seller' : 'Buyer' %>: @<%= otherParticipant.username %>)
+        </div>
+        <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin: var(--space-1) 0 0 0;">
+          <%= conversation.release.artist %> — <%= conversation.release.title %>
+        </h2>
       </div>
-      <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin: var(--space-1) 0 0 0;">
-        <%= conversation.release.artist %> — <%= conversation.release.title %>
-      </h2>
+      <div>
+        <a href="/listings/<%= conversation.listing.id %>" class="btn btn-outline btn-sm">View Listing Details</a>
+      </div>
     </div>
-    <div>
-      <a href="/listings/<%= conversation.listing.id %>" class="btn btn-outline btn-sm">
-        View Listing Details
-      </a>
+  <% } else { %>
+    <div class="linked-listing-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); margin-bottom: var(--space-6); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3);">
+      <div>
+        <div style="font-family: var(--font-mono); font-size: var(--font-size-2xs); text-transform: uppercase; color: var(--color-ink-muted);">
+          Private direct conversation
+        </div>
+        <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin: var(--space-1) 0 0 0;">
+          <%= otherParticipant.displayName || ('@' + otherParticipant.username) %>
+        </h2>
+      </div>
+      <div>
+        <a href="/profiles/<%= encodeURIComponent(otherParticipant.username) %>" class="btn btn-outline btn-sm">View Profile</a>
+      </div>
     </div>
-  </div>
+  <% } %>
 
-  <!-- Message Thread Stream -->
   <div class="messages-stream" style="display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-6);">
     <% if (!messages || messages.length === 0) { %>
       <div style="padding: var(--space-6); text-align: center; color: var(--color-ink-muted); font-family: var(--font-mono); font-size: var(--font-size-sm); border: 2px dashed var(--color-border); border-radius: var(--radius-sm);">
@@ -37,7 +48,7 @@
         <% const isSelf = msg.senderId === user.id; %>
         <div class="message-bubble-wrapper" style="display: flex; flex-direction: column; align-items: <%= isSelf ? 'flex-end' : 'flex-start' %>;">
           <div style="font-family: var(--font-mono); font-size: var(--font-size-2xs); color: var(--color-ink-muted); margin-bottom: 2px;">
-            <%= isSelf ? 'You' : (userRole === 'buyer' ? '@' + conversation.seller.username : '@' + conversation.buyer.username) %> • <%= new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+            <%= isSelf ? 'You' : ('@' + otherParticipant.username) %> • <%= new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
           </div>
           <div class="message-bubble" style="max-width: 80%; padding: var(--space-3) var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); font-size: var(--font-size-base); line-height: var(--line-height-base); white-space: pre-wrap; word-break: break-word; background: <%= isSelf ? 'var(--color-rust-accessible)' : 'var(--color-white)' %>; color: <%= isSelf ? 'var(--color-white)' : 'var(--color-ink)' %>;">
             <%= msg.body %>
@@ -47,13 +58,10 @@
     <% } %>
   </div>
 
-  <!-- Send Message Form -->
   <div class="send-message-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white);">
     <form action="/messages/<%= conversation.id %>/send" method="POST" style="display: flex; flex-direction: column; gap: var(--space-3);">
       <div>
-        <label for="message-body" style="font-family: var(--font-display); font-size: var(--font-size-sm); display: block; margin-bottom: var(--space-1);">
-          Send Message
-        </label>
+        <label for="message-body" style="font-family: var(--font-display); font-size: var(--font-size-sm); display: block; margin-bottom: var(--space-1);">Send Message</label>
         <textarea
           id="message-body"
           name="body"
@@ -67,26 +75,24 @@
           Plain text, up to 4,000 characters
         </div>
       </div>
-
       <div style="display: flex; justify-content: flex-end;">
-        <button type="submit" class="btn btn-primary">
-          Send Message
-        </button>
+        <button type="submit" class="btn btn-primary">Send Message</button>
       </div>
     </form>
   </div>
 </div>
 
 <script>
-  // Mark conversation read on load
+  // The GET route is side-effect free; this same-origin POST explicitly advances the current user's read cursor.
   (function() {
     try {
       fetch('/messages/<%= conversation.id %>/read', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
       });
-    } catch (e) {}
+    } catch (e) {
+      // The user can still mark the thread read through the messaging widget or by reopening it.
+    }
   })();
 </script>

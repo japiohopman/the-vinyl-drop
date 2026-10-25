@@ -5,6 +5,7 @@ import { profileUpdateSchema } from '../../validators/profile';
 import { formatZodFormErrors, FormViewModel } from '../view-models/formViewModel';
 import { renderWithLayout } from '../utils/render';
 import { setFlashCookie } from '../middleware/flash';
+import { config } from '../../config/env';
 
 export async function getCurrentProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -92,6 +93,8 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
     renderWithLayout(res, 'profiles/show', {
       title,
       profile,
+      user: req.user,
+      messagingEnabled: config.MESSAGING_ENABLED,
       isOwner: Boolean(req.user && req.user.id === profile.id),
       crateTotalCount: listingsResult.totalCount,
     }, next);

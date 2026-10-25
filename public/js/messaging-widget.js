@@ -132,7 +132,7 @@
     var list = element('ul', 'messaging-widget-list');
     conversations.forEach(function (conversation) {
       var item = element('li');
-      var label = conversation.releaseArtist + ' — ' + conversation.releaseTitle;
+      var label = conversation.conversationType === 'direct'\n        ? (conversation.otherParticipantUsername ? '@' + conversation.otherParticipantUsername : conversation.otherParticipant)\n        : ((conversation.releaseArtist || 'Listing') + ' — ' + (conversation.releaseTitle || 'Conversation'));
       var button = element('button', 'messaging-widget-conversation' + (conversation.unreadCount > 0 ? ' is-unread' : ''));
       button.type = 'button';
       button.setAttribute('aria-label', label + ', ' + conversation.otherParticipant + (conversation.unreadCount > 0 ? ', ' + conversation.unreadCount + ' unread' : ''));
