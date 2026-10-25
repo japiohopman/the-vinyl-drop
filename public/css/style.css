@@ -4501,7 +4501,7 @@ select.form-control {
 .edit-listing-page {
   box-sizing: border-box;
   padding-top: 0 !important;
-  padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px));
 }
 .edit-listing-card {
   margin-top: var(--space-3) !important;
