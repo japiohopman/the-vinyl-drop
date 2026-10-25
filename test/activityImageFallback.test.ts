@@ -216,7 +216,7 @@ describe('Activity artwork and avatar image failures (#142)', () => {
 
     const brokenAvatarCard = page.locator('.activity-card').nth(2);
     const brokenAvatar = brokenAvatarCard.locator('[data-avatar-image]');
-    await brokenAvatar.scrollIntoViewIfNeeded();
+    await brokenAvatarCard.scrollIntoViewIfNeeded();
     await page.waitForFunction(() => {
       const image = document.querySelectorAll('[data-avatar-image]')[1] as HTMLImageElement;
       const fallback = image?.nextElementSibling as HTMLElement | null;
