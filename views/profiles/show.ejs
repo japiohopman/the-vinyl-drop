@@ -1,4 +1,4 @@
-<main class="profile-landing-page">
+<div class="profile-landing-page">
   <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
     <div class="alert alert-error profile-page-alert" role="alert"><%= errorMessage %></div>
   <% } %>
@@ -55,4 +55,4 @@
       <%- include('../partials/icon', { name: 'next-button', size: '1.25rem', ariaHidden: true }) %>
     </span>
   </a>
-</main>
+</div>
