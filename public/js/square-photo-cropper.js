@@ -326,7 +326,11 @@
           : 'Upload ' + label.toLowerCase();
       }
       openAccessibleDialog(uploadDialog);
-      roleSelect.focus();
+      if (isDirectCoverSlot) {
+        fileInput.focus();
+      } else {
+        roleSelect.focus();
+      }
     });
   });
 
