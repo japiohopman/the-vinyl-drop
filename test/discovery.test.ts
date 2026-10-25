@@ -647,6 +647,49 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(listingService.getSellerPublishedListings).toHaveBeenCalledWith('alice_records', { page: 1 });
     });
 
+    it('keeps the legacy profile alias as the compact landing page', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/profile/alice_records');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Alice Vinyl');
+      expect(res.text).toContain('View Crate');
+      expect(res.text).not.toContain('Blue Train');
+      expect(res.text).not.toContain('class="listing-grid');
+    });
+
+    it('shows the owner drop action for an empty Crate without exposing drafts', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUserAlice }, error: null });
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+        items: [],
+        totalCount: 0,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app)
+        .get('/profiles/alice_records/crate')
+        .set('Cookie', ['sb-access-token=alice-token']);
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Your Crate is empty');
+      expect(res.text).toContain('+ Drop a Record');
+      expect(res.text).toContain('Manage Listings');
+      expect(res.text).not.toContain('draft listing');
+    });
+
     it('renders published listing cards on the dedicated Crate route', async () => {
       (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
       (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
