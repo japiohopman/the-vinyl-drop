@@ -24,23 +24,23 @@ export type ListingPhotoRole = (typeof LISTING_PHOTO_ROLES)[number];
 export type NewListingPhotoRole = (typeof NEW_LISTING_PHOTO_ROLES)[number];
 
 export const LISTING_PHOTO_ROLE_LABELS: Record<ListingPhotoRole, string> = {
-  front_cover: 'Voorkant',
-  back_cover: 'Achterkant',
-  inside_sleeve: 'Binnenkant / gatefold',
-  insert_poster: 'Poster / insert',
-  record: 'Plaat / label',
-  detail: 'Detail / conditie',
-  other: 'Overig',
-  legacy_unclassified: 'Nog niet geclassificeerd (oude foto)',
+  front_cover: 'Front cover',
+  back_cover: 'Back cover',
+  inside_sleeve: 'Inside sleeve / gatefold',
+  insert_poster: 'Insert / poster',
+  record: 'Record / label',
+  detail: 'Condition detail',
+  other: 'Other',
+  legacy_unclassified: 'Unclassified (legacy photo)',
 };
 
 export const LISTING_PHOTO_ROLE_GUIDANCE: Record<ListingPhotoRole, string> = {
-  front_cover: 'Fotografeer de volledige voorkant van de echte hoes recht van voren, met alle randen zichtbaar en zo min mogelijk reflectie.',
-  back_cover: 'Fotografeer de achterkant van dezelfde hoes volledig in beeld; houd tekst waar mogelijk leesbaar.',
-  inside_sleeve: 'Open de gatefold of laat de daadwerkelijke binnenhoes duidelijk zien.',
-  insert_poster: 'Breng het meegeleverde drukwerk volledig genoeg in beeld om het te herkennen.',
-  record: 'Fotografeer de echte plaat of het label; vermeld Side A of Side B in de alt-tekst als dat relevant is.',
-  detail: 'Leg zichtbare slijtage of defecten duidelijk vast en verberg of snijd ze niet weg.',
-  other: 'Toon ander relevant materiaal dat bij precies deze fysieke kopie hoort.',
-  legacy_unclassified: 'Deze oudere foto is nog niet geclassificeerd. Kies de juiste rol zodra je kunt vaststellen wat erop staat.',
+  front_cover: 'Photograph the full front of the actual sleeve straight-on. Keep all edges visible and avoid glare.',
+  back_cover: 'Photograph the complete back of the same sleeve; keep text readable where possible.',
+  inside_sleeve: 'Open the gatefold or clearly show the actual inner sleeve.',
+  insert_poster: 'Show the included printed insert or poster clearly enough to identify it.',
+  record: 'Photograph the actual record or label. Mention Side A or Side B in the alt text when relevant.',
+  detail: 'Clearly show visible wear or defects. Do not hide or crop them out.',
+  other: 'Show other relevant material that belongs to this exact physical copy.',
+  legacy_unclassified: 'This older photo has not been classified yet. Choose the correct role when you can identify what it shows.',
 };
