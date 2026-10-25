@@ -4890,7 +4890,8 @@ select.form-control {
   min-height: 44px;
   cursor: pointer;
 }
-.photo-file-input:focus + .photo-file-trigger {
+.photo-file-input:focus + .photo-file-trigger,
+.photo-file-trigger:focus {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
