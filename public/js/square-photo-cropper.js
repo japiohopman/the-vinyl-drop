@@ -284,6 +284,7 @@
   const helpDialog = document.querySelector('#photoHelpDialog');
   const uploadTitle = document.querySelector('#photoUploadTitle');
   const altTextInput = form.querySelector('#altText');
+  const roleField = form.querySelector('.photo-role-field');
 
   function openAccessibleDialog(dialog) {
     if (!(dialog instanceof HTMLDialogElement)) return;
@@ -310,6 +311,8 @@
 
       const requestedRole = trigger.dataset.photoRole || '';
       const label = trigger.dataset.photoLabel || 'Additional photo';
+      const isDirectCoverSlot = requestedRole === 'front_cover' || requestedRole === 'back_cover';
+      if (roleField instanceof HTMLElement) roleField.hidden = isDirectCoverSlot;
       roleSelect.value = requestedRole === 'optional' ? '' : requestedRole;
       fileInput.value = '';
       if (altTextInput instanceof HTMLInputElement) altTextInput.value = '';
