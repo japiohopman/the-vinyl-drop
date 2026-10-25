@@ -81,10 +81,10 @@ describe('Contact & Community Rules Pages (Phase 6A - Issue #46)', () => {
   describe('Mobile About contextual header', () => {
     it('identifies the active information page and provides an icon-only Back to Home action', async () => {
       const pages = [
-        ['/terms', 'ABOUT / TERMS'],
-        ['/contact', 'ABOUT / CONTACT'],
-        ['/privacy', 'ABOUT / PRIVACY'],
-        ['/community-rules', 'ABOUT / RULES'],
+        ['/terms', 'ABOUT · TERMS'],
+        ['/contact', 'ABOUT · CONTACT'],
+        ['/privacy', 'ABOUT · PRIVACY'],
+        ['/community-rules', 'ABOUT · COMMUNITY RULES'],
       ] as const;
 
       for (const [route, label] of pages) {

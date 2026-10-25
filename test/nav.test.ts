@@ -282,6 +282,98 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await isElementVisible('#mobile-you-surface')).toBe(true);
     });
 
+    it('keeps Me/About panel height stable and honors reduced-motion preferences', async () => {
+      const fullHtml = await renderFullHtmlPage({
+        currentPath: '/',
+        currentUser: { id: 'user-123', email: 'digger@example.com' },
+        currentProfile: { id: 'user-123', username: 'cratedigger' },
+        messagingEnabled: false,
+      });
+
+      await page.setViewportSize({ width: 375, height: 667 });
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await page.setContent(fullHtml);
+      await page.click('#mobile-you-trigger');
+      await page.waitForTimeout(200);
+
+      const normalMotion = await page.evaluate(String.raw`(() => {
+        const selectors = [
+          '.mobile-you-surface',
+          '.mobile-you-surface-backdrop',
+          '.mobile-you-surface-content',
+          '.mobile-you-view',
+        ];
+        return selectors.map((selector) => {
+          const element = document.querySelector(selector);
+          if (!element) return { selector, durations: '0s', transform: 'none' };
+          const style = window.getComputedStyle(element);
+          return { selector, durations: style.transitionDuration, transform: style.transform };
+        });
+      })()`) as Array<{ selector: string; durations: string; transform: string }>;
+
+      expect(normalMotion).toHaveLength(4);
+      expect(normalMotion.every(({ durations }) =>
+        durations.split(',').some((duration) => Number.parseFloat(duration.trim()) > 0)
+      )).toBe(true);
+
+      const mainHeight = await page.locator('.mobile-you-surface-content').evaluate(
+        (element) => Math.round(element.getBoundingClientRect().height)
+      );
+      await page.click('#mobile-you-about-trigger');
+      await page.waitForTimeout(180);
+      expect(await page.locator('#mobile-you-title').textContent()).toBe('About');
+      const aboutHeight = await page.locator('.mobile-you-surface-content').evaluate(
+        (element) => Math.round(element.getBoundingClientRect().height)
+      );
+      expect(Math.abs(aboutHeight - mainHeight)).toBeLessThanOrEqual(1);
+
+      await page.keyboard.press('Escape');
+      expect(await page.locator('#mobile-you-surface').evaluate((element) => element.classList.contains('is-closing'))).toBe(true);
+      await page.waitForTimeout(220);
+      expect(await page.locator('#mobile-you-surface').getAttribute('hidden')).not.toBeNull();
+      expect(await isFocused('#mobile-you-trigger')).toBe(true);
+      expect(await isBodyScrollLocked()).toBe(false);
+
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.setContent(fullHtml);
+      await page.click('#mobile-you-trigger');
+
+      const reducedMotion = await page.evaluate(String.raw`(() => {
+        const selectors = [
+          '.mobile-you-surface',
+          '.mobile-you-surface-backdrop',
+          '.mobile-you-surface-content',
+          '.mobile-you-view',
+        ];
+        return selectors.map((selector) => {
+          const element = document.querySelector(selector);
+          if (!element) return { selector, durations: '0s', transform: 'none' };
+          const style = window.getComputedStyle(element);
+          return { selector, durations: style.transitionDuration, transform: style.transform };
+        });
+      })()`) as Array<{ selector: string; durations: string; transform: string }>;
+
+      expect(reducedMotion).toHaveLength(4);
+      expect(reducedMotion.every(({ durations }) =>
+        durations.split(',').every((duration) => Number.parseFloat(duration.trim()) === 0)
+      )).toBe(true);
+      expect(reducedMotion.every(({ transform }) => transform === 'none')).toBe(true);
+
+      const reducedMainHeight = await page.locator('.mobile-you-surface-content').evaluate(
+        (element) => Math.round(element.getBoundingClientRect().height)
+      );
+      await page.click('#mobile-you-about-trigger');
+      const reducedAboutHeight = await page.locator('.mobile-you-surface-content').evaluate(
+        (element) => Math.round(element.getBoundingClientRect().height)
+      );
+      expect(reducedAboutHeight).toBe(reducedMainHeight);
+
+      await page.keyboard.press('Escape');
+      expect(await page.locator('#mobile-you-surface').getAttribute('hidden')).not.toBeNull();
+      expect(await isFocused('#mobile-you-trigger')).toBe(true);
+      expect(await isBodyScrollLocked()).toBe(false);
+    });
+
     it('prevents horizontal page overflow on information pages at narrow mobile widths', async () => {
       const contactForm = {
         values: { name: '', email: '', message: '' },
