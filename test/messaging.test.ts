@@ -359,7 +359,9 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
           .set('Accept', 'application/json');
         expect(outsider.status).toBe(404);
 
-        await messagingService.markAsRead(conv.id, sellerId);
+        const sellerSnapshot = await messagingService.getConversationDetail(conv.id, sellerId);
+        const readThroughSeq = sellerSnapshot.messages.reduce((maximum, message) => Math.max(maximum, message.messageSeq), 0);
+        await messagingService.markAsRead(conv.id, sellerId, readThroughSeq);
         await new Promise((resolve) => setTimeout(resolve, 10));
         const cleared = await request(app)
           .get('/messages/widget/unread-count')

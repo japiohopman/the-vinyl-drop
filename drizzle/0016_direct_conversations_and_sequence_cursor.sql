@@ -186,6 +186,8 @@ BEGIN
   UPDATE public.conversations AS c
   SET last_message_seq = c.last_message_seq + 1,
       updated_at = now(),
+      participant_a_read_at = CASE WHEN c.participant_a_id = NEW.sender_id THEN now() ELSE c.participant_a_read_at END,
+      participant_b_read_at = CASE WHEN c.participant_b_id = NEW.sender_id THEN now() ELSE c.participant_b_read_at END,
       participant_a_read_seq = CASE WHEN c.participant_a_id = NEW.sender_id THEN c.last_message_seq + 1 ELSE c.participant_a_read_seq END,
       participant_b_read_seq = CASE WHEN c.participant_b_id = NEW.sender_id THEN c.last_message_seq + 1 ELSE c.participant_b_read_seq END,
       participant_a_archived_at = CASE WHEN c.participant_a_id <> NEW.sender_id THEN NULL ELSE c.participant_a_archived_at END,
