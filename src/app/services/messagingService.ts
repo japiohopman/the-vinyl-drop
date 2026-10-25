@@ -48,6 +48,10 @@ export class MessagingService {
     return messagingRepository.getInboxForUser(currentUserId);
   }
 
+  async getUnreadCountForUser(currentUserId: string): Promise<number> {
+    return messagingRepository.getUnreadCountForUser(currentUserId);
+  }
+
   async getConversationDetail(
     conversationId: string,
     currentUserId: string
