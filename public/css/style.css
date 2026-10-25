@@ -4847,6 +4847,9 @@ select.form-control {
   gap: var(--space-1);
   min-width: 0;
 }
+.photo-upload-field[hidden] {
+  display: none !important;
+}
 .photo-upload-field > label,
 .photo-upload-label {
   font-size: var(--font-size-sm);
