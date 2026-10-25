@@ -65,6 +65,22 @@ describe('Activity artwork and avatar image failures (#142)', () => {
       priceFormatted: '',
       isPrivate: false,
     },
+    {
+      listingUrl: '/listings/no-artwork-source',
+      releaseTitle: 'No Uploaded Cover',
+      releaseArtist: 'No Catalog Art',
+      listingArtworkUrl: null,
+      releaseCoverArtUrl: null,
+      artworkFallbackUrl: '/assets/vinyl-placeholder.svg',
+      actorAvatarUrl: null,
+      actorUsername: 'placeholderuser',
+      eventDescription: '@placeholderuser published a drop',
+      timeAgo: '4h ago',
+      eventType: 'listing.published',
+      commentContent: null,
+      priceFormatted: '',
+      isPrivate: false,
+    },
   ];
 
   beforeAll(async () => {
@@ -154,6 +170,29 @@ describe('Activity artwork and avatar image failures (#142)', () => {
     expect(await terminalFallback.isVisible()).toBe(true);
     expect(await terminalFallback.getAttribute('role')).toBe('img');
     expect(await terminalFallback.getAttribute('aria-label')).toBe('Artwork unavailable for No Art Left by Placeholder Band');
+    await page.close();
+  });
+
+  it('shows the local vinyl placeholder when no artwork source exists and the placeholder loads', async () => {
+    const page = await browser.newPage({ viewport: { width: 375, height: 1000 } });
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="10" fill="#c8c8c8"/></svg>';
+    await page.route('**/assets/vinyl-placeholder.svg', (route) => route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: svg,
+    }));
+    await page.goto(`${baseUrl}/test/activity-image-fallbacks`, { waitUntil: 'domcontentloaded' });
+
+    const placeholder = page.locator('.activity-card').nth(3).locator('.activity-record-artwork');
+    await page.waitForFunction(() => {
+      const image = document.querySelectorAll('.activity-record-artwork')[3] as HTMLImageElement;
+      return image && image.getAttribute('src') === '/assets/vinyl-placeholder.svg' && image.complete && image.naturalWidth > 0;
+    });
+
+    expect(await placeholder.isVisible()).toBe(true);
+    expect(await placeholder.getAttribute('src')).toBe('/assets/vinyl-placeholder.svg');
+    expect(await placeholder.getAttribute('alt')).toBe('Artwork for No Uploaded Cover by No Catalog Art');
+    expect(await page.locator('.activity-card').nth(3).locator('[data-artwork-terminal-fallback]').isHidden()).toBe(true);
     await page.close();
   });
 
