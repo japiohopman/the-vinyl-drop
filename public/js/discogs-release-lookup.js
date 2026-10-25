@@ -6,6 +6,9 @@
   var titleInput = form.querySelector('[data-discogs-lookup-title]');
   var status = document.getElementById('discogsLookupStatus');
   var coverArtUrlInput = document.getElementById('discogsCoverArtUrl');
+  var metadataDetails = document.getElementById('releaseMetadataDetails');
+  var coverPreview = form.querySelector('[data-discogs-cover-preview]');
+  var coverPreviewImage = coverPreview ? coverPreview.querySelector('img') : null;
   var debounceTimer = null;
   var activeController = null;
   var debounceMs = 450;
@@ -24,6 +27,17 @@
     return key === 'coverArtUrl' ? coverArtUrlInput : form.querySelector('[data-discogs-field="' + key + '"]');
   }
 
+  function updateCoverPreview(value) {
+    if (!coverPreview || !coverPreviewImage) return;
+    if (typeof value === 'string' && /^https:\/\//i.test(value)) {
+      coverPreviewImage.src = value;
+      coverPreview.hidden = false;
+    } else {
+      coverPreviewImage.removeAttribute('src');
+      coverPreview.hidden = true;
+    }
+  }
+
   function clearPreviousAutomaticValues() {
     Object.keys(fieldMap).forEach(function (key) {
       var field = getField(key);
@@ -31,6 +45,7 @@
       if (field.dataset.discogsFilled === 'true' && field.dataset.userEdited !== 'true') field.value = '';
       delete field.dataset.discogsFilled;
     });
+    updateCoverPreview(coverArtUrlInput ? coverArtUrlInput.value : '');
   }
 
   Object.keys(fieldMap).forEach(function (key) {
@@ -48,6 +63,8 @@
       field.value = String(value);
       field.dataset.discogsFilled = 'true';
     });
+    updateCoverPreview(coverArtUrlInput ? coverArtUrlInput.value : '');
+    if (metadataDetails) metadataDetails.open = true;
   }
 
   async function lookup() {
@@ -72,10 +89,12 @@
         credentials: 'same-origin'
       });
       if (response.status === 400) {
+        if (metadataDetails) metadataDetails.open = true;
         setStatus('Check the artist and title, then try again.', 'error');
         return;
       }
       if (response.status === 503 || !response.ok) {
+        if (metadataDetails) metadataDetails.open = true;
         setStatus('Discogs is temporarily unavailable. You can still enter the details manually.', 'error');
         return;
       }
@@ -89,10 +108,12 @@
           'found'
         );
       } else {
+        if (metadataDetails) metadataDetails.open = true;
         setStatus('No confident match found. You can enter the release details manually.', 'empty');
       }
     } catch (error) {
       if (error && error.name === 'AbortError') return;
+      if (metadataDetails) metadataDetails.open = true;
       setStatus('Discogs is temporarily unavailable. You can still enter the details manually.', 'error');
     }
   }
