@@ -145,12 +145,16 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('.photo-role-field').isVisible()).toBe(false);
     expect(await page.locator('#photo-role-guidance').isVisible()).toBe(false);
     expect(await page.evaluate("document.activeElement && document.activeElement.classList.contains('photo-file-trigger')")).toBe(true);
+    expect(await page.locator('#altText').getAttribute('placeholder')).toBe('Front cover of the record sleeve');
+    expect(await page.locator('#altText').getAttribute('required')).toBeNull();
     expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload front cover');
 
     await page.locator('[data-close-photo-upload]').first().click({ timeout: 5000 });
     await page.locator('[data-open-photo-upload][data-photo-role="back_cover"]').click({ timeout: 5000 });
     expect(await page.locator('#newPhotoRole').inputValue()).toBe('back_cover');
     expect(await page.locator('.photo-role-field').isVisible()).toBe(false);
+    expect(await page.locator('#altText').getAttribute('placeholder')).toBe('Back cover of the record sleeve');
+    expect(await page.locator('#altText').getAttribute('required')).toBeNull();
     expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload back cover');
   });
 
@@ -239,6 +243,8 @@ describe('Square cover photo cropper', () => {
     await selectPortrait('detail');
     expect(await page.locator('.photo-role-field').isVisible()).toBe(true);
     expect(await page.locator('#photo-role-guidance').isVisible()).toBe(true);
+    expect(await page.locator('#altText').getAttribute('placeholder')).toBe('Describe what is visible, e.g. a crease or Side A label');
+    expect(await page.locator('#altText').getAttribute('required')).not.toBeNull();
 
     await page.waitForFunction(
       "document.querySelector('#photo-original-preview').naturalWidth === 300",
