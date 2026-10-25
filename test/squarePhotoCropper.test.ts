@@ -171,10 +171,13 @@ describe('Square cover photo cropper', () => {
         const layout = await page.evaluate("(() => {" +
           "const root = document.querySelector('.photos-section');" +
           "const cropper = document.querySelector('#square-cover-cropper');" +
+          "const coverSlots = document.querySelector('.cover-photo-slots');" +
           "return {" +
             "viewport: window.innerWidth," +
             "section: root.getBoundingClientRect().width," +
             "sectionScroll: root.scrollWidth," +
+            "coverSlots: coverSlots.getBoundingClientRect().width," +
+            "coverSlotsScroll: coverSlots.scrollWidth," +
             "cropper: cropper.getBoundingClientRect().width," +
             "cropperScroll: cropper.scrollWidth" +
           "};" +
@@ -182,10 +185,13 @@ describe('Square cover photo cropper', () => {
           viewport: number;
           section: number;
           sectionScroll: number;
+          coverSlots: number;
+          coverSlotsScroll: number;
           cropper: number;
           cropperScroll: number;
         };
         expect(layout.sectionScroll).toBeLessThanOrEqual(layout.section + 1);
+        expect(layout.coverSlotsScroll).toBeLessThanOrEqual(layout.coverSlots + 1);
         expect(layout.cropperScroll).toBeLessThanOrEqual(layout.cropper + 1);
       }
 
