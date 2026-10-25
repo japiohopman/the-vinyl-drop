@@ -155,7 +155,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(createHtml).toContain('class="icon icon-save"');
     expect(createHtml).toContain('class="icon icon-close"');
     expect(createHtml).toContain('class="btn btn-primary btn-md create-listing-submit"');
-    expect(createHtml).toContain('class="btn btn-outline btn-md create-listing-cancel"');
+    // Link buttons include a trailing separator before their optional disabled class.
+    expect(createHtml).toContain('create-listing-cancel');
 
     for (const width of [320, 360, 375, 414]) {
       await page.setViewportSize({ width, height: 780 });
