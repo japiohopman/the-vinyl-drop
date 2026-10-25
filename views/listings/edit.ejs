@@ -10,9 +10,6 @@
       <h2><%= release.title %></h2>
       <p>by <%= release.artist %><% if (release.releaseYear) { %> · <%= release.releaseYear %><% } %></p>
     </div>
-      <h2 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin: 0;"><%= release.title %></h2>
-      <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0;">by <%= release.artist %> (<%= release.releaseYear || '' %>)</p>
-    </div>
 
     <%- include('../partials/form-errors', {
       errors: form.generalErrors.length > 0
