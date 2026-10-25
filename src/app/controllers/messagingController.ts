@@ -56,6 +56,8 @@ export async function getWidgetConversation(req: Request, res: Response, next: N
       userId
     );
     const otherParticipant = userRole === 'buyer' ? conversation.seller : conversation.buyer;
+    const inbox = await messagingService.getInboxForUser(userId);
+    const unreadCount = inbox.find((item) => item.conversation.id === conversation.id)?.unreadCount ?? 0;
     res.set('Cache-Control', 'no-store').json({
       id: conversation.id,
       release: {
@@ -64,6 +66,7 @@ export async function getWidgetConversation(req: Request, res: Response, next: N
       },
       listing: { id: conversation.listing.id },
       userRole,
+      unreadCount,
       otherParticipant: {
         username: otherParticipant.username,
         displayName: otherParticipant.displayName,
