@@ -108,6 +108,13 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(dropLink).toContain('+ DROP');
   });
 
+  it('places the listing editor back action inside the global mobile navigation', async () => {
+    const listingHeader = await renderHeader('/listings/11111111-1111-4111-8111-111111111111/edit');
+    expect(listingHeader).toContain('<span class="mobile-context-heading">DROP</span>');
+    expect(listingHeader).toContain('href="/listings" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to My Listings"');
+    expect(listingHeader).toContain('<span class="mobile-context-back-icon" aria-hidden="true">←</span>');
+  });
+
   it('fits About context labels and icon-only back targets on narrow mobile widths', async () => {
     const pages = [
       ['/terms', 'ABOUT / TERMS'],
