@@ -5090,7 +5090,7 @@ select.form-control {
   padding: var(--space-6);
   margin-top: 0;
   border: var(--border-thick);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   background: var(--color-surface-card);
 }
 .create-listing-title {
@@ -5104,7 +5104,7 @@ select.form-control {
   margin-bottom: var(--space-6);
   padding: var(--space-3);
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: var(--color-surface-bg);
 }
 .create-listing-release-title {
