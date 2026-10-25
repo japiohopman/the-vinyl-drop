@@ -133,7 +133,9 @@
     var list = element('ul', 'messaging-widget-list');
     conversations.forEach(function (conversation) {
       var item = element('li');
-      var label = conversation.conversationType === 'direct'\n        ? (conversation.otherParticipantUsername ? '@' + conversation.otherParticipantUsername : conversation.otherParticipant)\n        : ((conversation.releaseArtist || 'Listing') + ' — ' + (conversation.releaseTitle || 'Conversation'));
+      var label = conversation.conversationType === 'direct'
+        ? (conversation.otherParticipantUsername ? '@' + conversation.otherParticipantUsername : conversation.otherParticipant)
+        : ((conversation.releaseArtist || 'Listing') + ' — ' + (conversation.releaseTitle || 'Conversation'));
       var button = element('button', 'messaging-widget-conversation' + (conversation.unreadCount > 0 ? ' is-unread' : ''));
       button.type = 'button';
       button.setAttribute('aria-label', label + ', ' + conversation.otherParticipant + (conversation.unreadCount > 0 ? ', ' + conversation.unreadCount + ' unread' : ''));
@@ -356,7 +358,9 @@
     desktopTriggers.forEach(function (item) { item.setAttribute('aria-expanded', 'false'); });
     syncResponsivePanelState();
     if (restoreFocus && lastTrigger && document.contains(lastTrigger)) {
-      var focusTarget = lastTrigger.closest('[hidden]') ? document.getElementById('desktop-you-trigger') : lastTrigger;
+      var focusTarget = lastTrigger.closest('[hidden]')
+        ? document.getElementById(desktopMedia.matches ? 'desktop-you-trigger' : 'mobile-you-trigger')
+        : lastTrigger;
       if (focusTarget) focusTarget.focus();
     }
   }

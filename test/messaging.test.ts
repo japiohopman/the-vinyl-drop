@@ -679,6 +679,62 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         (config as any).MESSAGING_ENABLED = originalFlag;
       }
     });
+
+    test('saved-person mutation route enforces same-origin and is idempotent', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        const forbidden = await request(app)
+          .post(`/messages/saved-people/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .type('form')
+          .send({ action: 'save' });
+        expect(forbidden.status).toBe(403);
+
+        const saved = await request(app)
+          .post(`/messages/saved-people/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .type('form')
+          .send({ action: 'save' });
+        expect(saved.status).toBe(302);
+        expect(saved.headers.location).toBe('/profiles/seller_user');
+
+        const removed = await request(app)
+          .post(`/messages/saved-people/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .type('form')
+          .send({ action: 'remove' });
+        expect(removed.status).toBe(302);
+        expect(await savedPeopleService.isSavedPerson(buyerId, sellerId)).toBe(false);
+
+        const self = await request(app)
+          .post(`/messages/saved-people/${buyerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .type('form')
+          .send({ action: 'save' });
+        expect(self.status).toBe(400);
+      } finally {
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
+
+    test('shared mobile panel remains fixed and does not fork messaging behavior', async () => {
+      const widgetSource = fs.readFileSync(path.join(process.cwd(), 'public/js/messaging-widget.js'), 'utf8');
+      const cssSource = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+      const navSource = fs.readFileSync(path.join(process.cwd(), 'views/partials/nav.ejs'), 'utf8');
+      expect(widgetSource).toContain("document.getElementById('messaging-mobile-backdrop')");
+      expect(widgetSource).toContain("panel.style.left = '';");
+      expect(widgetSource).toContain("!desktopMedia.matches || panel.hidden");
+      expect(navSource).toContain('id="messaging-mobile-backdrop"');
+      expect(cssSource).toContain('.messaging-floating-window');
+      expect(cssSource).toContain('height: min(82dvh');
+      expect(cssSource).toContain('env(safe-area-inset-bottom)');
+      expect(widgetSource).not.toContain("\\n        ?");
+    });
   });
 
   describe('Service & Notification Hook Contracts', () => {
