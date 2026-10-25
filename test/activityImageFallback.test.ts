@@ -155,8 +155,11 @@ describe('Activity artwork and avatar image failures (#142)', () => {
     expect(await sellerPhoto.getAttribute('alt')).toBe('Artwork for Fallen Art by The Test Pressings');
     expect(await sellerPhoto.isVisible()).toBe(true);
 
+    const noArtCard = page.locator('.activity-card').nth(1);
     const noArtImage = images.nth(1);
-    await noArtImage.scrollIntoViewIfNeeded();
+    // Scroll the card rather than the image: the failed image may already be
+    // hidden by the terminal fallback before the test reaches this point.
+    await noArtCard.scrollIntoViewIfNeeded();
     await page.waitForFunction(() => {
       const image = document.querySelectorAll('.activity-record-artwork')[1] as HTMLImageElement;
       const fallback = image?.parentElement?.querySelector('[data-artwork-terminal-fallback]') as HTMLElement | null;
