@@ -106,11 +106,15 @@ describe('Compact mobile back navigation', () => {
     expect(listingDetailView).toContain('href="/dig"');
     expect(listingDetailView).toContain('aria-label="Back to Dig results"');
 
-    for (const view of [listingEditView, listingPreviewView, releaseSelectView]) {
+    for (const view of [listingPreviewView, releaseSelectView]) {
       expect(view).toContain('class="mobile-back-control"');
       expect(view).toContain('aria-label="Back to My Listings"');
       expect(view).toContain('href="/listings"');
     }
+
+    const sharedHeader = fs.readFileSync(path.join(process.cwd(), 'views/partials/header.ejs'), 'utf8');
+    expect(sharedHeader).toContain('isListingEditPage');
+    expect(sharedHeader).toContain('href="/listings" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to My Listings"');
 
     expect(mobileStyles).toContain('.mobile-back-control');
     expect(mobileStyles).toContain('min-height: 44px;');
