@@ -63,7 +63,6 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         <div id="outside-element" style="padding: 20px;">Outside Element</div>
         <div id="app">${navHtml}</div>
         <script>${messagingWidgetScriptContent}</script>
-        <script>${messagingWidgetScriptContent}</script>
       </body>
       </html>
     `;
