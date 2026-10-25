@@ -29,6 +29,30 @@ export async function getCurrentProfile(req: Request, res: Response, next: NextF
   }
 }
 
+interface ParsedProfilePage {
+  present: boolean;
+  valid: boolean;
+  page: number;
+}
+
+function parseProfilePageParameter(value: unknown): ParsedProfilePage {
+  if (value === undefined || value === null) {
+    return { present: false, valid: true, page: 1 };
+  }
+
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value.trim())) {
+    return { present: true, valid: false, page: 1 };
+  }
+
+  const page = Number(value.trim());
+  if (!Number.isSafeInteger(page)) {
+    return { present: true, valid: false, page: 1 };
+  }
+
+  return { present: true, valid: true, page };
+}
+
+/** Compact public profile landing; published listings live on the dedicated Crate route. */
 export async function getPublicProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const username = req.params.username;
@@ -43,35 +67,88 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
       return;
     }
 
-    const pageParam = req.query.page;
-    let page = 1;
+    const parsedPage = parseProfilePageParameter(req.query.page);
+    const title = `${profile.displayName || profile.username} (@${profile.username}) — The Vinyl Drop`;
 
-    if (pageParam !== undefined && pageParam !== null) {
-      if (typeof pageParam !== 'string' || !/^[1-9]\d*$/.test(pageParam.trim())) {
-        res.status(400);
-        renderWithLayout(res, 'profiles/show', {
-          title: `${profile.displayName || profile.username} (@${profile.username}) — The Vinyl Drop`,
-          profile,
-          isOwner: Boolean(req.user && req.user.id === profile.id),
-          listings: [],
-          pagination: {
-            totalCount: 0,
-            page: 1,
-            limit: 12,
-            totalPages: 1,
-          },
-          errorMessage: 'Invalid page parameter provided.',
-        }, next);
-        return;
-      }
-      page = Number(pageParam.trim());
+    if (!parsedPage.valid) {
+      res.status(400);
+      renderWithLayout(res, 'profiles/show', {
+        title,
+        profile,
+        isOwner: Boolean(req.user && req.user.id === profile.id),
+        crateTotalCount: 0,
+        errorMessage: 'Invalid page parameter provided.',
+      }, next);
+      return;
     }
 
-    const isOwner = Boolean(req.user && req.user.id === profile.id);
-    const listingsResult = await getSellerPublishedListings(profile.username, { page });
+    // Keep historical paginated profile URLs working, but make the Crate the canonical listing route.
+    if (parsedPage.present) {
+      res.redirect(302, `/profiles/${encodeURIComponent(profile.username)}/crate?page=${parsedPage.page}`);
+      return;
+    }
 
+    const listingsResult = await getSellerPublishedListings(profile.username, { page: 1 });
     renderWithLayout(res, 'profiles/show', {
-      title: `${profile.displayName || profile.username} (@${profile.username}) — The Vinyl Drop`,
+      title,
+      profile,
+      isOwner: Boolean(req.user && req.user.id === profile.id),
+      crateTotalCount: listingsResult.totalCount,
+    }, next);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/** Public Crate: the existing paginated grid of this user's published listings. */
+export async function getPublicProfileCrate(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const username = req.params.username;
+    const profile = await getProfileByUsername(username);
+
+    if (!profile) {
+      res.status(404);
+      renderWithLayout(res, 'errors/404', {
+        title: 'Crate Not Found',
+        message: `User "@${username}" was not found.`,
+      }, next);
+      return;
+    }
+
+    const title = `${profile.displayName || profile.username}'s Crate — The Vinyl Drop`;
+    const parsedPage = parseProfilePageParameter(req.query.page);
+    const isOwner = Boolean(req.user && req.user.id === profile.id);
+
+    if (!parsedPage.valid) {
+      res.status(400);
+      renderWithLayout(res, 'profiles/crate', {
+        title,
+        profile,
+        isOwner,
+        listings: [],
+        pagination: { totalCount: 0, page: 1, limit: 12, totalPages: 1 },
+        errorMessage: 'Invalid page parameter provided.',
+      }, next);
+      return;
+    }
+
+    const listingsResult = await getSellerPublishedListings(profile.username, { page: parsedPage.page });
+
+    // Keep an out-of-range but valid page request from looking like an empty Crate.
+    if (
+      listingsResult.totalCount > 0 &&
+      listingsResult.totalPages > 0 &&
+      parsedPage.page > listingsResult.totalPages
+    ) {
+      res.redirect(
+        302,
+        `/profiles/${encodeURIComponent(profile.username)}/crate?page=${listingsResult.totalPages}`
+      );
+      return;
+    }
+
+    renderWithLayout(res, 'profiles/crate', {
+      title,
       profile,
       isOwner,
       listings: listingsResult.items,

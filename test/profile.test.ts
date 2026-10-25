@@ -41,7 +41,13 @@ describe('Profile Foundation & Server-Side Ownership', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue([]);
+    (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+      items: [],
+      totalCount: 0,
+      page: 1,
+      limit: 12,
+      totalPages: 1,
+    });
 
     mockSupabase = {
       auth: {
