@@ -372,6 +372,14 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
                 getBoundingClientRect: () => { right: number; height: number };
               } | null;
               documentElement: { scrollWidth: number };
+              querySelectorAll: (selector: string) => ArrayLike<{
+                tagName: string;
+                id: string;
+                className: unknown;
+                scrollWidth: number;
+                clientWidth: number;
+                getBoundingClientRect: () => { left: number; right: number; width: number };
+              }>;
             };
             window: { innerWidth: number };
           };
@@ -379,16 +387,38 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
           const crateLink = browser.document.querySelector('.profile-crate-entry');
           const bounds = root?.getBoundingClientRect();
           const linkBounds = crateLink?.getBoundingClientRect();
+          const overflowingElements = Array.from(browser.document.querySelectorAll('*'))
+            .map((element) => {
+              const rect = element.getBoundingClientRect();
+              return {
+                tagName: element.tagName,
+                id: element.id,
+                className: String(element.className),
+                left: Math.round(rect.left),
+                right: Math.round(rect.right),
+                width: Math.round(rect.width),
+                scrollWidth: element.scrollWidth,
+                clientWidth: element.clientWidth,
+              };
+            })
+            .filter((element) => element.right > browser.window.innerWidth + 1 || element.left < -1)
+            .sort((a, b) => b.right - a.right)
+            .slice(0, 12);
           return {
             viewportWidth: browser.window.innerWidth,
             documentWidth: browser.document.documentElement.scrollWidth,
             rootRight: bounds?.right ?? 0,
             crateLinkHeight: linkBounds?.height ?? 0,
             crateLinkRight: linkBounds?.right ?? 0,
+            overflowingElements,
           };
         });
 
-        expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.viewportWidth);
+        if (measurements.documentWidth > measurements.viewportWidth) {
+          throw new Error(
+            `Horizontal overflow for ${view} at ${width}px: ${JSON.stringify(measurements)}`
+          );
+        }
         expect(measurements.rootRight).toBeLessThanOrEqual(measurements.viewportWidth);
         if (view === 'show') {
           expect(measurements.crateLinkHeight).toBeGreaterThanOrEqual(44);
