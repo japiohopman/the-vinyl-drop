@@ -288,6 +288,13 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
 
   it('keeps messaging full-page on mobile instead of opening a draggable window', async () => {
     await page.setViewportSize({ width: 375, height: 812 });
+    await page.route('**/messages', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<!doctype html><html><body><main id="full-inbox-page">Inbox — Messages</main></body></html>',
+      });
+    });
     const html = await renderFullHtmlPage({
       currentPath: '/',
       currentUser: { id: 'user-123', email: 'digger@example.com' },
@@ -296,13 +303,10 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     });
     await page.setContent(html);
     await page.click('#mobile-you-trigger');
-    const defaultPrevented = await page.locator('#mobile-you-surface [data-messaging-widget-trigger]').evaluate((el) => {
-      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
-      el.dispatchEvent(event);
-      return event.defaultPrevented;
-    });
-    expect(defaultPrevented).toBe(false);
-    expect(await page.locator('#messaging-floating-window').getAttribute('hidden')).not.toBeNull();
+    await page.click('#mobile-you-surface [data-messaging-widget-trigger]');
+    await page.waitForURL('**/messages');
+    expect(new URL(page.url()).pathname).toBe('/messages');
+    expect(await page.locator('#full-inbox-page').textContent()).toContain('Inbox — Messages');
   });
 
 
