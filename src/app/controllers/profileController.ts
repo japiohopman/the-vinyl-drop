@@ -40,7 +40,7 @@ function parseProfilePageParameter(value: unknown): ParsedProfilePage {
     return { present: false, valid: true, page: 1 };
   }
 
-  if (typeof value !== 'string' || !/^[1-9]\\d*$/.test(value.trim())) {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value.trim())) {
     return { present: true, valid: false, page: 1 };
   }
 
