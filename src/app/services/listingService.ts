@@ -555,11 +555,18 @@ export async function addPhotoToListing(
 
   const roleResult = newListingPhotoRoleSchema.safeParse(roleInput);
   if (!roleResult.success) throw new ValidationError('Choose a photo role before uploading.');
-  const altTextResult = listingPhotoAltTextSchema.safeParse(altText);
+
+  const role = roleResult.data;
+  const submittedAltText = typeof altText === 'string' ? altText.trim() : '';
+  const defaultAltText = role === 'front_cover'
+    ? 'Front cover of the record sleeve'
+    : role === 'back_cover'
+      ? 'Back cover of the record sleeve'
+      : undefined;
+  const altTextResult = listingPhotoAltTextSchema.safeParse(submittedAltText || defaultAltText);
   if (!altTextResult.success) {
     throw new ValidationError(altTextResult.error.issues.map((issue) => issue.message).join('; '));
   }
-  const role = roleResult.data;
   const validatedAltText = altTextResult.data;
 
   // Safe Sharp inspection and processing
