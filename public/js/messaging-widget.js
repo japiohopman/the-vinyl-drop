@@ -6,6 +6,7 @@
 
   var desktopMedia = window.matchMedia ? window.matchMedia('(min-width: 1024px)') : { matches: window.innerWidth >= 1024 };
   var triggers = Array.prototype.slice.call(document.querySelectorAll('[data-messaging-widget-trigger]'));
+  var desktopTriggers = Array.prototype.slice.call(document.querySelectorAll('#desktop-you-menu [data-messaging-widget-trigger]'));
   var badges = Array.prototype.slice.call(document.querySelectorAll('[data-messaging-unread-count]'));
   var content = panel.querySelector('[data-message-widget-content]');
   var status = panel.querySelector('[data-message-widget-status]');
@@ -273,7 +274,7 @@
     panel.classList.remove('is-minimized');
     minimizeButton.textContent = '−';
     minimizeButton.setAttribute('aria-label', 'Minimize Messages window');
-    triggers.forEach(function (item) { item.setAttribute('aria-expanded', 'true'); });
+    desktopTriggers.forEach(function (item) { item.setAttribute('aria-expanded', 'true'); });
     void panel.offsetWidth;
     loadInbox().then(function () {
       if (!panel.hidden) closeButton.focus();
@@ -285,7 +286,7 @@
     panel.setAttribute('aria-hidden', 'true');
     panel.classList.remove('is-minimized');
     activeConversationId = null;
-    triggers.forEach(function (item) { item.setAttribute('aria-expanded', 'false'); });
+    desktopTriggers.forEach(function (item) { item.setAttribute('aria-expanded', 'false'); });
     if (restoreFocus && lastTrigger && document.contains(lastTrigger)) {
       var focusTarget = lastTrigger.closest('[hidden]') ? document.getElementById('desktop-you-trigger') : lastTrigger;
       if (focusTarget) focusTarget.focus();
