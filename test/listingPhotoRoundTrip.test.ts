@@ -117,7 +117,7 @@ describe('Seller cover photo HTTP round trip', () => {
       .set('Origin', new URL(config.APP_BASE_URL).origin)
       .attach('photo', frontImage, { filename: 'physical-front.jpg', contentType: 'image/jpeg' })
       .field('role', 'front_cover')
-      .field('altText', 'Physical front sleeve');
+      .field('altText', '');
 
     expect(frontResponse.status).toBe(302);
     expect(frontResponse.headers.location).toBe(`/listings/${listingId}/edit`);
@@ -127,7 +127,7 @@ describe('Seller cover photo HTTP round trip', () => {
       .set('Origin', new URL(config.APP_BASE_URL).origin)
       .attach('photo', backImage, { filename: 'physical-back.jpg', contentType: 'image/jpeg' })
       .field('role', 'back_cover')
-      .field('altText', 'Physical back sleeve');
+      .field('altText', '');
 
     expect(backResponse.status).toBe(302);
     expect(backResponse.headers.location).toBe(`/listings/${listingId}/edit`);
@@ -138,8 +138,8 @@ describe('Seller cover photo HTTP round trip', () => {
 
     expect(front).toBeDefined();
     expect(back).toBeDefined();
-    expect(front?.altText).toBe('Physical front sleeve');
-    expect(back?.altText).toBe('Physical back sleeve');
+    expect(front?.altText).toBe('Front cover of the record sleeve');
+    expect(back?.altText).toBe('Back cover of the record sleeve');
     expect(front?.storagePath).toBeTruthy();
     expect(back?.storagePath).toBeTruthy();
     expect(front?.storagePath).not.toBe(back?.storagePath);
