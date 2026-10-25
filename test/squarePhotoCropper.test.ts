@@ -99,7 +99,9 @@ describe('Square cover photo cropper', () => {
       }
     }
     await page.locator(slot).click({ timeout: 5000 });
-    await page.locator('#newPhotoRole').selectOption(role, { timeout: 5000 });
+    if (role !== 'front_cover' && role !== 'back_cover') {
+      await page.locator('#newPhotoRole').selectOption(role, { timeout: 5000 });
+    }
     await page.locator('#altText').fill('Full physical sleeve cover', { timeout: 5000 });
     await page.locator('#photoFile').setInputFiles({
       name: role + '-phone-photo.jpg',
@@ -252,7 +254,6 @@ describe('Square cover photo cropper', () => {
     await renderEditPage();
     await page.evaluate("document.querySelector('form[action$=\\\"/photos\\\"]').addEventListener('submit', event => event.preventDefault(), true)");
     await page.locator('[data-open-photo-upload][data-photo-role="back_cover"]').click({ timeout: 5000 });
-    await page.locator('#newPhotoRole').selectOption('back_cover');
     await page.locator('#altText').fill('Back cover photo');
     await page.locator('#photoFile').setInputFiles({
       name: 'broken-back-cover.jpg',
