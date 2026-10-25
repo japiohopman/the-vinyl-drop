@@ -24,6 +24,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
 
   const headerPath = path.join(__dirname, '../views/partials/header.ejs');
   const releasePath = path.join(__dirname, '../views/releases/new.ejs');
+  const createListingPath = path.join(__dirname, '../views/listings/create.ejs');
   const stylesheetContent = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
   const pickerScript = fs.readFileSync(path.join(__dirname, '../public/js/release-file-picker.js'), 'utf8');
   const discogsLookupScript = fs.readFileSync(path.join(__dirname, '../public/js/discogs-release-lookup.js'), 'utf8');
@@ -66,6 +67,32 @@ describe('Custom release mobile navigation and artwork picker', () => {
         generalErrors: [],
       },
     }, { filename: releasePath }) as unknown as Promise<string>;
+  }
+
+  async function renderCreateListingPage(): Promise<string> {
+    return ejs.renderFile(createListingPath, {
+      getIconSvg,
+      release: {
+        id: 'release-mobile-test',
+        title: 'Kind of Blue',
+        artist: 'Miles Davis',
+        label: 'Columbia',
+        releaseYear: 1959,
+      },
+      form: {
+        values: {
+          releaseId: 'release-mobile-test',
+          mediaCondition: 'NM',
+          sleeveCondition: 'NM',
+          priceEur: '',
+          tradeAvailable: 'false',
+          description: '',
+          notes: '',
+        },
+        fieldErrors: {},
+        generalErrors: [],
+      },
+    }, { filename: createListingPath }) as unknown as Promise<string>;
   }
 
   function documentHtml(headerHtml: string, releaseHtml: string): string {
@@ -113,6 +140,63 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(listingHeader).toContain('<span class="mobile-context-heading">DROP</span>');
     expect(listingHeader).toContain('href="/listings" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to My Listings"');
     expect(listingHeader).toContain('<span class="mobile-context-back-icon" aria-hidden="true">←</span>');
+  });
+
+  it('routes listing creation back to + DROP and stacks compact icon actions on mobile', async () => {
+    const headerHtml = await renderHeader('/listings/create');
+    const createHtml = await renderCreateListingPage();
+
+    expect(headerHtml).toContain('<span class="mobile-context-heading">DROP</span>');
+    expect(headerHtml).toContain('href="/drop/new" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to release search"');
+    expect(headerHtml).not.toContain('aria-label="Back to My Listings"');
+    expect(createHtml).toContain('href="/drop/new" class="create-listing-back-desktop"');
+    expect(createHtml).not.toContain('href="/listings/new"');
+    expect(createHtml).toContain('name="releaseId" value="release-mobile-test"');
+    expect(createHtml).toContain('class="icon icon-save"');
+    expect(createHtml).toContain('class="icon icon-close"');
+    expect(createHtml).toContain('class="btn btn-primary btn-md create-listing-submit"');
+    // Link buttons include a trailing separator before their optional disabled class.
+    expect(createHtml).toContain('create-listing-cancel');
+
+    for (const width of [320, 360, 375, 414]) {
+      await page.setViewportSize({ width, height: 780 });
+      await page.setContent(documentHtml(headerHtml, createHtml));
+
+      const cardCorners = await page.evaluate(
+        "({ card: getComputedStyle(document.querySelector('.create-listing-card')).borderRadius, release: getComputedStyle(document.querySelector('.create-listing-release')).borderRadius })"
+      ) as { card: string; release: string };
+      expect(cardCorners.card).toBe('0px');
+      expect(cardCorners.release).toBe('0px');
+
+      const mobileBack = page.locator('.mobile-context-back');
+      expect(await mobileBack.getAttribute('href')).toBe('/drop/new');
+      expect(await mobileBack.isVisible()).toBe(true);
+      expect(await page.locator('.create-listing-back-desktop').isVisible()).toBe(false);
+      expect(await page.locator('.create-listing-actions .btn').count()).toBe(2);
+      expect(await page.locator('.create-listing-actions .create-listing-submit').getAttribute('type')).toBe('submit');
+      expect(await page.locator('.create-listing-actions .create-listing-cancel').getAttribute('href')).toBe('/drop/new');
+      expect(await page.evaluate("window.getComputedStyle(document.querySelector('.create-listing-actions')).flexDirection")).toBe('column');
+
+      const buttons = await page.evaluate(
+        "Array.from(document.querySelectorAll('.create-listing-actions .btn')).map((element) => { const rect = element.getBoundingClientRect(); return { x: rect.x, right: rect.right, width: rect.width, height: rect.height }; })"
+      ) as Array<{ x: number; right: number; width: number; height: number }>;
+      expect(buttons).toHaveLength(2);
+      for (const box of buttons) {
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.right).toBeLessThanOrEqual(width + 1);
+        expect(box.height).toBeGreaterThanOrEqual(44);
+      }
+
+      const dimensions = await page.evaluate("({document: document.documentElement.scrollWidth, body: document.body.scrollWidth})") as { document: number; body: number };
+      expect(dimensions.document).toBeLessThanOrEqual(width + 1);
+      expect(dimensions.body).toBeLessThanOrEqual(width + 1);
+    }
+
+    await page.setViewportSize({ width: 1024, height: 780 });
+    await page.setContent(documentHtml(headerHtml, createHtml));
+    expect(await page.locator('.create-listing-back-desktop').isVisible()).toBe(true);
+    expect(await page.locator('.create-listing-back-desktop').getAttribute('href')).toBe('/drop/new');
+    expect(await page.evaluate("window.getComputedStyle(document.querySelector('.create-listing-actions')).flexDirection")).toBe('row');
   });
 
   it('fits About context labels and icon-only back targets on narrow mobile widths', async () => {

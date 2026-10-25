@@ -1,11 +1,14 @@
-<div class="create-listing-page" style="max-width: 650px; margin: var(--space-8) auto;">
-  <a href="/listings/new" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: none;">&larr; Choose a different release</a>
+<div class="create-listing-page">
+  <a href="/drop/new" class="create-listing-back-desktop">
+    <span aria-hidden="true">←</span>
+    <span>Back to release search</span>
+  </a>
 
-  <div class="card" style="padding: var(--space-6); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card); margin-top: var(--space-4);">
-    <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-1);">Create Listing Draft</h1>
-    <div style="padding: var(--space-3); background: var(--color-surface-bg); border-radius: var(--radius-sm); margin-bottom: var(--space-6); border: 1px solid var(--color-border-subtle);">
-      <h2 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin: 0;"><%= release.title %></h2>
-      <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0;">by <%= release.artist %> &bull; <%= release.label || '' %> (<%= release.releaseYear || '' %>)</p>
+  <div class="card create-listing-card">
+    <h1 class="create-listing-title">Create Listing Draft</h1>
+    <div class="create-listing-release">
+      <h2 class="create-listing-release-title"><%= release.title %></h2>
+      <p class="create-listing-release-byline">by <%= release.artist %> &bull; <%= release.label || '' %> (<%= release.releaseYear || '' %>)</p>
     </div>
 
     <%- include('../partials/form-errors', {
@@ -17,7 +20,7 @@
     <form action="/listings" method="POST" class="create-listing-form" novalidate>
       <input type="hidden" name="releaseId" value="<%= release.id %>" />
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
+      <div class="create-listing-condition-grid">
         <%- include('../partials/form-select', {
           name: 'mediaCondition',
           label: 'Media Condition',
@@ -55,7 +58,7 @@
         }) %>
       </div>
 
-      <div style="margin-bottom: var(--space-4);">
+      <div class="create-listing-price-field">
         <%- include('../partials/form-input', {
           type: 'text',
           name: 'priceEur',
@@ -67,9 +70,9 @@
         }) %>
       </div>
 
-      <div style="margin-bottom: var(--space-4); display: flex; align-items: center; gap: var(--space-2);">
-        <input type="checkbox" id="tradeAvailable" name="tradeAvailable" value="true" <%= form.values.tradeAvailable === 'true' || form.values.tradeAvailable === true ? 'checked' : '' %> style="width: 18px; height: 18px;" />
-        <label for="tradeAvailable" style="font-family: var(--font-body); font-weight: bold; font-size: var(--font-size-sm); cursor: pointer;">
+      <div class="create-listing-trade-field">
+        <input type="checkbox" id="tradeAvailable" name="tradeAvailable" value="true" <%= form.values.tradeAvailable === 'true' || form.values.tradeAvailable === true ? 'checked' : '' %> />
+        <label for="tradeAvailable">
           Open to trade offers
         </label>
       </div>
@@ -92,14 +95,23 @@
         error: form.fieldErrors.notes
       }) %>
 
-      <div style="margin-top: var(--space-6); display: flex; gap: var(--space-3);">
+      <div class="create-listing-actions">
         <%- include('../partials/button', {
           text: 'Save Draft & Continue to Photos',
           type: 'submit',
           variant: 'primary',
-          size: 'md'
+          size: 'md',
+          iconName: 'save',
+          customClass: 'create-listing-submit'
         }) %>
-        <a href="/listings/new" class="btn btn-outline btn-md">Cancel</a>
+        <%- include('../partials/button', {
+          text: 'Cancel',
+          href: '/drop/new',
+          variant: 'outline',
+          size: 'md',
+          iconName: 'close',
+          customClass: 'create-listing-cancel'
+        }) %>
       </div>
     </form>
   </div>

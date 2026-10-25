@@ -3,6 +3,7 @@
     button.ejs - Reusable accessible button or link-button partial
   */
   const btnText = typeof text !== 'undefined' ? text : '';
+  const btnIcon = typeof iconName === 'string' ? iconName : '';
   const btnHref = typeof href !== 'undefined' ? href : '';
   const isLink = Boolean(btnHref);
   const btnType = typeof type === 'string' ? type : 'button';
@@ -25,7 +26,12 @@
     <% if (label) { %>aria-label="<%= label %>"<% } %>
     <% if (isDisabled) { %>aria-disabled="true" tabindex="-1"<% } %>
   >
-    <%= btnText %>
+    <% if (btnIcon) { %>
+      <%- include('./icon', { name: btnIcon, size: '1rem', ariaHidden: true }) %>
+      <span class="btn-label"><%= btnText %></span>
+    <% } else { %>
+      <%= btnText %>
+    <% } %>
   </a>
 <% } else { %>
   <button
@@ -35,6 +41,11 @@
     <% if (label) { %>aria-label="<%= label %>"<% } %>
     <% if (isDisabled) { %>disabled aria-disabled="true"<% } %>
   >
-    <%= btnText %>
+    <% if (btnIcon) { %>
+      <%- include('./icon', { name: btnIcon, size: '1rem', ariaHidden: true }) %>
+      <span class="btn-label"><%= btnText %></span>
+    <% } else { %>
+      <%= btnText %>
+    <% } %>
   </button>
 <% } %>
