@@ -250,6 +250,21 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     const movedLeft = await page.locator('#messaging-floating-window').evaluate((el) => el.getBoundingClientRect().left);
     expect(movedLeft).toBeLessThan(initialLeft);
 
+    const dragBox = await page.locator('[data-message-drag-handle]').boundingBox();
+    expect(dragBox).not.toBeNull();
+    await page.mouse.move(dragBox!.x + dragBox!.width / 2, dragBox!.y + dragBox!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(2000, 1500, { steps: 5 });
+    await page.mouse.up();
+    const bounds = await page.locator('#messaging-floating-window').evaluate((el) => {
+      const rect = el.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: window.innerWidth, height: window.innerHeight };
+    });
+    expect(bounds.left).toBeGreaterThanOrEqual(0);
+    expect(bounds.top).toBeGreaterThanOrEqual(0);
+    expect(bounds.right).toBeLessThanOrEqual(bounds.width);
+    expect(bounds.bottom).toBeLessThanOrEqual(bounds.height);
+
     await page.click('[data-message-minimize]');
     expect(await page.locator('#messaging-floating-window').evaluate((el) => el.classList.contains('is-minimized'))).toBe(true);
     await page.click('[data-message-minimize]');
