@@ -180,6 +180,9 @@
     var toolbar = element('div', 'messaging-widget-toolbar');
     toolbar.appendChild(actionButton('← Conversations', '', loadInbox, 'Back to conversations'));
     toolbar.appendChild(makeInboxLink());
+    var fullConversationLink = element('a', 'messaging-widget-action', 'Open full conversation');
+    fullConversationLink.href = '/messages/' + encodeURIComponent(conversation.id);
+    toolbar.appendChild(fullConversationLink);
     content.appendChild(toolbar);
     content.appendChild(element('p', 'messaging-widget-subtitle', 'With ' + (conversation.otherParticipant.displayName || '@' + conversation.otherParticipant.username)));
 
