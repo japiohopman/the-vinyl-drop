@@ -287,7 +287,7 @@ export async function verifyMigrations(): Promise<void> {
     `SELECT tgname FROM pg_trigger WHERE tgname IN ('trg_check_conversation_validity', 'trg_check_message_sender_validity', 'trg_messages_identity_immutable');`
   );
   const triggerNames = triggerRes.rows.map((r) => r.tgname);
-  for (const expectedTrigger of ['trg_check_conversation_validity', 'trg_check_message_sender_validity', 'trg_messages_immutable']) {
+  for (const expectedTrigger of ['trg_check_conversation_validity', 'trg_check_message_sender_validity', 'trg_messages_identity_immutable']) {
     if (!triggerNames.includes(expectedTrigger)) {
       throw new Error(`Missing expected database trigger '${expectedTrigger}' after migration execution`);
     }
@@ -407,6 +407,13 @@ export async function verifyMigrations(): Promise<void> {
      VALUES ($1::uuid, 'listing', $2::uuid, $3::uuid, $4::uuid);`,
     ['da333333-3333-4333-8333-333333333333', 'da444444-4444-4444-8444-444444444444', messagingFixture.buyerId, messagingFixture.sellerId],
     'does not exist'
+  );
+
+  await expectTriggerRejection(
+    'Conversation identity/context mutation',
+    `UPDATE public.conversations SET conversation_type = 'direct', listing_id = NULL WHERE id = $1::uuid;`,
+    [messagingFixture.conversationId],
+    'identity and context are immutable'
   );
 
   await pg.query(

@@ -106,12 +106,13 @@ DECLARE
   v_status public.listing_status;
 BEGIN
   IF TG_OP = 'UPDATE' THEN
-    IF NEW.conversation_type IS NOT DISTINCT FROM OLD.conversation_type
-       AND NEW.listing_id IS NOT DISTINCT FROM OLD.listing_id
-       AND NEW.participant_a_id IS NOT DISTINCT FROM OLD.participant_a_id
-       AND NEW.participant_b_id IS NOT DISTINCT FROM OLD.participant_b_id THEN
-      RETURN NEW;
+    IF NEW.conversation_type IS DISTINCT FROM OLD.conversation_type
+       OR NEW.listing_id IS DISTINCT FROM OLD.listing_id
+       OR NEW.participant_a_id IS DISTINCT FROM OLD.participant_a_id
+       OR NEW.participant_b_id IS DISTINCT FROM OLD.participant_b_id THEN
+      RAISE EXCEPTION 'Conversation identity and context are immutable';
     END IF;
+    RETURN NEW;
   END IF;
 
   IF NEW.participant_a_id = NEW.participant_b_id THEN
