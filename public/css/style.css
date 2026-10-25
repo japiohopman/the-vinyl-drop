@@ -5541,7 +5541,15 @@ select.form-control {
   gap: var(--space-2);
 }
 .messaging-widget-status {
-  margin: 0;
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 @media (max-width: 1023px) {
   .messaging-floating-window {
