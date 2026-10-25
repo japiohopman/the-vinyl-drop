@@ -111,6 +111,9 @@ describe('Compact mobile back navigation', () => {
       expect(view).toContain('href="/listings"');
     }
 
+    const listingEditView = fs.readFileSync(path.join(process.cwd(), 'views/listings/edit.ejs'), 'utf8');
+    expect(listingEditView).not.toContain('class="mobile-back-control"');
+
     const sharedHeader = fs.readFileSync(path.join(process.cwd(), 'views/partials/header.ejs'), 'utf8');
     expect(sharedHeader).toContain('isListingEditPage');
     expect(sharedHeader).toContain('href="/listings" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to My Listings"');
