@@ -262,6 +262,31 @@ export class MessagingRepository {
     return summaries;
   }
 
+  async getUnreadCountForUser(userId: string): Promise<number> {
+    const db = getDb();
+    const buyerUnread = and(
+      eq(conversations.buyerId, userId),
+      isNull(conversations.buyerArchivedAt),
+      sql`${messages.senderId} <> ${userId}`,
+      or(isNull(conversations.buyerReadAt), gte(messages.createdAt, conversations.buyerReadAt))
+    );
+    const sellerUnread = and(
+      eq(listings.sellerId, userId),
+      isNull(conversations.sellerArchivedAt),
+      sql`${messages.senderId} <> ${userId}`,
+      or(isNull(conversations.sellerReadAt), gte(messages.createdAt, conversations.sellerReadAt))
+    );
+
+    const rows = await db
+      .select({ count: sql<number>`count(${messages.id})` })
+      .from(messages)
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .innerJoin(listings, eq(conversations.listingId, listings.id))
+      .where(or(buyerUnread, sellerUnread));
+
+    return Number(rows[0]?.count ?? 0);
+  }
+
   async getMessagesForConversation(conversationId: string): Promise<Message[]> {
     const db = getDb();
     return db

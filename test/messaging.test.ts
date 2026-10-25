@@ -194,6 +194,9 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       const app = createApp();
       await request(app).get('/messages');
       await request(app).get(`/messages/00000000-0000-0000-0000-000000000000`);
+      await request(app).get('/messages/widget/unread-count');
+      await request(app).get('/messages/widget/data');
+      await request(app).get('/messages/widget/00000000-0000-0000-0000-000000000000');
 
       expect(selectSpy).not.toHaveBeenCalled();
       selectSpy.mockRestore();
@@ -298,6 +301,92 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     });
   });
 
+
+    test('serves widget inbox, truthful participant-scoped unread count, and conversation JSON', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+        await messagingService.markAsRead(conv.id, buyerId);
+        await messagingService.markAsRead(conv.id, sellerId);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        await messagingService.sendMessage(conv.id, buyerId, 'A widget-only unread message');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        const unread = await request(app)
+          .get('/messages/widget/unread-count')
+          .set('Cookie', ['sb-access-token=seller-token'])
+          .set('Accept', 'application/json');
+        expect(unread.status).toBe(200);
+        expect(unread.body.unreadCount).toBeGreaterThanOrEqual(1);
+
+        const inbox = await request(app)
+          .get('/messages/widget/data')
+          .set('Cookie', ['sb-access-token=seller-token'])
+          .set('Accept', 'application/json');
+        expect(inbox.status).toBe(200);
+        expect(inbox.headers['cache-control']).toContain('no-store');
+        const item = inbox.body.conversations.find((entry: { id: string }) => entry.id === conv.id);
+        expect(item).toBeDefined();
+        expect(item.releaseArtist).toBe('Pink Floyd');
+        expect(item.releaseTitle).toBe('The Dark Side of the Moon');
+        expect(item.unreadCount).toBeGreaterThanOrEqual(1);
+        expect(item.lastMessage).toBe('A widget-only unread message');
+
+        const detail = await request(app)
+          .get(`/messages/widget/${conv.id}`)
+          .set('Cookie', ['sb-access-token=seller-token'])
+          .set('Accept', 'application/json');
+        expect(detail.status).toBe(200);
+        expect(detail.body.id).toBe(conv.id);
+        expect(detail.body.unreadCount).toBeGreaterThanOrEqual(1);
+        expect(detail.body.messages.some((message: { body: string; isOwnMessage: boolean }) =>
+          message.body === 'A widget-only unread message' && message.isOwnMessage === false
+        )).toBe(true);
+
+        const outsider = await request(app)
+          .get(`/messages/widget/${conv.id}`)
+          .set('Cookie', ['sb-access-token=third-token'])
+          .set('Accept', 'application/json');
+        expect(outsider.status).toBe(404);
+
+        await messagingService.markAsRead(conv.id, sellerId);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        const cleared = await request(app)
+          .get('/messages/widget/unread-count')
+          .set('Cookie', ['sb-access-token=seller-token'])
+          .set('Accept', 'application/json');
+        expect(cleared.status).toBe(200);
+        expect(cleared.body.unreadCount).toBe(0);
+      } finally {
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
+
+    test('supports widget JSON send while preserving full-page form redirects', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+        const res = await request(app)
+          .post(`/messages/${conv.id}/send`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .set('Accept', 'application/json')
+          .set('X-Messaging-Widget', '1')
+          .send({ body: 'Sent from the floating widget' });
+
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe('ok');
+        expect(res.body.message.body).toBe('Sent from the floating widget');
+        expect(res.body.message.isOwnMessage).toBe(true);
+        expect(res.headers['cache-control']).toContain('no-store');
+      } finally {
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
   describe('Service & Scoping Boundaries', () => {
     test('concurrent conversation creation attempts safely reuse same thread', async () => {
       const [c1, c2] = await Promise.all([
