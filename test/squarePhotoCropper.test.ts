@@ -94,7 +94,7 @@ describe('Square cover photo cropper', () => {
       : '[data-open-photo-upload][data-photo-role="optional"]';
     if (role !== 'front_cover' && role !== 'back_cover') {
       const additional = page.locator('details.additional-photos');
-      if (!(await additional.evaluate((element) => (element as { open: boolean }).open))) {
+      if (!(await additional.evaluate((element) => (element as unknown as { open: boolean }).open))) {
         await additional.locator('summary').click({ timeout: 5000 });
       }
     }
