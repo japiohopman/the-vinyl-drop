@@ -140,11 +140,13 @@ describe('Square cover photo cropper', () => {
     await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
     expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
     expect(await page.locator('#newPhotoRole').inputValue()).toBe('front_cover');
+    expect(await page.locator('.photo-role-field').isVisible()).toBe(false);
     expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload front cover');
 
     await page.locator('[data-close-photo-upload]').first().click({ timeout: 5000 });
     await page.locator('[data-open-photo-upload][data-photo-role="back_cover"]').click({ timeout: 5000 });
     expect(await page.locator('#newPhotoRole').inputValue()).toBe('back_cover');
+    expect(await page.locator('.photo-role-field').isVisible()).toBe(false);
     expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload back cover');
   });
 
@@ -231,6 +233,7 @@ describe('Square cover photo cropper', () => {
   it('shows a normal preview without cropping condition/detail photos', async () => {
     await renderEditPage();
     await selectPortrait('detail');
+    expect(await page.locator('.photo-role-field').isVisible()).toBe(true);
 
     await page.waitForFunction(
       "document.querySelector('#photo-original-preview').naturalWidth === 300",
