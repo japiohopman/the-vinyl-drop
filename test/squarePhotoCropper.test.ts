@@ -141,6 +141,7 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
     expect(await page.locator('#newPhotoRole').inputValue()).toBe('front_cover');
     expect(await page.locator('.photo-role-field').isVisible()).toBe(false);
+    expect(await page.locator('#photoFile').evaluate((element) => element === document.activeElement)).toBe(true);
     expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload front cover');
 
     await page.locator('[data-close-photo-upload]').first().click({ timeout: 5000 });
