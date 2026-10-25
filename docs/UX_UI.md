@@ -195,15 +195,21 @@ Mobile-first multi-step workflow:
 
 Form fields preserve user input on validation errors using structured Zod error view models (`FormViewModel`).
 
-## Public profile view (`/profiles/:username`)
+## Public profile and Crate (`/profiles/:username`)
 
-Presents a seller's marketplace footprint:
-- display name, username, location, bio, and avatar;
-- active published listings grid;
-- edit profile trigger (visible strictly when viewed by the profile owner).
+The public profile is a compact introduction to a digger, not a listing feed:
+- avatar, display name, @handle, optional location/website, concise bio and member-since metadata;
+- a prominent Crate entry using the shared `cardboard-box-closed` icon and a count of published active records;
+- `Edit Profile` appears only to the profile owner;
+- messaging actions are not shown until direct user-to-user messaging is implemented and enabled.
 
-Does not expose email, auth provider IDs, or internal user keys.
+## Public Crate (`/profiles/:username/crate`)
 
+The dedicated Crate view contains the seller's paginated published-listing grid and the existing reusable listing cards.
+- Only published active records are exposed; drafts remain on the authenticated `/listings` management dashboard.
+- The owner sees a helpful empty state with `+ Drop a Record`; visitors see a neutral empty-Crate state.
+- Legacy `/profile/:username` remains an alias for the compact profile. Legacy `?page=N` profile URLs redirect to the canonical Crate route and preserve the page number.
+- Does not expose email, auth provider IDs, internal user keys or drafts.
 ## Comments component (`views/partials/comment-thread.ejs`)
 
 Public comment threads attached to listings support pre-sale inquiries:
