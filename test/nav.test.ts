@@ -166,7 +166,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
 
   it('opens a desktop conversation without navigating away or marking it read implicitly', async () => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    var unreadCount = 2;
+    let unreadCount = 2;
     const requests: Array<{ path: string; method: string }> = [];
     await page.route('**/messages/**', async (route) => {
       const requestInfo = route.request();
