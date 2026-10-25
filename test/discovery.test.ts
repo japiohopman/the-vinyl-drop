@@ -622,8 +622,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     });
   });
 
-  describe('Public Seller Profile View (GET /profiles/:username & GET /profile/:username)', () => {
-    it('should render public seller profile with active published drops', async () => {
+  describe('Public Profile Landing and Crate Routes', () => {
+    it('renders a compact public profile with a truthful Crate count and no listing grid', async () => {
       (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
       (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
         items: [mockListingCard],
@@ -639,11 +639,35 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.status).toBe(200);
       expect(res.text).toContain('Alice Vinyl');
       expect(res.text).toContain('@alice_records');
-      expect(res.text).toContain('1 record for sale');
-      expect(res.text).toContain('Blue Train');
+      expect(res.text).toContain('1 published record');
+      expect(res.text).toContain('View Crate');
+      expect(res.text).toContain('href="/profiles/alice_records/crate"');
+      expect(res.text).not.toContain('Blue Train');
+      expect(res.text).not.toContain('class="listing-grid');
+      expect(listingService.getSellerPublishedListings).toHaveBeenCalledWith('alice_records', { page: 1 });
     });
 
-    it('should render seller profile empty state when seller has 0 active drops', async () => {
+    it('renders published listing cards on the dedicated Crate route', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 1,
+        page: 1,
+        limit: 12,
+        totalPages: 1,
+      });
+
+      const app = createApp();
+      const res = await request(app).get('/profiles/alice_records/crate');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Blue Train');
+      expect(res.text).toContain('1 published record');
+      expect(res.text).toContain('Back to @alice_records');
+      expect(listingService.getSellerPublishedListings).toHaveBeenCalledWith('alice_records', { page: 1 });
+    });
+
+    it('shows the correct empty Crate state for a visitor', async () => {
       (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileBob);
       (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
         items: [],
@@ -654,14 +678,27 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       });
 
       const app = createApp();
-      const res = await request(app).get('/profile/bob_grooves');
+      const res = await request(app).get('/profile/bob_grooves/crate');
 
       expect(res.status).toBe(200);
       expect(res.text).toContain('Bob Grooves');
+      expect(res.text).toContain('This Crate is empty for now');
       expect(res.text).toContain('@bob_grooves has no active record drops available right now.');
+      expect(res.text).not.toContain('+ Drop a Record');
     });
 
-    it('should handle pagination for seller profile listings (12 items per page)', async () => {
+    it('redirects legacy paginated profile URLs to the canonical Crate route', async () => {
+      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+
+      const app = createApp();
+      const res = await request(app).get('/profiles/alice_records?page=2');
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/profiles/alice_records/crate?page=2');
+      expect(listingService.getSellerPublishedListings).not.toHaveBeenCalled();
+    });
+
+    it('keeps pagination on the dedicated Crate route (12 items per page)', async () => {
       (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
       (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
         items: [mockListingCard],
@@ -672,21 +709,25 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       });
 
       const app = createApp();
-      const res = await request(app).get('/profiles/alice_records?page=2');
+      const res = await request(app).get('/profiles/alice_records/crate?page=2');
 
       expect(res.status).toBe(200);
       expect(listingService.getSellerPublishedListings).toHaveBeenCalledWith('alice_records', { page: 2 });
       expect(res.text).toContain('Page 2 of 2');
+      expect(res.text).toContain('href="/profiles/alice_records/crate?page=1"');
     });
 
-    it('should return 400 Bad Request when malformed page parameter is provided to seller profile', async () => {
+    it('returns 400 for malformed page parameters on both legacy profile and Crate URLs', async () => {
       (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
 
       const app = createApp();
-      const res = await request(app).get('/profiles/alice_records?page=invalid123');
+      const legacy = await request(app).get('/profiles/alice_records?page=invalid123');
+      const crate = await request(app).get('/profiles/alice_records/crate?page=1.5');
 
-      expect(res.status).toBe(400);
-      expect(res.text).toContain('Invalid page parameter provided.');
+      expect(legacy.status).toBe(400);
+      expect(legacy.text).toContain('Invalid page parameter provided.');
+      expect(crate.status).toBe(400);
+      expect(crate.text).toContain('Invalid page parameter provided.');
     });
   });
 
