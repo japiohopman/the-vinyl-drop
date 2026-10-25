@@ -201,14 +201,14 @@ describe('Custom release mobile navigation and artwork picker', () => {
 
   it('fits About context labels and icon-only back targets on narrow mobile widths', async () => {
     const pages = [
-      ['/terms', 'ABOUT / TERMS'],
-      ['/contact', 'ABOUT / CONTACT'],
-      ['/privacy', 'ABOUT / PRIVACY'],
-      ['/community-rules', 'ABOUT / RULES'],
-      ['/releases/new', 'DROP'],
+      ['/terms', 'ABOUT · TERMS', '/', 'Back to Home'],
+      ['/contact', 'ABOUT · CONTACT', '/', 'Back to Home'],
+      ['/privacy', 'ABOUT · PRIVACY', '/', 'Back to Home'],
+      ['/community-rules', 'ABOUT · COMMUNITY RULES', '/', 'Back to Home'],
+      ['/releases/new', 'DROP', '/drop/new', 'Back to catalog search'],
     ] as const;
 
-    for (const [route, label] of pages) {
+    for (const [route, label, destination, accessibleName] of pages) {
       const headerHtml = await renderHeader(route);
       for (const width of [320, 360, 375, 414]) {
         await page.setViewportSize({ width, height: 740 });
@@ -221,17 +221,25 @@ describe('Custom release mobile navigation and artwork picker', () => {
         expect(await page.locator('.mobile-context-heading').textContent()).toBe(label);
         const back = page.locator('.mobile-context-back-icon-only');
         expect(await back.isVisible()).toBe(true);
+        expect(await back.getAttribute('href')).toBe(destination);
+        expect(await back.getAttribute('aria-label')).toBe(accessibleName);
+        expect((await back.locator('.mobile-context-back-icon').textContent())?.trim()).toBe('←');
+
         const box = await back.boundingBox();
+        const headingBox = await page.locator('.mobile-context-heading').boundingBox();
         expect(box).not.toBeNull();
-        if (box) {
+        expect(headingBox).not.toBeNull();
+        if (box && headingBox) {
           expect(box.width).toBeGreaterThanOrEqual(44);
           expect(box.height).toBeGreaterThanOrEqual(44);
+          expect(headingBox.x + headingBox.width).toBeLessThanOrEqual(box.x);
         }
         const dimensions = await page.evaluate(() => ({
           viewport: window.innerWidth,
           document: document.documentElement.scrollWidth,
           body: document.body.scrollWidth,
         }));
+        expect(dimensions.viewport).toBe(width);
         expect(dimensions.document).toBeLessThanOrEqual(width + 1);
         expect(dimensions.body).toBeLessThanOrEqual(width + 1);
       }
