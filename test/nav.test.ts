@@ -418,8 +418,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.click('#mobile-you-surface [data-messaging-widget-trigger]');
     const panel = page.locator('#messaging-floating-window');
     const backdrop = page.locator('#messaging-mobile-backdrop');
-    await expect(panel).toBeVisible();
-    await expect(backdrop).toBeVisible();
+    expect(await panel.isVisible()).toBe(true);
+    expect(await backdrop.isVisible()).toBe(true);
     expect(await panel.getAttribute('aria-modal')).toBe('true');
     expect(page.url()).not.toContain('/messages');
 
@@ -462,7 +462,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
 
     await page.locator('[data-message-minimize]').click();
     expect(await panel.evaluate((el) => el.classList.contains('is-minimized'))).toBe(true);
-    await expect(backdrop).toBeHidden();
+    expect(await backdrop.isVisible()).toBe(false);
     expect(await page.locator('body').evaluate((el) => getComputedStyle(el).overflow)).not.toBe('hidden');
     const minimizedBottom = await panel.evaluate((el) => el.getBoundingClientRect().bottom);
     expect(minimizedBottom).toBeLessThanOrEqual(812 - 60);
@@ -470,11 +470,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.click('#mobile-you-trigger');
     await page.click('#mobile-you-surface [data-messaging-widget-trigger]');
     expect(await panel.evaluate((el) => el.classList.contains('is-minimized'))).toBe(false);
-    await expect(backdrop).toBeVisible();
+    expect(await backdrop.isVisible()).toBe(true);
 
     await page.locator('[data-message-close]').click();
-    await expect(panel).toBeHidden();
-    await expect(backdrop).toBeHidden();
+    expect(await panel.isVisible()).toBe(false);
+    expect(await backdrop.isVisible()).toBe(false);
     expect(await page.evaluate(() => {
       const browser = globalThis as unknown as { document: { activeElement: { id: string } | null } };
       return browser.document.activeElement?.id;
