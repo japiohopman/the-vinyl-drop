@@ -5854,3 +5854,12 @@ select.form-control {
   min-width: 0;
   max-width: 100%;
 }
+
+
+/* Profile content may include arbitrary handles, URLs, and collector names. */
+.profile-landing-page,
+.profile-crate-page,
+.profile-landing-page *,
+.profile-crate-page * {
+  overflow-wrap: anywhere;
+}
