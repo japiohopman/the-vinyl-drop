@@ -10,6 +10,7 @@ import { messages } from '../src/db/schema/messages';
 import { clearNotificationListeners, onNotification, NotificationEvent } from '../src/app/services/notificationHooks';
 import { config } from '../src/config/env';
 import { messagingService } from '../src/app/services/messagingService';
+import { savedPeopleService } from '../src/app/services/savedPeopleService';
 import fs from 'fs';
 import path from 'path';
 
@@ -609,6 +610,69 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
           .set('Origin', config.APP_BASE_URL)
           .send({});
         expect(self.status).toBe(400);
+      } finally {
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
+  });
+
+
+  describe('Saved People privacy and idempotency', () => {
+    test('saving/removing is idempotent and visible only to the owner without changing conversation state', async () => {
+      const direct = await messagingService.getOrCreateDirectConversation(sellerId, buyerId);
+      await messagingService.archiveConversation(direct.id, buyerId);
+      const beforeRows = await db.select().from(conversations);
+      const before = beforeRows.find((row: any) => row.id === direct.id);
+      expect(before).toBeDefined();
+
+      await savedPeopleService.savePerson(buyerId, sellerId);
+      await savedPeopleService.savePerson(buyerId, sellerId);
+      expect(await savedPeopleService.isSavedPerson(buyerId, sellerId)).toBe(true);
+      expect(await savedPeopleService.isSavedPerson(sellerId, buyerId)).toBe(false);
+      const buyerList = await savedPeopleService.getSavedPeopleForUser(buyerId);
+      expect(buyerList.filter(person => person.id === sellerId)).toHaveLength(1);
+      const sellerList = await savedPeopleService.getSavedPeopleForUser(sellerId);
+      expect(sellerList.some(person => person.id === buyerId)).toBe(false);
+
+      const duringRows = await db.select().from(conversations);
+      const during = duringRows.find((row: any) => row.id === direct.id);
+      expect(during?.participantAReadSeq).toBe(before?.participantAReadSeq);
+      expect(during?.participantBReadSeq).toBe(before?.participantBReadSeq);
+      expect(during?.participantAArchivedAt).toEqual(before?.participantAArchivedAt);
+      expect(during?.participantBArchivedAt).toEqual(before?.participantBArchivedAt);
+      expect(during?.lastMessageSeq).toBe(before?.lastMessageSeq);
+
+      await savedPeopleService.removePerson(buyerId, sellerId);
+      await savedPeopleService.removePerson(buyerId, sellerId);
+      expect(await savedPeopleService.isSavedPerson(buyerId, sellerId)).toBe(false);
+      const afterRows = await db.select().from(conversations);
+      const after = afterRows.find((row: any) => row.id === direct.id);
+      expect(after?.participantAReadSeq).toBe(before?.participantAReadSeq);
+      expect(after?.participantAArchivedAt).toEqual(before?.participantAArchivedAt);
+      expect(after?.lastMessageSeq).toBe(before?.lastMessageSeq);
+    });
+
+    test('rejects self-saving and invalid or nonexistent profile identifiers', async () => {
+      await expect(savedPeopleService.savePerson(buyerId, buyerId)).rejects.toThrow(/cannot save your own profile/);
+      await expect(savedPeopleService.savePerson(buyerId, 'not-a-uuid')).rejects.toThrow(/Profile not found/);
+      await expect(savedPeopleService.savePerson(buyerId, '99999999-9999-4999-8999-999999999999'))
+        .rejects.toThrow(/Profile not found/);
+    });
+
+    test('profile Save Person action is hidden for self or when messaging is disabled', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        const otherProfile = await request(app).get('/profiles/seller_user').set('Cookie', ['sb-access-token=buyer-token']);
+        expect(otherProfile.text).toContain(`action="/messages/saved-people/${sellerId}"`);
+
+        const ownProfile = await request(app).get('/profiles/seller_user').set('Cookie', ['sb-access-token=seller-token']);
+        expect(ownProfile.text).not.toContain(`action="/messages/saved-people/${sellerId}"`);
+
+        (config as any).MESSAGING_ENABLED = false;
+        const hidden = await request(app).get('/profiles/seller_user').set('Cookie', ['sb-access-token=buyer-token']);
+        expect(hidden.text).not.toContain(`action="/messages/saved-people/${sellerId}"`);
       } finally {
         (config as any).MESSAGING_ENABLED = originalFlag;
       }

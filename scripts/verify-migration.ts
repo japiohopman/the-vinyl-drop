@@ -134,7 +134,7 @@ export async function verifyMigrations(): Promise<void> {
   );
   if (consentRows.rows[0].count !== 0) throw new Error('Registration-consent audit did not cascade on Auth identity deletion');
 
-  // 1. Verify expected public tables (all 11 public tables including conversations and messages)
+  // 1. Verify expected public tables (including private messaging and Saved People)
   const tablesRes = await pg.query<{ table_name: string }>(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;`
   );
@@ -151,6 +151,7 @@ export async function verifyMigrations(): Promise<void> {
     'physical_copies',
     'profiles',
     'releases',
+    'saved_people',
   ];
   for (const expectedTable of expectedTables) {
     if (!tableNames.includes(expectedTable)) {
@@ -191,6 +192,8 @@ export async function verifyMigrations(): Promise<void> {
     'conversations_listing_id_fkey',
     'conversations_participant_a_id_fkey',
     'conversations_participant_b_id_fkey',
+    'saved_people_owner_user_id_fkey',
+    'saved_people_saved_user_id_fkey',
     'messages_conversation_id_fkey',
     'messages_sender_id_fkey',
   ];
@@ -220,6 +223,7 @@ export async function verifyMigrations(): Promise<void> {
     'conversations_direct_pair_order_check',
     'conversations_read_seq_nonnegative_check',
     'messages_message_seq_positive_check',
+    'saved_people_no_self_check',
   ]) {
     if (!checkNames.includes(expectedCheck)) {
       throw new Error(`Missing expected messaging check constraint '${expectedCheck}' after migration execution`);
@@ -269,6 +273,8 @@ export async function verifyMigrations(): Promise<void> {
     'messages_conversation_seq_idx',
     'messages_conversation_created_id_idx',
     'messages_sender_idx',
+    'saved_people_owner_saved_unique_idx',
+    'saved_people_owner_created_idx',
   ];
   for (const expectedIndex of expectedIndexes) {
     if (!indexNames.includes(expectedIndex)) {
@@ -639,7 +645,7 @@ export async function verifyMigrations(): Promise<void> {
     throw new Error('Expected authenticated-only SELECT access to favorites');
   }
 
-  for (const privateTable of ['orphaned_storage_objects', 'conversations', 'messages']) {
+  for (const privateTable of ['orphaned_storage_objects', 'conversations', 'messages', 'saved_people']) {
     for (const role of ['anon', 'authenticated']) {
       const result = await pg.query<{ has_privilege: boolean }>(
         `SELECT has_table_privilege('${role}', '${privateTable}', 'SELECT') AS has_privilege;`
@@ -651,6 +657,40 @@ export async function verifyMigrations(): Promise<void> {
       }
     }
   }
+
+
+  // Saved People are disposable private preferences: deleting either profile removes the relationship.
+  const savedFixture = {
+    ownerToDelete: 'e2111111-1111-4111-8111-111111111111',
+    savedAfterOwnerDelete: 'e2222222-2222-4222-8222-222222222222',
+    ownerAfterTargetDelete: 'e3333333-3333-4333-8333-333333333333',
+    targetToDelete: 'e4444444-4444-4444-8444-444444444444',
+  };
+  await pg.query(
+    `INSERT INTO public.profiles (id, username, display_name)
+     VALUES ($1::uuid, 'saved_owner_delete', 'Saved Owner Delete'),
+            ($2::uuid, 'saved_target_owner', 'Saved Target Owner'),
+            ($3::uuid, 'saved_owner_target', 'Saved Owner Target'),
+            ($4::uuid, 'saved_target_delete', 'Saved Target Delete');`,
+    [savedFixture.ownerToDelete, savedFixture.savedAfterOwnerDelete, savedFixture.ownerAfterTargetDelete, savedFixture.targetToDelete]
+  );
+  await pg.query(
+    `INSERT INTO public.saved_people (owner_user_id, saved_user_id)
+     VALUES ($1::uuid, $2::uuid), ($3::uuid, $4::uuid);`,
+    [savedFixture.ownerToDelete, savedFixture.savedAfterOwnerDelete, savedFixture.ownerAfterTargetDelete, savedFixture.targetToDelete]
+  );
+  await pg.query('DELETE FROM public.profiles WHERE id = $1::uuid;', [savedFixture.ownerToDelete]);
+  const ownerCascade = await pg.query<{ count: number }>(
+    'SELECT count(*)::int AS count FROM public.saved_people WHERE owner_user_id = $1::uuid;',
+    [savedFixture.ownerToDelete]
+  );
+  if (ownerCascade.rows[0].count !== 0) throw new Error('Saved People did not cascade when owner profile was deleted');
+  await pg.query('DELETE FROM public.profiles WHERE id = $1::uuid;', [savedFixture.targetToDelete]);
+  const targetCascade = await pg.query<{ count: number }>(
+    'SELECT count(*)::int AS count FROM public.saved_people WHERE saved_user_id = $1::uuid;',
+    [savedFixture.targetToDelete]
+  );
+  if (targetCascade.rows[0].count !== 0) throw new Error('Saved People did not cascade when saved profile was deleted');
 
   // 9. Verify the private one-time approval contract for Supabase Auth's Before User Created hook.
   const approvalFunctionRes = await pg.query<{ security_definer: boolean; empty_search_path: boolean }>(

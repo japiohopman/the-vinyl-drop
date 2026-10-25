@@ -10,6 +10,7 @@ import {
   getConversationPage,
   postStartConversation,
   postStartDirectConversation,
+  postSavedPersonAction,
   postSendMessage,
   postMarkRead,
   postArchiveConversation,
@@ -27,6 +28,7 @@ router.get('/widget/:conversationId', getWidgetConversation);
 router.get('/', getInboxPage);
 router.post('/listing/:listingId', validateSameOrigin, postStartConversation);
 router.post('/profile/:profileId', validateSameOrigin, postStartDirectConversation);
+router.post('/saved-people/:profileId', validateSameOrigin, postSavedPersonAction);
 router.post('/:conversationId/send', validateSameOrigin, postSendMessage);
 router.post('/:conversationId/read', validateSameOrigin, postMarkRead);
 router.post('/:conversationId/archive', validateSameOrigin, postArchiveConversation);

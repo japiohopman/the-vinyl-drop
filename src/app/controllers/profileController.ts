@@ -6,6 +6,7 @@ import { formatZodFormErrors, FormViewModel } from '../view-models/formViewModel
 import { renderWithLayout } from '../utils/render';
 import { setFlashCookie } from '../middleware/flash';
 import { config } from '../../config/env';
+import { savedPeopleService } from '../services/savedPeopleService';
 
 export async function getCurrentProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -90,11 +91,16 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
     }
 
     const listingsResult = await getSellerPublishedListings(profile.username, { page: 1 });
+    const isSavedPerson = Boolean(
+      req.user && config.MESSAGING_ENABLED && req.user.id !== profile.id &&
+      await savedPeopleService.isSavedPerson(req.user.id, profile.id)
+    );
     renderWithLayout(res, 'profiles/show', {
       title,
       profile,
       user: req.user,
       messagingEnabled: config.MESSAGING_ENABLED,
+      isSavedPerson,
       isOwner: Boolean(req.user && req.user.id === profile.id),
       crateTotalCount: listingsResult.totalCount,
     }, next);

@@ -41,6 +41,10 @@
         <form action="/messages/profile/<%= profile.id %>" method="POST" class="inline-form">
           <button type="submit" class="btn btn-primary btn-sm">Message</button>
         </form>
+        <form action="/messages/saved-people/<%= profile.id %>" method="POST" class="inline-form">
+          <input type="hidden" name="action" value="<%= typeof isSavedPerson !== 'undefined' && isSavedPerson ? 'remove' : 'save' %>">
+          <button type="submit" class="btn btn-outline btn-sm"><%= typeof isSavedPerson !== 'undefined' && isSavedPerson ? 'Remove from Saved People' : 'Save Person' %></button>
+        </form>
       <% } %>
     </div>
   </section>

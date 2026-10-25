@@ -152,6 +152,24 @@ export async function postStartConversation(req: Request, res: Response, next: N
   }
 }
 
+export async function postSavedPersonAction(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const ownerUserId = req.user!.id;
+    const { profileId } = req.params;
+    const action = (req.body || {}).action;
+    if (action !== 'save' && action !== 'remove') {
+      throw new ValidationError('Saved People action must be save or remove');
+    }
+
+    const target = action === 'save'
+      ? await savedPeopleService.savePerson(ownerUserId, profileId)
+      : await savedPeopleService.removePerson(ownerUserId, profileId);
+    res.redirect('/profiles/' + encodeURIComponent(target.username));
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function postStartDirectConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const userId = req.user!.id;

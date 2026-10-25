@@ -10,3 +10,4 @@ export * from './orphanedStorageObjects';
 export * from './physicalCopies';
 export * from './profiles';
 export * from './releases';
+export * from './savedPeople';

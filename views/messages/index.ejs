@@ -4,6 +4,39 @@
     <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">Private conversations between people on The Vinyl Drop</p>
   </div>
 
+  <section aria-labelledby="saved-people-heading" style="margin-bottom: var(--space-6);">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3);">
+      <h2 id="saved-people-heading" style="font-family: var(--font-display); font-size: var(--font-size-xl);">Saved People</h2>
+      <p style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); margin: 0;">Private to you. Saving someone does not notify them.</p>
+    </div>
+    <% if (!savedPeople || savedPeople.length === 0) { %>
+      <div class="empty-inbox-state" style="padding: var(--space-4); border: var(--border-thin); border-radius: var(--radius-sm); background: var(--color-paper-muted);">
+        <p style="margin: 0; font-size: var(--font-size-sm);">Your Saved People list is empty. Save diggers from their profiles to find them again here. This list is private and is not a public Follow relationship.</p>
+      </div>
+    <% } else { %>
+      <ul style="display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none;">
+        <% savedPeople.forEach(function(person) { %>
+          <li style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3); border: var(--border-thin); border-radius: var(--radius-sm); background: var(--color-white); padding: var(--space-3);">
+            <a href="/profiles/<%= encodeURIComponent(person.username) %>" style="display: flex; align-items: center; gap: var(--space-2); min-width: 0; color: inherit; text-decoration: none;">
+              <% if (person.avatarUrl) { %>
+                <img src="<%= person.avatarUrl %>" alt="" width="40" height="40" loading="lazy" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+              <% } else { %>
+                <span aria-hidden="true" style="display: inline-flex; width: 40px; height: 40px; align-items: center; justify-content: center; border: var(--border-thin); border-radius: 50%; background: var(--color-paper-muted);"><%= (person.displayName || person.username).substring(0, 1).toUpperCase() %></span>
+              <% } %>
+              <span>
+                <strong><%= person.displayName || ('@' + person.username) %></strong>
+                <span style="display: block; color: var(--color-ink-muted); font-size: var(--font-size-xs);">@<%= person.username %></span>
+              </span>
+            </a>
+            <form action="/messages/profile/<%= person.id %>" method="POST" style="margin: 0;">
+              <button type="submit" class="btn btn-outline btn-sm">Message</button>
+            </form>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </section>
+
   <% if (!summaries || summaries.length === 0) { %>
     <div class="empty-inbox-state" style="padding: var(--space-8); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); text-align: center;">
       <div style="font-size: 48px; margin-bottom: var(--space-3);">💬</div>
