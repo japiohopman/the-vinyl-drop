@@ -135,49 +135,6 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(dropLink).toContain('+ DROP');
   });
 
-  it('keeps About context labels and icon-only Back to Home within narrow mobile viewports', async () => {
-    const pages = [
-      ['/terms', 'ABOUT · TERMS'],
-      ['/contact', 'ABOUT · CONTACT'],
-      ['/privacy', 'ABOUT · PRIVACY'],
-      ['/community-rules', 'ABOUT · COMMUNITY RULES'],
-    ] as const;
-
-    for (const [route, label] of pages) {
-      const headerHtml = await renderHeader(route);
-
-      for (const width of [320, 360, 375, 414]) {
-        await page.setViewportSize({ width, height: 780 });
-        await page.setContent(documentHtml(headerHtml, '<main class="main-content container"></main>'));
-
-        expect(await page.locator('.mobile-context-heading').textContent()).toBe(label);
-
-        const home = page.locator('.mobile-context-home');
-        expect(await home.getAttribute('href')).toBe('/');
-        expect(await home.getAttribute('aria-label')).toBe('Back to Home');
-        expect((await home.textContent())?.trim()).toBe('←');
-
-        const homeBounds = await home.boundingBox();
-        const headingBounds = await page.locator('.mobile-context-heading').boundingBox();
-        expect(homeBounds).not.toBeNull();
-        expect(headingBounds).not.toBeNull();
-        if (!homeBounds || !headingBounds) throw new Error('Mobile context header controls must have measurable bounds');
-        expect(homeBounds.width).toBeGreaterThanOrEqual(44);
-        expect(homeBounds.height).toBeGreaterThanOrEqual(44);
-        expect(headingBounds.x + headingBounds.width).toBeLessThanOrEqual(homeBounds.x);
-
-        const overflow = await page.evaluate(String.raw`(() => ({
-          viewport: window.innerWidth,
-          document: document.documentElement.scrollWidth,
-          body: document.body.scrollWidth,
-        }))()`) as { viewport: number; document: number; body: number };
-        expect(overflow.viewport).toBe(width);
-        expect(overflow.document).toBeLessThanOrEqual(width + 1);
-        expect(overflow.body).toBeLessThanOrEqual(width + 1);
-      }
-    }
-  });
-
   it('places the listing editor back action inside the global mobile navigation', async () => {
     const listingHeader = await renderHeader('/listings/11111111-1111-4111-8111-111111111111/edit');
     expect(listingHeader).toContain('<span class="mobile-context-heading">DROP</span>');
@@ -244,14 +201,14 @@ describe('Custom release mobile navigation and artwork picker', () => {
 
   it('fits About context labels and icon-only back targets on narrow mobile widths', async () => {
     const pages = [
-      ['/terms', 'ABOUT / TERMS'],
-      ['/contact', 'ABOUT / CONTACT'],
-      ['/privacy', 'ABOUT / PRIVACY'],
-      ['/community-rules', 'ABOUT / RULES'],
-      ['/releases/new', 'DROP'],
+      ['/terms', 'ABOUT · TERMS', '/', 'Back to Home'],
+      ['/contact', 'ABOUT · CONTACT', '/', 'Back to Home'],
+      ['/privacy', 'ABOUT · PRIVACY', '/', 'Back to Home'],
+      ['/community-rules', 'ABOUT · COMMUNITY RULES', '/', 'Back to Home'],
+      ['/releases/new', 'DROP', '/drop/new', 'Back to catalog search'],
     ] as const;
 
-    for (const [route, label] of pages) {
+    for (const [route, label, destination, accessibleName] of pages) {
       const headerHtml = await renderHeader(route);
       for (const width of [320, 360, 375, 414]) {
         await page.setViewportSize({ width, height: 740 });
@@ -264,17 +221,25 @@ describe('Custom release mobile navigation and artwork picker', () => {
         expect(await page.locator('.mobile-context-heading').textContent()).toBe(label);
         const back = page.locator('.mobile-context-back-icon-only');
         expect(await back.isVisible()).toBe(true);
+        expect(await back.getAttribute('href')).toBe(destination);
+        expect(await back.getAttribute('aria-label')).toBe(accessibleName);
+        expect((await back.locator('.mobile-context-back-icon').textContent())?.trim()).toBe('←');
+
         const box = await back.boundingBox();
+        const headingBox = await page.locator('.mobile-context-heading').boundingBox();
         expect(box).not.toBeNull();
-        if (box) {
+        expect(headingBox).not.toBeNull();
+        if (box && headingBox) {
           expect(box.width).toBeGreaterThanOrEqual(44);
           expect(box.height).toBeGreaterThanOrEqual(44);
+          expect(headingBox.x + headingBox.width).toBeLessThanOrEqual(box.x);
         }
         const dimensions = await page.evaluate(() => ({
           viewport: window.innerWidth,
           document: document.documentElement.scrollWidth,
           body: document.body.scrollWidth,
         }));
+        expect(dimensions.viewport).toBe(width);
         expect(dimensions.document).toBeLessThanOrEqual(width + 1);
         expect(dimensions.body).toBeLessThanOrEqual(width + 1);
       }
