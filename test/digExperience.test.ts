@@ -96,7 +96,6 @@ describe('Compact mobile back navigation', () => {
   it('uses explicit destinations and accessible labels on the affected record screens', () => {
     const digView = fs.readFileSync(path.join(process.cwd(), 'views/browse/dig.ejs'), 'utf8');
     const listingDetailView = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
-    const listingEditView = fs.readFileSync(path.join(process.cwd(), 'views/listings/edit.ejs'), 'utf8');
     const listingPreviewView = fs.readFileSync(path.join(process.cwd(), 'views/listings/preview.ejs'), 'utf8');
     const releaseSelectView = fs.readFileSync(path.join(process.cwd(), 'views/listings/select-release.ejs'), 'utf8');
     const mobileStyles = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
