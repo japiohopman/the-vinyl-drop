@@ -243,6 +243,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.locator('.messaging-widget-conversation').click();
     await page.waitForSelector('.messaging-widget-message');
     expect(await page.locator('.messaging-widget-message').textContent()).toContain('Hi from seller');
+    expect(await page.locator('a[href="/messages/conversation-1"]').textContent()).toContain('Open full conversation');
     expect(requests.some((item) => item.method === 'POST' && item.path.endsWith('/read'))).toBe(false);
 
     const initialLeft = await page.locator('#messaging-floating-window').evaluate((el) => el.getBoundingClientRect().left);
@@ -291,104 +292,6 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(await page.locator('#messaging-floating-window').getAttribute('hidden')).not.toBeNull();
   });
 
-
-  it('opens a desktop conversation without navigating away or implicitly marking it read', async () => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    let unreadCount = 2;
-    const requests: Array<{ path: string; method: string }> = [];
-    await page.route('**/messages/**', async (route) => {
-      const req = route.request();
-      const pathname = new URL(req.url()).pathname;
-      requests.push({ path: pathname, method: req.method() });
-      if (pathname === '/messages/widget/unread-count') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ unreadCount }) });
-      } else if (pathname === '/messages/widget/data') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
-          unreadCount, conversations: [{ id: 'conversation-1', releaseArtist: 'Pink Floyd',
-            releaseTitle: 'The Dark Side of the Moon', otherParticipant: 'Seller User',
-            lastMessage: 'Hi from seller', lastMessageAt: '2026-10-25T10:00:00.000Z', unreadCount }]
-        }) });
-      } else if (pathname === '/messages/widget/conversation-1') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
-          id: 'conversation-1', release: { artist: 'Pink Floyd', title: 'The Dark Side of the Moon' },
-          listing: { id: 'listing-1' }, userRole: 'buyer', unreadCount,
-          otherParticipant: { username: 'seller_user', displayName: 'Seller User' },
-          messages: [{ id: 'message-1', isOwnMessage: false, body: 'Hi from seller', createdAt: '2026-10-25T10:00:00.000Z' }]
-        }) });
-      } else if (pathname === '/messages/conversation-1/read' && req.method() === 'POST') {
-        unreadCount = 0;
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) });
-      } else {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) });
-      }
-    });
-
-    const html = await renderFullHtmlPage({
-      currentPath: '/',
-      currentUser: { id: 'user-123', email: 'digger@example.com' },
-      currentProfile: { id: 'user-123', username: 'cratedigger' },
-      messagingEnabled: true,
-    });
-    await page.setContent(html);
-    await page.waitForFunction(() => {
-      const badge = document.querySelector('[data-messaging-unread-count]');
-      return Boolean(badge && !badge.hasAttribute('hidden') && badge.textContent === '2');
-    });
-
-    await page.click('#desktop-you-trigger');
-    await page.click('#desktop-you-menu [data-messaging-widget-trigger]');
-    expect(await page.locator('#messaging-floating-window').isVisible()).toBe(true);
-    expect(page.url()).not.toContain('/messages');
-    await page.locator('.messaging-widget-conversation').click();
-    await page.waitForSelector('.messaging-widget-message');
-    expect(await page.locator('.messaging-widget-message').textContent()).toContain('Hi from seller');
-    expect(requests.some((item) => item.method === 'POST' && item.path.endsWith('/read'))).toBe(false);
-
-    const initialLeft = await page.locator('#messaging-floating-window').evaluate((el) => el.getBoundingClientRect().left);
-    await page.locator('[data-message-drag-handle]').focus();
-    await page.keyboard.press('ArrowLeft');
-    const movedLeft = await page.locator('#messaging-floating-window').evaluate((el) => el.getBoundingClientRect().left);
-    expect(movedLeft).toBeLessThan(initialLeft);
-
-    await page.click('[data-message-minimize]');
-    expect(await page.locator('#messaging-floating-window').evaluate((el) => el.classList.contains('is-minimized'))).toBe(true);
-    await page.click('[data-message-minimize]');
-    expect(await page.locator('#messaging-floating-window').evaluate((el) => el.classList.contains('is-minimized'))).toBe(false);
-    await page.click('[data-message-close]');
-    expect(await page.locator('#messaging-floating-window').getAttribute('hidden')).not.toBeNull();
-    expect(await page.evaluate(() => (document.activeElement as HTMLElement | null)?.id)).toBe('desktop-you-trigger');
-    expect(requests.some((item) => item.method === 'POST' && item.path.endsWith('/read'))).toBe(false);
-    expect(requests.some((item) => item.method === 'POST' && item.path.endsWith('/archive'))).toBe(false);
-
-    await page.click('#desktop-you-trigger');
-    await page.click('#desktop-you-menu [data-messaging-widget-trigger]');
-    await page.locator('.messaging-widget-conversation').click();
-    await page.locator('.messaging-widget-action').filter({ hasText: 'Mark as read' }).click();
-    await page.waitForFunction(() => {
-      const badge = document.querySelector('[data-messaging-unread-count]');
-      return Boolean(badge && badge.hasAttribute('hidden'));
-    });
-    expect(requests.filter((item) => item.method === 'POST' && item.path.endsWith('/read'))).toHaveLength(1);
-  });
-
-  it('keeps messaging full-page on mobile instead of opening a floating window', async () => {
-    await page.setViewportSize({ width: 375, height: 812 });
-    const html = await renderFullHtmlPage({
-      currentPath: '/',
-      currentUser: { id: 'user-123', email: 'digger@example.com' },
-      currentProfile: { id: 'user-123', username: 'cratedigger' },
-      messagingEnabled: true,
-    });
-    await page.setContent(html);
-    await page.click('#mobile-you-trigger');
-    const defaultPrevented = await page.locator('#mobile-you-surface [data-messaging-widget-trigger]').evaluate((el) => {
-      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
-      el.dispatchEvent(event);
-      return event.defaultPrevented;
-    });
-    expect(defaultPrevented).toBe(false);
-    expect(await page.locator('#messaging-floating-window').getAttribute('hidden')).not.toBeNull();
-  });
 
   it('sets aria-current="page" on active route links', async () => {
     const html = await renderNav({
