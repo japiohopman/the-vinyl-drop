@@ -237,7 +237,7 @@
       submit.disabled = true;
       requestJson('/messages/' + encodeURIComponent(conversation.id) + '/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Messaging-Widget': '1' },
         body: JSON.stringify({ body: body })
       }).then(function () {
         return Promise.all([loadConversation(conversation.id), refreshUnread()]);
