@@ -380,6 +380,7 @@
     trigger.addEventListener('click', function (event) {
       event.preventDefault();
       if (!panel.hidden && panel.classList.contains('is-minimized') && !desktopMedia.matches) {
+        closeMobileAccountSurface();
         toggleMinimized();
         return;
       }
