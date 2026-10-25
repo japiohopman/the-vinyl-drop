@@ -5583,6 +5583,14 @@ select.form-control {
   .messaging-floating-header {
     padding-top: max(var(--space-1), env(safe-area-inset-top));
   }
+  .messaging-floating-window.is-minimized {
+    inset-inline: 12px;
+    width: min(380px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    bottom: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px));
+    border-radius: var(--radius-sm);
+  }
+
 
   .messaging-floating-drag-handle {
     cursor: default;

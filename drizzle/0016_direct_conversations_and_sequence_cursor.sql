@@ -210,7 +210,7 @@ CREATE OR REPLACE FUNCTION public.prevent_message_identity_mutation()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
-AS $
+AS $$
 BEGIN
   IF NEW.conversation_id IS DISTINCT FROM OLD.conversation_id
      OR NEW.message_seq IS DISTINCT FROM OLD.message_seq
@@ -219,7 +219,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 --> statement-breakpoint
 CREATE TRIGGER trg_messages_identity_immutable
 BEFORE UPDATE ON public.messages
