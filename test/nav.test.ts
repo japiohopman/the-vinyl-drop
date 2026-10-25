@@ -230,7 +230,10 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     });
     await page.setContent(html);
     await page.waitForFunction(() => {
-      const badge = document.querySelector('[data-messaging-unread-count]');
+      const browser = globalThis as unknown as {
+        document: { querySelector(selector: string): { hasAttribute(name: string): boolean; textContent: string | null } | null };
+      };
+      const badge = browser.document.querySelector('[data-messaging-unread-count]');
       return Boolean(badge && !badge.hasAttribute('hidden') && badge.textContent === '2');
     });
 
@@ -258,7 +261,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.mouse.up();
     const bounds = await page.locator('#messaging-floating-window').evaluate((el) => {
       const rect = el.getBoundingClientRect();
-      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: window.innerWidth, height: window.innerHeight };
+      const browser = globalThis as unknown as { window: { innerWidth: number; innerHeight: number } };
+      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: browser.window.innerWidth, height: browser.window.innerHeight };
     });
     expect(bounds.left).toBeGreaterThanOrEqual(0);
     expect(bounds.top).toBeGreaterThanOrEqual(0);
@@ -271,7 +275,10 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(await page.locator('#messaging-floating-window').evaluate((el) => el.classList.contains('is-minimized'))).toBe(false);
     await page.click('[data-message-close]');
     expect(await page.locator('#messaging-floating-window').getAttribute('hidden')).not.toBeNull();
-    expect(await page.evaluate(() => (document.activeElement as HTMLElement | null)?.id)).toBe('desktop-you-trigger');
+    expect(await page.evaluate(() => {
+      const browser = globalThis as unknown as { document: { activeElement: { id: string } | null } };
+      return browser.document.activeElement?.id;
+    })).toBe('desktop-you-trigger');
     expect(requests.some((item) => item.method === 'POST' && item.path.endsWith('/read'))).toBe(false);
     expect(requests.some((item) => item.method === 'POST' && item.path.endsWith('/archive'))).toBe(false);
 
@@ -280,7 +287,10 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.locator('.messaging-widget-conversation').click();
     await page.locator('.messaging-widget-action').filter({ hasText: 'Mark as read' }).click();
     await page.waitForFunction(() => {
-      const badge = document.querySelector('[data-messaging-unread-count]');
+      const browser = globalThis as unknown as {
+        document: { querySelector(selector: string): { hasAttribute(name: string): boolean } | null };
+      };
+      const badge = browser.document.querySelector('[data-messaging-unread-count]');
       return Boolean(badge && badge.hasAttribute('hidden'));
     });
     expect(requests.filter((item) => item.method === 'POST' && item.path.endsWith('/read'))).toHaveLength(1);
