@@ -155,10 +155,14 @@ describe('Seller cover photo HTTP round trip', () => {
 
     const listingPhotoForm = await supertest(app).get(`/listings/${listingId}/edit`);
     expect(listingPhotoForm.status).toBe(200);
-    expect(listingPhotoForm.text).toContain('Photos of this physical copy');
-    expect(listingPhotoForm.text).toContain('Choose what the photo shows before selecting the file.');
-    expect(listingPhotoForm.text).toContain('Front and back cover photos are cropped to a square');
-    expect(listingPhotoForm.text).toContain('Existing photos are not recropped automatically');
+    expect(listingPhotoForm.text).toContain('Front cover');
+    expect(listingPhotoForm.text).toContain('Back cover');
+    expect(listingPhotoForm.text).toContain('Additional photos');
+    expect(listingPhotoForm.text).toContain('Photo help');
+    expect(listingPhotoForm.text).toContain('Choose photo');
+    expect(listingPhotoForm.text).toContain('square-cover-cropper');
+    expect(listingPhotoForm.text).not.toContain('Photos of this physical copy');
+    expect(listingPhotoForm.text).not.toContain('Alt-tekst');
     expect(listingPhotoForm.text).toContain('name="photo"');
     expect(listingPhotoForm.text).toContain('name="role"');
 
