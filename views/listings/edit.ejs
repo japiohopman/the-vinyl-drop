@@ -134,7 +134,7 @@
             <div class="photo-upload-field">
               <span class="photo-upload-label">Photo file</span>
               <input type="file" id="photoFile" name="photo" accept="image/jpeg,image/png,image/webp" required class="photo-file-input" aria-describedby="photoFileHelp selected-photo-info" />
-              <label for="photoFile" class="btn btn-outline photo-file-trigger">
+              <label for="photoFile" class="btn btn-outline photo-file-trigger" tabindex="-1">
                 <%- include('../partials/icon', { name: 'photo-camera', size: '1.125rem', ariaHidden: true }) %>
                 <span>Choose photo</span>
               </label>
