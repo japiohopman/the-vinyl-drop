@@ -328,7 +328,8 @@
       }
       openAccessibleDialog(uploadDialog);
       if (isDirectCoverSlot) {
-        fileInput.focus();
+        const fileTrigger = form.querySelector('.photo-file-trigger');
+        if (fileTrigger instanceof HTMLElement) fileTrigger.focus();
       } else {
         roleSelect.focus();
       }
