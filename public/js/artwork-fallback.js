@@ -26,6 +26,16 @@
       image.dataset.artworkFallbackTried = 'true';
       image.removeAttribute('data-artwork-fallback');
       image.src = PLACEHOLDER;
+      return;
+    }
+
+    // Activity provides an accessible terminal fallback if even the local
+    // placeholder cannot load. Do not hide images on other surfaces unless
+    // they explicitly provide this fallback element.
+    const terminalFallback = image.parentElement?.querySelector('[data-artwork-terminal-fallback]');
+    if (terminalFallback instanceof HTMLElement) {
+      image.hidden = true;
+      terminalFallback.hidden = false;
     }
   }, true);
 })();

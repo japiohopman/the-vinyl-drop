@@ -24,6 +24,16 @@
               data-artwork-image
               data-artwork-fallback="<%= item.artworkFallbackUrl || '/assets/vinyl-placeholder.svg' %>"
             />
+            <span
+              class="activity-artwork-terminal-fallback"
+              data-artwork-terminal-fallback
+              role="img"
+              aria-label="Artwork unavailable for <%= item.releaseTitle %> by <%= item.releaseArtist %>"
+              hidden
+            >
+              <span class="activity-artwork-terminal-mark" aria-hidden="true"></span>
+              <span>Artwork unavailable</span>
+            </span>
           </a>
 
           <div class="activity-card-content">
