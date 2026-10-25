@@ -171,8 +171,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
       expect(await page.locator('.create-listing-actions .create-listing-cancel').getAttribute('href')).toBe('/drop/new');
       expect(await page.evaluate("window.getComputedStyle(document.querySelector('.create-listing-actions')).flexDirection")).toBe('column');
 
-      const buttons = await page.locator('.create-listing-actions .btn').evaluateAll(
-        "(elements) => elements.map((element) => { const rect = element.getBoundingClientRect(); return { x: rect.x, right: rect.right, width: rect.width, height: rect.height }; })"
+      const buttons = await page.evaluate(
+        "Array.from(document.querySelectorAll('.create-listing-actions .btn')).map((element) => { const rect = element.getBoundingClientRect(); return { x: rect.x, right: rect.right, width: rect.width, height: rect.height }; })"
       ) as Array<{ x: number; right: number; width: number; height: number }>;
       expect(buttons).toHaveLength(2);
       for (const box of buttons) {
