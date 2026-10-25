@@ -279,6 +279,79 @@
     }, 'image/jpeg', 0.92);
   });
 
+  // Open a single focused upload dialog from the matching front/back slot.
+  const uploadDialog = document.querySelector('#photoUploadDialog');
+  const helpDialog = document.querySelector('#photoHelpDialog');
+  const uploadTitle = document.querySelector('#photoUploadTitle');
+  const altTextInput = form.querySelector('#altText');
+
+  function openAccessibleDialog(dialog) {
+    if (!(dialog instanceof HTMLDialogElement)) return;
+    if (typeof dialog.showModal === 'function') {
+      if (!dialog.open) dialog.showModal();
+    } else {
+      dialog.setAttribute('open', '');
+    }
+  }
+
+  function closeAccessibleDialog(dialog) {
+    if (!(dialog instanceof HTMLDialogElement)) return;
+    if (typeof dialog.close === 'function') {
+      if (dialog.open) dialog.close();
+    } else {
+      dialog.removeAttribute('open');
+    }
+  }
+
+  document.querySelectorAll('[data-open-photo-upload]').forEach((trigger) => {
+    trigger.addEventListener('click', () => {
+      if (!(trigger instanceof HTMLButtonElement) ||
+          !(uploadDialog instanceof HTMLDialogElement)) return;
+
+      const requestedRole = trigger.dataset.photoRole || '';
+      const label = trigger.dataset.photoLabel || 'Additional photo';
+      roleSelect.value = requestedRole === 'optional' ? '' : requestedRole;
+      fileInput.value = '';
+      if (altTextInput instanceof HTMLInputElement) altTextInput.value = '';
+      delete form.dataset.squareCropReady;
+      updateRoleGuidance();
+      preparePreview();
+
+      if (uploadTitle instanceof HTMLElement) {
+        uploadTitle.textContent = requestedRole === 'optional'
+          ? 'Add an additional photo'
+          : 'Upload ' + label.toLowerCase();
+      }
+      openAccessibleDialog(uploadDialog);
+      roleSelect.focus();
+    });
+  });
+
+  document.querySelectorAll('[data-close-photo-upload]').forEach((trigger) => {
+    trigger.addEventListener('click', () => closeAccessibleDialog(uploadDialog));
+  });
+
+  document.querySelectorAll('[data-open-photo-help]').forEach((trigger) => {
+    trigger.addEventListener('click', () => openAccessibleDialog(helpDialog));
+  });
+
+  document.querySelectorAll('[data-close-photo-help]').forEach((trigger) => {
+    trigger.addEventListener('click', () => closeAccessibleDialog(helpDialog));
+  });
+
+  [uploadDialog, helpDialog].forEach((dialog) => {
+    if (!(dialog instanceof HTMLDialogElement)) return;
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) closeAccessibleDialog(dialog);
+    });
+  });
+
+  if (uploadDialog instanceof HTMLDialogElement &&
+      uploadDialog.dataset.openOnLoad === 'true') {
+    openAccessibleDialog(uploadDialog);
+    roleSelect.focus();
+  }
+
   updateRoleGuidance();
 
   // Warn about old portrait cover images because the new crop is not retroactive.
