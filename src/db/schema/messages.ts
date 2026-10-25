@@ -1,5 +1,4 @@
 import { bigint, index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
 import { conversations } from './conversations';
 import { profiles } from './profiles';
 

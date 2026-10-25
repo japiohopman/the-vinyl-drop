@@ -521,7 +521,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         createdAt: tieTime,
       });
 
-      let detail = await messagingService.getConversationDetail(conversation.id, sellerId);
+      const detail = await messagingService.getConversationDetail(conversation.id, sellerId);
       expect(detail.messages.map((message) => message.messageSeq)).toEqual([1, 2, 3]);
       let summary = (await messagingService.getInboxForUser(sellerId))
         .find((item) => item.conversation.id === conversation.id);
