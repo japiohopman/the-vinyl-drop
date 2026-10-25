@@ -126,8 +126,10 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     test('rejects self-conversation via database trigger', async () => {
       await expect(
         db.insert(conversations).values({
+          conversationType: 'listing',
           listingId: publishedListingId,
-          buyerId: sellerId,
+          participantAId: sellerId,
+          participantBId: sellerId,
         })
       ).rejects.toThrow();
     });
@@ -135,8 +137,10 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     test('rejects conversation on draft listing via database trigger', async () => {
       await expect(
         db.insert(conversations).values({
+          conversationType: 'listing',
           listingId: draftListingId,
-          buyerId: buyerId,
+          participantAId: buyerId,
+          participantBId: sellerId,
         })
       ).rejects.toThrow();
     });
@@ -145,8 +149,10 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       const [conv] = await db
         .insert(conversations)
         .values({
+          conversationType: 'listing',
           listingId: publishedListingId,
-          buyerId,
+          participantAId: buyerId,
+          participantBId: sellerId,
         })
         .returning();
 
@@ -197,6 +203,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       await request(app).get('/messages/widget/unread-count');
       await request(app).get('/messages/widget/data');
       await request(app).get('/messages/widget/00000000-0000-0000-0000-000000000000');
+      await request(app).post('/messages/profile/22222222-2222-4222-8222-222222222222').set('Origin', config.APP_BASE_URL);
 
       expect(selectSpy).not.toHaveBeenCalled();
       selectSpy.mockRestore();
@@ -476,6 +483,138 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     });
   });
 
+
+  describe('Direct conversation contracts', () => {
+    test('concurrent starts from either participant converge on a single ordered pair', async () => {
+      const [fromBuyer, fromSeller] = await Promise.all([
+        messagingService.getOrCreateDirectConversation(sellerId, buyerId),
+        messagingService.getOrCreateDirectConversation(buyerId, sellerId),
+      ]);
+
+      expect(fromBuyer.id).toBe(fromSeller.id);
+      expect(fromBuyer.conversationType).toBe('direct');
+      expect(fromBuyer.listingId).toBeNull();
+      expect(fromBuyer.participantAId).toBe(buyerId);
+      expect(fromBuyer.participantBId).toBe(sellerId);
+      const rows = await db.select().from(conversations);
+      expect(rows.filter((row: any) =>
+        row.conversationType === 'direct' &&
+        row.participantAId === buyerId &&
+        row.participantBId === sellerId
+      )).toHaveLength(1);
+    });
+
+    test('uses immutable sequence numbers across equal timestamps and emits listing-free direct events', async () => {
+      const conversation = await messagingService.getOrCreateDirectConversation(sellerId, buyerId);
+      const tieTime = new Date('2026-01-02T03:04:05.000Z');
+
+      await db.insert(messages).values([
+        { conversationId: conversation.id, senderId: buyerId, body: 'First tied message', createdAt: tieTime },
+        { conversationId: conversation.id, senderId: buyerId, body: 'Second tied message', createdAt: tieTime },
+      ]);
+      await messagingService.markAsRead(conversation.id, sellerId);
+
+      await db.insert(messages).values({
+        conversationId: conversation.id,
+        senderId: buyerId,
+        body: 'Third tied message after read',
+        createdAt: tieTime,
+      });
+
+      let detail = await messagingService.getConversationDetail(conversation.id, sellerId);
+      expect(detail.messages.map((message) => message.messageSeq)).toEqual([1, 2, 3]);
+      let summary = (await messagingService.getInboxForUser(sellerId))
+        .find((item) => item.conversation.id === conversation.id);
+      expect(summary?.listing).toBeNull();
+      expect(summary?.release).toBeNull();
+      expect(summary?.unreadCount).toBe(1);
+
+      const receivedEvents: NotificationEvent[] = [];
+      onNotification((event) => { receivedEvents.push(event); });
+      await messagingService.sendMessage(conversation.id, buyerId, 'Direct event has no listing context');
+      expect(receivedEvents).toHaveLength(1);
+      const event = receivedEvents[0];
+      expect(event.type).toBe('message.created');
+      if (event.type !== 'message.created') throw new Error('Expected a message-created event');
+      expect(event.conversationType).toBe('direct');
+      expect(event.recipientId).toBe(sellerId);
+      expect(event).not.toHaveProperty('listingId');
+      expect(event).not.toHaveProperty('body');
+
+      summary = (await messagingService.getInboxForUser(sellerId))
+        .find((item) => item.conversation.id === conversation.id);
+      expect(summary?.unreadCount).toBe(2);
+
+      await messagingService.archiveConversation(conversation.id, sellerId);
+      expect((await messagingService.getInboxForUser(sellerId))
+        .some((item) => item.conversation.id === conversation.id)).toBe(false);
+      await messagingService.sendMessage(conversation.id, buyerId, 'Incoming message reopens the recipient thread');
+      expect((await messagingService.getInboxForUser(sellerId))
+        .some((item) => item.conversation.id === conversation.id)).toBe(true);
+
+      await expect(messagingService.getConversationDetail(conversation.id, thirdUserId))
+        .rejects.toThrow(/Conversation not found/);
+    });
+
+    test('profile Message action is shown only to another signed-in user while messaging is enabled', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        const otherProfile = await request(app)
+          .get('/profiles/seller_user')
+          .set('Cookie', ['sb-access-token=buyer-token']);
+        expect(otherProfile.status).toBe(200);
+        expect(otherProfile.text).toContain(`action="/messages/profile/${sellerId}"`);
+
+        const ownProfile = await request(app)
+          .get('/profiles/seller_user')
+          .set('Cookie', ['sb-access-token=seller-token']);
+        expect(ownProfile.status).toBe(200);
+        expect(ownProfile.text).not.toContain(`action="/messages/profile/${sellerId}"`);
+
+        (config as any).MESSAGING_ENABLED = false;
+        const hiddenFeature = await request(app)
+          .get('/profiles/seller_user')
+          .set('Cookie', ['sb-access-token=buyer-token']);
+        expect(hiddenFeature.status).toBe(200);
+        expect(hiddenFeature.text).not.toContain(`action="/messages/profile/${sellerId}"`);
+      } finally {
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
+
+    test('profile route creates a private thread with same-origin protection', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        const forbidden = await request(app)
+          .post(`/messages/profile/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .send({});
+        expect(forbidden.status).toBe(403);
+
+        const started = await request(app)
+          .post(`/messages/profile/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .send({});
+        expect(started.status).toBe(302);
+        expect(started.headers.location).toMatch(/^\/messages\/[0-9a-f-]+$/);
+
+        const self = await request(app)
+          .post(`/messages/profile/${buyerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .send({});
+        expect(self.status).toBe(400);
+      } finally {
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
+  });
+
   describe('Service & Notification Hook Contracts', () => {
     test('emits message.created event without body content to recipient only', async () => {
       const receivedEvents: NotificationEvent[] = [];
@@ -489,6 +628,9 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       expect(receivedEvents.length).toBe(1);
       const ev = receivedEvents[0];
       expect(ev.type).toBe('message.created');
+      if (ev.type !== 'message.created') throw new Error('Expected a message-created event');
+      expect(ev.conversationType).toBe('listing');
+      expect(ev.listingId).toBe(publishedListingId);
       expect(ev.actorId).toBe(buyerId);
       expect(ev.recipientId).toBe(sellerId);
       expect(ev.conversationId).toBe(conv.id);

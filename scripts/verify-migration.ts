@@ -189,7 +189,8 @@ export async function verifyMigrations(): Promise<void> {
     'favorites_user_id_profiles_id_fk',
     'favorites_listing_id_listings_id_fk',
     'conversations_listing_id_fkey',
-    'conversations_buyer_id_fkey',
+    'conversations_participant_a_id_fkey',
+    'conversations_participant_b_id_fkey',
     'messages_conversation_id_fkey',
     'messages_sender_id_fkey',
   ];
@@ -212,6 +213,17 @@ export async function verifyMigrations(): Promise<void> {
   }
   if (!checkNames.includes('messages_body_length_check')) {
     throw new Error("Missing expected check constraint 'messages_body_length_check' after migration execution");
+  }
+  for (const expectedCheck of [
+    'conversations_type_shape_check',
+    'conversations_distinct_participants_check',
+    'conversations_direct_pair_order_check',
+    'conversations_read_seq_nonnegative_check',
+    'messages_message_seq_positive_check',
+  ]) {
+    if (!checkNames.includes(expectedCheck)) {
+      throw new Error(`Missing expected messaging check constraint '${expectedCheck}' after migration execution`);
+    }
   }
 
   // 5. Verify expected database indexes
@@ -248,10 +260,13 @@ export async function verifyMigrations(): Promise<void> {
     'favorites_user_listing_idx',
     'favorites_user_idx',
     'favorites_listing_idx',
-    'conversations_listing_buyer_idx',
+    'conversations_listing_participant_a_idx',
+    'conversations_direct_pair_unique_idx',
     'conversations_listing_idx',
-    'conversations_buyer_idx',
+    'conversations_participant_a_idx',
+    'conversations_participant_b_idx',
     'conversations_updated_at_idx',
+    'messages_conversation_seq_idx',
     'messages_conversation_created_id_idx',
     'messages_sender_idx',
   ];
@@ -263,10 +278,10 @@ export async function verifyMigrations(): Promise<void> {
 
   // 6. Verify triggers
   const triggerRes = await pg.query<{ tgname: string }>(
-    `SELECT tgname FROM pg_trigger WHERE tgname IN ('trg_check_conversation_validity', 'trg_check_message_sender_validity');`
+    `SELECT tgname FROM pg_trigger WHERE tgname IN ('trg_check_conversation_validity', 'trg_check_message_sender_validity', 'trg_messages_immutable');`
   );
   const triggerNames = triggerRes.rows.map((r) => r.tgname);
-  for (const expectedTrigger of ['trg_check_conversation_validity', 'trg_check_message_sender_validity']) {
+  for (const expectedTrigger of ['trg_check_conversation_validity', 'trg_check_message_sender_validity', 'trg_messages_immutable']) {
     if (!triggerNames.includes(expectedTrigger)) {
       throw new Error(`Missing expected database trigger '${expectedTrigger}' after migration execution`);
     }
@@ -296,7 +311,7 @@ export async function verifyMigrations(): Promise<void> {
     }
     const qualifiedReferences = fn.proname === 'check_conversation_validity'
       ? ['public.listings', 'public.listing_status']
-      : ['public.conversations', 'public.listings'];
+      : ['public.conversations'];
     for (const reference of qualifiedReferences) {
       if (!fn.function_body.includes(reference)) {
         throw new Error(`Messaging trigger function '${fn.proname}' does not schema-qualify '${reference}'`);
@@ -362,29 +377,29 @@ export async function verifyMigrations(): Promise<void> {
   };
 
   await pg.query(
-    `INSERT INTO public.conversations (id, listing_id, buyer_id)
-     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
-    [messagingFixture.conversationId, messagingFixture.publishedListingId, messagingFixture.buyerId]
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'listing', $2::uuid, $3::uuid, $4::uuid);`,
+    [messagingFixture.conversationId, messagingFixture.publishedListingId, messagingFixture.buyerId, messagingFixture.sellerId]
   );
   await expectTriggerRejection(
     'Seller opening a conversation on their own listing',
-    `INSERT INTO public.conversations (id, listing_id, buyer_id)
-     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
-    ['da111111-1111-4111-8111-111111111111', messagingFixture.publishedListingId, messagingFixture.sellerId],
-    'cannot start a conversation on their own listing'
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'listing', $2::uuid, $3::uuid, $4::uuid);`,
+    ['da111111-1111-4111-8111-111111111111', messagingFixture.publishedListingId, messagingFixture.sellerId, messagingFixture.sellerId],
+    'two distinct participants'
   );
   await expectTriggerRejection(
     'Conversation on a draft listing',
-    `INSERT INTO public.conversations (id, listing_id, buyer_id)
-     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
-    ['da222222-2222-4222-8222-222222222222', messagingFixture.draftListingId, messagingFixture.buyerId],
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'listing', $2::uuid, $3::uuid, $4::uuid);`,
+    ['da222222-2222-4222-8222-222222222222', messagingFixture.draftListingId, messagingFixture.buyerId, messagingFixture.sellerId],
     'Conversations can only be started on published listings'
   );
   await expectTriggerRejection(
     'Conversation for a nonexistent listing',
-    `INSERT INTO public.conversations (id, listing_id, buyer_id)
-     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
-    ['da333333-3333-4333-8333-333333333333', 'da444444-4444-4444-8444-444444444444', messagingFixture.buyerId],
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'listing', $2::uuid, $3::uuid, $4::uuid);`,
+    ['da333333-3333-4333-8333-333333333333', 'da444444-4444-4444-8444-444444444444', messagingFixture.buyerId, messagingFixture.sellerId],
     'does not exist'
   );
 
@@ -400,7 +415,7 @@ export async function verifyMigrations(): Promise<void> {
     `INSERT INTO public.messages (id, conversation_id, sender_id, body)
      VALUES ($1::uuid, $2::uuid, $3::uuid, 'unauthorized message');`,
     ['db333333-3333-4333-8333-333333333333', messagingFixture.conversationId, messagingFixture.outsiderId],
-    'neither buyer nor seller'
+    'not a participant'
   );
   const conversationCount = await pg.query<{ count: number }>(
     `SELECT count(*)::int AS count FROM public.conversations WHERE id = $1::uuid;`,
@@ -413,6 +428,19 @@ export async function verifyMigrations(): Promise<void> {
   if (conversationCount.rows[0].count !== 1 || messageCount.rows[0].count !== 2) {
     throw new Error('Messaging trigger regression checks left unexpected conversation/message rows');
   }
+  const sequences = await pg.query<{ message_seq: string; sender_id: string }>(
+    'SELECT message_seq::text, sender_id FROM public.messages WHERE conversation_id = $1::uuid ORDER BY message_seq;',
+    [messagingFixture.conversationId]
+  );
+  if (sequences.rows.length !== 2 || sequences.rows[0].message_seq !== '1' || sequences.rows[1].message_seq !== '2') {
+    throw new Error('Database message trigger did not allocate a contiguous per-conversation sequence');
+  }
+  await expectTriggerRejection(
+    'Immutable message update',
+    `UPDATE public.messages SET body = 'edited' WHERE id = $1::uuid;`,
+    ['db111111-1111-4111-8111-111111111111'],
+    'immutable after creation'
+  );
 
   // 7. Verify Row Level Security (RLS) is enabled on all 11 public tables
   const rlsRes = await pg.query<{ relname: string; relrowsecurity: boolean }>(

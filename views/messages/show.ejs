@@ -1,11 +1,16 @@
 <div class="conversation-container" style="max-width: 800px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+  <div style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4);">
     <a href="/messages" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: underline;">
       ← Back to Inbox
     </a>
-    <form action="/messages/<%= conversation.id %>/archive" method="POST" style="margin: 0;">
-      <button type="submit" class="btn btn-outline btn-xs">Archive Thread</button>
-    </form>
+    <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
+      <form action="/messages/<%= conversation.id %>/read" method="POST" style="margin: 0;">
+        <button type="submit" class="btn btn-outline btn-xs">Mark as read</button>
+      </form>
+      <form action="/messages/<%= conversation.id %>/archive" method="POST" style="margin: 0;">
+        <button type="submit" class="btn btn-outline btn-xs">Archive Thread</button>
+      </form>
+    </div>
   </div>
 
   <% if (conversation.conversationType === 'listing' && conversation.listing && conversation.release) { %>
@@ -82,17 +87,3 @@
   </div>
 </div>
 
-<script>
-  // The GET route is side-effect free; this same-origin POST explicitly advances the current user's read cursor.
-  (function() {
-    try {
-      fetch('/messages/<%= conversation.id %>/read', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
-      });
-    } catch (e) {
-      // The user can still mark the thread read through the messaging widget or by reopening it.
-    }
-  })();
-</script>

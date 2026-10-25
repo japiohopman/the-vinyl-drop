@@ -37,7 +37,7 @@
     <div class="profile-owner-actions">
       <% if (isOwner) { %>
         <a href="/profile/edit" class="btn btn-outline btn-sm">Edit Profile</a>
-      <% } else if (user && messagingEnabled) { %>
+      <% } else if (typeof user !== 'undefined' && user && typeof messagingEnabled !== 'undefined' && messagingEnabled) { %>
         <form action="/messages/profile/<%= profile.id %>" method="POST" class="inline-form">
           <button type="submit" class="btn btn-primary btn-sm">Message</button>
         </form>
