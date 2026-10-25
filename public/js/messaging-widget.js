@@ -209,7 +209,14 @@
     if (Number(conversation.unreadCount) > 0) {
       content.appendChild(actionButton('Mark as read', '', function (button) {
         button.disabled = true;
-        requestJson('/messages/' + encodeURIComponent(conversation.id) + '/read', { method: 'POST' })
+        var readThroughSeq = (conversation.messages || []).reduce(function (maximum, message) {
+          return Math.max(maximum, Number(message.messageSeq) || 0);
+        }, 0);
+        requestJson('/messages/' + encodeURIComponent(conversation.id) + '/read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ messageSeq: readThroughSeq })
+        })
           .then(function () { return Promise.all([loadConversation(conversation.id), refreshUnread()]); })
           .catch(function (error) { showError(error.message); });
       }));

@@ -5,6 +5,7 @@
     </a>
     <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
       <form action="/messages/<%= conversation.id %>/read" method="POST" style="margin: 0;">
+        <input type="hidden" name="messageSeq" value="<%= readThroughSeq %>">
         <button type="submit" class="btn btn-outline btn-xs">Mark as read</button>
       </form>
       <form action="/messages/<%= conversation.id %>/archive" method="POST" style="margin: 0;">

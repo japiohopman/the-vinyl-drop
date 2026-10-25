@@ -66,10 +66,6 @@ ALTER TABLE public.conversations ALTER COLUMN participant_b_id SET NOT NULL;
 --> statement-breakpoint
 ALTER TABLE public.conversations ALTER COLUMN listing_id DROP NOT NULL;
 --> statement-breakpoint
-ALTER TABLE public.conversations DROP COLUMN participant_a_read_at;
---> statement-breakpoint
-ALTER TABLE public.conversations DROP COLUMN participant_b_read_at;
---> statement-breakpoint
 ALTER TABLE public.conversations ADD CONSTRAINT conversations_type_shape_check
   CHECK ((conversation_type = 'listing' AND listing_id IS NOT NULL) OR (conversation_type = 'direct' AND listing_id IS NULL));
 --> statement-breakpoint
@@ -208,16 +204,21 @@ CREATE TRIGGER trg_check_message_sender_validity
 BEFORE INSERT ON public.messages
 FOR EACH ROW EXECUTE FUNCTION public.check_message_sender_validity();
 --> statement-breakpoint
-CREATE OR REPLACE FUNCTION public.prevent_message_mutation()
+CREATE OR REPLACE FUNCTION public.prevent_message_identity_mutation()
 RETURNS trigger
 LANGUAGE plpgsql
 SET search_path = ''
-AS $$
+AS $
 BEGIN
-  RAISE EXCEPTION 'Messages are immutable after creation';
+  IF NEW.conversation_id IS DISTINCT FROM OLD.conversation_id
+     OR NEW.message_seq IS DISTINCT FROM OLD.message_seq
+     OR NEW.sender_id IS DISTINCT FROM OLD.sender_id THEN
+    RAISE EXCEPTION 'Message sequence and identity are immutable';
+  END IF;
+  RETURN NEW;
 END;
-$$;
+$;
 --> statement-breakpoint
-CREATE TRIGGER trg_messages_immutable
-BEFORE UPDATE OR DELETE ON public.messages
-FOR EACH ROW EXECUTE FUNCTION public.prevent_message_mutation();
+CREATE TRIGGER trg_messages_identity_immutable
+BEFORE UPDATE ON public.messages
+FOR EACH ROW EXECUTE FUNCTION public.prevent_message_identity_mutation();

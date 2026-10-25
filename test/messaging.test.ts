@@ -315,8 +315,8 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       try {
         const app = createApp();
         const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
-        await messagingService.markAsRead(conv.id, buyerId);
-        await messagingService.markAsRead(conv.id, sellerId);
+        await messagingService.markAsRead(conv.id, buyerId, conv.lastMessageSeq);
+        await messagingService.markAsRead(conv.id, sellerId, conv.lastMessageSeq);
         await new Promise((resolve) => setTimeout(resolve, 10));
         await messagingService.sendMessage(conv.id, buyerId, 'A widget-only unread message');
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -420,7 +420,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       expect(msg2.body).toBe('Yes, still available!');
 
       // Buyer marks read
-      await messagingService.markAsRead(conv.id, buyerId);
+      await messagingService.markAsRead(conv.id, buyerId, msg2.messageSeq);
 
       // Seller archives
       await messagingService.archiveConversation(conv.id, sellerId);
@@ -455,7 +455,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         messagingService.sendMessage(conv.id, thirdUserId, 'Sneaky message')
       ).rejects.toThrow(/Conversation not found/);
       await expect(
-        messagingService.markAsRead(conv.id, thirdUserId)
+        messagingService.markAsRead(conv.id, thirdUserId, 0)
       ).rejects.toThrow(/Conversation not found/);
       await expect(
         messagingService.archiveConversation(conv.id, thirdUserId)
@@ -512,7 +512,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         { conversationId: conversation.id, senderId: buyerId, body: 'First tied message', createdAt: tieTime },
         { conversationId: conversation.id, senderId: buyerId, body: 'Second tied message', createdAt: tieTime },
       ]);
-      await messagingService.markAsRead(conversation.id, sellerId);
+      await messagingService.markAsRead(conversation.id, sellerId, 2);
 
       await db.insert(messages).values({
         conversationId: conversation.id,

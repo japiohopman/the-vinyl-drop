@@ -297,17 +297,37 @@ export class MessagingRepository {
     return newMessage;
   }
 
-  async markAsRead(conversationId: string, role: ParticipantRole): Promise<void> {
+  async hasMessageSequence(conversationId: string, messageSeq: number): Promise<boolean> {
     const db = getDb();
+    const rows = await db
+      .select({ id: messages.id })
+      .from(messages)
+      .where(and(
+        eq(messages.conversationId, conversationId),
+        eq(messages.messageSeq, messageSeq)
+      ))
+      .limit(1);
+    return rows.length > 0;
+  }
+
+  async markAsRead(conversationId: string, role: ParticipantRole, messageSeq: number): Promise<void> {
+    const db = getDb();
+    const readAt = new Date();
     if (role === 'participantA') {
       await db
         .update(conversations)
-        .set({ participantAReadSeq: sql`${conversations.lastMessageSeq}` })
+        .set({
+          participantAReadSeq: sql`GREATEST(${conversations.participantAReadSeq}, ${messageSeq})`,
+          participantAReadAt: readAt,
+        })
         .where(eq(conversations.id, conversationId));
     } else {
       await db
         .update(conversations)
-        .set({ participantBReadSeq: sql`${conversations.lastMessageSeq}` })
+        .set({
+          participantBReadSeq: sql`GREATEST(${conversations.participantBReadSeq}, ${messageSeq})`,
+          participantBReadAt: readAt,
+        })
         .where(eq(conversations.id, conversationId));
     }
   }

@@ -278,7 +278,7 @@ export async function verifyMigrations(): Promise<void> {
 
   // 6. Verify triggers
   const triggerRes = await pg.query<{ tgname: string }>(
-    `SELECT tgname FROM pg_trigger WHERE tgname IN ('trg_check_conversation_validity', 'trg_check_message_sender_validity', 'trg_messages_immutable');`
+    `SELECT tgname FROM pg_trigger WHERE tgname IN ('trg_check_conversation_validity', 'trg_check_message_sender_validity', 'trg_messages_identity_immutable');`
   );
   const triggerNames = triggerRes.rows.map((r) => r.tgname);
   for (const expectedTrigger of ['trg_check_conversation_validity', 'trg_check_message_sender_validity', 'trg_messages_immutable']) {
@@ -437,9 +437,9 @@ export async function verifyMigrations(): Promise<void> {
   }
   await expectTriggerRejection(
     'Immutable message update',
-    `UPDATE public.messages SET body = 'edited' WHERE id = $1::uuid;`,
+    `UPDATE public.messages SET message_seq = 99 WHERE id = $1::uuid;`,
     ['db111111-1111-4111-8111-111111111111'],
-    'immutable after creation'
+    'sequence and identity are immutable'
   );
 
   // 7. Verify Row Level Security (RLS) is enabled on all 11 public tables

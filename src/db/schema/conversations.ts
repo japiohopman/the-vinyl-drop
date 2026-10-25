@@ -17,6 +17,8 @@ export const conversations = pgTable(
     participantBId: uuid('participant_b_id')
       .notNull()
       .references(() => profiles.id, { onDelete: 'no action' }),
+    participantAReadAt: timestamp('participant_a_read_at', { withTimezone: true }),
+    participantBReadAt: timestamp('participant_b_read_at', { withTimezone: true }),
     participantAReadSeq: bigint('participant_a_read_seq', { mode: 'number' }).notNull().default(0),
     participantBReadSeq: bigint('participant_b_read_seq', { mode: 'number' }).notNull().default(0),
     participantAArchivedAt: timestamp('participant_a_archived_at', { withTimezone: true }),

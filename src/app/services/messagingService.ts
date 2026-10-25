@@ -45,7 +45,7 @@ export class MessagingService {
     if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(targetProfileId)) {
       throw new NotFoundError('Profile not found');
     }
-    if (targetProfileId === currentUserId) {
+    if (targetProfileId.toLowerCase() === currentUserId.toLowerCase()) {
       throw new ValidationError('You cannot start a conversation with yourself');
     }
 
@@ -57,8 +57,10 @@ export class MessagingService {
       .limit(1);
     if (!profileRows[0]) throw new NotFoundError('Profile not found');
 
-    const participantAId = currentUserId < targetProfileId ? currentUserId : targetProfileId;
-    const participantBId = currentUserId < targetProfileId ? targetProfileId : currentUserId;
+    const normalizedCurrentUserId = currentUserId.toLowerCase();
+    const normalizedTargetProfileId = targetProfileId.toLowerCase();
+    const participantAId = normalizedCurrentUserId < normalizedTargetProfileId ? normalizedCurrentUserId : normalizedTargetProfileId;
+    const participantBId = normalizedCurrentUserId < normalizedTargetProfileId ? normalizedTargetProfileId : normalizedCurrentUserId;
     const existing = await messagingRepository.findConversationByDirectPair(participantAId, participantBId);
     if (existing) {
       const role: ParticipantRole = existing.participantAId === currentUserId
@@ -148,11 +150,23 @@ export class MessagingService {
     return newMessage;
   }
 
-  async markAsRead(conversationId: string, currentUserId: string): Promise<void> {
+  async markAsRead(conversationId: string, currentUserId: string, readThroughSeq: number): Promise<void> {
+    if (!Number.isSafeInteger(readThroughSeq) || readThroughSeq < 0) {
+      throw new ValidationError('Read cursor must be a non-negative message sequence');
+    }
+
     const conversation = await messagingRepository.findConversationById(conversationId);
     if (!conversation) throw new NotFoundError('Conversation not found');
     const role = this.participantRoleForUser(conversation, currentUserId);
-    await messagingRepository.markAsRead(conversationId, role);
+
+    if (readThroughSeq > conversation.lastMessageSeq) {
+      throw new ValidationError('Read cursor cannot exceed the conversation message sequence');
+    }
+    if (readThroughSeq > 0 && !(await messagingRepository.hasMessageSequence(conversationId, readThroughSeq))) {
+      throw new ValidationError('Read cursor must reference a message in this conversation');
+    }
+
+    await messagingRepository.markAsRead(conversationId, role, readThroughSeq);
   }
 
   async archiveConversation(conversationId: string, currentUserId: string): Promise<void> {

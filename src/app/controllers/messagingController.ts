@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { config } from '../../config/env';
 import { renderWithLayout } from '../utils/render';
 import { messagingService } from '../services/messagingService';
+import { savedPeopleService } from '../services/savedPeopleService';
 import { ValidationError } from '../services/errors';
 
 export function messagingFeatureGuard(req: Request, res: Response, next: NextFunction): void {
@@ -96,9 +97,11 @@ export async function getInboxPage(req: Request, res: Response, next: NextFuncti
     const userId = req.user!.id;
     const summaries = await messagingService.getInboxForUser(userId);
 
+    const savedPeople = await savedPeopleService.getSavedPeopleForUser(userId);
     renderWithLayout(res, 'messages/index', {
       title: 'Inbox — Messages',
       summaries,
+      savedPeople,
       user: req.user,
       profile: req.profile,
     });
@@ -128,6 +131,7 @@ export async function getConversationPage(req: Request, res: Response, next: Nex
       messages,
       userRole,
       otherParticipant,
+      readThroughSeq: messages.length ? messages[messages.length - 1].messageSeq : 0,
       user: req.user,
       profile: req.profile,
       query: req.query,
@@ -193,7 +197,16 @@ export async function postMarkRead(req: Request, res: Response, next: NextFuncti
   try {
     const userId = req.user!.id;
     const { conversationId } = req.params;
-    await messagingService.markAsRead(conversationId, userId);
+    const rawMessageSeq = (req.body || {}).messageSeq;
+    const messageSeq = typeof rawMessageSeq === 'number'
+      ? rawMessageSeq
+      : typeof rawMessageSeq === 'string' && /^\\d+$/.test(rawMessageSeq)
+        ? Number(rawMessageSeq)
+        : Number.NaN;
+    if (!Number.isSafeInteger(messageSeq) || messageSeq < 0) {
+      throw new ValidationError('messageSeq must be a non-negative integer');
+    }
+    await messagingService.markAsRead(conversationId, userId, messageSeq);
 
     if (req.accepts('json')) {
       res.set('Cache-Control', 'no-store').status(200).json({ status: 'ok' });
