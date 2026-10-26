@@ -771,6 +771,9 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       expect(widgetSource).toContain("'/assets/svg/send.svg'");
       expect(widgetSource).toContain("'/assets/svg/conversation.svg'");
       expect(widgetSource).toContain("panel.classList.add('is-conversation')");
+      const sendSvgSource = fs.readFileSync(path.join(process.cwd(), 'public/assets/svg/send.svg'), 'utf8');
+      expect(sendSvgSource).toContain('fill="currentColor"');
+      expect(sendSvgSource).not.toContain('M0 0h512v512H0z');
       expect(widgetSource).not.toContain("\\n        ?");
     });
   });
