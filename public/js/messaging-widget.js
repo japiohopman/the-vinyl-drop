@@ -548,10 +548,15 @@
       }
       setPanelPosition(event.clientX - dragOffsetX, event.clientY - dragOffsetY);
     });
-    function stopDragging() {
+    function stopDragging(event) {
       if (!isDragging) return;
       isDragging = false;
       if (!desktopMedia.matches) {
+        // Use the release coordinate too; the final pointermove can be lost on touch
+        // browsers when the visual viewport or a captured pointer changes during a swipe.
+        if (event && typeof event.clientY === 'number') {
+          mobileDragDeltaY = event.clientY - mobileDragStartY;
+        }
         var wasMinimized = panel.classList.contains('is-minimized');
         var gestureDistance = mobileDragDeltaY;
         panel.style.transform = '';
