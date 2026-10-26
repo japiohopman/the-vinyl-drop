@@ -297,7 +297,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.mouse.up();
     const bounds = await page.locator('#messaging-floating-window').evaluate((el) => {
       const rect = el.getBoundingClientRect();
-      const browser = globalThis as unknown as { window: { innerWidth: number; innerHeight: number } };
+      const browser = globalThis as unknown as { window: { innerWidth: number; innerHeight: number; getComputedStyle: (element: unknown) => { position: string } } };
       return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: browser.window.innerWidth, height: browser.window.innerHeight };
     });
     expect(bounds.left).toBeGreaterThanOrEqual(0);
@@ -428,7 +428,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       const browser = globalThis as unknown as { window: { innerWidth: number; innerHeight: number } };
       return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width,
         viewportWidth: browser.window.innerWidth, viewportHeight: browser.window.innerHeight,
-        position: getComputedStyle(el).position };
+        position: browser.window.getComputedStyle(el).position };
     });
     expect(boundsBefore.position).toBe('fixed');
     expect(boundsBefore.left).toBeGreaterThanOrEqual(0);
@@ -463,7 +463,10 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.locator('[data-message-minimize]').click();
     expect(await panel.evaluate((el) => el.classList.contains('is-minimized'))).toBe(true);
     expect(await backdrop.isVisible()).toBe(false);
-    expect(await page.locator('body').evaluate((el) => getComputedStyle(el).overflow)).not.toBe('hidden');
+    expect(await page.locator('body').evaluate((el) => {
+      const browser = globalThis as unknown as { window: { getComputedStyle: (element: unknown) => { overflow: string } } };
+      return browser.window.getComputedStyle(el).overflow;
+    })).not.toBe('hidden');
     const minimizedBottom = await panel.evaluate((el) => el.getBoundingClientRect().bottom);
     expect(minimizedBottom).toBeLessThanOrEqual(812 - 60);
 
