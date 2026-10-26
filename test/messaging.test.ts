@@ -766,6 +766,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       expect(cssSource).toContain('height: 100dvh;');
       expect(cssSource).not.toContain('height: min(82dvh');
       expect(cssSource).toContain('.messaging-widget-conversation-footer');
+      expect(cssSource).toContain('-webkit-line-clamp: 2;');
       expect(cssSource).toContain('env(safe-area-inset-bottom)');
       expect(navSource).toContain('src="/assets/svg/talk.svg"');
       expect(widgetSource).toContain("'/assets/svg/send.svg'");
