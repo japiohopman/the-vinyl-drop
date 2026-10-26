@@ -433,8 +433,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(await page.locator('.messaging-widget-saved-list').textContent()).toContain('Saved Digger');
 
     const panelLayout = await panel.evaluate((element) => {
+      const browser = globalThis as unknown as {
+        window: { getComputedStyle: (target: unknown) => { position: string } };
+      };
       const rect = element.getBoundingClientRect();
-      const styles = window.getComputedStyle(element);
+      const styles = browser.window.getComputedStyle(element);
       return { top: rect.top, left: rect.left, width: rect.width, height: rect.height, position: styles.position };
     });
     expect(panelLayout.position).toBe('fixed');
@@ -460,7 +463,13 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.mouse.up();
     expect(await panel.evaluate((element) => element.classList.contains('is-minimized'))).toBe(true);
     expect(await backdrop.isVisible()).toBe(false);
-    expect(await page.locator('body').evaluate((element) => window.getComputedStyle(element).overflow)).not.toBe('hidden');
+    const bodyOverflow = await page.locator('body').evaluate((element) => {
+      const browser = globalThis as unknown as {
+        window: { getComputedStyle: (target: unknown) => { overflow: string } };
+      };
+      return browser.window.getComputedStyle(element).overflow;
+    });
+    expect(bodyOverflow).not.toBe('hidden');
 
     await page.click('#mobile-you-trigger');
     await page.locator('#mobile-you-surface [data-messaging-widget-trigger]').click();
@@ -470,7 +479,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.locator('[data-message-close]').click();
     expect(await panel.getAttribute('hidden')).not.toBeNull();
     expect(await backdrop.isVisible()).toBe(false);
-    expect(await page.evaluate(() => (document.activeElement as HTMLElement | null)?.id)).toBe('mobile-you-trigger');
+    const activeFocusId = await page.evaluate(() => {
+      const browser = globalThis as unknown as { document: { activeElement: { id: string } | null } };
+      return browser.document.activeElement?.id;
+    });
+    expect(activeFocusId).toBe('mobile-you-trigger');
     expect(requests.some((item) => item.method === 'POST' && (item.path.endsWith('/read') || item.path.endsWith('/archive')))).toBe(false);
   });
 
