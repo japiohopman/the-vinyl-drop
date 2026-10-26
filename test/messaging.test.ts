@@ -397,6 +397,38 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         (config as any).MESSAGING_ENABLED = originalFlag;
       }
     });
+
+    test('serves savedPeople in widget inbox data and supports widget direct chat initialization', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        await savedPeopleService.savePerson(buyerId, sellerId);
+
+        const inbox = await request(app)
+          .get('/messages/widget/data')
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Accept', 'application/json');
+        expect(inbox.status).toBe(200);
+        expect(Array.isArray(inbox.body.savedPeople)).toBe(true);
+        const savedSeller = inbox.body.savedPeople.find((p: { id: string }) => p.id === sellerId);
+        expect(savedSeller).toBeDefined();
+        expect(savedSeller.username).toBe('seller_user');
+
+        const directChat = await request(app)
+          .post(`/messages/profile/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .set('Accept', 'application/json')
+          .set('X-Messaging-Widget', '1');
+        expect(directChat.status).toBe(200);
+        expect(directChat.body.id).toBeDefined();
+        expect(directChat.body.conversationType).toBe('direct');
+      } finally {
+        await savedPeopleService.removePerson(buyerId, sellerId).catch(() => {});
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
   describe('Service & Scoping Boundaries', () => {
     test('concurrent conversation creation attempts safely reuse same thread', async () => {
       const [c1, c2] = await Promise.all([
