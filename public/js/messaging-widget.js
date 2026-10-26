@@ -544,6 +544,18 @@
           ? Math.min(0, Math.max(-120, mobileDragDeltaY))
           : Math.max(0, Math.min(160, mobileDragDeltaY));
         panel.style.transform = 'translate3d(0, ' + offset + 'px, 0)';
+
+        // Commit the mobile gesture once its directional threshold is crossed.
+        // Some touch browsers can cancel a captured pointer before pointerup when
+        // the panel itself is being translated; committing here keeps restore/minimize
+        // reliable instead of relying on a later release event.
+        if ((minimized && mobileDragDeltaY < -60) || (!minimized && mobileDragDeltaY > 80)) {
+          isDragging = false;
+          panel.style.transform = '';
+          panel.style.transition = '';
+          mobileDragDeltaY = 0;
+          toggleMinimized();
+        }
         return;
       }
       setPanelPosition(event.clientX - dragOffsetX, event.clientY - dragOffsetY);
