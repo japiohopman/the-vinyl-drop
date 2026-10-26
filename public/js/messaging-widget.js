@@ -534,7 +534,8 @@
       if (dragHandle.setPointerCapture && event.pointerId !== undefined) dragHandle.setPointerCapture(event.pointerId);
       event.preventDefault();
     });
-    dragHandle.addEventListener('pointermove', function (event) {
+    // Track movement at window level so a gesture continues if the pointer leaves the title button.
+    window.addEventListener('pointermove', function (event) {
       if (!isDragging) return;
       if (!desktopMedia.matches) {
         mobileDragDeltaY = event.clientY - mobileDragStartY;
@@ -552,17 +553,18 @@
       isDragging = false;
       if (!desktopMedia.matches) {
         var wasMinimized = panel.classList.contains('is-minimized');
+        var gestureDistance = mobileDragDeltaY;
         panel.style.transform = '';
         panel.style.transition = '';
-        if ((!wasMinimized && mobileDragDeltaY > 80) || (wasMinimized && mobileDragDeltaY < -60)) {
+        if ((!wasMinimized && gestureDistance > 80) || (wasMinimized && gestureDistance < -60)) {
           toggleMinimized();
         }
         mobileDragDeltaY = 0;
         return;
       }
     }
-    dragHandle.addEventListener('pointerup', stopDragging);
-    dragHandle.addEventListener('pointercancel', stopDragging);
+    window.addEventListener('pointerup', stopDragging);
+    window.addEventListener('pointercancel', stopDragging);
 
     dragHandle.addEventListener('keydown', function (event) {
       if (!desktopMedia.matches || panel.hidden) return;
