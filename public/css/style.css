@@ -6196,6 +6196,17 @@ body.messaging-mobile-panel-open {
     height: 44px;
   }
 
+  .messaging-floating-title {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.25;
+  }
+
   .messaging-floating-window.is-conversation .messaging-widget-toolbar {
     gap: var(--space-1);
     flex-wrap: wrap;
