@@ -1,90 +1,88 @@
-<div class="conversation-container" style="max-width: 800px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
-  <div style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4);">
-    <a href="/messages" style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); text-decoration: underline;">
-      ← Back to Inbox
-    </a>
-    <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
-      <form action="/messages/<%= conversation.id %>/read" method="POST" style="margin: 0;">
+<div class="conversation-container">
+  <div class="conversation-topbar">
+    <a href="/messages" class="conversation-back-link">← Back to Inbox</a>
+    <div class="conversation-actions">
+      <form action="/messages/<%= conversation.id %>/read" method="POST">
         <input type="hidden" name="messageSeq" value="<%= readThroughSeq %>">
         <button type="submit" class="btn btn-outline btn-xs">Mark as read</button>
       </form>
-      <form action="/messages/<%= conversation.id %>/archive" method="POST" style="margin: 0;">
+      <form action="/messages/<%= conversation.id %>/archive" method="POST">
         <button type="submit" class="btn btn-outline btn-xs">Archive Thread</button>
       </form>
     </div>
   </div>
 
   <% if (conversation.conversationType === 'listing' && conversation.listing && conversation.release) { %>
-    <div class="linked-listing-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); margin-bottom: var(--space-6); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3);">
-      <div>
-        <div style="font-family: var(--font-mono); font-size: var(--font-size-2xs); text-transform: uppercase; color: var(--color-ink-muted);">
-          Listing Inquiry (<%= userRole === 'buyer' ? 'Seller' : 'Buyer' %>: @<%= otherParticipant.username %>)
+    <section class="linked-listing-card conversation-context-card" aria-labelledby="conversation-context-title">
+      <div class="conversation-context-copy">
+        <div class="conversation-page-kicker">
+          <img src="/assets/svg/talk.svg" alt="" aria-hidden="true">
+          Listing inquiry (<%= userRole === 'buyer' ? 'Seller' : 'Buyer' %>: @<%= otherParticipant.username %>)
         </div>
-        <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin: var(--space-1) 0 0 0;">
-          <%= conversation.release.artist %> — <%= conversation.release.title %>
-        </h2>
+        <h1 id="conversation-context-title" class="conversation-page-title">
+          <img src="/assets/svg/conversation.svg" alt="" aria-hidden="true">
+          <span><%= conversation.release.artist %> — <%= conversation.release.title %></span>
+        </h1>
       </div>
-      <div>
-        <a href="/listings/<%= conversation.listing.id %>" class="btn btn-outline btn-sm">View Listing Details</a>
-      </div>
-    </div>
+      <a href="/listings/<%= conversation.listing.id %>" class="btn btn-outline btn-sm conversation-context-action">View Listing Details</a>
+    </section>
   <% } else { %>
-    <div class="linked-listing-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); margin-bottom: var(--space-6); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3);">
-      <div>
-        <div style="font-family: var(--font-mono); font-size: var(--font-size-2xs); text-transform: uppercase; color: var(--color-ink-muted);">
+    <section class="linked-listing-card conversation-context-card" aria-labelledby="conversation-context-title">
+      <div class="conversation-context-copy">
+        <div class="conversation-page-kicker">
+          <img src="/assets/svg/talk.svg" alt="" aria-hidden="true">
           Private direct conversation
         </div>
-        <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin: var(--space-1) 0 0 0;">
-          <%= otherParticipant.displayName || ('@' + otherParticipant.username) %>
-        </h2>
+        <h1 id="conversation-context-title" class="conversation-page-title">
+          <img src="/assets/svg/conversation.svg" alt="" aria-hidden="true">
+          <span><%= otherParticipant.displayName || ('@' + otherParticipant.username) %></span>
+        </h1>
       </div>
-      <div>
-        <a href="/profiles/<%= encodeURIComponent(otherParticipant.username) %>" class="btn btn-outline btn-sm">View Profile</a>
-      </div>
-    </div>
+      <a href="/profiles/<%= encodeURIComponent(otherParticipant.username) %>" class="btn btn-outline btn-sm conversation-context-action">View Profile</a>
+    </section>
   <% } %>
 
-  <div class="messages-stream" style="display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-6);">
+  <section class="messages-stream" aria-label="Conversation messages">
     <% if (!messages || messages.length === 0) { %>
-      <div style="padding: var(--space-6); text-align: center; color: var(--color-ink-muted); font-family: var(--font-mono); font-size: var(--font-size-sm); border: 2px dashed var(--color-border); border-radius: var(--radius-sm);">
+      <div class="conversation-empty-state">
         No messages sent yet. Send a message below to start chatting!
       </div>
     <% } else { %>
       <% messages.forEach(function(msg) { %>
         <% const isSelf = msg.senderId === user.id; %>
-        <div class="message-bubble-wrapper" style="display: flex; flex-direction: column; align-items: <%= isSelf ? 'flex-end' : 'flex-start' %>;">
-          <div style="font-family: var(--font-mono); font-size: var(--font-size-2xs); color: var(--color-ink-muted); margin-bottom: 2px;">
-            <%= isSelf ? 'You' : ('@' + otherParticipant.username) %> • <%= new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+        <div class="message-bubble-wrapper <%= isSelf ? 'message-bubble-wrapper-own' : 'message-bubble-wrapper-other' %>">
+          <div class="message-meta">
+            <%= isSelf ? 'You' : ('@' + otherParticipant.username) %>
+            <span aria-hidden="true">·</span>
+            <time datetime="<%= new Date(msg.createdAt).toISOString() %>"><%= new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></time>
           </div>
-          <div class="message-bubble" style="max-width: 80%; padding: var(--space-3) var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); font-size: var(--font-size-base); line-height: var(--line-height-base); white-space: pre-wrap; word-break: break-word; background: <%= isSelf ? 'var(--color-rust-accessible)' : 'var(--color-white)' %>; color: <%= isSelf ? 'var(--color-white)' : 'var(--color-ink)' %>;">
-            <%= msg.body %>
-          </div>
+          <div class="message-bubble <%= isSelf ? 'message-bubble-own' : 'message-bubble-other' %>"><%= msg.body %></div>
         </div>
       <% }); %>
     <% } %>
-  </div>
+  </section>
 
-  <div class="send-message-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white);">
-    <form action="/messages/<%= conversation.id %>/send" method="POST" style="display: flex; flex-direction: column; gap: var(--space-3);">
-      <div>
-        <label for="message-body" style="font-family: var(--font-display); font-size: var(--font-size-sm); display: block; margin-bottom: var(--space-1);">Send Message</label>
+  <section class="send-message-card" aria-labelledby="conversation-compose-heading">
+    <form action="/messages/<%= conversation.id %>/send" method="POST" class="conversation-compose">
+      <div class="conversation-compose-field">
+        <label id="conversation-compose-heading" for="message-body" class="conversation-compose-label">Send a message</label>
         <textarea
           id="message-body"
           name="body"
+          class="conversation-compose-textarea"
           rows="3"
           required
           maxlength="4000"
           placeholder="Type your message here..."
-          style="width: 100%; padding: var(--space-3); font-family: var(--font-body); font-size: var(--font-size-base); border: var(--border-thick); border-radius: var(--radius-sm); box-sizing: border-box; resize: vertical;"
         ></textarea>
-        <div style="font-family: var(--font-mono); font-size: var(--font-size-2xs); color: var(--color-ink-muted); text-align: right; margin-top: 2px;">
-          Plain text, up to 4,000 characters
-        </div>
+        <div class="conversation-compose-help">Plain text, up to 4,000 characters</div>
       </div>
-      <div style="display: flex; justify-content: flex-end;">
-        <button type="submit" class="btn btn-primary">Send Message</button>
+      <div class="conversation-compose-actions">
+        <button type="submit" class="btn btn-primary conversation-send-button">
+          <img src="/assets/svg/send.svg" alt="" aria-hidden="true">
+          <span>Send message</span>
+        </button>
       </div>
     </form>
-  </div>
+  </section>
 </div>
-

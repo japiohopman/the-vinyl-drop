@@ -152,10 +152,7 @@
               </li>
               <% if (isMessagingEnabled) { %>
                 <li>
-                  <a href="/messages" class="mobile-you-action-link messaging-widget-trigger" data-messaging-widget-trigger><span>Messages</span><span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span></a>
-                </li>
-                <li>
-                  <a href="/messages" class="mobile-you-action-link"><span>Inbox & Saved People</span></a>
+                  <a href="/messages" class="mobile-you-action-link"><span>Inbox &amp; Saved People</span><span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span></a>
                 </li>
               <% } %>
             </ul>
@@ -224,6 +221,7 @@
       aria-label="Move Messages window with arrow keys"
       title="Drag to move; use arrow keys to reposition"
     >
+      <img class="messaging-floating-brand-icon" src="/assets/svg/talk.svg" alt="" aria-hidden="true">
       <span class="messaging-floating-title" id="messaging-floating-title" data-message-widget-title>Messages</span>
       <span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span>
     </button>
