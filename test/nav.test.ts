@@ -384,7 +384,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
           closest?: (selector: string) => { getAttribute: (name: string) => string | null } | null;
         } | null;
         if (!target || typeof target.closest !== 'function') return;
-        const trigger = target.closest('[data-messaging-widget-trigger]');
+        const trigger = target.closest('a[href="/messages"]');
         if (!trigger) return;
         browser.window.__mobileMessagesClick = {
           href: trigger.getAttribute('href') || '',
@@ -396,7 +396,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     });
 
     await page.click('#mobile-you-trigger');
-    await page.click('#mobile-you-surface [data-messaging-widget-trigger]');
+    const mobileInboxLink = page.locator('#mobile-you-surface a[href="/messages"]');
+    expect(await mobileInboxLink.getAttribute('data-messaging-widget-trigger')).toBeNull();
+    expect(await mobileInboxLink.getAttribute('aria-haspopup')).toBeNull();
+    expect(await mobileInboxLink.textContent()).toContain('Inbox & Saved People');
+    await mobileInboxLink.click();
     const clickResult = await page.evaluate(() => {
       const browser = globalThis as unknown as { window: { __mobileMessagesClick?: { href: string; defaultPreventedBeforeTestHandler: boolean } } };
       return browser.window.__mobileMessagesClick;
