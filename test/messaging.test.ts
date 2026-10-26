@@ -769,6 +769,8 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       expect(cssSource).toContain('@media (max-width: 1023px)');
       expect(cssSource).not.toContain('floating window is a desktop-only interaction');
       expect(cssSource).not.toMatch(/\.messaging-floating-window,\s*\.messaging-mobile-backdrop\s*\{\s*display:\s*none !important;/);
+      expect(cssSource).toContain('Final mobile widget overrides');
+      expect(cssSource).toContain('min-height: 44px;');
       expect(navSource).toContain('id="messaging-mobile-backdrop"');
       expect(navSource).toContain('class="mobile-you-action-link messaging-widget-trigger"');
       expect(navSource).not.toContain('Inbox &amp; Saved People');

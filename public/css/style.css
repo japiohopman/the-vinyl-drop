@@ -6698,3 +6698,33 @@ body.messaging-mobile-panel-open {
     max-height: 4rem;
   }
 }
+
+
+/* Final mobile widget overrides: preserve safe areas and touch targets after shared defaults. */
+@media (max-width: 1023px) {
+  .messaging-widget-conversation-footer {
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    border-top: 3px solid var(--color-rust);
+  }
+
+  .messaging-widget-conversation-footer .messaging-widget-compose textarea {
+    height: 4.25rem;
+    min-height: 4.25rem;
+    max-height: 10rem;
+    font-size: 16px;
+  }
+
+  .messaging-widget-conversation-footer .messaging-widget-send {
+    min-height: 48px;
+  }
+
+  .messaging-widget-conversation-footer .messaging-widget-action-primary,
+  .messaging-widget-conversation-footer .messaging-widget-archive {
+    min-height: 44px;
+  }
+
+  .messaging-floating-window.is-conversation .messaging-widget-message-list {
+    max-height: none;
+    -webkit-overflow-scrolling: touch;
+  }
+}
