@@ -380,8 +380,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         window: { __mobileMessagesClick?: { href: string; defaultPreventedBeforeTestHandler: boolean } };
       };
       browser.document.addEventListener('click', (event: Event) => {
-        const target = event.target as Element;
-        const trigger = target.closest('[data-messaging-widget-trigger]') as HTMLAnchorElement | null;
+        const target = event.target as unknown as {
+          closest?: (selector: string) => { getAttribute: (name: string) => string | null } | null;
+        } | null;
+        if (!target || typeof target.closest !== 'function') return;
+        const trigger = target.closest('[data-messaging-widget-trigger]');
         if (!trigger) return;
         browser.window.__mobileMessagesClick = {
           href: trigger.getAttribute('href') || '',
