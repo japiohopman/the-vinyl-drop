@@ -425,7 +425,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
 
     const boundsBefore = await panel.evaluate((el) => {
       const rect = el.getBoundingClientRect();
-      const browser = globalThis as unknown as { window: { innerWidth: number; innerHeight: number } };
+      const browser = globalThis as unknown as { window: { innerWidth: number; innerHeight: number; getComputedStyle: (element: unknown) => { position: string } } };
       return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width,
         viewportWidth: browser.window.innerWidth, viewportHeight: browser.window.innerHeight,
         position: browser.window.getComputedStyle(el).position };
