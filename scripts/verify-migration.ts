@@ -411,7 +411,7 @@ export async function verifyMigrations(): Promise<void> {
   );
   await pg.query(
     `INSERT INTO public.messages (id, conversation_id, sender_id, body)
-     VALUES ('db222222-2222-4222-8222-222222222222', $1::uuid, $2::uuid, 'Direct DB trigger check');`,
+     VALUES ('db444444-4444-4444-8444-444444444444', $1::uuid, $2::uuid, 'Direct DB trigger check');`,
     [directConversationId, messagingFixture.buyerId]
   );
   const directSequence = await pg.query<{ message_seq: string }>(
