@@ -358,7 +358,7 @@
     desktopTriggers.forEach(function (item) { item.setAttribute('aria-expanded', 'false'); });
     syncResponsivePanelState();
     if (restoreFocus && lastTrigger && document.contains(lastTrigger)) {
-      var focusTarget = lastTrigger.closest('[hidden]')
+      var focusTarget = lastTrigger.closest('[hidden], [aria-hidden="true"]')
         ? document.getElementById(desktopMedia.matches ? 'desktop-you-trigger' : 'mobile-you-trigger')
         : lastTrigger;
       if (focusTarget) focusTarget.focus();
