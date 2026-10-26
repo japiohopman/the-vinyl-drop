@@ -429,7 +429,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(await backdrop.isVisible()).toBe(true);
     expect(await panel.getAttribute('aria-modal')).toBe('true');
     expect(page.url()).not.toContain('/messages');
-    expect(await page.locator('.messaging-widget-saved-section').isVisible()).toBe(true);
+    // Opening the widget starts an asynchronous inbox request; wait for the server data to render.
+    await page.waitForSelector('.messaging-widget-saved-section', { state: 'visible' });
     expect(await page.locator('.messaging-widget-saved-list').textContent()).toContain('Saved Digger');
 
     const panelLayout = await panel.evaluate((element) => {
