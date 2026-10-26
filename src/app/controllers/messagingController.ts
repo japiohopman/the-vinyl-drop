@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { config } from '../../config/env';
 import { renderWithLayout } from '../utils/render';
 import { messagingService } from '../services/messagingService';
+import { savedPeopleService } from '../services/savedPeopleService';
 import { ValidationError } from '../services/errors';
 
 export function messagingFeatureGuard(req: Request, res: Response, next: NextFunction): void {
@@ -33,9 +34,11 @@ export async function getWidgetInbox(req: Request, res: Response, next: NextFunc
     const summaries = await messagingService.getInboxForUser(req.user!.id);
     const conversations = summaries.map((item) => ({
       id: item.conversation.id,
-      releaseArtist: item.release.artist,
-      releaseTitle: item.release.title,
-      otherParticipant: item.otherParticipant.displayName || `@${item.otherParticipant.username}`,
+      conversationType: item.conversation.conversationType,
+      releaseArtist: item.release?.artist ?? null,
+      releaseTitle: item.release?.title ?? null,
+      otherParticipant: item.otherParticipant.displayName || '@' + item.otherParticipant.username,
+      otherParticipantUsername: item.otherParticipant.username,
       lastMessage: item.lastMessage?.body ?? '',
       lastMessageAt: item.lastMessage?.createdAt ?? null,
       unreadCount: item.unreadCount,
@@ -55,24 +58,30 @@ export async function getWidgetConversation(req: Request, res: Response, next: N
       conversationId,
       userId
     );
-    const otherParticipant = userRole === 'buyer' ? conversation.seller : conversation.buyer;
+    const otherParticipant = conversation.participantA.id === userId
+      ? conversation.participantB
+      : conversation.participantA;
     const inbox = await messagingService.getInboxForUser(userId);
     const unreadCount = inbox.find((item) => item.conversation.id === conversation.id)?.unreadCount ?? 0;
     res.set('Cache-Control', 'no-store').json({
       id: conversation.id,
-      release: {
-        artist: conversation.release.artist,
-        title: conversation.release.title,
-      },
-      listing: { id: conversation.listing.id },
+      conversationType: conversation.conversationType,
+      title: conversation.release
+        ? conversation.release.artist + ' — ' + conversation.release.title
+        : '@' + otherParticipant.username,
+      release: conversation.release,
+      listing: conversation.listing ? { id: conversation.listing.id } : null,
       userRole,
       unreadCount,
       otherParticipant: {
+        id: otherParticipant.id,
         username: otherParticipant.username,
         displayName: otherParticipant.displayName,
+        avatarUrl: otherParticipant.avatarUrl,
       },
       messages: messages.map((message) => ({
         id: message.id,
+        messageSeq: message.messageSeq,
         isOwnMessage: message.senderId === userId,
         body: message.body,
         createdAt: message.createdAt,
@@ -88,9 +97,11 @@ export async function getInboxPage(req: Request, res: Response, next: NextFuncti
     const userId = req.user!.id;
     const summaries = await messagingService.getInboxForUser(userId);
 
+    const savedPeople = await savedPeopleService.getSavedPeopleForUser(userId);
     renderWithLayout(res, 'messages/index', {
       title: 'Inbox — Messages',
       summaries,
+      savedPeople,
       user: req.user,
       profile: req.profile,
     });
@@ -103,17 +114,24 @@ export async function getConversationPage(req: Request, res: Response, next: Nex
   try {
     const userId = req.user!.id;
     const { conversationId } = req.params;
-
     const { conversation, messages, userRole } = await messagingService.getConversationDetail(
       conversationId,
       userId
     );
+    const otherParticipant = conversation.participantA.id === userId
+      ? conversation.participantB
+      : conversation.participantA;
+    const title = conversation.release
+      ? conversation.release.artist + ' — ' + conversation.release.title + ' — Conversation'
+      : 'Direct message with @' + otherParticipant.username;
 
     renderWithLayout(res, 'messages/show', {
-      title: `${conversation.release.artist} - ${conversation.release.title} — Conversation`,
+      title,
       conversation,
       messages,
       userRole,
+      otherParticipant,
+      readThroughSeq: messages.length ? messages[messages.length - 1].messageSeq : 0,
       user: req.user,
       profile: req.profile,
       query: req.query,
@@ -127,9 +145,37 @@ export async function postStartConversation(req: Request, res: Response, next: N
   try {
     const userId = req.user!.id;
     const { listingId } = req.params;
-
     const conversation = await messagingService.getOrCreateConversation(listingId, userId);
-    res.redirect(`/messages/${conversation.id}`);
+    res.redirect('/messages/' + conversation.id);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function postSavedPersonAction(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const ownerUserId = req.user!.id;
+    const { profileId } = req.params;
+    const action = (req.body || {}).action;
+    if (action !== 'save' && action !== 'remove') {
+      throw new ValidationError('Saved People action must be save or remove');
+    }
+
+    const target = action === 'save'
+      ? await savedPeopleService.savePerson(ownerUserId, profileId)
+      : await savedPeopleService.removePerson(ownerUserId, profileId);
+    res.redirect('/profiles/' + encodeURIComponent(target.username));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function postStartDirectConversation(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const { profileId } = req.params;
+    const conversation = await messagingService.getOrCreateDirectConversation(profileId, userId);
+    res.redirect('/messages/' + conversation.id);
   } catch (err) {
     next(err);
   }
@@ -151,6 +197,7 @@ export async function postSendMessage(req: Request, res: Response, next: NextFun
         status: 'ok',
         message: {
           id: message.id,
+          messageSeq: message.messageSeq,
           isOwnMessage: true,
           body: message.body,
           createdAt: message.createdAt,
@@ -158,7 +205,7 @@ export async function postSendMessage(req: Request, res: Response, next: NextFun
       });
       return;
     }
-    res.redirect(`/messages/${conversationId}`);
+    res.redirect('/messages/' + conversationId);
   } catch (err) {
     next(err);
   }
@@ -168,14 +215,22 @@ export async function postMarkRead(req: Request, res: Response, next: NextFuncti
   try {
     const userId = req.user!.id;
     const { conversationId } = req.params;
+    const rawMessageSeq = (req.body || {}).messageSeq;
+    const messageSeq = typeof rawMessageSeq === 'number'
+      ? rawMessageSeq
+      : typeof rawMessageSeq === 'string' && /^\d+$/.test(rawMessageSeq)
+        ? Number(rawMessageSeq)
+        : Number.NaN;
+    if (!Number.isSafeInteger(messageSeq) || messageSeq < 0) {
+      throw new ValidationError('messageSeq must be a non-negative integer');
+    }
+    await messagingService.markAsRead(conversationId, userId, messageSeq);
 
-    await messagingService.markAsRead(conversationId, userId);
-
-    if (req.accepts('json')) {
-      res.status(200).json({ status: 'ok' });
+    if (req.accepts(['html', 'json']) === 'json') {
+      res.set('Cache-Control', 'no-store').status(200).json({ status: 'ok' });
       return;
     }
-    res.redirect(`/messages/${conversationId}`);
+    res.redirect('/messages/' + conversationId);
   } catch (err) {
     next(err);
   }
@@ -185,11 +240,10 @@ export async function postArchiveConversation(req: Request, res: Response, next:
   try {
     const userId = req.user!.id;
     const { conversationId } = req.params;
-
     await messagingService.archiveConversation(conversationId, userId);
 
-    if (req.accepts('json')) {
-      res.status(200).json({ status: 'ok' });
+    if (req.accepts(['html', 'json']) === 'json') {
+      res.set('Cache-Control', 'no-store').status(200).json({ status: 'ok' });
       return;
     }
     res.redirect('/messages');

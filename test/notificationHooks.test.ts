@@ -134,6 +134,7 @@ describe('Notification Hooks Contract (Issue #41)', () => {
     await addFavorite(buyerId, listing.id, db);
     expect(notifications).toHaveLength(1);
     expect(notifications[0].type).toBe('favorite.created');
+    if (notifications[0].type !== 'favorite.created') throw new Error('Expected favorite event');
     expect(notifications[0].actorId).toBe(buyerId);
     expect(notifications[0].recipientId).toBe(sellerId);
     expect(notifications[0].listingId).toBe(listing.id);
@@ -178,6 +179,7 @@ describe('Notification Hooks Contract (Issue #41)', () => {
     await addComment(listing.id, commenterId, 'Is this a original press?', db);
     expect(notifications).toHaveLength(1);
     expect(notifications[0].type).toBe('comment.created');
+    if (notifications[0].type !== 'comment.created') throw new Error('Expected comment event');
     expect(notifications[0].actorId).toBe(commenterId);
     expect(notifications[0].recipientId).toBe(sellerId);
     expect(notifications[0].listingId).toBe(listing.id);

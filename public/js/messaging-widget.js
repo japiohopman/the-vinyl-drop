@@ -2,6 +2,7 @@
   'use strict';
 
   var panel = document.getElementById('messaging-floating-window');
+  var mobileBackdrop = document.getElementById('messaging-mobile-backdrop');
   if (!panel) return;
 
   var desktopMedia = window.matchMedia ? window.matchMedia('(min-width: 1024px)') : { matches: window.innerWidth >= 1024 };
@@ -132,7 +133,9 @@
     var list = element('ul', 'messaging-widget-list');
     conversations.forEach(function (conversation) {
       var item = element('li');
-      var label = conversation.releaseArtist + ' — ' + conversation.releaseTitle;
+      var label = conversation.conversationType === 'direct'
+        ? (conversation.otherParticipantUsername ? '@' + conversation.otherParticipantUsername : conversation.otherParticipant)
+        : ((conversation.releaseArtist || 'Listing') + ' — ' + (conversation.releaseTitle || 'Conversation'));
       var button = element('button', 'messaging-widget-conversation' + (conversation.unreadCount > 0 ? ' is-unread' : ''));
       button.type = 'button';
       button.setAttribute('aria-label', label + ', ' + conversation.otherParticipant + (conversation.unreadCount > 0 ? ', ' + conversation.unreadCount + ' unread' : ''));
@@ -174,8 +177,12 @@
 
   function renderConversation(conversation) {
     content.replaceChildren();
-    title.textContent = conversation.release.artist + ' — ' + conversation.release.title;
-    panel.setAttribute('aria-label', 'Conversation about ' + conversation.release.title);
+    title.textContent = conversation.title || (conversation.release
+      ? conversation.release.artist + ' — ' + conversation.release.title
+      : 'Direct conversation with @' + conversation.otherParticipant.username);
+    panel.setAttribute('aria-label', conversation.release
+      ? 'Conversation about ' + conversation.release.title
+      : 'Direct conversation with @' + conversation.otherParticipant.username);
 
     var toolbar = element('div', 'messaging-widget-toolbar');
     toolbar.appendChild(actionButton('← Conversations', '', loadInbox, 'Back to conversations'));
@@ -205,7 +212,14 @@
     if (Number(conversation.unreadCount) > 0) {
       content.appendChild(actionButton('Mark as read', '', function (button) {
         button.disabled = true;
-        requestJson('/messages/' + encodeURIComponent(conversation.id) + '/read', { method: 'POST' })
+        var readThroughSeq = (conversation.messages || []).reduce(function (maximum, message) {
+          return Math.max(maximum, Number(message.messageSeq) || 0);
+        }, 0);
+        requestJson('/messages/' + encodeURIComponent(conversation.id) + '/read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ messageSeq: readThroughSeq })
+        })
           .then(function () { return Promise.all([loadConversation(conversation.id), refreshUnread()]); })
           .catch(function (error) { showError(error.message); });
       }));
@@ -268,16 +282,68 @@
     }
   }
 
+  function syncResponsivePanelState() {
+    var expandedMobilePanel = !desktopMedia.matches && !panel.hidden && !panel.classList.contains('is-minimized');
+    panel.setAttribute('aria-modal', expandedMobilePanel ? 'true' : 'false');
+
+    if (mobileBackdrop) {
+      mobileBackdrop.hidden = !expandedMobilePanel;
+      mobileBackdrop.setAttribute('aria-hidden', expandedMobilePanel ? 'false' : 'true');
+    }
+    document.body.classList.toggle('messaging-mobile-panel-open', expandedMobilePanel);
+
+    if (dragHandle) {
+      if (desktopMedia.matches) {
+        dragHandle.setAttribute('aria-label', 'Move Messages window with arrow keys');
+        dragHandle.setAttribute('title', 'Drag to move; use arrow keys to reposition');
+      } else {
+        dragHandle.setAttribute('aria-label', 'Messages panel header');
+        dragHandle.removeAttribute('title');
+      }
+    }
+    triggers.forEach(function (trigger) {
+      trigger.setAttribute('aria-expanded', !panel.hidden && !panel.classList.contains('is-minimized') ? 'true' : 'false');
+    });
+  }
+
+  function closeMobileAccountSurface() {
+    var mobileSurface = document.getElementById('mobile-you-surface');
+    var mobileClose = document.getElementById('mobile-you-close-btn');
+    if (mobileSurface && !mobileSurface.hidden && mobileClose) mobileClose.click();
+  }
+
+  function trapMobileFocus(event) {
+    if (desktopMedia.matches || panel.hidden || panel.classList.contains('is-minimized') || event.key !== 'Tab') return;
+    var focusable = Array.prototype.slice.call(panel.querySelectorAll(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )).filter(function (node) { return !node.hidden && node.getAttribute('aria-hidden') !== 'true'; });
+    if (!focusable.length) {
+      event.preventDefault();
+      closeButton.focus();
+      return;
+    }
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   function openPanel(trigger) {
-    if (!desktopMedia.matches) return;
     lastTrigger = trigger || lastTrigger;
     closeDesktopMenu();
+    closeMobileAccountSurface();
     panel.hidden = false;
     panel.setAttribute('aria-hidden', 'false');
     panel.classList.remove('is-minimized');
     minimizeButton.textContent = '−';
     minimizeButton.setAttribute('aria-label', 'Minimize Messages window');
     desktopTriggers.forEach(function (item) { item.setAttribute('aria-expanded', 'true'); });
+    syncResponsivePanelState();
     void panel.offsetWidth;
     loadInbox().then(function () {
       if (!panel.hidden) closeButton.focus();
@@ -290,8 +356,11 @@
     panel.classList.remove('is-minimized');
     activeConversationId = null;
     desktopTriggers.forEach(function (item) { item.setAttribute('aria-expanded', 'false'); });
+    syncResponsivePanelState();
     if (restoreFocus && lastTrigger && document.contains(lastTrigger)) {
-      var focusTarget = lastTrigger.closest('[hidden]') ? document.getElementById('desktop-you-trigger') : lastTrigger;
+      var focusTarget = lastTrigger.closest('[hidden], [aria-hidden="true"]')
+        ? document.getElementById(desktopMedia.matches ? 'desktop-you-trigger' : 'mobile-you-trigger')
+        : lastTrigger;
       if (focusTarget) focusTarget.focus();
     }
   }
@@ -303,13 +372,18 @@
     minimizeButton.setAttribute('aria-label', minimized ? 'Restore Messages window' : 'Minimize Messages window');
     minimizeButton.setAttribute('title', minimized ? 'Restore' : 'Minimize');
     setStatus(minimized ? 'Messages window minimized' : 'Messages window restored');
+    syncResponsivePanelState();
     if (!minimized) closeButton.focus();
   }
 
   triggers.forEach(function (trigger) {
     trigger.addEventListener('click', function (event) {
-      if (!desktopMedia.matches) return;
       event.preventDefault();
+      if (!panel.hidden && panel.classList.contains('is-minimized') && !desktopMedia.matches) {
+        closeMobileAccountSurface();
+        toggleMinimized();
+        return;
+      }
       if (!panel.hidden) {
         closePanel(true);
         return;
@@ -320,6 +394,12 @@
 
   minimizeButton.addEventListener('click', toggleMinimized);
   closeButton.addEventListener('click', function () { closePanel(true); });
+
+  document.addEventListener('keydown', trapMobileFocus);
+
+  if (mobileBackdrop) {
+    mobileBackdrop.addEventListener('click', function () { closePanel(true); });
+  }
 
   document.addEventListener('keydown', function (event) {
     if (panel.hidden) return;
@@ -371,7 +451,7 @@
     dragHandle.addEventListener('pointercancel', stopDragging);
 
     dragHandle.addEventListener('keydown', function (event) {
-      if (panel.hidden) return;
+      if (!desktopMedia.matches || panel.hidden) return;
       var step = event.shiftKey ? 40 : 16;
       var left = panel.getBoundingClientRect().left;
       var top = panel.getBoundingClientRect().top;
@@ -386,25 +466,25 @@
   }
 
   function handleDesktopBreakpoint() {
-    if (!desktopMedia.matches) {
-      closePanel(false);
-      panel.style.left = '';
-      panel.style.top = '';
-      panel.style.right = '';
-      panel.style.bottom = '';
-    } else {
-      refreshUnread();
-    }
+    // Reuse the active thread on both form factors but discard desktop positioning on mobile.
+    panel.style.left = '';
+    panel.style.top = '';
+    panel.style.right = '';
+    panel.style.bottom = '';
+    syncResponsivePanelState();
+    refreshUnread();
   }
 
   if (desktopMedia.addEventListener) desktopMedia.addEventListener('change', handleDesktopBreakpoint);
   else if (desktopMedia.addListener) desktopMedia.addListener(handleDesktopBreakpoint);
   window.addEventListener('resize', function () {
-    if (!panel.hidden && (panel.style.left || panel.style.top)) {
+    syncResponsivePanelState();
+    if (desktopMedia.matches && !panel.hidden && (panel.style.left || panel.style.top)) {
       var rect = panel.getBoundingClientRect();
       setPanelPosition(rect.left, rect.top);
     }
   });
 
+  syncResponsivePanelState();
   refreshUnread();
 })();

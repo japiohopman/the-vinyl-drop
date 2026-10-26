@@ -5553,8 +5553,66 @@ select.form-control {
   border: 0 !important;
 }
 @media (max-width: 1023px) {
+  .messaging-mobile-backdrop:not([hidden]) {
+    position: fixed;
+    inset: 0;
+    z-index: 1099;
+    display: block;
+    background: rgba(18, 18, 18, 0.42);
+    -webkit-tap-highlight-color: transparent;
+  }
+
   .messaging-floating-window {
-    display: none !important;
+    display: flex;
+    position: fixed;
+    z-index: 1100;
+    inset-inline: 0;
+    top: auto;
+    bottom: 0;
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: 100vw;
+    height: min(82dvh, calc(100dvh - env(safe-area-inset-top) - 12px));
+    max-height: calc(100dvh - env(safe-area-inset-top) - 8px);
+    min-height: min(300px, 55dvh);
+    padding-bottom: env(safe-area-inset-bottom);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.24);
+  }
+
+  .messaging-floating-header {
+    padding-top: max(var(--space-1), env(safe-area-inset-top));
+  }
+  .messaging-floating-window.is-minimized {
+    inset-inline: 12px;
+    width: min(380px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    bottom: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px));
+    border-radius: var(--radius-sm);
+  }
+
+
+  .messaging-floating-drag-handle {
+    cursor: default;
+    touch-action: auto;
+  }
+
+  .messaging-floating-content {
+    min-height: 0;
+    overscroll-behavior: contain;
+    padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
+  }
+
+  .messaging-widget-compose textarea {
+    min-height: 88px;
+    max-height: 24dvh;
+    font-size: 16px;
+  }
+
+  .messaging-widget-action,
+  .messaging-widget-send,
+  .messaging-floating-control {
+    min-height: 44px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -5865,3 +5923,13 @@ select.form-control {
 .profile-crate-page * {
   overflow-wrap: anywhere;
 }
+.messaging-mobile-backdrop {
+  display: none;
+}
+.messaging-mobile-backdrop[hidden] {
+  display: none !important;
+}
+body.messaging-mobile-panel-open {
+  overflow: hidden;
+}
+

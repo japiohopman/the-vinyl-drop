@@ -10,6 +10,7 @@ import { messages } from '../src/db/schema/messages';
 import { clearNotificationListeners, onNotification, NotificationEvent } from '../src/app/services/notificationHooks';
 import { config } from '../src/config/env';
 import { messagingService } from '../src/app/services/messagingService';
+import { savedPeopleService } from '../src/app/services/savedPeopleService';
 import fs from 'fs';
 import path from 'path';
 
@@ -126,8 +127,10 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     test('rejects self-conversation via database trigger', async () => {
       await expect(
         db.insert(conversations).values({
+          conversationType: 'listing',
           listingId: publishedListingId,
-          buyerId: sellerId,
+          participantAId: sellerId,
+          participantBId: sellerId,
         })
       ).rejects.toThrow();
     });
@@ -135,8 +138,10 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     test('rejects conversation on draft listing via database trigger', async () => {
       await expect(
         db.insert(conversations).values({
+          conversationType: 'listing',
           listingId: draftListingId,
-          buyerId: buyerId,
+          participantAId: buyerId,
+          participantBId: sellerId,
         })
       ).rejects.toThrow();
     });
@@ -145,8 +150,10 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       const [conv] = await db
         .insert(conversations)
         .values({
+          conversationType: 'listing',
           listingId: publishedListingId,
-          buyerId,
+          participantAId: buyerId,
+          participantBId: sellerId,
         })
         .returning();
 
@@ -197,6 +204,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       await request(app).get('/messages/widget/unread-count');
       await request(app).get('/messages/widget/data');
       await request(app).get('/messages/widget/00000000-0000-0000-0000-000000000000');
+      await request(app).post('/messages/profile/22222222-2222-4222-8222-222222222222').set('Origin', config.APP_BASE_URL);
 
       expect(selectSpy).not.toHaveBeenCalled();
       selectSpy.mockRestore();
@@ -308,8 +316,8 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       try {
         const app = createApp();
         const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
-        await messagingService.markAsRead(conv.id, buyerId);
-        await messagingService.markAsRead(conv.id, sellerId);
+        await messagingService.markAsRead(conv.id, buyerId, conv.lastMessageSeq);
+        await messagingService.markAsRead(conv.id, sellerId, conv.lastMessageSeq);
         await new Promise((resolve) => setTimeout(resolve, 10));
         await messagingService.sendMessage(conv.id, buyerId, 'A widget-only unread message');
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -351,7 +359,9 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
           .set('Accept', 'application/json');
         expect(outsider.status).toBe(404);
 
-        await messagingService.markAsRead(conv.id, sellerId);
+        const sellerSnapshot = await messagingService.getConversationDetail(conv.id, sellerId);
+        const readThroughSeq = sellerSnapshot.messages.reduce((maximum, message) => Math.max(maximum, message.messageSeq), 0);
+        await messagingService.markAsRead(conv.id, sellerId, readThroughSeq);
         await new Promise((resolve) => setTimeout(resolve, 10));
         const cleared = await request(app)
           .get('/messages/widget/unread-count')
@@ -413,7 +423,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       expect(msg2.body).toBe('Yes, still available!');
 
       // Buyer marks read
-      await messagingService.markAsRead(conv.id, buyerId);
+      await messagingService.markAsRead(conv.id, buyerId, msg2.messageSeq);
 
       // Seller archives
       await messagingService.archiveConversation(conv.id, sellerId);
@@ -448,7 +458,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         messagingService.sendMessage(conv.id, thirdUserId, 'Sneaky message')
       ).rejects.toThrow(/Conversation not found/);
       await expect(
-        messagingService.markAsRead(conv.id, thirdUserId)
+        messagingService.markAsRead(conv.id, thirdUserId, 0)
       ).rejects.toThrow(/Conversation not found/);
       await expect(
         messagingService.archiveConversation(conv.id, thirdUserId)
@@ -476,6 +486,257 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     });
   });
 
+
+  describe('Direct conversation contracts', () => {
+    test('concurrent starts from either participant converge on a single ordered pair', async () => {
+      const [fromBuyer, fromSeller] = await Promise.all([
+        messagingService.getOrCreateDirectConversation(sellerId, buyerId),
+        messagingService.getOrCreateDirectConversation(buyerId, sellerId),
+      ]);
+
+      expect(fromBuyer.id).toBe(fromSeller.id);
+      expect(fromBuyer.conversationType).toBe('direct');
+      expect(fromBuyer.listingId).toBeNull();
+      expect(fromBuyer.participantAId).toBe(buyerId);
+      expect(fromBuyer.participantBId).toBe(sellerId);
+      const rows = await db.select().from(conversations);
+      expect(rows.filter((row: any) =>
+        row.conversationType === 'direct' &&
+        row.participantAId === buyerId &&
+        row.participantBId === sellerId
+      )).toHaveLength(1);
+    });
+
+    test('uses immutable sequence numbers across equal timestamps and emits listing-free direct events', async () => {
+      const conversation = await messagingService.getOrCreateDirectConversation(sellerId, buyerId);
+      const tieTime = new Date('2026-01-02T03:04:05.000Z');
+
+      await db.insert(messages).values([
+        { conversationId: conversation.id, senderId: buyerId, body: 'First tied message', createdAt: tieTime },
+        { conversationId: conversation.id, senderId: buyerId, body: 'Second tied message', createdAt: tieTime },
+      ]);
+      await messagingService.markAsRead(conversation.id, sellerId, 2);
+
+      await db.insert(messages).values({
+        conversationId: conversation.id,
+        senderId: buyerId,
+        body: 'Third tied message after read',
+        createdAt: tieTime,
+      });
+
+      const detail = await messagingService.getConversationDetail(conversation.id, sellerId);
+      expect(detail.messages.map((message) => message.messageSeq)).toEqual([1, 2, 3]);
+      let summary = (await messagingService.getInboxForUser(sellerId))
+        .find((item) => item.conversation.id === conversation.id);
+      expect(summary?.listing).toBeNull();
+      expect(summary?.release).toBeNull();
+      expect(summary?.unreadCount).toBe(1);
+
+      const receivedEvents: NotificationEvent[] = [];
+      onNotification((event) => { receivedEvents.push(event); });
+      await messagingService.sendMessage(conversation.id, buyerId, 'Direct event has no listing context');
+      expect(receivedEvents).toHaveLength(1);
+      const event = receivedEvents[0];
+      expect(event.type).toBe('message.created');
+      if (event.type !== 'message.created') throw new Error('Expected a message-created event');
+      expect(event.conversationType).toBe('direct');
+      expect(event.recipientId).toBe(sellerId);
+      expect(event).not.toHaveProperty('listingId');
+      expect(event).not.toHaveProperty('body');
+
+      summary = (await messagingService.getInboxForUser(sellerId))
+        .find((item) => item.conversation.id === conversation.id);
+      expect(summary?.unreadCount).toBe(2);
+
+      await messagingService.archiveConversation(conversation.id, sellerId);
+      expect((await messagingService.getInboxForUser(sellerId))
+        .some((item) => item.conversation.id === conversation.id)).toBe(false);
+      await messagingService.sendMessage(conversation.id, buyerId, 'Incoming message reopens the recipient thread');
+      expect((await messagingService.getInboxForUser(sellerId))
+        .some((item) => item.conversation.id === conversation.id)).toBe(true);
+
+      await expect(messagingService.getConversationDetail(conversation.id, thirdUserId))
+        .rejects.toThrow(/Conversation not found/);
+    });
+
+    test('profile Message action is shown only to another signed-in user while messaging is enabled', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        const otherProfile = await request(app)
+          .get('/profiles/seller_user')
+          .set('Cookie', ['sb-access-token=buyer-token']);
+        expect(otherProfile.status).toBe(200);
+        expect(otherProfile.text).toContain(`action="/messages/profile/${sellerId}"`);
+
+        const ownProfile = await request(app)
+          .get('/profiles/seller_user')
+          .set('Cookie', ['sb-access-token=seller-token']);
+        expect(ownProfile.status).toBe(200);
+        expect(ownProfile.text).not.toContain(`action="/messages/profile/${sellerId}"`);
+
+        (config as any).MESSAGING_ENABLED = false;
+        const hiddenFeature = await request(app)
+          .get('/profiles/seller_user')
+          .set('Cookie', ['sb-access-token=buyer-token']);
+        expect(hiddenFeature.status).toBe(200);
+        expect(hiddenFeature.text).not.toContain(`action="/messages/profile/${sellerId}"`);
+      } finally {
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
+
+    test('profile route creates a private thread with same-origin protection', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        const forbidden = await request(app)
+          .post(`/messages/profile/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .send({});
+        expect(forbidden.status).toBe(403);
+
+        const started = await request(app)
+          .post(`/messages/profile/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .send({});
+        expect(started.status).toBe(302);
+        expect(started.headers.location).toMatch(/^\/messages\/[0-9a-f-]+$/);
+
+        const self = await request(app)
+          .post(`/messages/profile/${buyerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .send({});
+        expect(self.status).toBe(400);
+      } finally {
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
+  });
+
+
+  describe('Saved People privacy and idempotency', () => {
+    test('saving/removing is idempotent and visible only to the owner without changing conversation state', async () => {
+      const direct = await messagingService.getOrCreateDirectConversation(sellerId, buyerId);
+      await messagingService.archiveConversation(direct.id, buyerId);
+      const beforeRows = await db.select().from(conversations);
+      const before = beforeRows.find((row: any) => row.id === direct.id);
+      expect(before).toBeDefined();
+
+      await savedPeopleService.savePerson(buyerId, sellerId);
+      await savedPeopleService.savePerson(buyerId, sellerId);
+      expect(await savedPeopleService.isSavedPerson(buyerId, sellerId)).toBe(true);
+      expect(await savedPeopleService.isSavedPerson(sellerId, buyerId)).toBe(false);
+      const buyerList = await savedPeopleService.getSavedPeopleForUser(buyerId);
+      expect(buyerList.filter(person => person.id === sellerId)).toHaveLength(1);
+      const sellerList = await savedPeopleService.getSavedPeopleForUser(sellerId);
+      expect(sellerList.some(person => person.id === buyerId)).toBe(false);
+
+      const duringRows = await db.select().from(conversations);
+      const during = duringRows.find((row: any) => row.id === direct.id);
+      expect(during?.participantAReadSeq).toBe(before?.participantAReadSeq);
+      expect(during?.participantBReadSeq).toBe(before?.participantBReadSeq);
+      expect(during?.participantAArchivedAt).toEqual(before?.participantAArchivedAt);
+      expect(during?.participantBArchivedAt).toEqual(before?.participantBArchivedAt);
+      expect(during?.lastMessageSeq).toBe(before?.lastMessageSeq);
+
+      await savedPeopleService.removePerson(buyerId, sellerId);
+      await savedPeopleService.removePerson(buyerId, sellerId);
+      expect(await savedPeopleService.isSavedPerson(buyerId, sellerId)).toBe(false);
+      const afterRows = await db.select().from(conversations);
+      const after = afterRows.find((row: any) => row.id === direct.id);
+      expect(after?.participantAReadSeq).toBe(before?.participantAReadSeq);
+      expect(after?.participantAArchivedAt).toEqual(before?.participantAArchivedAt);
+      expect(after?.lastMessageSeq).toBe(before?.lastMessageSeq);
+    });
+
+    test('rejects self-saving and invalid or nonexistent profile identifiers', async () => {
+      await expect(savedPeopleService.savePerson(buyerId, buyerId)).rejects.toThrow(/cannot save your own profile/);
+      await expect(savedPeopleService.savePerson(buyerId, 'not-a-uuid')).rejects.toThrow(/Profile not found/);
+      await expect(savedPeopleService.savePerson(buyerId, '99999999-9999-4999-8999-999999999999'))
+        .rejects.toThrow(/Profile not found/);
+    });
+
+    test('profile Save Person action is hidden for self or when messaging is disabled', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        const otherProfile = await request(app).get('/profiles/seller_user').set('Cookie', ['sb-access-token=buyer-token']);
+        expect(otherProfile.text).toContain(`action="/messages/saved-people/${sellerId}"`);
+
+        const ownProfile = await request(app).get('/profiles/seller_user').set('Cookie', ['sb-access-token=seller-token']);
+        expect(ownProfile.text).not.toContain(`action="/messages/saved-people/${sellerId}"`);
+
+        (config as any).MESSAGING_ENABLED = false;
+        const hidden = await request(app).get('/profiles/seller_user').set('Cookie', ['sb-access-token=buyer-token']);
+        expect(hidden.text).not.toContain(`action="/messages/saved-people/${sellerId}"`);
+      } finally {
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
+
+    test('saved-person mutation route enforces same-origin and is idempotent', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      try {
+        const app = createApp();
+        const forbidden = await request(app)
+          .post(`/messages/saved-people/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .type('form')
+          .send({ action: 'save' });
+        expect(forbidden.status).toBe(403);
+
+        const saved = await request(app)
+          .post(`/messages/saved-people/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .type('form')
+          .send({ action: 'save' });
+        expect(saved.status).toBe(302);
+        expect(saved.headers.location).toBe('/profiles/seller_user');
+
+        const removed = await request(app)
+          .post(`/messages/saved-people/${sellerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .type('form')
+          .send({ action: 'remove' });
+        expect(removed.status).toBe(302);
+        expect(await savedPeopleService.isSavedPerson(buyerId, sellerId)).toBe(false);
+
+        const self = await request(app)
+          .post(`/messages/saved-people/${buyerId}`)
+          .set('Cookie', ['sb-access-token=buyer-token'])
+          .set('Origin', config.APP_BASE_URL)
+          .type('form')
+          .send({ action: 'save' });
+        expect(self.status).toBe(400);
+      } finally {
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
+
+    test('shared mobile panel remains fixed and does not fork messaging behavior', async () => {
+      const widgetSource = fs.readFileSync(path.join(process.cwd(), 'public/js/messaging-widget.js'), 'utf8');
+      const cssSource = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+      const navSource = fs.readFileSync(path.join(process.cwd(), 'views/partials/nav.ejs'), 'utf8');
+      expect(widgetSource).toContain("document.getElementById('messaging-mobile-backdrop')");
+      expect(widgetSource).toContain("panel.style.left = '';");
+      expect(widgetSource).toContain("!desktopMedia.matches || panel.hidden");
+      expect(navSource).toContain('id="messaging-mobile-backdrop"');
+      expect(cssSource).toContain('.messaging-floating-window');
+      expect(cssSource).toContain('height: min(82dvh');
+      expect(cssSource).toContain('env(safe-area-inset-bottom)');
+      expect(widgetSource).not.toContain("\\n        ?");
+    });
+  });
+
   describe('Service & Notification Hook Contracts', () => {
     test('emits message.created event without body content to recipient only', async () => {
       const receivedEvents: NotificationEvent[] = [];
@@ -489,6 +750,9 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       expect(receivedEvents.length).toBe(1);
       const ev = receivedEvents[0];
       expect(ev.type).toBe('message.created');
+      if (ev.type !== 'message.created') throw new Error('Expected a message-created event');
+      expect(ev.conversationType).toBe('listing');
+      expect(ev.listingId).toBe(publishedListingId);
       expect(ev.actorId).toBe(buyerId);
       expect(ev.recipientId).toBe(sellerId);
       expect(ev.conversationId).toBe(conv.id);

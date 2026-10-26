@@ -134,7 +134,7 @@ export async function verifyMigrations(): Promise<void> {
   );
   if (consentRows.rows[0].count !== 0) throw new Error('Registration-consent audit did not cascade on Auth identity deletion');
 
-  // 1. Verify expected public tables (all 11 public tables including conversations and messages)
+  // 1. Verify expected public tables (including private messaging and Saved People)
   const tablesRes = await pg.query<{ table_name: string }>(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;`
   );
@@ -151,6 +151,7 @@ export async function verifyMigrations(): Promise<void> {
     'physical_copies',
     'profiles',
     'releases',
+    'saved_people',
   ];
   for (const expectedTable of expectedTables) {
     if (!tableNames.includes(expectedTable)) {
@@ -189,7 +190,10 @@ export async function verifyMigrations(): Promise<void> {
     'favorites_user_id_profiles_id_fk',
     'favorites_listing_id_listings_id_fk',
     'conversations_listing_id_fkey',
-    'conversations_buyer_id_fkey',
+    'conversations_participant_a_id_fkey',
+    'conversations_participant_b_id_fkey',
+    'saved_people_owner_user_id_fkey',
+    'saved_people_saved_user_id_fkey',
     'messages_conversation_id_fkey',
     'messages_sender_id_fkey',
   ];
@@ -212,6 +216,18 @@ export async function verifyMigrations(): Promise<void> {
   }
   if (!checkNames.includes('messages_body_length_check')) {
     throw new Error("Missing expected check constraint 'messages_body_length_check' after migration execution");
+  }
+  for (const expectedCheck of [
+    'conversations_type_shape_check',
+    'conversations_distinct_participants_check',
+    'conversations_direct_pair_order_check',
+    'conversations_read_seq_nonnegative_check',
+    'messages_message_seq_positive_check',
+    'saved_people_no_self_check',
+  ]) {
+    if (!checkNames.includes(expectedCheck)) {
+      throw new Error(`Missing expected messaging check constraint '${expectedCheck}' after migration execution`);
+    }
   }
 
   // 5. Verify expected database indexes
@@ -248,12 +264,17 @@ export async function verifyMigrations(): Promise<void> {
     'favorites_user_listing_idx',
     'favorites_user_idx',
     'favorites_listing_idx',
-    'conversations_listing_buyer_idx',
+    'conversations_listing_participant_a_idx',
+    'conversations_direct_pair_unique_idx',
     'conversations_listing_idx',
-    'conversations_buyer_idx',
+    'conversations_participant_a_idx',
+    'conversations_participant_b_idx',
     'conversations_updated_at_idx',
+    'messages_conversation_seq_idx',
     'messages_conversation_created_id_idx',
     'messages_sender_idx',
+    'saved_people_owner_saved_unique_idx',
+    'saved_people_owner_created_idx',
   ];
   for (const expectedIndex of expectedIndexes) {
     if (!indexNames.includes(expectedIndex)) {
@@ -263,10 +284,10 @@ export async function verifyMigrations(): Promise<void> {
 
   // 6. Verify triggers
   const triggerRes = await pg.query<{ tgname: string }>(
-    `SELECT tgname FROM pg_trigger WHERE tgname IN ('trg_check_conversation_validity', 'trg_check_message_sender_validity');`
+    `SELECT tgname FROM pg_trigger WHERE tgname IN ('trg_check_conversation_validity', 'trg_check_message_sender_validity', 'trg_messages_identity_immutable');`
   );
   const triggerNames = triggerRes.rows.map((r) => r.tgname);
-  for (const expectedTrigger of ['trg_check_conversation_validity', 'trg_check_message_sender_validity']) {
+  for (const expectedTrigger of ['trg_check_conversation_validity', 'trg_check_message_sender_validity', 'trg_messages_identity_immutable']) {
     if (!triggerNames.includes(expectedTrigger)) {
       throw new Error(`Missing expected database trigger '${expectedTrigger}' after migration execution`);
     }
@@ -284,11 +305,11 @@ export async function verifyMigrations(): Promise<void> {
      FROM pg_proc p
      JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'public'
-       AND p.proname IN ('check_conversation_validity', 'check_message_sender_validity')
+       AND p.proname IN ('check_conversation_validity', 'check_message_sender_validity', 'prevent_message_identity_mutation')
      ORDER BY p.proname;`
   );
-  if (messagingFunctionsRes.rows.length !== 2) {
-    throw new Error(`Expected both public messaging trigger functions, found ${messagingFunctionsRes.rows.length}`);
+  if (messagingFunctionsRes.rows.length !== 3) {
+    throw new Error(`Expected all three public messaging trigger functions, found ${messagingFunctionsRes.rows.length}`);
   }
   for (const fn of messagingFunctionsRes.rows) {
     if (!fn.empty_search_path) {
@@ -296,7 +317,9 @@ export async function verifyMigrations(): Promise<void> {
     }
     const qualifiedReferences = fn.proname === 'check_conversation_validity'
       ? ['public.listings', 'public.listing_status']
-      : ['public.conversations', 'public.listings'];
+      : fn.proname === 'check_message_sender_validity'
+        ? ['public.conversations']
+        : [];
     for (const reference of qualifiedReferences) {
       if (!fn.function_body.includes(reference)) {
         throw new Error(`Messaging trigger function '${fn.proname}' does not schema-qualify '${reference}'`);
@@ -362,30 +385,77 @@ export async function verifyMigrations(): Promise<void> {
   };
 
   await pg.query(
-    `INSERT INTO public.conversations (id, listing_id, buyer_id)
-     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
-    [messagingFixture.conversationId, messagingFixture.publishedListingId, messagingFixture.buyerId]
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'listing', $2::uuid, $3::uuid, $4::uuid);`,
+    [messagingFixture.conversationId, messagingFixture.publishedListingId, messagingFixture.buyerId, messagingFixture.sellerId]
+  );
+  const directConversationId = 'da555555-5555-4555-8555-555555555555';
+  await pg.query(
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'direct', NULL, $2::uuid, $3::uuid);`,
+    [directConversationId, messagingFixture.buyerId, messagingFixture.outsiderId]
   );
   await expectTriggerRejection(
+    'Duplicate direct participant pair',
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'direct', NULL, $2::uuid, $3::uuid);`,
+    ['da666666-6666-4666-8666-666666666666', messagingFixture.buyerId, messagingFixture.outsiderId],
+    'conversations_direct_pair_unique_idx'
+  );
+  await expectTriggerRejection(
+    'Reversed direct participant pair',
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'direct', NULL, $2::uuid, $3::uuid);`,
+    ['da777777-7777-4777-8777-777777777777', messagingFixture.outsiderId, messagingFixture.buyerId],
+    'Direct conversations require a null listing and an ordered participant pair'
+  );
+  await pg.query(
+    `INSERT INTO public.messages (id, conversation_id, sender_id, body)
+     VALUES ('db444444-4444-4444-8444-444444444444', $1::uuid, $2::uuid, 'Direct DB trigger check');`,
+    [directConversationId, messagingFixture.buyerId]
+  );
+  const directSequence = await pg.query<{ message_seq: string }>(
+    'SELECT message_seq::text FROM public.messages WHERE conversation_id = $1::uuid;',
+    [directConversationId]
+  );
+  if (directSequence.rows.length !== 1 || directSequence.rows[0].message_seq !== '1') {
+    throw new Error('Direct conversation message trigger failed to allocate its first sequence number');
+  }
+  await expectTriggerRejection(
+    'Nonparticipant direct message sender',
+    `INSERT INTO public.messages (id, conversation_id, sender_id, body)
+     VALUES ('db333333-3333-4333-8333-333333333333', $1::uuid, $2::uuid, 'Must be rejected');`,
+    [directConversationId, messagingFixture.sellerId],
+    'not a participant'
+  );
+
+  await expectTriggerRejection(
     'Seller opening a conversation on their own listing',
-    `INSERT INTO public.conversations (id, listing_id, buyer_id)
-     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
-    ['da111111-1111-4111-8111-111111111111', messagingFixture.publishedListingId, messagingFixture.sellerId],
-    'cannot start a conversation on their own listing'
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'listing', $2::uuid, $3::uuid, $4::uuid);`,
+    ['da111111-1111-4111-8111-111111111111', messagingFixture.publishedListingId, messagingFixture.sellerId, messagingFixture.sellerId],
+    'two distinct participants'
   );
   await expectTriggerRejection(
     'Conversation on a draft listing',
-    `INSERT INTO public.conversations (id, listing_id, buyer_id)
-     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
-    ['da222222-2222-4222-8222-222222222222', messagingFixture.draftListingId, messagingFixture.buyerId],
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'listing', $2::uuid, $3::uuid, $4::uuid);`,
+    ['da222222-2222-4222-8222-222222222222', messagingFixture.draftListingId, messagingFixture.buyerId, messagingFixture.sellerId],
     'Conversations can only be started on published listings'
   );
   await expectTriggerRejection(
     'Conversation for a nonexistent listing',
-    `INSERT INTO public.conversations (id, listing_id, buyer_id)
-     VALUES ($1::uuid, $2::uuid, $3::uuid);`,
-    ['da333333-3333-4333-8333-333333333333', 'da444444-4444-4444-8444-444444444444', messagingFixture.buyerId],
+    `INSERT INTO public.conversations (id, conversation_type, listing_id, participant_a_id, participant_b_id)
+     VALUES ($1::uuid, 'listing', $2::uuid, $3::uuid, $4::uuid);`,
+    ['da333333-3333-4333-8333-333333333333', 'da444444-4444-4444-8444-444444444444', messagingFixture.buyerId, messagingFixture.sellerId],
     'does not exist'
+  );
+
+  await expectTriggerRejection(
+    'Conversation identity/context mutation',
+    `UPDATE public.conversations SET conversation_type = 'direct', listing_id = NULL WHERE id = $1::uuid;`,
+    [messagingFixture.conversationId],
+    'identity and context are immutable'
   );
 
   await pg.query(
@@ -400,7 +470,7 @@ export async function verifyMigrations(): Promise<void> {
     `INSERT INTO public.messages (id, conversation_id, sender_id, body)
      VALUES ($1::uuid, $2::uuid, $3::uuid, 'unauthorized message');`,
     ['db333333-3333-4333-8333-333333333333', messagingFixture.conversationId, messagingFixture.outsiderId],
-    'neither buyer nor seller'
+    'not a participant'
   );
   const conversationCount = await pg.query<{ count: number }>(
     `SELECT count(*)::int AS count FROM public.conversations WHERE id = $1::uuid;`,
@@ -413,6 +483,19 @@ export async function verifyMigrations(): Promise<void> {
   if (conversationCount.rows[0].count !== 1 || messageCount.rows[0].count !== 2) {
     throw new Error('Messaging trigger regression checks left unexpected conversation/message rows');
   }
+  const sequences = await pg.query<{ message_seq: string; sender_id: string }>(
+    'SELECT message_seq::text, sender_id FROM public.messages WHERE conversation_id = $1::uuid ORDER BY message_seq;',
+    [messagingFixture.conversationId]
+  );
+  if (sequences.rows.length !== 2 || sequences.rows[0].message_seq !== '1' || sequences.rows[1].message_seq !== '2') {
+    throw new Error('Database message trigger did not allocate a contiguous per-conversation sequence');
+  }
+  await expectTriggerRejection(
+    'Immutable message update',
+    `UPDATE public.messages SET message_seq = 99 WHERE id = $1::uuid;`,
+    ['db111111-1111-4111-8111-111111111111'],
+    'sequence and identity are immutable'
+  );
 
   // 7. Verify Row Level Security (RLS) is enabled on all 11 public tables
   const rlsRes = await pg.query<{ relname: string; relrowsecurity: boolean }>(
@@ -611,7 +694,7 @@ export async function verifyMigrations(): Promise<void> {
     throw new Error('Expected authenticated-only SELECT access to favorites');
   }
 
-  for (const privateTable of ['orphaned_storage_objects', 'conversations', 'messages']) {
+  for (const privateTable of ['orphaned_storage_objects', 'conversations', 'messages', 'saved_people']) {
     for (const role of ['anon', 'authenticated']) {
       const result = await pg.query<{ has_privilege: boolean }>(
         `SELECT has_table_privilege('${role}', '${privateTable}', 'SELECT') AS has_privilege;`
@@ -623,6 +706,40 @@ export async function verifyMigrations(): Promise<void> {
       }
     }
   }
+
+
+  // Saved People are disposable private preferences: deleting either profile removes the relationship.
+  const savedFixture = {
+    ownerToDelete: 'e2111111-1111-4111-8111-111111111111',
+    savedAfterOwnerDelete: 'e2222222-2222-4222-8222-222222222222',
+    ownerAfterTargetDelete: 'e3333333-3333-4333-8333-333333333333',
+    targetToDelete: 'e4444444-4444-4444-8444-444444444444',
+  };
+  await pg.query(
+    `INSERT INTO public.profiles (id, username, display_name)
+     VALUES ($1::uuid, 'saved_owner_delete', 'Saved Owner Delete'),
+            ($2::uuid, 'saved_target_owner', 'Saved Target Owner'),
+            ($3::uuid, 'saved_owner_target', 'Saved Owner Target'),
+            ($4::uuid, 'saved_target_delete', 'Saved Target Delete');`,
+    [savedFixture.ownerToDelete, savedFixture.savedAfterOwnerDelete, savedFixture.ownerAfterTargetDelete, savedFixture.targetToDelete]
+  );
+  await pg.query(
+    `INSERT INTO public.saved_people (owner_user_id, saved_user_id)
+     VALUES ($1::uuid, $2::uuid), ($3::uuid, $4::uuid);`,
+    [savedFixture.ownerToDelete, savedFixture.savedAfterOwnerDelete, savedFixture.ownerAfterTargetDelete, savedFixture.targetToDelete]
+  );
+  await pg.query('DELETE FROM public.profiles WHERE id = $1::uuid;', [savedFixture.ownerToDelete]);
+  const ownerCascade = await pg.query<{ count: number }>(
+    'SELECT count(*)::int AS count FROM public.saved_people WHERE owner_user_id = $1::uuid;',
+    [savedFixture.ownerToDelete]
+  );
+  if (ownerCascade.rows[0].count !== 0) throw new Error('Saved People did not cascade when owner profile was deleted');
+  await pg.query('DELETE FROM public.profiles WHERE id = $1::uuid;', [savedFixture.targetToDelete]);
+  const targetCascade = await pg.query<{ count: number }>(
+    'SELECT count(*)::int AS count FROM public.saved_people WHERE saved_user_id = $1::uuid;',
+    [savedFixture.targetToDelete]
+  );
+  if (targetCascade.rows[0].count !== 0) throw new Error('Saved People did not cascade when saved profile was deleted');
 
   // 9. Verify the private one-time approval contract for Supabase Auth's Before User Created hook.
   const approvalFunctionRes = await pg.query<{ security_definer: boolean; empty_search_path: boolean }>(

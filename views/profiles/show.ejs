@@ -34,11 +34,19 @@
       </div>
     </div>
 
-    <% if (isOwner) { %>
-      <div class="profile-owner-actions">
+    <div class="profile-owner-actions">
+      <% if (isOwner) { %>
         <a href="/profile/edit" class="btn btn-outline btn-sm">Edit Profile</a>
-      </div>
-    <% } %>
+      <% } else if (typeof user !== 'undefined' && user && typeof messagingEnabled !== 'undefined' && messagingEnabled) { %>
+        <form action="/messages/profile/<%= profile.id %>" method="POST" class="inline-form">
+          <button type="submit" class="btn btn-primary btn-sm">Message</button>
+        </form>
+        <form action="/messages/saved-people/<%= profile.id %>" method="POST" class="inline-form">
+          <input type="hidden" name="action" value="<%= typeof isSavedPerson !== 'undefined' && isSavedPerson ? 'remove' : 'save' %>">
+          <button type="submit" class="btn btn-outline btn-sm"><%= typeof isSavedPerson !== 'undefined' && isSavedPerson ? 'Remove from Saved People' : 'Save Person' %></button>
+        </form>
+      <% } %>
+    </div>
   </section>
 
   <% const recordCount = typeof crateTotalCount === 'number' ? crateTotalCount : 0; %>

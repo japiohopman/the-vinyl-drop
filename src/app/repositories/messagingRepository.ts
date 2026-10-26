@@ -1,56 +1,44 @@
-import { and, eq, gte, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, ne, or, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
-import { listings, physicalCopies, profiles, releases, conversations, messages, Conversation, Message } from '../../db/schema';
+import { conversations, listings, messages, physicalCopies, profiles, releases, Conversation, Message } from '../../db/schema';
+
+export interface ParticipantSummary {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface ListingSummary {
+  id: string;
+  status: string;
+  price: number | null;
+  currency: string;
+  tradeAvailable: boolean;
+}
+
+export interface ReleaseSummary {
+  artist: string;
+  title: string;
+}
 
 export interface InboxConversationSummary {
   conversation: Conversation;
-  listing: {
-    id: string;
-    status: string;
-    price: number | null;
-    currency: string;
-    tradeAvailable: boolean;
-  };
-  release: {
-    artist: string;
-    title: string;
-  };
-  otherParticipant: {
-    id: string;
-    username: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-  };
+  listing: ListingSummary | null;
+  release: ReleaseSummary | null;
+  otherParticipant: ParticipantSummary;
   lastMessage: Message | null;
   unreadCount: number;
 }
 
 export interface DetailedConversation extends Conversation {
-  sellerId: string;
-  listing: {
-    id: string;
-    status: string;
-    price: number | null;
-    currency: string;
-    tradeAvailable: boolean;
-  };
-  release: {
-    artist: string;
-    title: string;
-  };
-  buyer: {
-    id: string;
-    username: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-  };
-  seller: {
-    id: string;
-    username: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-  };
+  listing: ListingSummary | null;
+  release: ReleaseSummary | null;
+  participantA: ParticipantSummary;
+  participantB: ParticipantSummary;
 }
+
+export type ParticipantRole = 'participantA' | 'participantB';
 
 export class MessagingRepository {
   async findConversationByListingAndBuyer(listingId: string, buyerId: string): Promise<Conversation | null> {
@@ -58,7 +46,25 @@ export class MessagingRepository {
     const rows = await db
       .select()
       .from(conversations)
-      .where(and(eq(conversations.listingId, listingId), eq(conversations.buyerId, buyerId)))
+      .where(and(
+        eq(conversations.conversationType, 'listing'),
+        eq(conversations.listingId, listingId),
+        eq(conversations.participantAId, buyerId)
+      ))
+      .limit(1);
+    return rows[0] || null;
+  }
+
+  async findConversationByDirectPair(participantAId: string, participantBId: string): Promise<Conversation | null> {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(conversations)
+      .where(and(
+        eq(conversations.conversationType, 'direct'),
+        eq(conversations.participantAId, participantAId),
+        eq(conversations.participantBId, participantBId)
+      ))
       .limit(1);
     return rows[0] || null;
   }
@@ -68,7 +74,6 @@ export class MessagingRepository {
     const rows = await db
       .select({
         conversation: conversations,
-        sellerId: listings.sellerId,
         listingId: listings.id,
         listingStatus: listings.status,
         listingPrice: listings.price,
@@ -76,80 +81,99 @@ export class MessagingRepository {
         listingTradeAvailable: listings.tradeAvailable,
         artist: releases.artist,
         title: releases.title,
-        buyerId: profiles.id,
-        buyerUsername: profiles.username,
-        buyerDisplayName: profiles.displayName,
-        buyerAvatarUrl: profiles.avatarUrl,
       })
       .from(conversations)
-      .innerJoin(listings, eq(conversations.listingId, listings.id))
-      .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
-      .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
-      .innerJoin(profiles, eq(conversations.buyerId, profiles.id))
+      .leftJoin(listings, eq(conversations.listingId, listings.id))
+      .leftJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
+      .leftJoin(releases, eq(physicalCopies.releaseId, releases.id))
       .where(eq(conversations.id, conversationId))
       .limit(1);
 
-    if (rows.length === 0) return null;
-
     const row = rows[0];
+    if (!row) return null;
 
-    const sellerProfiles = await db
-      .select()
-      .from(profiles)
-      .where(eq(profiles.id, row.sellerId))
-      .limit(1);
+    const [participantA, participantB] = await Promise.all([
+      this.findParticipantSummary(row.conversation.participantAId),
+      this.findParticipantSummary(row.conversation.participantBId),
+    ]);
+    if (!participantA || !participantB) return null;
 
-    const seller = sellerProfiles[0];
-    if (!seller) return null;
+    const listing: ListingSummary | null = row.listingId
+      ? {
+          id: row.listingId,
+          status: row.listingStatus || 'unknown',
+          price: row.listingPrice,
+          currency: row.listingCurrency || 'EUR',
+          tradeAvailable: Boolean(row.listingTradeAvailable),
+        }
+      : null;
+    const release: ReleaseSummary | null =
+      row.artist !== null && row.artist !== undefined &&
+      row.title !== null && row.title !== undefined
+        ? { artist: row.artist, title: row.title }
+        : null;
 
     return {
       ...row.conversation,
-      sellerId: row.sellerId,
-      listing: {
-        id: row.listingId,
-        status: row.listingStatus,
-        price: row.listingPrice,
-        currency: row.listingCurrency,
-        tradeAvailable: row.listingTradeAvailable,
-      },
-      release: {
-        artist: row.artist,
-        title: row.title,
-      },
-      buyer: {
-        id: row.buyerId,
-        username: row.buyerUsername,
-        displayName: row.buyerDisplayName,
-        avatarUrl: row.buyerAvatarUrl,
-      },
-      seller: {
-        id: seller.id,
-        username: seller.username,
-        displayName: seller.displayName,
-        avatarUrl: seller.avatarUrl,
-      },
+      listing,
+      release,
+      participantA,
+      participantB,
     };
   }
 
-  async createConversation(listingId: string, buyerId: string): Promise<Conversation> {
+  private async findParticipantSummary(id: string): Promise<ParticipantSummary | null> {
+    const db = getDb();
+    const rows = await db
+      .select({
+        id: profiles.id,
+        username: profiles.username,
+        displayName: profiles.displayName,
+        avatarUrl: profiles.avatarUrl,
+      })
+      .from(profiles)
+      .where(eq(profiles.id, id))
+      .limit(1);
+    return rows[0] || null;
+  }
+
+  async createListingConversation(listingId: string, buyerId: string, sellerId: string): Promise<Conversation> {
     const db = getDb();
     const rows = await db
       .insert(conversations)
       .values({
+        conversationType: 'listing',
         listingId,
-        buyerId,
+        participantAId: buyerId,
+        participantBId: sellerId,
       })
       .onConflictDoNothing()
       .returning();
 
-    if (rows.length > 0) {
-      return rows[0];
-    }
+    if (rows.length > 0) return rows[0];
 
     const existing = await this.findConversationByListingAndBuyer(listingId, buyerId);
-    if (!existing) {
-      throw new Error('Failed to create or retrieve conversation');
-    }
+    if (!existing) throw new Error('Failed to create or retrieve listing conversation');
+    return existing;
+  }
+
+  async createDirectConversation(participantAId: string, participantBId: string): Promise<Conversation> {
+    const db = getDb();
+    const rows = await db
+      .insert(conversations)
+      .values({
+        conversationType: 'direct',
+        listingId: null,
+        participantAId,
+        participantBId,
+      })
+      .onConflictDoNothing()
+      .returning();
+
+    if (rows.length > 0) return rows[0];
+
+    const existing = await this.findConversationByDirectPair(participantAId, participantBId);
+    if (!existing) throw new Error('Failed to create or retrieve direct conversation');
     return existing;
   }
 
@@ -158,7 +182,6 @@ export class MessagingRepository {
     const rows = await db
       .select({
         conversation: conversations,
-        sellerId: listings.sellerId,
         listingId: listings.id,
         listingStatus: listings.status,
         listingPrice: listings.price,
@@ -168,94 +191,66 @@ export class MessagingRepository {
         title: releases.title,
       })
       .from(conversations)
-      .innerJoin(listings, eq(conversations.listingId, listings.id))
-      .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
-      .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
-      .where(
-        or(
-          and(eq(conversations.buyerId, userId), isNull(conversations.buyerArchivedAt)),
-          and(eq(listings.sellerId, userId), isNull(conversations.sellerArchivedAt))
-        )
-      )
-      .orderBy(sql`${conversations.updatedAt} DESC`);
+      .leftJoin(listings, eq(conversations.listingId, listings.id))
+      .leftJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
+      .leftJoin(releases, eq(physicalCopies.releaseId, releases.id))
+      .where(or(
+        and(eq(conversations.participantAId, userId), isNull(conversations.participantAArchivedAt)),
+        and(eq(conversations.participantBId, userId), isNull(conversations.participantBArchivedAt))
+      ))
+      .orderBy(desc(conversations.updatedAt));
 
     const summaries: InboxConversationSummary[] = [];
 
     for (const row of rows) {
-      const isBuyer = row.conversation.buyerId === userId;
-      const otherParticipantId = isBuyer ? row.sellerId : row.conversation.buyerId;
-
-      const otherProfiles = await db
-        .select()
-        .from(profiles)
-        .where(eq(profiles.id, otherParticipantId))
-        .limit(1);
-
-      const otherProfile = otherProfiles[0] || {
-        id: otherParticipantId,
-        username: 'unknown',
-        displayName: 'Unknown User',
-        avatarUrl: null,
-      };
+      const isParticipantA = row.conversation.participantAId === userId;
+      const otherParticipantId = isParticipantA
+        ? row.conversation.participantBId
+        : row.conversation.participantAId;
+      const otherParticipant = await this.findParticipantSummary(otherParticipantId);
+      if (!otherParticipant) continue;
 
       const lastMessageRows = await db
         .select()
         .from(messages)
         .where(eq(messages.conversationId, row.conversation.id))
-        .orderBy(sql`${messages.createdAt} DESC`, sql`${messages.id} DESC`)
+        .orderBy(desc(messages.messageSeq))
         .limit(1);
-
       const lastMessage = lastMessageRows[0] || null;
+      const readSeq = isParticipantA
+        ? row.conversation.participantAReadSeq
+        : row.conversation.participantBReadSeq;
+      const unreadRows = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(messages)
+        .where(and(
+          eq(messages.conversationId, row.conversation.id),
+          ne(messages.senderId, userId),
+          gt(messages.messageSeq, readSeq)
+        ));
 
-      const lastReadAt = isBuyer ? row.conversation.buyerReadAt : row.conversation.sellerReadAt;
-
-      let unreadCount = 0;
-      if (lastReadAt) {
-        const unreadRows = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(messages)
-          .where(
-            and(
-              eq(messages.conversationId, row.conversation.id),
-              sql`${messages.senderId} <> ${userId}`,
-              gte(messages.createdAt, lastReadAt)
-            )
-          );
-        unreadCount = Number(unreadRows[0]?.count || 0);
-      } else {
-        const unreadRows = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(messages)
-          .where(
-            and(
-              eq(messages.conversationId, row.conversation.id),
-              sql`${messages.senderId} <> ${userId}`
-            )
-          );
-        unreadCount = Number(unreadRows[0]?.count || 0);
-      }
+      const listing: ListingSummary | null = row.listingId
+        ? {
+            id: row.listingId,
+            status: row.listingStatus || 'unknown',
+            price: row.listingPrice,
+            currency: row.listingCurrency || 'EUR',
+            tradeAvailable: Boolean(row.listingTradeAvailable),
+          }
+        : null;
+      const release: ReleaseSummary | null =
+        row.artist !== null && row.artist !== undefined &&
+        row.title !== null && row.title !== undefined
+          ? { artist: row.artist, title: row.title }
+          : null;
 
       summaries.push({
         conversation: row.conversation,
-        listing: {
-          id: row.listingId,
-          status: row.listingStatus,
-          price: row.listingPrice,
-          currency: row.listingCurrency,
-          tradeAvailable: row.listingTradeAvailable,
-        },
-        release: {
-          artist: row.artist,
-          title: row.title,
-        },
-        otherParticipant: {
-          id: otherProfile.id,
-          username: otherProfile.username,
-          displayName: otherProfile.displayName,
-          avatarUrl: otherProfile.avatarUrl,
-        },
+        listing,
+        release,
+        otherParticipant,
         lastMessage,
-        unreadCount,
+        unreadCount: Number(unreadRows[0]?.count || 0),
       });
     }
 
@@ -264,26 +259,23 @@ export class MessagingRepository {
 
   async getUnreadCountForUser(userId: string): Promise<number> {
     const db = getDb();
-    const buyerUnread = and(
-      eq(conversations.buyerId, userId),
-      isNull(conversations.buyerArchivedAt),
-      sql`${messages.senderId} <> ${userId}`,
-      or(isNull(conversations.buyerReadAt), gte(messages.createdAt, conversations.buyerReadAt))
+    const participantAUnread = and(
+      eq(conversations.participantAId, userId),
+      isNull(conversations.participantAArchivedAt),
+      ne(messages.senderId, userId),
+      gt(messages.messageSeq, conversations.participantAReadSeq)
     );
-    const sellerUnread = and(
-      eq(listings.sellerId, userId),
-      isNull(conversations.sellerArchivedAt),
-      sql`${messages.senderId} <> ${userId}`,
-      or(isNull(conversations.sellerReadAt), gte(messages.createdAt, conversations.sellerReadAt))
+    const participantBUnread = and(
+      eq(conversations.participantBId, userId),
+      isNull(conversations.participantBArchivedAt),
+      ne(messages.senderId, userId),
+      gt(messages.messageSeq, conversations.participantBReadSeq)
     );
-
     const rows = await db
       .select({ count: sql<number>`count(${messages.id})` })
       .from(messages)
       .innerJoin(conversations, eq(messages.conversationId, conversations.id))
-      .innerJoin(listings, eq(conversations.listingId, listings.id))
-      .where(or(buyerUnread, sellerUnread));
-
+      .where(or(participantAUnread, participantBUnread));
     return Number(rows[0]?.count ?? 0);
   }
 
@@ -293,73 +285,65 @@ export class MessagingRepository {
       .select()
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
-      .orderBy(messages.createdAt, messages.id);
+      .orderBy(messages.messageSeq);
   }
 
-  async createMessage(
-    conversationId: string,
-    senderId: string,
-    body: string,
-    recipientRole: 'buyer' | 'seller'
-  ): Promise<Message> {
+  async createMessage(conversationId: string, senderId: string, body: string): Promise<Message> {
     const db = getDb();
-    const now = new Date();
-
     const [newMessage] = await db
       .insert(messages)
-      .values({
-        conversationId,
-        senderId,
-        body,
-        createdAt: now,
-      })
+      .values({ conversationId, senderId, body })
       .returning();
-
-    const updateFields: Partial<Conversation> = {
-      updatedAt: now,
-    };
-
-    if (recipientRole === 'buyer') {
-      updateFields.buyerArchivedAt = null;
-    } else {
-      updateFields.sellerArchivedAt = null;
-    }
-
-    await db
-      .update(conversations)
-      .set(updateFields)
-      .where(eq(conversations.id, conversationId));
-
     return newMessage;
   }
 
-  async markAsRead(conversationId: string, role: 'buyer' | 'seller', readAt: Date): Promise<void> {
+  async hasMessageSequence(conversationId: string, messageSeq: number): Promise<boolean> {
     const db = getDb();
-    if (role === 'buyer') {
+    const rows = await db
+      .select({ id: messages.id })
+      .from(messages)
+      .where(and(
+        eq(messages.conversationId, conversationId),
+        eq(messages.messageSeq, messageSeq)
+      ))
+      .limit(1);
+    return rows.length > 0;
+  }
+
+  async markAsRead(conversationId: string, role: ParticipantRole, messageSeq: number): Promise<void> {
+    const db = getDb();
+    const readAt = new Date();
+    if (role === 'participantA') {
       await db
         .update(conversations)
-        .set({ buyerReadAt: readAt })
+        .set({
+          participantAReadSeq: sql`GREATEST(${conversations.participantAReadSeq}, ${messageSeq})`,
+          participantAReadAt: readAt,
+        })
         .where(eq(conversations.id, conversationId));
     } else {
       await db
         .update(conversations)
-        .set({ sellerReadAt: readAt })
+        .set({
+          participantBReadSeq: sql`GREATEST(${conversations.participantBReadSeq}, ${messageSeq})`,
+          participantBReadAt: readAt,
+        })
         .where(eq(conversations.id, conversationId));
     }
   }
 
-  async setArchiveState(conversationId: string, role: 'buyer' | 'seller', archived: boolean): Promise<void> {
+  async setArchiveState(conversationId: string, role: ParticipantRole, archived: boolean): Promise<void> {
     const db = getDb();
     const archivedAt = archived ? new Date() : null;
-    if (role === 'buyer') {
+    if (role === 'participantA') {
       await db
         .update(conversations)
-        .set({ buyerArchivedAt: archivedAt })
+        .set({ participantAArchivedAt: archivedAt })
         .where(eq(conversations.id, conversationId));
     } else {
       await db
         .update(conversations)
-        .set({ sellerArchivedAt: archivedAt })
+        .set({ participantBArchivedAt: archivedAt })
         .where(eq(conversations.id, conversationId));
     }
   }
