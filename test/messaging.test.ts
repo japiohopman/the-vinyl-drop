@@ -769,7 +769,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       expect(cssSource).toContain('@media (max-width: 1023px)');
       expect(cssSource).toContain('display: none !important;');
       expect(cssSource).not.toContain('height: min(82dvh');
-      expect(cssSource).toContain('env(safe-area-inset-bottom)');
+      expect(cssSource).toContain('env(safe-area-inset-bottom, 0px)');
       expect(headerSource).toContain("mobileSectionLabel = 'MESSAGES'");
       expect(navSource).toContain('src="/assets/svg/talk.svg"');
       expect(conversationViewSource).toContain('src="/assets/svg/talk.svg"');
