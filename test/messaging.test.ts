@@ -754,24 +754,30 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       }
     });
 
-    test('shared mobile panel remains fixed and does not fork messaging behavior', async () => {
+    test('mobile uses full-page conversations while the desktop widget remains enhanced', async () => {
       const widgetSource = fs.readFileSync(path.join(process.cwd(), 'public/js/messaging-widget.js'), 'utf8');
       const cssSource = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
       const navSource = fs.readFileSync(path.join(process.cwd(), 'views/partials/nav.ejs'), 'utf8');
-      expect(widgetSource).toContain("document.getElementById('messaging-mobile-backdrop')");
-      expect(widgetSource).toContain("panel.style.left = '';");
-      expect(widgetSource).toContain("!desktopMedia.matches || panel.hidden");
+      const headerSource = fs.readFileSync(path.join(process.cwd(), 'views/partials/header.ejs'), 'utf8');
+      const conversationViewSource = fs.readFileSync(path.join(process.cwd(), 'views/messages/show.ejs'), 'utf8');
+
+      expect(widgetSource).toContain("if (!desktopMedia.matches) return;");
+      expect(widgetSource).toContain("if (!desktopMedia.matches && !panel.hidden) closePanel(false);");
       expect(navSource).toContain('id="messaging-mobile-backdrop"');
-      expect(cssSource).toContain('.messaging-floating-window');
-      expect(cssSource).toContain('height: 100dvh;');
-      expect(cssSource).not.toContain('height: min(82dvh');
       expect(cssSource).toContain('.messaging-widget-conversation-footer');
-      expect(cssSource).toContain('-webkit-line-clamp: 2;');
+      expect(cssSource).toContain('.conversation-compose-textarea');
+      expect(cssSource).toContain('@media (max-width: 1023px)');
+      expect(cssSource).toContain('display: none !important;');
+      expect(cssSource).not.toContain('height: min(82dvh');
       expect(cssSource).toContain('env(safe-area-inset-bottom)');
+      expect(headerSource).toContain("mobileSectionLabel = 'MESSAGES'");
       expect(navSource).toContain('src="/assets/svg/talk.svg"');
+      expect(conversationViewSource).toContain('src="/assets/svg/talk.svg"');
+      expect(conversationViewSource).toContain('src="/assets/svg/conversation.svg"');
+      expect(conversationViewSource).toContain('src="/assets/svg/send.svg"');
+      expect(conversationViewSource).toContain('class="conversation-compose-textarea"');
       expect(widgetSource).toContain("'/assets/svg/send.svg'");
       expect(widgetSource).toContain("'/assets/svg/conversation.svg'");
-      expect(widgetSource).toContain("panel.classList.add('is-conversation')");
       const sendSvgSource = fs.readFileSync(path.join(process.cwd(), 'public/assets/svg/send.svg'), 'utf8');
       expect(sendSvgSource).toContain('fill="currentColor"');
       expect(sendSvgSource).not.toContain('M0 0h512v512H0z');

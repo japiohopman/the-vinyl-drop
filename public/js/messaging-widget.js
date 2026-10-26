@@ -443,9 +443,11 @@
 
   triggers.forEach(function (trigger) {
     trigger.addEventListener('click', function (event) {
+      // Mobile messaging is a full-page inbox/thread; preserve the normal /messages link.
+      if (!desktopMedia.matches) return;
+
       event.preventDefault();
-      if (!panel.hidden && panel.classList.contains('is-minimized') && !desktopMedia.matches) {
-        closeMobileAccountSurface();
+      if (!panel.hidden && panel.classList.contains('is-minimized')) {
         toggleMinimized();
         return;
       }
@@ -531,7 +533,8 @@
   }
 
   function handleDesktopBreakpoint() {
-    // Reuse the active thread on both form factors but discard desktop positioning on mobile.
+    // A desktop widget must not remain open when the viewport switches to mobile.
+    if (!desktopMedia.matches && !panel.hidden) closePanel(false);
     panel.style.left = '';
     panel.style.top = '';
     panel.style.right = '';

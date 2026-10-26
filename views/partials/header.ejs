@@ -15,7 +15,9 @@
     mobileSectionLabel = 'DIG';
   } else if (headerPath.startsWith('/drop') || headerPath.startsWith('/listings') || headerPath.startsWith('/releases')) {
     mobileSectionLabel = 'DROP';
-  } else if (headerPath.startsWith('/activity') || headerPath.startsWith('/messages')) {
+  } else if (headerPath.startsWith('/messages')) {
+    mobileSectionLabel = 'MESSAGES';
+  } else if (headerPath.startsWith('/activity')) {
     mobileSectionLabel = 'ACTIVITY';
   } else if (headerPath.startsWith('/profile') || headerPath.startsWith('/profiles') || headerPath.startsWith('/auth')) {
     mobileSectionLabel = 'ME';
