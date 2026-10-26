@@ -763,8 +763,14 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       expect(widgetSource).toContain("!desktopMedia.matches || panel.hidden");
       expect(navSource).toContain('id="messaging-mobile-backdrop"');
       expect(cssSource).toContain('.messaging-floating-window');
-      expect(cssSource).toContain('height: min(82dvh');
+      expect(cssSource).toContain('height: 100dvh;');
+      expect(cssSource).not.toContain('height: min(82dvh');
+      expect(cssSource).toContain('.messaging-widget-conversation-footer');
       expect(cssSource).toContain('env(safe-area-inset-bottom)');
+      expect(navSource).toContain('src="/assets/svg/talk.svg"');
+      expect(widgetSource).toContain("'/assets/svg/send.svg'");
+      expect(widgetSource).toContain("'/assets/svg/conversation.svg'");
+      expect(widgetSource).toContain("panel.classList.add('is-conversation')");
       expect(widgetSource).not.toContain("\\n        ?");
     });
   });
