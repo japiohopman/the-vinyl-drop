@@ -6607,13 +6607,6 @@ body.messaging-mobile-panel-open {
   color: var(--color-white);
 }
 
-@media (max-width: 1023px) {
-  .messaging-floating-window,
-  .messaging-mobile-backdrop {
-    display: none !important;
-  }
-}
-
 @media (max-width: 767px) {
   .conversation-container {
     gap: var(--space-3);
