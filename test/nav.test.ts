@@ -332,9 +332,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(requests.filter((item) => item.method === 'POST' && item.path.endsWith('/read'))).toHaveLength(1);
   });
 
-  it('opens the shared messaging widget as a fixed, non-draggable mobile panel', async () => {
+  it('follows the full-page inbox on mobile and keeps the desktop widget hidden', async () => {
     await page.setViewportSize({ width: 375, height: 812 });
-    let unreadCount = 2;
     const requests: Array<{ path: string; method: string }> = [];
 
     await page.route('**/messages/**', async (route) => {
@@ -343,57 +342,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       requests.push({ path: pathname, method: requestInfo.method() });
 
       if (pathname === '/messages/widget/unread-count') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ unreadCount }) });
-        return;
-      }
-      if (pathname === '/messages/widget/data') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({
-            unreadCount,
-            conversations: [{
-              id: 'conversation-1',
-              conversationType: 'listing',
-              releaseArtist: 'Pink Floyd',
-              releaseTitle: 'The Dark Side of the Moon',
-              otherParticipant: 'Seller User',
-              otherParticipantUsername: 'seller_user',
-              lastMessage: 'Hi from seller',
-              lastMessageAt: '2026-10-25T10:00:00.000Z',
-              unreadCount,
-            }],
-          }),
+          body: JSON.stringify({ unreadCount: 2 }),
         });
-        return;
-      }
-      if (pathname === '/messages/widget/conversation-1') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            id: 'conversation-1',
-            conversationType: 'listing',
-            title: 'Pink Floyd — The Dark Side of the Moon',
-            release: { artist: 'Pink Floyd', title: 'The Dark Side of the Moon' },
-            listing: { id: 'listing-1' },
-            userRole: 'buyer',
-            unreadCount,
-            otherParticipant: { username: 'seller_user', displayName: 'Seller User' },
-            messages: [{
-              id: 'message-1',
-              messageSeq: 1,
-              isOwnMessage: false,
-              body: 'Hi from seller',
-              createdAt: '2026-10-25T10:00:00.000Z',
-            }],
-          }),
-        });
-        return;
-      }
-      if (pathname === '/messages/conversation-1/read' && requestInfo.method() === 'POST') {
-        unreadCount = 0;
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) });
         return;
       }
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) });
@@ -414,77 +367,42 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       return Boolean(badge && !badge.hasAttribute('hidden') && badge.textContent === '2');
     });
 
-    await page.click('#mobile-you-trigger');
-    await page.click('#mobile-you-surface [data-messaging-widget-trigger]');
     const panel = page.locator('#messaging-floating-window');
     const backdrop = page.locator('#messaging-mobile-backdrop');
-    expect(await panel.isVisible()).toBe(true);
-    expect(await backdrop.isVisible()).toBe(true);
-    expect(await panel.getAttribute('aria-modal')).toBe('true');
-    expect(page.url()).not.toContain('/messages');
-
-    const boundsBefore = await panel.evaluate((el) => {
-      const rect = el.getBoundingClientRect();
-      const browser = globalThis as unknown as { window: { innerWidth: number; innerHeight: number; getComputedStyle: (element: unknown) => { position: string } } };
-      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width,
-        viewportWidth: browser.window.innerWidth, viewportHeight: browser.window.innerHeight,
-        position: browser.window.getComputedStyle(el).position };
-    });
-    expect(boundsBefore.position).toBe('fixed');
-    expect(boundsBefore.left).toBeGreaterThanOrEqual(0);
-    expect(boundsBefore.right).toBeLessThanOrEqual(boundsBefore.viewportWidth);
-    expect(boundsBefore.top).toBeGreaterThanOrEqual(0);
-    expect(boundsBefore.bottom).toBeLessThanOrEqual(boundsBefore.viewportHeight);
-    expect(boundsBefore.width).toBe(boundsBefore.viewportWidth);
-
-    await page.locator('.messaging-widget-conversation').click();
-    await page.waitForSelector('.messaging-widget-message');
-    expect(await page.locator('.messaging-widget-message').textContent()).toContain('Hi from seller');
-    expect(requests.some((item) => item.method === 'POST' && (item.path.endsWith('/read') || item.path.endsWith('/archive')))).toBe(false);
-
-    const initialLeft = await panel.evaluate((el) => el.getBoundingClientRect().left);
-    await page.locator('[data-message-drag-handle]').focus();
-    await page.keyboard.press('ArrowLeft');
-    expect(await panel.evaluate((el) => el.getBoundingClientRect().left)).toBe(initialLeft);
-    const dragBox = await page.locator('[data-message-drag-handle]').boundingBox();
-    expect(dragBox).not.toBeNull();
-    await page.mouse.move(dragBox!.x + dragBox!.width / 2, dragBox!.y + dragBox!.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(2000, 1500, { steps: 5 });
-    await page.mouse.up();
-    const afterPointerDrag = await panel.evaluate((el) => {
-      const rect = el.getBoundingClientRect();
-      return { left: rect.left, right: rect.right, bottom: rect.bottom };
-    });
-    expect(afterPointerDrag.left).toBe(initialLeft);
-    expect(afterPointerDrag.right).toBeLessThanOrEqual(375);
-    expect(afterPointerDrag.bottom).toBeLessThanOrEqual(812);
-
-    await page.locator('[data-message-minimize]').click();
-    expect(await panel.evaluate((el) => el.classList.contains('is-minimized'))).toBe(true);
+    expect(await panel.isVisible()).toBe(false);
     expect(await backdrop.isVisible()).toBe(false);
-    expect(await page.locator('body').evaluate((el) => {
-      const browser = globalThis as unknown as { window: { getComputedStyle: (element: unknown) => { overflow: string } } };
-      return browser.window.getComputedStyle(el).overflow;
-    })).not.toBe('hidden');
-    const minimizedBottom = await panel.evaluate((el) => el.getBoundingClientRect().bottom);
-    expect(minimizedBottom).toBeLessThanOrEqual(812 - 60);
+
+    await page.evaluate(() => {
+      const browser = globalThis as unknown as {
+        document: {
+          addEventListener: (type: string, listener: (event: any) => void, options?: { once?: boolean }) => void;
+        };
+        window: { __mobileMessagesClick?: { href: string; defaultPreventedBeforeTestHandler: boolean } };
+      };
+      browser.document.addEventListener('click', (event: any) => {
+        const target = event.target as Element;
+        const trigger = target.closest('[data-messaging-widget-trigger]') as HTMLAnchorElement | null;
+        if (!trigger) return;
+        browser.window.__mobileMessagesClick = {
+          href: trigger.getAttribute('href') || '',
+          defaultPreventedBeforeTestHandler: event.defaultPrevented,
+        };
+        // Observe the widget handler's decision without navigating away from this rendered test page.
+        event.preventDefault();
+      }, { once: true });
+    });
 
     await page.click('#mobile-you-trigger');
     await page.click('#mobile-you-surface [data-messaging-widget-trigger]');
-    expect(await panel.evaluate((el) => el.classList.contains('is-minimized'))).toBe(false);
-    expect(await backdrop.isVisible()).toBe(true);
-
-    await page.locator('[data-message-close]').click();
+    const clickResult = await page.evaluate(() => {
+      const browser = globalThis as unknown as { window: { __mobileMessagesClick?: { href: string; defaultPreventedBeforeTestHandler: boolean } } };
+      return browser.window.__mobileMessagesClick;
+    });
+    expect(clickResult).toEqual({ href: '/messages', defaultPreventedBeforeTestHandler: false });
     expect(await panel.isVisible()).toBe(false);
     expect(await backdrop.isVisible()).toBe(false);
-    expect(await page.evaluate(() => {
-      const browser = globalThis as unknown as { document: { activeElement: { id: string } | null } };
-      return browser.document.activeElement?.id;
-    })).toBe('mobile-you-trigger');
     expect(requests.some((item) => item.method === 'POST' && (item.path.endsWith('/read') || item.path.endsWith('/archive')))).toBe(false);
   });
-
 
   it('keeps profile landing and empty Crate usable without horizontal overflow across phone, tablet, and desktop widths', async () => {
     const viewports = [320, 360, 375, 414, 768, 1280];
