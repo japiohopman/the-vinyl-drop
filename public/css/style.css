@@ -6451,3 +6451,23 @@ body.messaging-mobile-panel-open {
     min-height: 48px;
   }
 }
+
+
+/* Keep the send control reachable in short desktop widget viewports. */
+@media (min-width: 1024px) and (max-height: 560px) {
+  .messaging-floating-window.is-conversation .messaging-floating-content {
+    overflow-y: auto;
+  }
+
+  .messaging-widget-message-list {
+    flex: 0 0 auto;
+    min-height: 3rem;
+    max-height: 24dvh;
+  }
+
+  .messaging-widget-conversation-footer .messaging-widget-compose textarea {
+    height: 3rem;
+    min-height: 3rem;
+    max-height: 4rem;
+  }
+}
