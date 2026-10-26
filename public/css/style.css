@@ -5411,6 +5411,69 @@ select.form-control {
   color: var(--color-ink-muted);
   font-size: var(--font-size-xs);
 }
+.messaging-widget-saved-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-paper-muted);
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-1);
+}
+.messaging-widget-saved-title {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-muted);
+}
+.messaging-widget-saved-list {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.messaging-widget-saved-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 10px;
+  border: var(--border-thin);
+  border-radius: 9999px;
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  min-height: 36px;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+.messaging-widget-saved-chip:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-ink);
+}
+.messaging-widget-saved-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.messaging-widget-saved-initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-paper-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
 .messaging-widget-list {
   display: flex;
   flex-direction: column;

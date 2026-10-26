@@ -40,6 +40,9 @@
             <div class="activity-card-body">
               <div class="activity-card-header">
                 <div class="activity-actor-row">
+                  <% if (item.actorUsername && item.eventType !== 'favorite.created') { %>
+                    <a href="/profiles/<%= encodeURIComponent(item.actorUsername) %>" style="color: inherit; text-decoration: none; display: inline-flex;" aria-label="View <%= item.actorUsername %>'s profile">
+                  <% } %>
                   <% if (item.actorAvatarUrl) { %>
                     <span class="activity-avatar">
                       <img
@@ -58,7 +61,17 @@
                       <span class="activity-avatar-fallback" aria-hidden="true"><%= item.actorUsername ? item.actorUsername.slice(0, 1).toUpperCase() : '?' %></span>
                     </span>
                   <% } %>
-                  <span class="activity-actor"><%= item.eventDescription %></span>
+                  <% if (item.actorUsername && item.eventType !== 'favorite.created') { %>
+                    </a>
+                  <% } %>
+                  <span class="activity-actor">
+                    <% if (item.actorUsername && item.eventType !== 'favorite.created') { %>
+                      <a href="/profiles/<%= encodeURIComponent(item.actorUsername) %>" style="color: inherit; text-decoration: underline; font-weight: 700;">@<%= item.actorUsername %></a>
+                      <%= item.eventType === 'listing.published' ? 'published a drop' : 'commented on a drop' %>
+                    <% } else { %>
+                      <%= item.eventDescription %>
+                    <% } %>
+                  </span>
                 </div>
                 <span class="activity-time"><%= item.timeAgo %></span>
               </div>

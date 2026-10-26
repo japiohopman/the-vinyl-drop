@@ -103,6 +103,20 @@
     setStatus(message || 'Could not load messages.');
   }
 
+  function startDirectChat(profileId) {
+    setStatus('Opening conversation…');
+    requestJson('/messages/profile/' + encodeURIComponent(profileId), {
+      method: 'POST',
+      headers: {
+        'X-Messaging-Widget': '1'
+      }
+    }).then(function (data) {
+      return loadConversation(data.id);
+    }).catch(function (error) {
+      showError(error.message);
+    });
+  }
+
   function loadInbox() {
     activeConversationId = null;
     title.textContent = 'Messages';
@@ -111,21 +125,52 @@
     setStatus('Loading messages');
     return requestJson('/messages/widget/data').then(function (data) {
       setUnreadCount(data.unreadCount);
-      renderInbox(data.conversations || []);
+      renderInbox(data.conversations || [], data.savedPeople || []);
     }).catch(function (error) {
       showError(error.message);
     });
   }
 
-  function renderInbox(conversations) {
+  function renderInbox(conversations, savedPeople) {
     content.replaceChildren();
     var toolbar = element('div', 'messaging-widget-toolbar');
     toolbar.appendChild(element('p', 'messaging-widget-subtitle', 'Your private conversations'));
     toolbar.appendChild(makeInboxLink());
     content.appendChild(toolbar);
 
+    if (savedPeople && savedPeople.length > 0) {
+      var savedSection = element('div', 'messaging-widget-saved-section');
+      savedSection.appendChild(element('span', 'messaging-widget-saved-title', 'Saved People'));
+      var savedList = element('div', 'messaging-widget-saved-list');
+      savedPeople.forEach(function (person) {
+        var personBtn = element('button', 'messaging-widget-saved-chip');
+        personBtn.type = 'button';
+        personBtn.setAttribute('aria-label', 'Message ' + (person.displayName || '@' + person.username));
+        if (person.avatarUrl) {
+          var avatar = element('img', 'messaging-widget-saved-avatar');
+          avatar.src = person.avatarUrl;
+          avatar.alt = '';
+          personBtn.appendChild(avatar);
+        } else {
+          var initial = element('span', 'messaging-widget-saved-initial', (person.displayName || person.username).substring(0, 1).toUpperCase());
+          personBtn.appendChild(initial);
+        }
+        personBtn.appendChild(element('span', 'messaging-widget-saved-name', person.displayName || ('@' + person.username)));
+        personBtn.addEventListener('click', function () {
+          startDirectChat(person.id);
+        });
+        savedList.appendChild(personBtn);
+      });
+      savedSection.appendChild(savedList);
+      content.appendChild(savedSection);
+    }
+
     if (!conversations.length) {
-      content.appendChild(element('p', 'messaging-widget-empty', 'No conversations yet.'));
+      if (savedPeople && savedPeople.length > 0) {
+        content.appendChild(element('p', 'messaging-widget-empty', 'No conversations started yet. Choose a saved person above to start chatting!'));
+      } else {
+        content.appendChild(element('p', 'messaging-widget-empty', 'No conversations yet. Save people from their profiles or message a seller on a drop to start chatting!'));
+      }
       setStatus('No conversations yet');
       return;
     }

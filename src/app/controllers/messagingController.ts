@@ -31,7 +31,10 @@ export async function getWidgetUnreadCount(req: Request, res: Response, next: Ne
 
 export async function getWidgetInbox(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const summaries = await messagingService.getInboxForUser(req.user!.id);
+    const [summaries, savedPeople] = await Promise.all([
+      messagingService.getInboxForUser(req.user!.id),
+      savedPeopleService.getSavedPeopleForUser(req.user!.id),
+    ]);
     const conversations = summaries.map((item) => ({
       id: item.conversation.id,
       conversationType: item.conversation.conversationType,
@@ -44,7 +47,16 @@ export async function getWidgetInbox(req: Request, res: Response, next: NextFunc
       unreadCount: item.unreadCount,
     }));
     const unreadCount = conversations.reduce((total, item) => total + item.unreadCount, 0);
-    res.set('Cache-Control', 'no-store').json({ unreadCount, conversations });
+    res.set('Cache-Control', 'no-store').json({
+      unreadCount,
+      conversations,
+      savedPeople: savedPeople.map((person) => ({
+        id: person.id,
+        username: person.username,
+        displayName: person.displayName,
+        avatarUrl: person.avatarUrl,
+      })),
+    });
   } catch (err) {
     next(err);
   }
@@ -175,6 +187,13 @@ export async function postStartDirectConversation(req: Request, res: Response, n
     const userId = req.user!.id;
     const { profileId } = req.params;
     const conversation = await messagingService.getOrCreateDirectConversation(profileId, userId);
+    if (req.accepts(['html', 'json']) === 'json' || req.get('X-Messaging-Widget') === '1') {
+      res.set('Cache-Control', 'no-store').status(200).json({
+        id: conversation.id,
+        conversationType: conversation.conversationType,
+      });
+      return;
+    }
     res.redirect('/messages/' + conversation.id);
   } catch (err) {
     next(err);
