@@ -218,7 +218,7 @@ export async function postMarkRead(req: Request, res: Response, next: NextFuncti
     const rawMessageSeq = (req.body || {}).messageSeq;
     const messageSeq = typeof rawMessageSeq === 'number'
       ? rawMessageSeq
-      : typeof rawMessageSeq === 'string' && /^\\d+$/.test(rawMessageSeq)
+      : typeof rawMessageSeq === 'string' && /^\d+$/.test(rawMessageSeq)
         ? Number(rawMessageSeq)
         : Number.NaN;
     if (!Number.isSafeInteger(messageSeq) || messageSeq < 0) {
@@ -226,7 +226,7 @@ export async function postMarkRead(req: Request, res: Response, next: NextFuncti
     }
     await messagingService.markAsRead(conversationId, userId, messageSeq);
 
-    if (req.accepts('json')) {
+    if (req.accepts(['html', 'json']) === 'json') {
       res.set('Cache-Control', 'no-store').status(200).json({ status: 'ok' });
       return;
     }
@@ -242,7 +242,7 @@ export async function postArchiveConversation(req: Request, res: Response, next:
     const { conversationId } = req.params;
     await messagingService.archiveConversation(conversationId, userId);
 
-    if (req.accepts('json')) {
+    if (req.accepts(['html', 'json']) === 'json') {
       res.set('Cache-Control', 'no-store').status(200).json({ status: 'ok' });
       return;
     }
