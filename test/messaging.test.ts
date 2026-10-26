@@ -760,7 +760,8 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       const navSource = fs.readFileSync(path.join(process.cwd(), 'views/partials/nav.ejs'), 'utf8');
       expect(widgetSource).not.toContain("if (!desktopMedia.matches) return;");
       expect(widgetSource).toContain('window.visualViewport');
-      expect(widgetSource).toContain('mobileDragDeltaY > 80');
+      expect(widgetSource).toContain('gestureDistance > 80');
+      expect(widgetSource).toContain('gestureDistance < -60');
       expect(widgetSource).toContain("'/assets/svg/send.svg'");
       expect(widgetSource).toContain("'/assets/svg/conversation.svg'");
       expect(cssSource).toContain('.messaging-floating-window:not([hidden])');
