@@ -375,11 +375,11 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.evaluate(() => {
       const browser = globalThis as unknown as {
         document: {
-          addEventListener: (type: string, listener: (event: any) => void, options?: { once?: boolean }) => void;
+          addEventListener: (type: string, listener: (event: Event) => void, options?: { once?: boolean }) => void;
         };
         window: { __mobileMessagesClick?: { href: string; defaultPreventedBeforeTestHandler: boolean } };
       };
-      browser.document.addEventListener('click', (event: any) => {
+      browser.document.addEventListener('click', (event: Event) => {
         const target = event.target as Element;
         const trigger = target.closest('[data-messaging-widget-trigger]') as HTMLAnchorElement | null;
         if (!trigger) return;
