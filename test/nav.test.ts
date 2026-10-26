@@ -471,8 +471,12 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     });
     expect(bodyOverflow).not.toBe('hidden');
 
-    await page.click('#mobile-you-trigger');
-    await page.locator('#mobile-you-surface [data-messaging-widget-trigger]').click();
+    const minimizedHeader = await page.locator('[data-message-drag-handle]').boundingBox();
+    expect(minimizedHeader).not.toBeNull();
+    await page.mouse.move(minimizedHeader!.x + 22, minimizedHeader!.y + 22);
+    await page.mouse.down();
+    await page.mouse.move(minimizedHeader!.x + 22, minimizedHeader!.y - 90, { steps: 4 });
+    await page.mouse.up();
     expect(await panel.evaluate((element) => element.classList.contains('is-minimized'))).toBe(false);
     expect(await backdrop.isVisible()).toBe(true);
 
