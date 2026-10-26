@@ -211,9 +211,14 @@ Functional SVGs are strictly separated from brand mark assets. Brand artwork (su
 - No fabricated, hardcoded, or simulated unread numbers are permitted.
 - Database query boundaries strictly prevent leaking conversation metadata or unread status across users.
 
-### 4.4 Mobile Messaging Fallback (~360px – 768px viewports)
-- Floating chat windows are **disabled** on mobile viewports.
-- Mobile messaging executes entirely through the full-screen conversation view (`/messages/:conversationId`) with standard back-navigation to the inbox (`/messages`).
+### 4.4 Responsive Messaging Widget (mobile and tablet viewports below 1024px)
+- The same shared messaging widget is the primary communication hub on mobile and desktop; do not fork the conversation list, Saved People, or composer into a second primary UI.
+- The Messages & People trigger in the Me surface opens the shared widget and does not navigate to the static inbox.
+- The expanded mobile widget uses the available visual viewport as a full-screen messenger, handles safe-area insets, traps focus while modal, and prevents background-page scrolling.
+- The visual viewport dimensions are synchronized while the on-screen keyboard opens so the message composer and send control remain reachable; the message history scrolls independently.
+- The widget may be minimized to a compact launcher above mobile bottom navigation. A downward header drag minimizes the panel, and an upward drag restores it; desktop pointer/keyboard dragging remains unchanged.
+- Closing/minimizing does not mark messages read, archive, or delete anything. Those state transitions remain explicit widget actions.
+- Existing full-page routes (`/messages` and `/messages/:conversationId`) remain direct-route fallbacks only and are not duplicated as primary links inside Me or the widget.
 
 ---
 

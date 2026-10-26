@@ -20,6 +20,8 @@
   var isDragging = false;
   var dragOffsetX = 0;
   var dragOffsetY = 0;
+  var mobileDragStartY = 0;
+  var mobileDragDeltaY = 0;
 
   if (!content || !status || !title || !dragHandle || !minimizeButton || !closeButton) return;
 
@@ -96,19 +98,12 @@
     });
   }
 
-  function makeInboxLink() {
-    var link = element('a', 'messaging-widget-action', 'Open full inbox');
-    link.href = '/messages';
-    return link;
-  }
-
   function showError(message) {
     panel.classList.remove('is-conversation');
     content.replaceChildren();
-    var error = element('p', 'messaging-widget-error', message || 'Could not load messages. Open the full inbox to continue.');
+    var error = element('p', 'messaging-widget-error', message || 'Could not load messages. Please try again.');
     content.appendChild(error);
     var actions = element('div', 'messaging-widget-actions');
-    actions.appendChild(makeInboxLink());
     actions.appendChild(actionButton('Try again', '', loadInbox));
     content.appendChild(actions);
     setStatus(message || 'Could not load messages.');
@@ -148,7 +143,6 @@
     content.replaceChildren();
     var toolbar = element('div', 'messaging-widget-toolbar');
     toolbar.appendChild(element('p', 'messaging-widget-subtitle', 'Your private conversations'));
-    toolbar.appendChild(makeInboxLink());
     content.appendChild(toolbar);
 
     if (savedPeople && savedPeople.length > 0) {
@@ -210,7 +204,6 @@
       list.appendChild(item);
     });
     content.appendChild(list);
-    content.appendChild(makeInboxLink());
     setStatus(conversations.length + (conversations.length === 1 ? ' conversation' : ' conversations') + ' loaded');
   }
 
@@ -244,12 +237,9 @@
       : 'Direct conversation with @' + conversation.otherParticipant.username);
 
     var toolbar = element('div', 'messaging-widget-toolbar');
-    toolbar.appendChild(actionButton('← Conversations', '', loadInbox, 'Back to conversations'));
-    toolbar.appendChild(makeInboxLink());
-    var fullConversationLink = element('a', 'messaging-widget-action', 'Open full conversation');
-    fullConversationLink.href = '/messages/' + encodeURIComponent(conversation.id);
-    prependSvgIcon(fullConversationLink, '/assets/svg/conversation.svg', 'messaging-widget-icon');
-    toolbar.appendChild(fullConversationLink);
+    var backToConversations = actionButton('Conversations', '', loadInbox, 'Back to conversations');
+    prependSvgIcon(backToConversations, '/assets/svg/conversation.svg', 'messaging-widget-icon');
+    toolbar.appendChild(backToConversations);
     content.appendChild(toolbar);
     content.appendChild(element('p', 'messaging-widget-subtitle', 'With ' + (conversation.otherParticipant.displayName || '@' + conversation.otherParticipant.username)));
 
@@ -347,7 +337,28 @@
     }
   }
 
+  function syncMobileViewportSize() {
+    if (desktopMedia.matches) {
+      panel.style.removeProperty('--messaging-visual-viewport-height');
+      panel.style.removeProperty('--messaging-visual-viewport-width');
+      panel.style.removeProperty('--messaging-visual-viewport-top');
+      panel.style.removeProperty('--messaging-visual-viewport-left');
+      return;
+    }
+
+    var viewport = window.visualViewport;
+    panel.style.setProperty('--messaging-visual-viewport-height',
+      Math.max(1, Math.round(viewport ? viewport.height : window.innerHeight)) + 'px');
+    panel.style.setProperty('--messaging-visual-viewport-width',
+      Math.max(1, Math.round(viewport ? viewport.width : window.innerWidth)) + 'px');
+    panel.style.setProperty('--messaging-visual-viewport-top',
+      Math.max(0, Math.round(viewport ? viewport.offsetTop : 0)) + 'px');
+    panel.style.setProperty('--messaging-visual-viewport-left',
+      Math.max(0, Math.round(viewport ? viewport.offsetLeft : 0)) + 'px');
+  }
+
   function syncResponsivePanelState() {
+    syncMobileViewportSize();
     var expandedMobilePanel = !desktopMedia.matches && !panel.hidden && !panel.classList.contains('is-minimized');
     panel.setAttribute('aria-modal', expandedMobilePanel ? 'true' : 'false');
 
@@ -362,7 +373,10 @@
         dragHandle.setAttribute('aria-label', 'Move Messages window with arrow keys');
         dragHandle.setAttribute('title', 'Drag to move; use arrow keys to reposition');
       } else {
-        dragHandle.setAttribute('aria-label', 'Messages panel header');
+        dragHandle.setAttribute('aria-label',
+          panel.classList.contains('is-minimized')
+            ? 'Swipe up to restore Messages panel'
+            : 'Swipe down to minimize Messages panel');
         dragHandle.removeAttribute('title');
       }
     }
@@ -416,6 +430,8 @@
   }
 
   function closePanel(restoreFocus) {
+    panel.style.transform = '';
+    panel.style.transition = '';
     panel.hidden = true;
     panel.setAttribute('aria-hidden', 'true');
     panel.classList.remove('is-minimized');
@@ -443,11 +459,11 @@
 
   triggers.forEach(function (trigger) {
     trigger.addEventListener('click', function (event) {
-      // Mobile messaging is a full-page inbox/thread; preserve the normal /messages link.
-      if (!desktopMedia.matches) return;
-
       event.preventDefault();
       if (!panel.hidden && panel.classList.contains('is-minimized')) {
+        lastTrigger = trigger;
+        closeDesktopMenu();
+        closeMobileAccountSurface();
         toggleMinimized();
         return;
       }
@@ -497,8 +513,17 @@
 
   if (dragHandle) {
     dragHandle.addEventListener('pointerdown', function (event) {
-      if (!desktopMedia.matches || panel.hidden || event.button !== 0) return;
+      if (panel.hidden || event.button !== 0) return;
       isDragging = true;
+      if (!desktopMedia.matches) {
+        mobileDragStartY = event.clientY;
+        mobileDragDeltaY = 0;
+        panel.style.transition = 'none';
+        if (dragHandle.setPointerCapture && event.pointerId !== undefined) dragHandle.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        return;
+      }
+
       var rect = panel.getBoundingClientRect();
       panel.style.left = rect.left + 'px';
       panel.style.top = rect.top + 'px';
@@ -511,9 +536,31 @@
     });
     dragHandle.addEventListener('pointermove', function (event) {
       if (!isDragging) return;
+      if (!desktopMedia.matches) {
+        mobileDragDeltaY = event.clientY - mobileDragStartY;
+        var minimized = panel.classList.contains('is-minimized');
+        var offset = minimized
+          ? Math.min(0, Math.max(-120, mobileDragDeltaY))
+          : Math.max(0, Math.min(160, mobileDragDeltaY));
+        panel.style.transform = 'translate3d(0, ' + offset + 'px, 0)';
+        return;
+      }
       setPanelPosition(event.clientX - dragOffsetX, event.clientY - dragOffsetY);
     });
-    function stopDragging() { isDragging = false; }
+    function stopDragging() {
+      if (!isDragging) return;
+      isDragging = false;
+      if (!desktopMedia.matches) {
+        var wasMinimized = panel.classList.contains('is-minimized');
+        panel.style.transform = '';
+        panel.style.transition = '';
+        if ((!wasMinimized && mobileDragDeltaY > 80) || (wasMinimized && mobileDragDeltaY < -60)) {
+          toggleMinimized();
+        }
+        mobileDragDeltaY = 0;
+        return;
+      }
+    }
     dragHandle.addEventListener('pointerup', stopDragging);
     dragHandle.addEventListener('pointercancel', stopDragging);
 
@@ -533,12 +580,13 @@
   }
 
   function handleDesktopBreakpoint() {
-    // A desktop widget must not remain open when the viewport switches to mobile.
-    if (!desktopMedia.matches && !panel.hidden) closePanel(false);
+    // Keep the active conversation open as the same widget adapts to the new viewport.
     panel.style.left = '';
     panel.style.top = '';
     panel.style.right = '';
     panel.style.bottom = '';
+    panel.style.transform = '';
+    panel.style.transition = '';
     syncResponsivePanelState();
     refreshUnread();
   }
@@ -552,6 +600,11 @@
       setPanelPosition(rect.left, rect.top);
     }
   });
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncResponsivePanelState);
+    window.visualViewport.addEventListener('scroll', syncResponsivePanelState);
+  }
 
   syncResponsivePanelState();
   refreshUnread();
