@@ -20,6 +20,7 @@ import {
 } from '../services/listingService';
 import { getListingComments, addComment } from '../services/commentService';
 import { isListingFavorited } from '../services/favoriteService';
+import { updateReleaseYouTubePreviewForListing } from '../services/releaseService';
 import { formatPrice } from '../view-models/listingCardViewModel';
 import { FormViewModel } from '../view-models/formViewModel';
 import { parsePriceEurToCents } from '../../validators/listing';
@@ -199,6 +200,7 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
       photoRoleLabels: LISTING_PHOTO_ROLE_LABELS,
       photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
       photoError: typeof req.query.photoError === 'string' ? req.query.photoError : '',
+      youtubePreviewError: req.query.youtubePreviewError === 'invalid',
     });
   } catch (error) {
     next(error);
@@ -260,6 +262,36 @@ export async function postEditListing(req: Request, res: Response, next: NextFun
       }
     }
     next(error);
+  }
+}
+
+export async function postUpdateReleaseYouTubePreview(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const listingId = req.params.id;
+  if (!req.user) return res.redirect('/auth/login');
+
+  try {
+    await updateReleaseYouTubePreviewForListing(listingId, req.user.id, req.body.youtubePreviewUrl);
+    setFlashCookie(res, 'success', 'YouTube preview updated for this release.');
+    return res.redirect(`/listings/${listingId}/edit`);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return res.redirect(`/listings/${listingId}/edit?youtubePreviewError=invalid`);
+    }
+    if (error instanceof NotFoundError) {
+      res.status(404);
+      return renderWithLayout(res, 'errors/404', {
+        title: 'Listing Not Found',
+        message: 'The listing or its associated release was not found.',
+      }, next);
+    }
+    if (error instanceof AuthorizationError) {
+      res.status(403);
+      return renderWithLayout(res, 'errors/500', {
+        title: '403 Forbidden',
+        message: 'You are not authorized to edit this listing.',
+      }, next);
+    }
+    return next(error);
   }
 }
 
