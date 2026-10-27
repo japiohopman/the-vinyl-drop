@@ -17,6 +17,9 @@
   var closeButton = panel.querySelector('[data-message-close]');
   var lastTrigger = null;
   var activeConversationId = null;
+  var activeInboxTab = 'conversations';
+  var returnInboxTab = 'conversations';
+  var panelCloseTimer = null;
   var isDragging = false;
   var dragOffsetX = 0;
   var dragOffsetY = 0;
@@ -141,70 +144,163 @@
   function renderInbox(conversations, savedPeople) {
     panel.classList.remove('is-conversation');
     content.replaceChildren();
+
     var toolbar = element('div', 'messaging-widget-toolbar');
-    toolbar.appendChild(element('p', 'messaging-widget-subtitle', 'Your private conversations'));
+    toolbar.appendChild(element('p', 'messaging-widget-subtitle', 'Your private messaging hub'));
     content.appendChild(toolbar);
 
-    if (savedPeople && savedPeople.length > 0) {
-      var savedSection = element('div', 'messaging-widget-saved-section');
-      savedSection.appendChild(element('span', 'messaging-widget-saved-title', 'Saved People'));
-      var savedList = element('div', 'messaging-widget-saved-list');
+    var tabList = element('div', 'messaging-widget-tabs');
+    tabList.setAttribute('role', 'tablist');
+    tabList.setAttribute('aria-label', 'Messages and people');
+
+    var tabPanel = element('div', 'messaging-widget-tab-panel');
+    tabPanel.id = 'messaging-widget-tab-panel';
+    tabPanel.setAttribute('role', 'tabpanel');
+    tabPanel.setAttribute('tabindex', '0');
+
+    var tabDefinitions = [
+      { key: 'conversations', label: 'Conversations', id: 'messaging-widget-tab-conversations' },
+      { key: 'people', label: 'People', id: 'messaging-widget-tab-people' }
+    ];
+    var tabButtons = {};
+
+    function renderConversationsTab() {
+      if (!conversations.length) {
+        tabPanel.appendChild(element(
+          'p',
+          'messaging-widget-empty',
+          'No conversations yet. Start a chat from a seller’s listing or a digger’s profile, or contact someone you have saved under People.'
+        ));
+        setStatus('No conversations yet');
+        return;
+      }
+
+      var list = element('ul', 'messaging-widget-list');
+      conversations.forEach(function (conversation) {
+        var item = element('li');
+        var label = conversation.conversationType === 'direct'
+          ? (conversation.otherParticipantUsername ? '@' + conversation.otherParticipantUsername : conversation.otherParticipant)
+          : ((conversation.releaseArtist || 'Listing') + ' — ' + (conversation.releaseTitle || 'Conversation'));
+        var button = element('button', 'messaging-widget-conversation' + (conversation.unreadCount > 0 ? ' is-unread' : ''));
+        button.type = 'button';
+        button.setAttribute('aria-label', label + ', ' + conversation.otherParticipant + (conversation.unreadCount > 0 ? ', ' + conversation.unreadCount + ' unread' : ''));
+        button.appendChild(element('span', 'messaging-widget-conversation-title', label));
+        button.appendChild(element('span', 'messaging-widget-meta', conversation.otherParticipant));
+        button.appendChild(element('span', 'messaging-widget-preview', conversation.lastMessage || 'No messages yet.'));
+        if (conversation.unreadCount > 0) {
+          button.appendChild(element('span', 'messaging-widget-meta', conversation.unreadCount + (conversation.unreadCount === 1 ? ' unread message' : ' unread messages')));
+        }
+        button.addEventListener('click', function () {
+          returnInboxTab = 'conversations';
+          loadConversation(conversation.id);
+        });
+        item.appendChild(button);
+        list.appendChild(item);
+      });
+      tabPanel.appendChild(list);
+      setStatus(conversations.length + (conversations.length === 1 ? ' conversation' : ' conversations') + ' loaded');
+    }
+
+    function renderPeopleTab() {
+      if (!savedPeople || !savedPeople.length) {
+        tabPanel.appendChild(element(
+          'p',
+          'messaging-widget-empty',
+          'No saved people yet. Save people from their profiles to find them here. Your list is private and does not notify them.'
+        ));
+        setStatus('No saved people yet');
+        return;
+      }
+
+      var list = element('ul', 'messaging-widget-person-list');
+      list.setAttribute('aria-label', 'Saved People');
       savedPeople.forEach(function (person) {
-        var personBtn = element('button', 'messaging-widget-saved-chip');
-        personBtn.type = 'button';
-        personBtn.setAttribute('aria-label', 'Message ' + (person.displayName || '@' + person.username));
+        var item = element('li', 'messaging-widget-person-item');
+        var profileLink = element('a', 'messaging-widget-person-profile');
+        profileLink.href = '/profiles/' + encodeURIComponent(person.username);
         if (person.avatarUrl) {
-          var avatar = element('img', 'messaging-widget-saved-avatar');
+          var avatar = element('img', 'messaging-widget-person-avatar');
           avatar.src = person.avatarUrl;
           avatar.alt = '';
-          personBtn.appendChild(avatar);
+          avatar.loading = 'lazy';
+          profileLink.appendChild(avatar);
         } else {
-          var initial = element('span', 'messaging-widget-saved-initial', (person.displayName || person.username).substring(0, 1).toUpperCase());
-          personBtn.appendChild(initial);
+          profileLink.appendChild(element(
+            'span',
+            'messaging-widget-person-avatar messaging-widget-person-initial',
+            (person.displayName || person.username || '?').substring(0, 1).toUpperCase()
+          ));
         }
-        personBtn.appendChild(element('span', 'messaging-widget-saved-name', person.displayName || ('@' + person.username)));
-        personBtn.addEventListener('click', function () {
-          startDirectChat(person.id);
-        });
-        savedList.appendChild(personBtn);
+
+        var details = element('span', 'messaging-widget-person-details');
+        details.appendChild(element('strong', 'messaging-widget-person-name', person.displayName || ('@' + person.username)));
+        details.appendChild(element('span', 'messaging-widget-meta', '@' + person.username));
+        profileLink.appendChild(details);
+
+        var messageButton = actionButton(
+          'Message',
+          'messaging-widget-person-message',
+          function () {
+            returnInboxTab = 'people';
+            startDirectChat(person.id);
+          },
+          'Message @' + person.username
+        );
+
+        item.appendChild(profileLink);
+        item.appendChild(messageButton);
+        list.appendChild(item);
       });
-      savedSection.appendChild(savedList);
-      content.appendChild(savedSection);
+      tabPanel.appendChild(list);
+      setStatus(savedPeople.length + (savedPeople.length === 1 ? ' saved person' : ' saved people') + ' loaded');
     }
 
-    if (!conversations.length) {
-      if (savedPeople && savedPeople.length > 0) {
-        content.appendChild(element('p', 'messaging-widget-empty', 'No conversations started yet. Choose a saved person above to start chatting!'));
-      } else {
-        content.appendChild(element('p', 'messaging-widget-empty', 'No conversations yet. Save people from their profiles or message a seller on a drop to start chatting!'));
-      }
-      setStatus('No conversations yet');
-      return;
+    function activateTab(key) {
+      activeInboxTab = key === 'people' ? 'people' : 'conversations';
+      tabDefinitions.forEach(function (definition) {
+        var selected = definition.key === activeInboxTab;
+        var tab = tabButtons[definition.key];
+        tab.setAttribute('aria-selected', selected ? 'true' : 'false');
+        tab.tabIndex = selected ? 0 : -1;
+        tab.classList.toggle('is-active', selected);
+      });
+
+      tabPanel.setAttribute('aria-labelledby', tabButtons[activeInboxTab].id);
+      tabPanel.replaceChildren();
+      if (activeInboxTab === 'people') renderPeopleTab();
+      else renderConversationsTab();
     }
 
-    var list = element('ul', 'messaging-widget-list');
-    conversations.forEach(function (conversation) {
-      var item = element('li');
-      var label = conversation.conversationType === 'direct'
-        ? (conversation.otherParticipantUsername ? '@' + conversation.otherParticipantUsername : conversation.otherParticipant)
-        : ((conversation.releaseArtist || 'Listing') + ' — ' + (conversation.releaseTitle || 'Conversation'));
-      var button = element('button', 'messaging-widget-conversation' + (conversation.unreadCount > 0 ? ' is-unread' : ''));
-      button.type = 'button';
-      button.setAttribute('aria-label', label + ', ' + conversation.otherParticipant + (conversation.unreadCount > 0 ? ', ' + conversation.unreadCount + ' unread' : ''));
-      button.appendChild(element('span', 'messaging-widget-conversation-title', label));
-      button.appendChild(element('span', 'messaging-widget-meta', conversation.otherParticipant));
-      button.appendChild(element('span', 'messaging-widget-preview', conversation.lastMessage || 'No messages yet.'));
-      if (conversation.unreadCount > 0) {
-        button.appendChild(element('span', 'messaging-widget-meta', conversation.unreadCount + (conversation.unreadCount === 1 ? ' unread message' : ' unread messages')));
-      }
-      button.addEventListener('click', function () {
-        loadConversation(conversation.id);
+    tabDefinitions.forEach(function (definition, index) {
+      var tab = element('button', 'messaging-widget-tab', definition.label);
+      tab.type = 'button';
+      tab.id = definition.id;
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-controls', tabPanel.id);
+      tab.setAttribute('aria-selected', 'false');
+      tab.tabIndex = -1;
+      tab.addEventListener('click', function () {
+        activateTab(definition.key);
       });
-      item.appendChild(button);
-      list.appendChild(item);
+      tab.addEventListener('keydown', function (event) {
+        var targetIndex = index;
+        if (event.key === 'ArrowRight') targetIndex = (index + 1) % tabDefinitions.length;
+        else if (event.key === 'ArrowLeft') targetIndex = (index - 1 + tabDefinitions.length) % tabDefinitions.length;
+        else if (event.key === 'Home') targetIndex = 0;
+        else if (event.key === 'End') targetIndex = tabDefinitions.length - 1;
+        else return;
+        event.preventDefault();
+        var target = tabDefinitions[targetIndex];
+        activateTab(target.key);
+        tabButtons[target.key].focus();
+      });
+      tabButtons[definition.key] = tab;
+      tabList.appendChild(tab);
     });
-    content.appendChild(list);
-    setStatus(conversations.length + (conversations.length === 1 ? ' conversation' : ' conversations') + ' loaded');
+
+    content.appendChild(tabList);
+    content.appendChild(tabPanel);
+    activateTab(activeInboxTab);
   }
 
   function formatDate(value) {
@@ -214,6 +310,7 @@
   }
 
   function loadConversation(conversationId) {
+    returnInboxTab = activeInboxTab;
     activeConversationId = conversationId;
     content.replaceChildren(element('p', 'messaging-widget-loading', 'Loading conversation…'));
     setStatus('Loading conversation');
@@ -237,7 +334,8 @@
       : 'Direct conversation with @' + conversation.otherParticipant.username);
 
     var toolbar = element('div', 'messaging-widget-toolbar');
-    var backToConversations = actionButton('Conversations', '', loadInbox, 'Back to conversations');
+    var returnLabel = returnInboxTab === 'people' ? 'People' : 'Conversations';
+    var backToConversations = actionButton(returnLabel, '', loadInbox, 'Back to ' + returnLabel.toLowerCase());
     prependSvgIcon(backToConversations, '/assets/svg/conversation.svg', 'messaging-widget-icon');
     toolbar.appendChild(backToConversations);
     content.appendChild(toolbar);
@@ -359,14 +457,18 @@
 
   function syncResponsivePanelState() {
     syncMobileViewportSize();
-    var expandedMobilePanel = !desktopMedia.matches && !panel.hidden && !panel.classList.contains('is-minimized');
+    var isClosing = panel.classList.contains('is-closing');
+    var mobilePanelVisible = !desktopMedia.matches && !panel.hidden && !panel.classList.contains('is-minimized');
+    var expandedMobilePanel = mobilePanelVisible && !isClosing;
     panel.setAttribute('aria-modal', expandedMobilePanel ? 'true' : 'false');
 
     if (mobileBackdrop) {
-      mobileBackdrop.hidden = !expandedMobilePanel;
+      mobileBackdrop.hidden = !mobilePanelVisible;
+      mobileBackdrop.classList.toggle('is-open', expandedMobilePanel);
+      mobileBackdrop.classList.toggle('is-closing', mobilePanelVisible && isClosing);
       mobileBackdrop.setAttribute('aria-hidden', expandedMobilePanel ? 'false' : 'true');
     }
-    document.body.classList.toggle('messaging-mobile-panel-open', expandedMobilePanel);
+    document.body.classList.toggle('messaging-mobile-panel-open', mobilePanelVisible);
 
     if (dragHandle) {
       if (desktopMedia.matches) {
@@ -381,7 +483,8 @@
       }
     }
     triggers.forEach(function (trigger) {
-      trigger.setAttribute('aria-expanded', !panel.hidden && !panel.classList.contains('is-minimized') ? 'true' : 'false');
+      trigger.setAttribute('aria-expanded',
+        !panel.hidden && !panel.classList.contains('is-minimized') && !isClosing ? 'true' : 'false');
     });
   }
 
@@ -413,37 +516,69 @@
   }
 
   function openPanel(trigger) {
+    if (panelCloseTimer !== null) {
+      window.clearTimeout(panelCloseTimer);
+      panelCloseTimer = null;
+    }
     lastTrigger = trigger || lastTrigger;
     closeDesktopMenu();
     closeMobileAccountSurface();
     panel.hidden = false;
     panel.setAttribute('aria-hidden', 'false');
-    panel.classList.remove('is-minimized');
+    panel.style.transform = '';
+    panel.style.transition = '';
+    panel.classList.remove('is-minimized', 'is-closing', 'is-open');
     minimizeButton.textContent = '−';
     minimizeButton.setAttribute('aria-label', 'Minimize Messages window');
     desktopTriggers.forEach(function (item) { item.setAttribute('aria-expanded', 'true'); });
     syncResponsivePanelState();
     void panel.offsetWidth;
+    panel.classList.add('is-open');
+    syncResponsivePanelState();
     loadInbox().then(function () {
-      if (!panel.hidden) closeButton.focus();
+      if (!panel.hidden && panel.classList.contains('is-open')) closeButton.focus();
     });
   }
 
-  function closePanel(restoreFocus) {
-    panel.style.transform = '';
-    panel.style.transition = '';
+  function finishClosingPanel() {
+    if (panelCloseTimer !== null) {
+      window.clearTimeout(panelCloseTimer);
+      panelCloseTimer = null;
+    }
     panel.hidden = true;
+    panel.classList.remove('is-open', 'is-closing', 'is-minimized');
     panel.setAttribute('aria-hidden', 'true');
-    panel.classList.remove('is-minimized');
     activeConversationId = null;
     desktopTriggers.forEach(function (item) { item.setAttribute('aria-expanded', 'false'); });
     syncResponsivePanelState();
+  }
+
+  function closePanel(restoreFocus) {
+    if (panel.hidden) return;
+    if (panelCloseTimer !== null) {
+      window.clearTimeout(panelCloseTimer);
+      panelCloseTimer = null;
+    }
+
+    panel.style.transform = '';
+    panel.style.transition = '';
+    panel.classList.remove('is-open');
+    panel.classList.add('is-closing');
+    panel.setAttribute('aria-hidden', 'true');
+    activeConversationId = null;
+    desktopTriggers.forEach(function (item) { item.setAttribute('aria-expanded', 'false'); });
+    syncResponsivePanelState();
+
     if (restoreFocus && lastTrigger && document.contains(lastTrigger)) {
       var focusTarget = lastTrigger.closest('[hidden], [aria-hidden="true"]')
         ? document.getElementById(desktopMedia.matches ? 'desktop-you-trigger' : 'mobile-you-trigger')
         : lastTrigger;
       if (focusTarget) focusTarget.focus();
     }
+
+    var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion) finishClosingPanel();
+    else panelCloseTimer = window.setTimeout(finishClosingPanel, 180);
   }
 
   function toggleMinimized() {
@@ -460,6 +595,10 @@
   triggers.forEach(function (trigger) {
     trigger.addEventListener('click', function (event) {
       event.preventDefault();
+      if (!panel.hidden && panel.classList.contains('is-closing')) {
+        openPanel(trigger);
+        return;
+      }
       if (!panel.hidden && panel.classList.contains('is-minimized')) {
         lastTrigger = trigger;
         closeDesktopMenu();
