@@ -338,16 +338,17 @@
     const progressValue = Math.min(Math.abs(deltaY) / gesture.height, 1);
     if (motionPreference.matches) return;
     const softenedDelta = neighbor ? deltaY : deltaY * 0.22;
-    const depth = -progressValue * 150;
+    const effectProgress = neighbor ? progressValue : progressValue * 0.22;
+    const depth = -effectProgress * 150;
     // The card starts face-on; as it is drawn up/down, it tips toward the
     // horizontal deck plane and recedes in Z. Perspective creates the depth.
-    const rotation = direction > 0 ? progressValue * 78 : -progressValue * 78;
+    const rotation = direction > 0 ? effectProgress * 78 : -effectProgress * 78;
     const movingStage = gesture.slide.querySelector('.dig-sleeve-interaction');
     if (movingStage) {
       movingStage.style.transform = `translate3d(0, ${softenedDelta}px, ${depth}px) rotateX(${rotation}deg)`;
     }
 
-    const outgoingMetadataOpacity = String(Math.max(0, 1 - progressValue * 1.12));
+    const outgoingMetadataOpacity = String(Math.max(0, 1 - effectProgress * 1.12));
     ['.dig-listing-meta', '.dig-card-actions'].forEach((selector) => {
       const element = gesture.slide.querySelector(selector);
       if (element) element.style.opacity = outgoingMetadataOpacity;
