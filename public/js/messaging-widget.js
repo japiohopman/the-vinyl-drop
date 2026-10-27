@@ -113,6 +113,8 @@
   }
 
   function startDirectChat(profileId) {
+    var originatingTab = activeInboxTab;
+    returnInboxTab = originatingTab;
     setStatus('Opening conversation…');
     requestJson('/messages/profile/' + encodeURIComponent(profileId), {
       method: 'POST',
@@ -120,7 +122,7 @@
         'X-Messaging-Widget': '1'
       }
     }).then(function (data) {
-      return loadConversation(data.id);
+      return loadConversation(data.id, originatingTab);
     }).catch(function (error) {
       showError(error.message);
     });
@@ -309,8 +311,12 @@
     return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
   }
 
-  function loadConversation(conversationId) {
-    returnInboxTab = activeInboxTab;
+  function loadConversation(conversationId, originatingTab) {
+    if (originatingTab === 'people' || originatingTab === 'conversations') {
+      returnInboxTab = originatingTab;
+    } else if (!panel.classList.contains('is-conversation')) {
+      returnInboxTab = activeInboxTab;
+    }
     activeConversationId = conversationId;
     content.replaceChildren(element('p', 'messaging-widget-loading', 'Loading conversation…'));
     setStatus('Loading conversation');
@@ -335,7 +341,10 @@
 
     var toolbar = element('div', 'messaging-widget-toolbar');
     var returnLabel = returnInboxTab === 'people' ? 'People' : 'Conversations';
-    var backToConversations = actionButton(returnLabel, '', loadInbox, 'Back to ' + returnLabel.toLowerCase());
+    var backToConversations = actionButton(returnLabel, '', function () {
+      activeInboxTab = returnInboxTab;
+      loadInbox();
+    }, 'Back to ' + returnLabel.toLowerCase());
     prependSvgIcon(backToConversations, '/assets/svg/conversation.svg', 'messaging-widget-icon');
     toolbar.appendChild(backToConversations);
     content.appendChild(toolbar);
