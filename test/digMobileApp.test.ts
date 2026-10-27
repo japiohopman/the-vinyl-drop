@@ -139,6 +139,7 @@ describe('Mobile Dig app-like viewport', () => {
       { width: 360, height: 740 },
       { width: 375, height: 812 },
       { width: 414, height: 896 },
+      { width: 430, height: 932 },
     ]) {
       await loadPage(viewport.width, viewport.height);
       const dimensions = await page.evaluate(() => {
