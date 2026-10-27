@@ -315,7 +315,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.click('[data-message-minimize]');
     expect(await page.locator('#messaging-floating-window').evaluate((el) => el.classList.contains('is-minimized'))).toBe(false);
     await page.click('[data-message-close]');
-    await page.waitForSelector('#messaging-floating-window[hidden]');
+    await page.waitForSelector('#messaging-floating-window', { state: 'hidden' });
     expect(await page.locator('#messaging-floating-window').getAttribute('hidden')).not.toBeNull();
     expect(page.url()).not.toContain('/messages');
     expect(await page.evaluate(() => {
@@ -527,7 +527,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(await backdrop.isVisible()).toBe(true);
 
     await page.locator('[data-message-close]').click();
-    await page.waitForSelector('#messaging-floating-window[hidden]');
+    await page.waitForSelector('#messaging-floating-window', { state: 'hidden' });
     expect(await panel.getAttribute('hidden')).not.toBeNull();
     expect(await backdrop.isVisible()).toBe(false);
     expect(page.url()).not.toContain('/messages');
@@ -547,7 +547,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     });
     await page.locator('#messaging-mobile-backdrop').click({ position: { x: 4, y: 4 } });
     expect(await panel.evaluate((element) => element.classList.contains('is-closing'))).toBe(true);
-    await page.waitForSelector('#messaging-floating-window[hidden]');
+    await page.waitForSelector('#messaging-floating-window', { state: 'hidden' });
     expect(page.url()).not.toContain('/messages');
     expect(await page.locator('body').evaluate((element) => element.classList.contains('messaging-mobile-panel-open'))).toBe(false);
 
