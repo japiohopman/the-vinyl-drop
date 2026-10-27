@@ -299,6 +299,9 @@
       gesture.neighbor.classList.remove('is-dragging');
       gesture.neighbor.style.transform = '';
       gesture.neighbor.style.transition = '';
+      gesture.neighbor.style.visibility = '';
+      gesture.neighbor.style.opacity = '';
+      clearMetadataOverrides(gesture.neighbor);
     }
     gesture.neighborIndex = targetIndex;
     gesture.neighbor = neighbor || null;
