@@ -206,25 +206,86 @@ describe('Mobile Dig app-like viewport', () => {
     expect(state.stageAspectRatio).toBeLessThan(1.03);
     expect(Number(state.activeTitleOpacity)).toBe(1);
     expect(Number(state.activePriceOpacity)).toBe(1);
-    expect(await page.locator('[data-dig-slide].is-active [data-dig-flip]').isVisible()).toBe(true);
+    const flipControlStyle = await page.locator('[data-dig-slide].is-active [data-dig-flip]').evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { position: style.position, width: style.width, height: style.height, clip: style.clip };
+    });
+    expect(flipControlStyle.position).toBe('absolute');
+    expect(flipControlStyle.width).toBe('1px');
+    expect(flipControlStyle.height).toBe('1px');
+    expect(flipControlStyle.clip).not.toBe('auto');
   });
 
-  it('uses a horizontal swipe to draw the next card and the reverse swipe to return', async () => {
+  it('flips the same album on a horizontal finger swipe without changing the record index', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);
-    await swipeActive(-110, 0);
+    const initialLabel = await page.locator('[data-dig-slide].is-active').getAttribute('aria-label');
 
-    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
-    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('2 of 2');
-    expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
+    await swipeActive(-110, 0);
+    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toBe(initialLabel);
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(true);
+    expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-front').getAttribute('aria-hidden')).toBe('true');
+    expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back').getAttribute('aria-hidden')).toBe('false');
+
+    await swipeActive(110, 0);
+    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toBe(initialLabel);
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
     expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
       card.classList.contains('is-flipped')
     )).toBe(false);
-
-    await swipeActive(110, 0);
-    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('3 Feet High and Rising');
-    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
+  });
+
+  it('follows a real 3D deck arc during vertical drag, then settles the incoming record face-on', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812);
+
+    const stage = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const box = await stage.boundingBox();
+    if (!box) throw new Error('Active Dig sleeve has no bounding box');
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX, startY - 110, { steps: 8 });
+
+    const duringDrag = await page.evaluate(() => {
+      const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-dig-slide]'));
+      const active = slides.find((slide) => slide.classList.contains('is-active'))!;
+      const incoming = slides.find((slide) => slide !== active)!;
+      return {
+        outgoingTransform: active.style.transform,
+        incomingTransform: incoming.style.transform,
+        incomingVisibility: getComputedStyle(incoming).visibility,
+        outgoingMetaOpacity: Number(active.querySelector<HTMLElement>('.dig-listing-meta')!.style.opacity),
+        incomingMetaOpacity: Number(incoming.querySelector<HTMLElement>('.dig-listing-meta')!.style.opacity),
+      };
+    });
+
+    expect(duringDrag.outgoingTransform).toContain('rotateX(');
+    expect(duringDrag.incomingTransform).toContain('translate3d(');
+    expect(duringDrag.incomingTransform).toContain('rotateX(');
+    expect(duringDrag.outgoingTransform).not.toContain('scale(');
+    expect(duringDrag.incomingTransform).not.toContain('scale(');
+    expect(duringDrag.incomingVisibility).toBe('visible');
+    expect(duringDrag.outgoingMetaOpacity).toBeLessThan(1);
+    expect(duringDrag.incomingMetaOpacity).toBeGreaterThan(0);
+
+    await page.mouse.up();
+    await page.waitForTimeout(600);
+    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('2 of 2');
+    expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
+
+    const restingRotation = await page.locator('[data-dig-slide].is-active').evaluate((slide) => {
+      const matrix = new DOMMatrixReadOnly(getComputedStyle(slide).transform);
+      return Math.abs(Math.atan2(matrix.m32, matrix.m33) * 180 / Math.PI);
+    });
+    expect(restingRotation).toBeLessThan(1);
   });
 
   it('uses an upward swipe to discard a sleeve and a downward swipe to restore the previous sleeve', async () => {
@@ -242,7 +303,7 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
-  it('keeps the front/back flip separate from deck gestures and honors reduced motion', async () => {
+  it('keeps finger flipping and vertical record navigation working with reduced motion', async () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await loadPage(375, 812);
 
@@ -256,15 +317,16 @@ describe('Mobile Dig app-like viewport', () => {
     expect(state.visibleSlides).toBe(1);
     expect(state.cardTransform).toBe('none');
 
-    const flipButton = page.locator('[data-dig-slide].is-active [data-dig-flip]');
-    await flipButton.click();
+    await swipeActive(-110, 0);
+    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('3 Feet High and Rising');
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
     expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
       card.classList.contains('is-flipped')
     )).toBe(true);
-    expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back').getAttribute('aria-hidden')).toBe('false');
 
-    await swipeActive(-110, 0);
+    await swipeActive(0, -110);
     expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('2 of 2');
     expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
       card.classList.contains('is-flipped')
     )).toBe(false);
