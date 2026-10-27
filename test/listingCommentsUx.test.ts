@@ -233,6 +233,22 @@ describe('Listing comments UX (#220)', () => {
     expect(signedOutContent).toContain('/auth/login?next=%2Flistings%2Flisting-220');
   });
 
+  it('shows the explicit empty state and zero count when a listing has no comments', async () => {
+    const html = await ejs.renderFile(partialPath, {
+      ...viewLocals,
+      comments: [],
+      commentsPage: true,
+      currentUser: null,
+      commentError: null,
+      submittedContent: '',
+    }, { filename: partialPath });
+
+    expect(html).toContain('Community Discussion (0)');
+    expect(html).toContain('No comments yet. Be the first to start the discussion!');
+    expect(html).not.toContain('class="comment-card');
+    expect(html).toContain('/auth/login?next=%2Flistings%2Flisting-220%2Fcomments');
+  });
+
   it('renders listing context and a return link to the same listing without losing the sign-in next path', async () => {
     const html = await renderCommentsView();
     expect(html).toContain('<h1>Comments / Ask a question</h1>');
@@ -314,7 +330,8 @@ describe('Listing comments UX (#220)', () => {
     const listingHtml = await renderListingView();
     expect(listingHtml).toContain('class="listing-comments-entry" id="comments-entry" tabindex="-1"');
     expect(listingHtml).toContain('aria-controls="comments" aria-expanded="false"');
-    expect(listingHtml).toContain('aria-controls="comments" aria-expanded="false"');
+    expect(listingHtml).toContain('aria-label="Comments / Ask a question, 1 comment"');
+    expect(listingHtml).toContain('class="listing-comments-count">1</span>');
     expect(listingHtml).toContain('href="/listings/listing-220/comments"');
 
     const header = await renderHeader('/listings/listing-220/comments');
