@@ -1,5 +1,5 @@
 const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
-const ALLOWED_YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com']);
+const ALLOWED_YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com', 'music.youtube.com']);
 
 /**
  * Convert a seller-supplied YouTube watch/share URL to one canonical video ID.
@@ -32,6 +32,10 @@ export function normalizeYouTubeVideoId(input: unknown): string | null {
     url.hash !== ''
   ) {
     throw new Error('Use a secure YouTube watch or share URL.');
+  }
+
+  if (url.searchParams.has('list') || url.searchParams.has('listType')) {
+    throw new Error('Playlist URLs are not supported; enter a single-video YouTube link.');
   }
 
   const host = url.hostname.toLowerCase();

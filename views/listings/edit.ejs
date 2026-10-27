@@ -19,7 +19,7 @@
     <section class="release-youtube-preview" aria-labelledby="releaseYoutubePreviewTitle">
       <h2 id="releaseYoutubePreviewTitle">YouTube music preview</h2>
       <p class="release-youtube-preview-scope">YouTube preview for this release — shared by all listings of this release.</p>
-      <% if (youtubePreviewError) { %>
+      <% if (typeof youtubePreviewError !== 'undefined' && youtubePreviewError) { %>
         <p class="release-youtube-preview-error" role="alert">That link was not saved. Enter a valid YouTube watch/share URL (not an embed or playlist URL), or leave the field blank to remove the current preview.</p>
       <% } %>
       <form action="/listings/<%= encodeURIComponent(listing.id) %>/release-preview" method="POST" class="release-youtube-preview-form">
@@ -32,7 +32,7 @@
           inputmode="url"
           autocomplete="off"
           placeholder="https://youtu.be/VIDEO_ID"
-          value="<%= youtubePreviewError ? '' : (release.youtubeVideoId ? 'https://youtu.be/' + encodeURIComponent(release.youtubeVideoId) : '') %>"
+          value="<%= typeof youtubePreviewError !== 'undefined' && youtubePreviewError ? '' : (release.youtubeVideoId ? 'https://youtu.be/' + encodeURIComponent(release.youtubeVideoId) : '') %>"
         />
         <p class="release-youtube-preview-help">Paste a normal YouTube watch or share link. Leave blank and save to remove the preview. Adding a link does not verify the recording or whether embedding is enabled.</p>
         <button type="submit" class="btn btn-outline btn-md">Save YouTube preview</button>
