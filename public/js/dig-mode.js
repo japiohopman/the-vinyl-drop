@@ -151,7 +151,7 @@
     }
 
     activeIndex = targetIndex;
-    slides.forEach(clearFlip);
+    clearFlip(next);
     updateNavigation();
 
     const finish = () => {
@@ -161,6 +161,7 @@
       previous.style.transition = '';
       previous.style.opacity = '';
       previous.style.visibility = '';
+      clearFlip(previous);
       next.style.transform = '';
       next.style.transition = '';
       next.style.opacity = '';
@@ -308,7 +309,7 @@
     const softenedDelta = neighbor ? deltaY : deltaY * 0.22;
     const depth = -progressValue * 150;
     // The card starts face-on; as it is drawn up/down, it tips toward the
-    // horizontal deck plane and recedes in Z. Perspective—not scale()—creates depth.
+    // horizontal deck plane and recedes in Z. Perspective creates the depth.
     const rotation = direction > 0 ? progressValue * 78 : -progressValue * 78;
     gesture.slide.style.transform = `translate3d(0, ${softenedDelta}px, ${depth}px) rotateX(${rotation}deg)`;
 
