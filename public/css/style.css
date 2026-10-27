@@ -2388,6 +2388,7 @@ select.form-control {
 }
 
 .dig-page[data-reduced-motion="true"] .dig-slide,
+.dig-page[data-reduced-motion="true"] .dig-sleeve-interaction,
 .dig-page[data-reduced-motion="true"] .dig-sleeve-card,
 .dig-page[data-reduced-motion="true"] .dig-listing-meta,
 .dig-page[data-reduced-motion="true"] .dig-card-actions {
@@ -2401,6 +2402,7 @@ select.form-control {
 }
 
 .dig-page[data-reduced-motion="true"] .dig-slide.is-active,
+.dig-page[data-reduced-motion="true"] .dig-sleeve-interaction,
 .dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped {
   transform: none !important;
 }
