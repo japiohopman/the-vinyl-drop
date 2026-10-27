@@ -166,97 +166,109 @@ describe('Mobile Dig app-like viewport', () => {
     }
   });
 
-  it('keeps each sleeve on its own flat 3D plane and fades metadata for the active record only', async () => {
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
+  async function swipeActive(deltaX: number, deltaY: number): Promise<void> {
+    const stage = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const box = await stage.boundingBox();
+    if (!box) throw new Error('Active Dig sleeve has no bounding box');
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX + deltaX, startY + deltaY, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(450);
+  }
+
+  it('shows one square face-on sleeve with no tilted plane or other album cover at rest', async () => {
     await loadPage(375, 812);
-    await page.waitForTimeout(500);
-
-    const initial = await page.evaluate(() => {
-      const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-dig-slide]'));
-      const active = slides.find((slide) => slide.classList.contains('is-active'));
-      const inactive = slides.find((slide) => !slide.classList.contains('is-active'));
-      const plane = active?.querySelector<HTMLElement>('[data-dig-sleeve-plane]');
-      return {
-        slideCount: slides.length,
-        planeCount: document.querySelectorAll('[data-dig-sleeve-plane]').length,
-        planeTransform: plane ? getComputedStyle(plane).transform : 'missing',
-        activeTitleOpacity: active ? getComputedStyle(active.querySelector('.dig-listing-meta')!).opacity : 'missing',
-        inactiveTitleOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-listing-meta')!).opacity : 'missing',
-        activePriceOpacity: active ? getComputedStyle(active.querySelector('.dig-card-actions')!).opacity : 'missing',
-        inactivePriceOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-card-actions')!).opacity : 'missing',
-        documentWidth: document.documentElement.scrollWidth,
-      };
-    });
-
-    expect(initial.slideCount).toBe(2);
-    expect(initial.planeCount).toBe(initial.slideCount);
-    expect(initial.planeTransform).not.toBe('none');
-    expect(Number(initial.activeTitleOpacity)).toBeGreaterThan(0.99);
-    expect(Number(initial.inactiveTitleOpacity)).toBeLessThan(0.01);
-    expect(Number(initial.activePriceOpacity)).toBeGreaterThan(0.99);
-    expect(Number(initial.inactivePriceOpacity)).toBeLessThan(0.01);
-    expect(initial.documentWidth).toBeLessThanOrEqual(375);
-
-    await page.locator('[data-dig-viewer]').focus();
-    await page.keyboard.press('ArrowUp');
-    await page.waitForTimeout(500);
-
-    const next = await page.evaluate(() => {
-      const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-dig-slide]'));
-      const active = slides.find((slide) => slide.classList.contains('is-active'));
-      const inactive = slides.find((slide) => !slide.classList.contains('is-active'));
-      const plane = active?.querySelector<HTMLElement>('[data-dig-sleeve-plane]');
-      return {
-        activeLabel: active?.getAttribute('aria-label') ?? '',
-        planeTransform: plane ? getComputedStyle(plane).transform : 'missing',
-        activeTitleOpacity: active ? getComputedStyle(active.querySelector('.dig-listing-meta')!).opacity : 'missing',
-        inactiveTitleOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-listing-meta')!).opacity : 'missing',
-        activePriceOpacity: active ? getComputedStyle(active.querySelector('.dig-card-actions')!).opacity : 'missing',
-        inactivePriceOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-card-actions')!).opacity : 'missing',
-      };
-    });
-
-    expect(next.activeLabel).toContain('Buhloone Mindstate');
-    expect(next.planeTransform).not.toBe('none');
-    expect(Number(next.activeTitleOpacity)).toBeGreaterThan(0.99);
-    expect(Number(next.inactiveTitleOpacity)).toBeLessThan(0.01);
-    expect(Number(next.activePriceOpacity)).toBeGreaterThan(0.99);
-    expect(Number(next.inactivePriceOpacity)).toBeLessThan(0.01);
-  });
-
-  it('removes the 3D tilt and metadata transitions when reduced motion is requested', async () => {
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await loadPage(375, 812);
-    await page.waitForTimeout(50);
-
     const state = await page.evaluate(() => {
       const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-dig-slide]'));
       const active = slides.find((slide) => slide.classList.contains('is-active'));
-      const inactive = slides.find((slide) => !slide.classList.contains('is-active'));
-      const plane = active?.querySelector<HTMLElement>('[data-dig-sleeve-plane]');
+      const stage = active?.querySelector<HTMLElement>('[data-dig-swipe-area]');
+      const card = active?.querySelector<HTMLElement>('[data-dig-sleeve-card]');
+      const rect = stage?.getBoundingClientRect();
       return {
-        reducedMotionFlag: document.querySelector('[data-dig-experience]')?.getAttribute('data-reduced-motion'),
-        planeTransform: plane ? getComputedStyle(plane).transform : 'missing',
+        visibleSlides: slides.filter((slide) => getComputedStyle(slide).visibility === 'visible').length,
+        activeCount: slides.filter((slide) => slide.classList.contains('is-active')).length,
+        planeCount: document.querySelectorAll('[data-dig-sleeve-plane]').length,
+        cardTransform: card ? getComputedStyle(card).transform : 'missing',
+        stageAspectRatio: rect ? rect.width / rect.height : 0,
         activeTitleOpacity: active ? getComputedStyle(active.querySelector('.dig-listing-meta')!).opacity : 'missing',
-        inactiveTitleOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-listing-meta')!).opacity : 'missing',
         activePriceOpacity: active ? getComputedStyle(active.querySelector('.dig-card-actions')!).opacity : 'missing',
-        inactivePriceOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-card-actions')!).opacity : 'missing',
       };
     });
 
-    expect(state.reducedMotionFlag).toBe('true');
-    expect(state.planeTransform).toBe('none');
+    expect(state.visibleSlides).toBe(1);
+    expect(state.activeCount).toBe(1);
+    expect(state.planeCount).toBe(0);
+    expect(state.cardTransform).toBe('none');
+    expect(state.stageAspectRatio).toBeGreaterThan(0.97);
+    expect(state.stageAspectRatio).toBeLessThan(1.03);
     expect(Number(state.activeTitleOpacity)).toBe(1);
-    expect(Number(state.inactiveTitleOpacity)).toBe(0);
     expect(Number(state.activePriceOpacity)).toBe(1);
-    expect(Number(state.inactivePriceOpacity)).toBe(0);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-flip]').isVisible()).toBe(true);
+  });
 
-    await page.locator('[data-dig-viewer]').focus();
-    await page.keyboard.press('f');
+  it('uses a horizontal swipe to draw the next card and the reverse swipe to return', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812);
+    await swipeActive(-110, 0);
+
+    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('2 of 2');
+    expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(false);
+
+    await swipeActive(110, 0);
+    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('3 Feet High and Rising');
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
+    expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
+  });
+
+  it('uses an upward swipe to discard a sleeve and a downward swipe to restore the previous sleeve', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812);
+    await swipeActive(0, -110);
+
+    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('2 of 2');
+    expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
+
+    await swipeActive(0, 110);
+    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('3 Feet High and Rising');
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
+    expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
+  });
+
+  it('keeps the front/back flip separate from deck gestures and honors reduced motion', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await loadPage(375, 812);
+
+    const state = await page.evaluate(() => ({
+      reducedMotionFlag: document.querySelector('[data-dig-experience]')?.getAttribute('data-reduced-motion'),
+      visibleSlides: Array.from(document.querySelectorAll<HTMLElement>('[data-dig-slide]'))
+        .filter((slide) => getComputedStyle(slide).visibility === 'visible').length,
+      cardTransform: getComputedStyle(document.querySelector('[data-dig-slide].is-active [data-dig-sleeve-card]')!).transform,
+    }));
+    expect(state.reducedMotionFlag).toBe('true');
+    expect(state.visibleSlides).toBe(1);
+    expect(state.cardTransform).toBe('none');
+
+    const flipButton = page.locator('[data-dig-slide].is-active [data-dig-flip]');
+    await flipButton.click();
     expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
       card.classList.contains('is-flipped')
     )).toBe(true);
     expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back').getAttribute('aria-hidden')).toBe('false');
+
+    await swipeActive(-110, 0);
+    expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(false);
+    expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
   it('keeps the conventional Dig heading and browse controls unchanged on desktop', async () => {

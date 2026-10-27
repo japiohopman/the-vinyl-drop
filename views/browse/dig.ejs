@@ -77,9 +77,8 @@
               </div>
 
               <div class="dig-sleeve-interaction">
-                <div class="dig-sleeve-stage" data-dig-swipe-area role="group" aria-label="Album cover. Swipe left or right to flip the cover. Swipe up for the next record or down for the previous record.">
-                  <div class="dig-sleeve-plane" data-dig-sleeve-plane>
-                    <div class="dig-sleeve-card" data-dig-sleeve-card>
+                <div class="dig-sleeve-stage" data-dig-swipe-area role="group" aria-label="Album cover. Swipe left or right to browse records. Swipe up to discard this record and continue; swipe down to return to the previous record. Use the Flip control to view the back cover.">
+                  <div class="dig-sleeve-card" data-dig-sleeve-card>
                       <div class="dig-sleeve-face dig-sleeve-face-front" aria-hidden="false">
                         <% if (item.frontArtwork.sourceKind === 'placeholder') { %>
                           <div class="dig-missing-front" role="status">
@@ -102,7 +101,6 @@
                           </div>
                         <% } %>
                       </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -114,7 +112,7 @@
                   <% if (item.isTrade) { %><span class="dig-trade-note">Trade considered</span><% } %>
                 </p>
                 <a class="dig-listing-link" href="<%= item.url %>">Open listing <span aria-hidden="true">↗</span></a>
-                <button type="button" class="dig-flip-control" data-dig-flip aria-label="Flip cover to view the back" aria-pressed="false">Flip cover</button>
+                <button type="button" class="dig-flip-control" data-dig-flip aria-label="Flip cover to view the back" aria-pressed="false">Flip back</button>
               </div>
             </article>
           <% }); %>
@@ -133,7 +131,7 @@
         </button>
       </div>
 
-      <p class="dig-keyboard-note">Keyboard: ↑ next · ↓ previous · Home first · End last · F flips the cover.</p>
+      <p class="dig-keyboard-note">Keyboard: ← previous · → next · ↑ discard / next · ↓ restore previous · Home first · End last · F flips the cover.</p>
     </section>
   <% } %>
 </div>

@@ -21,7 +21,7 @@ const photo = (
 ): DigPhotoCandidate => ({ role, displayOrder, publicUrl, altText });
 
 describe('Dig navigation and flip state', () => {
-  it('keeps previous/next navigation inside the first and last slide boundaries', () => {
+  it('keeps deck/discard navigation inside the first and last slide boundaries', () => {
     expect(digState.isValidIndex(0, 3)).toBe(true);
     expect(digState.isValidIndex(2, 3)).toBe(true);
     expect(digState.isValidIndex(-1, 3)).toBe(false);
@@ -32,55 +32,26 @@ describe('Dig navigation and flip state', () => {
     expect(digState.adjacentIndex(2, 3, -1)).toBe(1);
     expect(digState.adjacentIndex(0, 1, 1)).toBeNull();
     expect(digState.adjacentIndex(0, 1, -1)).toBeNull();
-
-    expect(digState.shouldCommitSwipe(-80, 64, 1, 3, false)).toBe(true);
-    expect(digState.shouldCommitSwipe(30, 64, 1, 3, false)).toBe(false);
-    expect(digState.shouldCommitSwipe(80, 64, 3, 3, false)).toBe(false);
-    expect(digState.shouldCommitSwipe(-80, 64, 1, 3, true)).toBe(false);
   });
 
-  it('toggles front/back without changing the current slide state', () => {
-    const initialIndex = 1;
+  it('keeps front/back flipping as an explicit action independent of record navigation', () => {
+    const currentIndex = 1;
     const flipped = digState.nextFlipState(false);
     expect(flipped).toBe(true);
     expect(digState.nextFlipState(flipped)).toBe(false);
-    expect(initialIndex).toBe(1);
+    expect(currentIndex).toBe(1);
   });
 
-  it('uses one directional turn and a canonical resting angle for either swipe direction', () => {
-    expect(digState.flipSwipeAngles(false, 80, true)).toEqual({
-      animationAngle: 180,
-      restingAngle: 180,
-    });
-    expect(digState.flipSwipeAngles(false, -80, true)).toEqual({
-      animationAngle: -180,
-      restingAngle: 180,
-    });
-    expect(digState.flipSwipeAngles(true, 80, true)).toEqual({
-      animationAngle: 360,
-      restingAngle: 0,
-    });
-    expect(digState.flipSwipeAngles(true, -80, true)).toEqual({
-      animationAngle: 0,
-      restingAngle: 0,
-    });
-    expect(digState.flipSwipeAngles(true, -20, false)).toEqual({
-      animationAngle: 180,
-      restingAngle: 180,
-    });
-  });
-
-  it('normalizes the swipe transform without animating a second rotation', () => {
+  it('routes horizontal swipes to record navigation, not a flip animation', () => {
     const clientScript = fs.readFileSync(path.join(process.cwd(), 'public/js/dig-mode.js'), 'utf8');
 
-    expect(clientScript).toContain(
-      `card.style.transition = 'none';
-          card.style.transform = 'rotateY(' + angles.restingAngle + 'deg)';
-          void card.offsetHeight;
-          card.style.transform = '';
-          void card.offsetHeight;
-          card.style.transition = '';`
-    );
+    expect(clientScript).toContain("axis === 'horizontal'");
+    expect(clientScript).toContain("goingNext ? 'is-leaving-left' : 'is-leaving-right'");
+    expect(clientScript).toContain("goingNext ? 'is-entering-from-right' : 'is-entering-from-left'");
+    expect(clientScript).not.toContain('flipSwipeAngles');
+    expect(clientScript).not.toContain('rotateY(');
+    expect(clientScript).not.toContain('rotateX(');
+    expect(clientScript).not.toContain('scale(');
   });
 });
 
@@ -325,7 +296,7 @@ describe('Dig photo-role contract', () => {
     expect(html).toContain('href="/listings/listing-1"');
   });
 
-  it('renders an independent flat-perspective sleeve plane for every listing in the Dig stack', async () => {
+  it('renders a distinct straight-on sleeve card for every listing in the Dig stack', async () => {
     const viewPath = path.join(process.cwd(), 'views/browse/dig.ejs');
     const makeItem = (id: string, title: string, artist: string, priceFormatted: string) => ({
       id,
@@ -371,7 +342,8 @@ describe('Dig photo-role contract', () => {
     });
 
     expect((html.match(/data-dig-slide/g) ?? []).length).toBe(2);
-    expect((html.match(/data-dig-sleeve-plane/g) ?? []).length).toBe(2);
+    expect((html.match(/data-dig-sleeve-card/g) ?? []).length).toBe(2);
+    expect(html).not.toContain('data-dig-sleeve-plane');
     expect(html).toContain('First test release');
     expect(html).toContain('Second test release');
     expect(html).toContain('First artist');
@@ -418,13 +390,15 @@ describe('Dig photo-role contract', () => {
     const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     const css = rawCss.replace(/\r\n/g, '\n');
     expect(css).toContain('.dig-sleeve-image');
-    expect(css).toContain('.dig-sleeve-plane');
-    expect(css).toContain('rotateX(42deg)');
-    expect(css).toContain('.dig-slide.is-active .dig-listing-meta');
-    expect(css).toContain('transition-delay: 140ms;');
-    expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-plane');
+    expect(css).not.toContain('.dig-sleeve-plane');
+    expect(css).not.toContain('rotateX(42deg)');
+    expect(css).toContain('.dig-slide.is-leaving-left');
+    expect(css).toContain('.dig-slide.is-leaving-up');
+    expect(css).toContain('.dig-slide.is-entering-from-right');
+    expect(css).toContain('.dig-slide.is-entering-from-bottom');
+    expect(css).toContain('.dig-slide.is-active');
     expect(css).toContain('object-fit: contain');
-    expect(css).toContain('touch-action: pinch-zoom;');
+    expect(css).toContain('touch-action: none;');
     expect(view).toContain('Front cover not photographed');
     expect(view).not.toContain('Release artwork');
     expect(view).not.toContain('dig-artwork-badge');

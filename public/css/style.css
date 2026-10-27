@@ -1977,7 +1977,6 @@ select.form-control {
 .dig-viewer {
   min-width: 0;
   outline-offset: 4px;
-  perspective: 1300px;
 }
 
 .dig-viewer:focus-visible {
@@ -1988,9 +1987,8 @@ select.form-control {
   position: relative;
   min-width: 0;
   min-height: 720px;
-  perspective: 1300px;
-  transform-style: preserve-3d;
   isolation: isolate;
+  overflow: hidden;
 }
 
 .dig-slide {
@@ -2001,9 +1999,9 @@ select.form-control {
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
-  transform: translate3d(0, 130px, -100px) rotateX(-9deg) scale(.92);
+  transform: translate3d(0, 0, 0);
   transform-origin: 50% 50%;
-  transition: transform 440ms cubic-bezier(.2, .75, .25, 1), opacity 360ms ease, visibility 0s linear 440ms;
+  transition: transform 380ms cubic-bezier(.2, .75, .25, 1), opacity 280ms ease, visibility 0s linear 380ms;
 }
 
 .dig-slide.is-active {
@@ -2011,72 +2009,106 @@ select.form-control {
   visibility: visible;
   opacity: 1;
   pointer-events: auto;
-  transform: translate3d(0, 0, 0) rotateX(0) scale(1);
+  transform: translate3d(0, 0, 0);
   transition-delay: 0s;
 }
 
+/* Non-active records stay hidden. A second sleeve is only rendered during a transition. */
 .dig-slide.is-next,
 .dig-slide.is-previous {
-  z-index: 2;
-  visibility: visible;
-  opacity: .78;
+  z-index: 0;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: none;
   transition-delay: 0s;
 }
 
-.dig-slide.is-next {
-  transform: translate3d(0, 26px, -54px) rotateX(-5deg) scale(.965);
-  transform-origin: 50% 0%;
-}
-
-.dig-slide.is-previous {
-  transform: translate3d(0, -26px, -54px) rotateX(5deg) scale(.965);
-  transform-origin: 50% 100%;
-}
-
-/* Metadata belongs to the selected record, not to the background stack. */
 .dig-slide .dig-listing-meta,
 .dig-slide .dig-card-actions {
   opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 220ms ease, transform 260ms ease;
+  transform: translateY(6px);
+  transition: opacity 180ms ease, transform 220ms ease;
   transition-delay: 0s;
 }
 
-.dig-slide.is-active .dig-listing-meta,
-.dig-slide.is-active .dig-card-actions {
+.dig-slide.is-active:not(.is-entering-from-left):not(.is-entering-from-right):not(.is-entering-from-top):not(.is-entering-from-bottom) .dig-listing-meta,
+.dig-slide.is-active:not(.is-entering-from-left):not(.is-entering-from-right):not(.is-entering-from-top):not(.is-entering-from-bottom) .dig-card-actions {
   opacity: 1;
   transform: translateY(0);
-  transition-delay: 140ms;
+  transition-delay: 110ms;
 }
 
+.dig-slide.is-leaving-left,
+.dig-slide.is-leaving-right,
+.dig-slide.is-leaving-up,
+.dig-slide.is-leaving-down {
+  z-index: 4;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: none;
+  transition-delay: 0s;
+}
+
+.dig-slide.is-leaving-left {
+  transform: translate3d(-110%, 0, 0);
+}
+
+.dig-slide.is-leaving-right {
+  transform: translate3d(110%, 0, 0);
+}
+
+.dig-slide.is-leaving-up {
+  transform: translate3d(0, -110%, 0);
+}
+
+.dig-slide.is-leaving-down {
+  transform: translate3d(0, 110%, 0);
+}
+
+.dig-slide.is-leaving-left .dig-listing-meta,
+.dig-slide.is-leaving-left .dig-card-actions,
+.dig-slide.is-leaving-right .dig-listing-meta,
+.dig-slide.is-leaving-right .dig-card-actions,
 .dig-slide.is-leaving-up .dig-listing-meta,
 .dig-slide.is-leaving-up .dig-card-actions,
 .dig-slide.is-leaving-down .dig-listing-meta,
 .dig-slide.is-leaving-down .dig-card-actions {
   opacity: 0;
-  transform: translateY(-5px);
+  transform: translateY(0);
   transition-delay: 0s;
 }
 
-.dig-slide.is-leaving-up,
-.dig-slide.is-leaving-down {
-  z-index: 4;
+.dig-slide.is-entering-from-left,
+.dig-slide.is-entering-from-right,
+.dig-slide.is-entering-from-top,
+.dig-slide.is-entering-from-bottom {
+  z-index: 2;
   visibility: visible;
-  opacity: .12;
+  opacity: 1;
   pointer-events: none;
+  transition: none !important;
 }
 
-.dig-slide.is-leaving-up {
-  transform: translate3d(0, -112%, -30px) rotateX(-13deg) scale(.96);
+.dig-slide.is-entering-from-left {
+  transform: translate3d(-110%, 0, 0);
 }
 
-.dig-slide.is-leaving-down {
-  transform: translate3d(0, 112%, -30px) rotateX(13deg) scale(.96);
+.dig-slide.is-entering-from-right {
+  transform: translate3d(110%, 0, 0);
+}
+
+.dig-slide.is-entering-from-top {
+  transform: translate3d(0, -110%, 0);
+}
+
+.dig-slide.is-entering-from-bottom {
+  transform: translate3d(0, 110%, 0);
 }
 
 .dig-slide.is-dragging {
   transition: none !important;
-  will-change: transform;
+  will-change: transform, opacity;
 }
 
 .dig-listing-meta {
@@ -2109,14 +2141,10 @@ select.form-control {
 
 .dig-sleeve-stage {
   position: relative;
-  display: grid;
-  place-items: center;
   width: min(100%, 510px);
-  height: clamp(220px, 76vw, 390px);
+  aspect-ratio: 1 / 1;
   margin: 0 auto;
-  perspective: 1100px;
-  transform-style: preserve-3d;
-  touch-action: pinch-zoom;
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -2127,21 +2155,22 @@ select.form-control {
   outline-offset: 4px;
 }
 
-/* The plane owns the tilt; the inner card keeps its independent rotateY flip. */
-.dig-sleeve-plane {
+/* A neutral deck edge gives the card-stack cue without showing another record. */
+.dig-sleeve-stage::before {
+  content: "";
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  transform: translate(-50%, -50%) rotateX(42deg);
-  transform-origin: 50% 50%;
-  transform-style: preserve-3d;
-  filter: drop-shadow(0 16px 12px rgba(26, 26, 26, .23));
+  inset: 0;
+  z-index: 0;
+  transform: translate(4px, 4px);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-paper);
+  box-shadow: 3px 3px 0 var(--color-border-subtle);
+  pointer-events: none;
 }
 
 .dig-sleeve-card {
   position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
@@ -2278,29 +2307,32 @@ select.form-control {
 }
 
 .dig-flip-control {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+  color: var(--color-rust-accessible);
+  box-shadow: var(--shadow-tactile);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.dig-flip-control:hover {
+  background: var(--color-rust-accessible);
+  color: var(--color-white);
 }
 
 .dig-flip-control:focus-visible {
-  position: static;
-  width: auto;
-  height: auto;
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  overflow: visible;
-  clip: auto;
-  white-space: normal;
-  border: var(--border-thick);
-  background: var(--color-paper);
-  color: var(--color-ink);
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
 }
 
 .dig-trade-note {
@@ -2377,19 +2409,19 @@ select.form-control {
 
 .dig-page[data-reduced-motion="true"] .dig-slide,
 .dig-page[data-reduced-motion="true"] .dig-sleeve-card,
-.dig-page[data-reduced-motion="true"] .dig-sleeve-plane,
 .dig-page[data-reduced-motion="true"] .dig-listing-meta,
 .dig-page[data-reduced-motion="true"] .dig-card-actions {
   transition: none !important;
 }
 
-.dig-page[data-reduced-motion="true"] .dig-slide.is-active {
-  transform: none !important;
-}
-
 .dig-page[data-reduced-motion="true"] .dig-slide:not(.is-active) {
   visibility: hidden !important;
   opacity: 0 !important;
+  transform: none !important;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-slide.is-active,
+.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped {
   transform: none !important;
 }
 
@@ -2403,23 +2435,6 @@ select.form-control {
 .dig-page[data-reduced-motion="true"] .dig-slide.is-active .dig-card-actions {
   opacity: 1;
   visibility: visible;
-}
-
-.dig-page[data-reduced-motion="true"] .dig-sleeve-stage {
-  height: auto;
-  aspect-ratio: 1 / 1;
-}
-
-.dig-page[data-reduced-motion="true"] .dig-sleeve-plane {
-  position: relative;
-  top: auto;
-  left: auto;
-  transform: none !important;
-  filter: none;
-}
-
-.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped {
-  transform: none;
 }
 
 .dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped .dig-sleeve-face-front {
@@ -2482,7 +2497,7 @@ select.form-control {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* Mobile users navigate the crate with the vertical swipe; keep buttons on desktop. */
+  /* The swipe surface is the primary mobile browsing control; buttons remain accessible elsewhere. */
   .dig-nav-button {
     display: none;
   }
@@ -2517,7 +2532,9 @@ select.form-control {
 
 @media (prefers-reduced-motion: reduce) {
   .dig-slide,
-  .dig-sleeve-card {
+  .dig-sleeve-card,
+  .dig-listing-meta,
+  .dig-card-actions {
     transition: none !important;
   }
 }
