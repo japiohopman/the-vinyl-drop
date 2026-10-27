@@ -49,6 +49,7 @@ Columns:
 - `barcode`: `text` (Nullable).
 - `genre`: `text` (Nullable).
 - `coverArtUrl`: `text` (Nullable).
+- `youtubeVideoId`: `text` (Nullable, 11-character validated YouTube video ID shared by the release).
 - `externalSource`: `text` (Nullable).
 - `externalId`: `text` (Nullable).
 - `lastImportedAt`: `timestamp with time zone` (Nullable).
