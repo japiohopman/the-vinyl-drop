@@ -50,6 +50,8 @@ describe('Dig navigation and flip state', () => {
     expect(clientScript).toContain("goingNext ? 'is-entering-from-right' : 'is-entering-from-left'");
     expect(clientScript).not.toContain('flipSwipeAngles');
     expect(clientScript).not.toContain('rotateY(');
+    expect(clientScript).not.toContain('rotateX(');
+    expect(clientScript).not.toContain('scale(');
   });
 });
 
