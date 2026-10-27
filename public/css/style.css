@@ -2445,6 +2445,101 @@ select.form-control {
   transform: none;
 }
 
+@media (max-width: 680px) {
+  .dig-page {
+    margin-top: var(--space-4);
+    padding: 0 var(--space-3);
+  }
+
+  .dig-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dig-back-to-browse {
+    align-self: flex-start;
+  }
+
+  .dig-context-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dig-result-limit {
+    text-align: left;
+  }
+
+  .dig-explorer {
+    padding: var(--space-3);
+  }
+
+  .dig-crate-stack {
+    min-height: 480px;
+  }
+
+  .dig-sleeve-stage {
+    width: 100%;
+  }
+
+  .dig-listing-meta {
+    margin-bottom: var(--space-2);
+  }
+
+  .dig-listing-meta h2 {
+    font-size: clamp(1.2rem, 5vw, 1.65rem);
+  }
+
+  .dig-card-actions {
+    gap: var(--space-2);
+  }
+
+  .dig-navigation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The swipe surface is the primary mobile browsing control; buttons remain accessible elsewhere. */
+  .dig-nav-button {
+    display: none;
+  }
+
+  .dig-progress-wrap {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .dig-keyboard-note {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .dig-crate-stack {
+    min-height: 450px;
+  }
+
+  .dig-navigation {
+    gap: var(--space-2);
+  }
+
+  .dig-card-actions {
+    align-items: baseline;
+  }
+
+  .dig-listing-link {
+    flex: 0 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dig-slide,
+  .dig-sleeve-card,
+  .dig-listing-meta,
+  .dig-card-actions {
+    transition: none !important;
+  }
+}
+
+
 /* Responsive physical-listing detail page. Every grid track must be shrinkable on narrow screens. */
 .listing-detail-container {
   box-sizing: border-box;
