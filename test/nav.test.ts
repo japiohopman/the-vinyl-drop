@@ -357,7 +357,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(requests.filter((item) => item.method === 'POST' && item.path.endsWith('/read'))).toHaveLength(1);
   });
 
-  it('opens the shared messaging widget as a full-screen messenger on mobile', async () => {
+  it('opens the shared messaging widget as an inset modal on mobile', async () => {
     await page.setViewportSize({ width: 375, height: 812 });
     let unreadCount = 2;
     const requests: Array<{ path: string; method: string }> = [];
