@@ -537,6 +537,31 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     });
     expect(activeFocusId).toBe('mobile-you-trigger');
     expect(requests.some((item) => item.method === 'POST' && (item.path.endsWith('/read') || item.path.endsWith('/archive')))).toBe(false);
+
+    // Closing through the backdrop also stays on the current page and releases the scroll lock.
+    await page.click('#mobile-you-trigger');
+    await page.locator('#mobile-you-surface [data-messaging-widget-trigger]').click();
+    await page.waitForFunction(() => {
+      const browser = globalThis as unknown as { document: { querySelector(selector: string): { getAttribute(name: string): string | null } | null } };
+      return browser.document.querySelector('#messaging-floating-window')?.getAttribute('aria-modal') === 'true';
+    });
+    await page.locator('#messaging-mobile-backdrop').click({ position: { x: 4, y: 4 } });
+    expect(await panel.evaluate((element) => element.classList.contains('is-closing'))).toBe(true);
+    await page.waitForSelector('#messaging-floating-window[hidden]');
+    expect(page.url()).not.toContain('/messages');
+    expect(await page.locator('body').evaluate((element) => element.classList.contains('messaging-mobile-panel-open'))).toBe(false);
+
+    // Reduced motion closes immediately instead of playing the fade.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.click('#mobile-you-trigger');
+    await page.locator('#mobile-you-surface [data-messaging-widget-trigger]').click();
+    await page.waitForFunction(() => {
+      const browser = globalThis as unknown as { document: { querySelector(selector: string): { getAttribute(name: string): string | null } | null } };
+      return browser.document.querySelector('#messaging-floating-window')?.getAttribute('aria-modal') === 'true';
+    });
+    await page.locator('[data-message-close]').click();
+    expect(await panel.getAttribute('hidden')).not.toBeNull();
+    expect(await panel.evaluate((element) => element.classList.contains('is-closing'))).toBe(false);
   });
 
   it('keeps profile landing and empty Crate usable without horizontal overflow across phone, tablet, and desktop widths', async () => {
