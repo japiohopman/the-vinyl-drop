@@ -169,6 +169,19 @@ Filters:
 
 Listing results display clear metadata, price or trade badge, condition tags, and seller location.
 
+## Dig mode (`/dig`)
+
+Mobile Dig is a **single-card deck/discard interaction**, not a tilted or multi-sleeve 3D stack:
+
+- Exactly one physical sleeve is visible at rest, square and facing the viewer. A neutral card edge may hint at a deck, but other records' artwork must remain hidden.
+- Swipe left to draw the next record from the right; swipe right to return to the previous record from the left.
+- Swipe up to discard the active record off the top while the next record rises into place from below. Swipe down to restore the previous record from above.
+- The front/back photo flip is a separate explicit control; horizontal browsing never flips the cover.
+- Title, artist and price fade with the active-card transition. Non-active slides remain visually hidden and inert outside the transition.
+- Reduced-motion mode removes transition motion but retains a single active sleeve, the selected record, accessible metadata and flip state.
+- Use each listing's existing seller-selected front/back photo roles and existing missing-photo placeholders. Do not add a second artwork fallback or change upload/crop behavior.
+- The conventional desktop grid/list remains unchanged.
+
 ## Activity view (`/activity`)
 
 Community activity feed displaying recent community events:
