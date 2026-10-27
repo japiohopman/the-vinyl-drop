@@ -32,7 +32,7 @@
           inputmode="url"
           autocomplete="off"
           placeholder="https://youtu.be/VIDEO_ID"
-          value="<%= typeof youtubePreviewError !== 'undefined' && youtubePreviewError ? '' : (release.youtubeVideoId ? 'https://youtu.be/' + encodeURIComponent(release.youtubeVideoId) : '') %>"
+          value="<%= release.youtubeVideoId ? 'https://youtu.be/' + encodeURIComponent(release.youtubeVideoId) : '' %>"
         />
         <p class="release-youtube-preview-help">Paste a normal YouTube watch or share link. Leave blank and save to remove the preview. Adding a link does not verify the recording or whether embedding is enabled.</p>
         <button type="submit" class="btn btn-outline btn-md">Save YouTube preview</button>

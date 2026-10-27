@@ -13,7 +13,11 @@ export function normalizeYouTubeVideoId(input: unknown): string | null {
 
   const value = input.trim();
   if (value === '') return null;
-  if (value.length > 2048 || /[<>\u0000-\u001f]/.test(value)) {
+  const hasControlCharacter = Array.from(value).some((character) => {
+    const code = character.charCodeAt(0);
+    return code < 0x20 || code === 0x7f;
+  });
+  if (value.length > 2048 || value.includes('<') || value.includes('>') || hasControlCharacter) {
     throw new Error('Enter a valid YouTube watch or share URL.');
   }
 
