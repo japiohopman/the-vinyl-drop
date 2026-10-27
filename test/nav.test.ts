@@ -485,7 +485,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     // Starting a conversation from People returns to People, not to a duplicate /messages page.
     await page.locator('.messaging-widget-person-message').click();
     await page.waitForSelector('.messaging-widget-message-list');
-    expect(await page.locator('.messaging-floating-title').textContent()).toContain('Saved Digger');
+    expect(await page.locator('.messaging-floating-title').textContent()).toContain('@saved_digger');
     expect(await page.locator('.messaging-widget-toolbar button').getAttribute('aria-label')).toBe('Back to people');
     await page.locator('.messaging-widget-toolbar button').click();
     await page.waitForSelector('.messaging-widget-person-list');
