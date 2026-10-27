@@ -419,14 +419,20 @@
         var avatarParticipant = ownMessage
           ? { displayName: 'You', avatarUrl: conversation.currentUserAvatarUrl }
           : conversation.otherParticipant;
-        messageRow.appendChild(createAvatar(avatarParticipant, 'messaging-widget-message-avatar'));
+        var avatar = createAvatar(avatarParticipant, 'messaging-widget-message-avatar');
 
         var bubble = element('div', 'messaging-widget-message' + (ownMessage ? ' is-own' : ''));
         bubble.appendChild(element('div', 'messaging-widget-message-body', message.body));
         if (message.createdAt) {
           bubble.appendChild(element('time', 'messaging-widget-message-meta', formatDate(message.createdAt)));
         }
-        messageRow.appendChild(bubble);
+        if (ownMessage) {
+          messageRow.appendChild(bubble);
+          messageRow.appendChild(avatar);
+        } else {
+          messageRow.appendChild(avatar);
+          messageRow.appendChild(bubble);
+        }
         messageList.appendChild(messageRow);
       });
     }
