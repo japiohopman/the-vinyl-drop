@@ -252,10 +252,12 @@
 
     const horizontal = gesture.axis === 'horizontal';
     const delta = horizontal ? deltaX : deltaY;
-    const targetIndex = horizontal
-      ? activeIndex + (deltaX < 0 ? 1 : -1)
-      : activeIndex + (deltaY < 0 ? 1 : -1);
-    const hasTarget = digState.isValidIndex(targetIndex, slides.length);
+    const direction = horizontal
+      ? (deltaX < 0 ? 1 : -1)
+      : (deltaY < 0 ? 1 : -1);
+    const adjacentIndex = digState.adjacentIndex(activeIndex, slides.length, direction);
+    const targetIndex = adjacentIndex === null ? -1 : adjacentIndex;
+    const hasTarget = adjacentIndex !== null;
     const dimension = horizontal ? gesture.width : gesture.height;
     const progressValue = Math.min(Math.abs(delta) / dimension, 1);
     const softenedDelta = hasTarget ? delta : delta * 0.2;
