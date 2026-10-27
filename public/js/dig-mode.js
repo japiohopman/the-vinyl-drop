@@ -11,18 +11,8 @@
   const headerPosition = document.querySelector('[data-dig-header-position]');
   const progress = root.querySelector('[data-dig-progress]');
   const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const transitionMs = 380;
+  const transitionMs = 520;
   const swipeThreshold = 64;
-  const transientClasses = [
-    'is-leaving-left',
-    'is-leaving-right',
-    'is-leaving-up',
-    'is-leaving-down',
-    'is-entering-from-left',
-    'is-entering-from-right',
-    'is-entering-from-top',
-    'is-entering-from-bottom',
-  ];
 
   if (!viewer || slides.length === 0) return;
 
@@ -47,7 +37,7 @@
     if (button) {
       button.setAttribute('aria-pressed', String(flipped));
       button.setAttribute('aria-label', flipped ? 'Flip cover to view the front' : 'Flip cover to view the back');
-      button.textContent = flipped ? 'Flip front' : 'Flip back';
+      button.textContent = flipped ? 'Flip cover to front' : 'Flip cover to back';
     }
   }
 
@@ -60,6 +50,14 @@
     }
     setFlipState(slide, false);
   }
+
+  function clearMetadataOverrides(slide) {
+    ['.dig-listing-meta', '.dig-card-actions'].forEach((selector) => {
+      const element = slide.querySelector(selector);
+      if (element) element.style.opacity = '';
+    });
+  }
+
 
   function toggleFlip(slide) {
     const card = slide.querySelector('[data-dig-sleeve-card]');
@@ -81,12 +79,12 @@
 
   function paintSlides() {
     slides.forEach((slide, index) => {
-      slide.classList.remove('is-active', 'is-next', 'is-previous', 'is-dragging');
-      transientClasses.forEach((name) => slide.classList.remove(name));
+      slide.classList.remove('is-active', 'is-next', 'is-previous', 'is-leaving-up', 'is-leaving-down', 'is-dragging');
       slide.style.transform = '';
-      slide.style.opacity = '';
       slide.style.transition = '';
-
+      slide.style.opacity = '';
+      slide.style.visibility = '';
+      clearMetadataOverrides(slide);
       if (index === activeIndex) {
         slide.classList.add('is-active');
         slide.setAttribute('aria-hidden', 'false');
@@ -101,106 +99,155 @@
     updateNavigation();
   }
 
-  function releasePointer(stage, pointerId) {
-    try {
-      if (stage.hasPointerCapture(pointerId)) stage.releasePointerCapture(pointerId);
-    } catch {
-      // The browser may already have released the pointer.
-    }
-  }
-
-  function navigateTo(targetIndex, leavingClass, enteringClass) {
+  function navigateTo(targetIndex, direction) {
     if (isTransitioning || !digState.isValidIndex(targetIndex, slides.length) || targetIndex === activeIndex) return;
 
     const previous = slides[activeIndex];
     const next = slides[targetIndex];
     const reducedMotion = motionPreference.matches;
+    const previousStage = previous.querySelector('.dig-sleeve-interaction');
+    const nextStage = next.querySelector('.dig-sleeve-interaction');
+    const nextHasDragPose = Boolean(nextStage && nextStage.style.transform);
     window.clearTimeout(transitionTimer);
     window.clearTimeout(cancelGestureTimer);
     cancelGestureTimer = 0;
     isTransitioning = true;
     updateNavigation();
 
-    previous.classList.remove('is-active', 'is-next', 'is-previous', 'is-dragging');
-    transientClasses.forEach((name) => previous.classList.remove(name));
-    previous.classList.add(leavingClass);
+    if (!reducedMotion && !nextHasDragPose) {
+      if (nextStage) {
+        nextStage.style.transform = direction > 0
+          ? 'translate3d(0, 84%, -155px) rotateX(-76deg)'
+          : 'translate3d(0, -84%, -155px) rotateX(76deg)';
+      }
+    }
+
+    previous.classList.remove('is-dragging', 'is-active', 'is-next', 'is-previous');
+    previous.classList.add(direction > 0 ? 'is-leaving-up' : 'is-leaving-down');
     previous.setAttribute('aria-hidden', 'true');
     previous.inert = true;
 
-    next.classList.remove('is-next', 'is-previous', 'is-dragging');
-    transientClasses.forEach((name) => next.classList.remove(name));
-    next.classList.add('is-active', enteringClass);
+    next.classList.remove('is-next', 'is-previous', 'is-leaving-up', 'is-leaving-down', 'is-dragging');
+    next.classList.add('is-active');
     next.setAttribute('aria-hidden', 'false');
     next.inert = false;
 
-    // Capture the pointer's last dragged position before clearing its inline
-    // transform, so the outgoing card continues from the finger into its exit.
+    // Capture both current card poses first. A pointer-driven release continues
+    // from the exact drag position; button/keyboard navigation enters from depth.
     void previous.offsetHeight;
-    previous.style.transform = '';
-    previous.style.opacity = '';
-    previous.style.transition = '';
-    next.style.transform = '';
-    next.style.opacity = '';
-    next.style.transition = '';
+    void next.offsetHeight;
+    if (previousStage) {
+      previousStage.style.transform = '';
+      previousStage.style.visibility = '';
+    }
+    previous.style.visibility = '';
+    clearMetadataOverrides(previous);
+    clearMetadataOverrides(next);
+
+    if (nextHasDragPose || reducedMotion) {
+      if (nextStage) nextStage.style.transform = '';
+      next.style.visibility = '';
+    } else {
+      window.requestAnimationFrame(() => {
+        if (isTransitioning && next.classList.contains('is-active')) {
+          if (nextStage) nextStage.style.transform = '';
+          next.style.visibility = '';
+        }
+      });
+    }
 
     activeIndex = targetIndex;
-    slides.forEach(clearFlip);
+    clearFlip(next);
     updateNavigation();
 
     const finish = () => {
       window.clearTimeout(transitionTimer);
-      previous.classList.remove(leavingClass, 'is-dragging');
-      next.classList.remove(enteringClass, 'is-dragging');
-      previous.style.transform = '';
+      previous.classList.remove('is-leaving-up', 'is-leaving-down', 'is-dragging');
+      if (previousStage) {
+        previousStage.style.transform = '';
+        previousStage.style.transition = '';
+        previousStage.style.visibility = '';
+      }
       previous.style.opacity = '';
-      previous.style.transition = '';
-      next.style.transform = '';
+      previous.style.visibility = '';
+      clearFlip(previous);
+      if (nextStage) {
+        nextStage.style.transform = '';
+        nextStage.style.transition = '';
+        nextStage.style.visibility = '';
+      }
       next.style.opacity = '';
-      next.style.transition = '';
+      next.style.visibility = '';
+      clearMetadataOverrides(previous);
+      clearMetadataOverrides(next);
       isTransitioning = false;
       paintSlides();
     };
 
     if (reducedMotion) {
       finish();
-      return;
+    } else {
+      transitionTimer = window.setTimeout(finish, transitionMs);
     }
-
-    // Keep the incoming card off-canvas for one frame, then draw it into the
-    // single active-card position while the outgoing card exits above it.
-    void next.offsetHeight;
-    window.requestAnimationFrame(() => {
-      if (isTransitioning) next.classList.remove(enteringClass);
-    });
-    transitionTimer = window.setTimeout(finish, transitionMs);
   }
 
-  function clearDragStyles(currentGesture) {
-    const current = currentGesture || gesture;
-    if (!current) return;
-    if (gesture === current) gesture = null;
-
-    const { slide, stage, pointerId } = current;
+  function clearDragStyles() {
+    if (!gesture) return;
+    const { slide, stage, neighbor, pointerId } = gesture;
     stage.classList.remove('is-gesture-active');
     slide.classList.remove('is-dragging');
-    slide.style.transition = motionPreference.matches
-      ? 'none'
-      : 'transform 180ms ease-out, opacity 180ms ease-out';
-    slide.style.transform = '';
+    clearMetadataOverrides(slide);
+    if (neighbor) {
+      neighbor.classList.remove('is-dragging');
+      clearMetadataOverrides(neighbor);
+      neighbor.style.visibility = '';
+      neighbor.style.opacity = '';
+    }
+    const sleeveCard = slide.querySelector('[data-dig-sleeve-card]');
+    const movingStage = slide.querySelector('.dig-sleeve-interaction');
+    if (sleeveCard) {
+      sleeveCard.classList.remove('is-dragging');
+      sleeveCard.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
+      sleeveCard.style.transform = '';
+    }
+    if (movingStage) {
+      movingStage.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
+      movingStage.style.transform = '';
+      movingStage.style.visibility = '';
+    }
     slide.style.opacity = '';
-    releasePointer(stage, pointerId);
-
+    slide.style.visibility = '';
+    if (neighbor) {
+      const neighborStage = neighbor.querySelector('.dig-sleeve-interaction');
+      if (neighborStage) {
+        neighborStage.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
+        neighborStage.style.transform = '';
+        neighborStage.style.visibility = '';
+      }
+      neighbor.style.transition = '';
+      neighbor.style.visibility = '';
+      neighbor.style.opacity = '';
+    }
+    try {
+      if (stage.hasPointerCapture(pointerId)) stage.releasePointerCapture(pointerId);
+    } catch {
+      // The browser may already have released the pointer after pointercancel.
+    }
+    gesture = null;
     window.clearTimeout(cancelGestureTimer);
     cancelGestureTimer = window.setTimeout(() => {
       slide.style.transition = '';
+      if (neighbor) neighbor.style.transition = '';
       paintSlides();
       cancelGestureTimer = 0;
-    }, motionPreference.matches ? 0 : 190);
+    }, motionPreference.matches ? 0 : 220);
   }
 
   function handlePointerDown(event) {
     if (isTransitioning || gesture || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
 
+    // A previous cancelled gesture may still have a delayed paintSlides reset queued.
+    // Cancel it before a new drag starts so it cannot snap the sleeve back mid-gesture.
     if (cancelGestureTimer) {
       window.clearTimeout(cancelGestureTimer);
       cancelGestureTimer = 0;
@@ -218,16 +265,19 @@
       deltaY: 0,
       stage,
       slide,
-      width: Math.max(stage.getBoundingClientRect().width, 1),
+      neighbor: null,
+      neighborIndex: -1,
       height: Math.max(stage.getBoundingClientRect().height, 1),
+      width: Math.max(stage.getBoundingClientRect().width, 1),
       axis: 'pending',
+      horizontal: false,
     };
 
     stage.classList.add('is-gesture-active');
     try {
       stage.setPointerCapture(event.pointerId);
     } catch {
-      // Pointer capture is progressive enhancement; buttons and keyboard remain available.
+      // Pointer capture is a progressive enhancement; the buttons remain available.
     }
   }
 
@@ -236,74 +286,176 @@
     const deltaX = event.clientX - gesture.startX;
     const deltaY = event.clientY - gesture.startY;
 
-    if (gesture.axis === 'pending') {
-      if (Math.abs(deltaX) > 18 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15) {
-        gesture.axis = 'horizontal';
-        gesture.slide.classList.add('is-dragging');
-      } else if (Math.abs(deltaY) > 18 && Math.abs(deltaY) > Math.abs(deltaX) * 1.15) {
-        gesture.axis = 'vertical';
-        gesture.slide.classList.add('is-dragging');
+    if (gesture.axis === 'pending' && Math.abs(deltaX) > 18 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15) {
+      gesture.horizontal = true;
+      gesture.axis = 'horizontal';
+      const card = gesture.slide.querySelector('[data-dig-sleeve-card]');
+      gesture.slide.classList.add('is-dragging');
+      if (card) {
+        card.classList.add('is-dragging');
+        card.style.transition = 'none';
       }
+    } else if (gesture.axis === 'pending' && Math.abs(deltaY) > 4) {
+      gesture.axis = 'vertical';
     }
 
-    if (gesture.axis === 'pending') return;
+    if (gesture.horizontal) {
+      gesture.deltaX = deltaX;
+      event.preventDefault();
+      const card = gesture.slide.querySelector('[data-dig-sleeve-card]');
+      if (card && !motionPreference.matches) {
+        const startingAngle = card.classList.contains('is-flipped') ? 180 : 0;
+        const deltaAngle = Math.max(-180, Math.min(180, (deltaX / gesture.width) * 180));
+        card.style.transform = 'rotateY(' + (startingAngle + deltaAngle) + 'deg)';
+      }
+      return;
+    }
+    if (Math.abs(deltaY) < 4) return;
+
     event.preventDefault();
-    gesture.deltaX = deltaX;
     gesture.deltaY = deltaY;
+    const direction = deltaY < 0 ? 1 : -1;
+    const adjacent = digState.adjacentIndex(activeIndex, slides.length, direction);
+    const targetIndex = adjacent === null ? -1 : adjacent;
+    const neighbor = adjacent === null ? null : slides[adjacent];
+    if (gesture.neighbor && gesture.neighbor !== neighbor) {
+      gesture.neighbor.classList.remove('is-dragging');
+      const previousNeighborStage = gesture.neighbor.querySelector('.dig-sleeve-interaction');
+      if (previousNeighborStage) {
+        previousNeighborStage.style.transform = '';
+        previousNeighborStage.style.transition = '';
+        previousNeighborStage.style.visibility = '';
+      }
+      gesture.neighbor.style.transition = '';
+      gesture.neighbor.style.visibility = '';
+      gesture.neighbor.style.opacity = '';
+      clearMetadataOverrides(gesture.neighbor);
+    }
+    gesture.neighborIndex = targetIndex;
+    gesture.neighbor = neighbor || null;
 
-    const horizontal = gesture.axis === 'horizontal';
-    const delta = horizontal ? deltaX : deltaY;
-    const direction = horizontal
-      ? (deltaX < 0 ? 1 : -1)
-      : (deltaY < 0 ? 1 : -1);
-    const adjacentIndex = digState.adjacentIndex(activeIndex, slides.length, direction);
-    const targetIndex = adjacentIndex === null ? -1 : adjacentIndex;
-    const hasTarget = adjacentIndex !== null;
-    const softenedDelta = hasTarget ? delta : delta * 0.2;
-    const translate = horizontal
-      ? 'translate3d(' + String(softenedDelta) + 'px, 0, 0)'
-      : 'translate3d(0, ' + String(softenedDelta) + 'px, 0)';
+    gesture.slide.classList.add('is-dragging');
+    const progressValue = Math.min(Math.abs(deltaY) / gesture.height, 1);
+    if (motionPreference.matches) return;
+    const softenedDelta = neighbor ? deltaY : deltaY * 0.22;
+    const effectProgress = neighbor ? progressValue : progressValue * 0.22;
+    const depth = -effectProgress * 150;
+    // The card starts face-on; as it is drawn up/down, it tips toward the
+    // horizontal deck plane and recedes in Z. Perspective creates the depth.
+    const rotation = direction > 0 ? effectProgress * 78 : -effectProgress * 78;
+    const movingStage = gesture.slide.querySelector('.dig-sleeve-interaction');
+    if (movingStage) {
+      movingStage.style.transform = `translate3d(0, ${softenedDelta}px, ${depth}px) rotateX(${rotation}deg)`;
+    }
 
-    // Keep the sleeve at a constant, face-on size: the gesture changes only
-    // its position. Metadata fades separately when the card leaves the deck.
-    gesture.slide.style.transform = translate;
+    const outgoingMetadataOpacity = String(Math.max(0, 1 - effectProgress * 1.12));
+    ['.dig-listing-meta', '.dig-card-actions'].forEach((selector) => {
+      const element = gesture.slide.querySelector(selector);
+      if (element) element.style.opacity = outgoingMetadataOpacity;
+    });
+
+    if (neighbor) {
+      neighbor.classList.add('is-dragging');
+      neighbor.style.visibility = 'visible';
+      neighbor.style.opacity = '1';
+      const neighborDepth = 155 * (1 - progressValue);
+      const offset = direction > 0
+        ? 18 + (1 - progressValue) * gesture.height * 0.3
+        : -18 - (1 - progressValue) * gesture.height * 0.3;
+      const neighborRotation = direction > 0
+        ? -76 * (1 - progressValue)
+        : 76 * (1 - progressValue);
+      const neighborStage = neighbor.querySelector('.dig-sleeve-interaction');
+      if (neighborStage) {
+        neighborStage.style.transform = `translate3d(0, ${offset}px, -${neighborDepth}px) rotateX(${neighborRotation}deg)`;
+      }
+      const incomingMetadataOpacity = String(Math.min(1, progressValue * 1.25));
+      ['.dig-listing-meta', '.dig-card-actions'].forEach((selector) => {
+        const element = neighbor.querySelector(selector);
+        if (element) element.style.opacity = incomingMetadataOpacity;
+      });
+    }
   }
 
   function handlePointerUp(event) {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
-    const current = gesture;
-    const { deltaX, deltaY, axis, slide, stage, pointerId } = current;
+    const { deltaX, deltaY, neighborIndex, slide, stage, horizontal } = gesture;
+
+    if (horizontal) {
+      const card = slide.querySelector('[data-dig-sleeve-card]');
+      const shouldFlip = Math.abs(deltaX) >= swipeThreshold;
+      stage.classList.remove('is-gesture-active');
+      gesture = null;
+      try {
+        if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+      } catch {
+        // Already released by the browser.
+      }
+
+      if (card) {
+        const wasFlipped = card.classList.contains('is-flipped');
+        const draggedTransform = card.style.transform;
+        card.classList.remove('is-dragging');
+        slide.classList.remove('is-dragging');
+        slide.style.transform = '';
+        slide.style.transition = '';
+
+        if (motionPreference.matches) {
+          if (shouldFlip) setFlipState(slide, !wasFlipped);
+          card.style.transform = '';
+          card.style.transition = '';
+          return;
+        }
+
+        card.style.transition = 'transform 260ms cubic-bezier(.2, .75, .25, 1)';
+        card.style.transform = draggedTransform;
+        void card.offsetHeight;
+        const angles = digState.flipSwipeAngles(wasFlipped, deltaX, shouldFlip);
+        if (shouldFlip) setFlipState(slide, !wasFlipped);
+        card.style.transform = 'rotateY(' + angles.animationAngle + 'deg)';
+
+        window.setTimeout(() => {
+          // The directional animation may end at -180 or 360. Normalize to
+          // the CSS class's canonical angle with transitions disabled, or
+          // clearing the inline transform can trigger a second full rotation.
+          card.style.transition = 'none';
+          card.style.transform = 'rotateY(' + angles.restingAngle + 'deg)';
+          void card.offsetHeight;
+          card.style.transform = '';
+          void card.offsetHeight;
+          card.style.transition = '';
+          card.classList.remove('is-dragging');
+        }, 280);
+      }
+      return;
+    }
+
+    const shouldNavigate = digState.shouldCommitSwipe(
+      deltaY,
+      swipeThreshold,
+      neighborIndex,
+      slides.length,
+      false
+    );
+
+    // Store the target before releasing the pointer, because clearing a short
+    // gesture also clears the gesture state.
+    const targetIndex = neighborIndex;
+    const direction = deltaY < 0 ? 1 : -1;
     stage.classList.remove('is-gesture-active');
-    releasePointer(stage, pointerId);
-    gesture = null;
 
-    if (axis === 'horizontal' && Math.abs(deltaX) >= swipeThreshold) {
-      const goingNext = deltaX < 0;
-      const targetIndex = activeIndex + (goingNext ? 1 : -1);
-      if (digState.isValidIndex(targetIndex, slides.length)) {
-        navigateTo(
-          targetIndex,
-          goingNext ? 'is-leaving-left' : 'is-leaving-right',
-          goingNext ? 'is-entering-from-right' : 'is-entering-from-left'
-        );
-        return;
+    if (shouldNavigate) {
+      gesture = null;
+      try {
+        if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+      } catch {
+        // Already released by the browser.
       }
+      navigateTo(targetIndex, direction);
+      return;
     }
 
-    if (axis === 'vertical' && Math.abs(deltaY) >= swipeThreshold) {
-      const discarding = deltaY < 0;
-      const targetIndex = activeIndex + (discarding ? 1 : -1);
-      if (digState.isValidIndex(targetIndex, slides.length)) {
-        navigateTo(
-          targetIndex,
-          discarding ? 'is-leaving-up' : 'is-leaving-down',
-          discarding ? 'is-entering-from-bottom' : 'is-entering-from-top'
-        );
-        return;
-      }
-    }
-
-    clearDragStyles(current);
+    clearDragStyles();
   }
 
   slides.forEach((slide) => {
@@ -321,7 +473,9 @@
       stage.addEventListener('pointermove', handlePointerMove);
       stage.addEventListener('pointerup', handlePointerUp);
       stage.addEventListener('pointercancel', (event) => {
-        if (gesture && event.pointerId === gesture.pointerId) clearDragStyles();
+        if (!gesture || event.pointerId !== gesture.pointerId) return;
+        stage.classList.remove('is-gesture-active');
+        clearDragStyles();
       });
       stage.addEventListener('lostpointercapture', (event) => {
         if (gesture && event.pointerId === gesture.pointerId) clearDragStyles();
@@ -329,40 +483,26 @@
     }
   });
 
-  if (previousButton) {
-    previousButton.addEventListener('click', () => {
-      navigateTo(activeIndex - 1, 'is-leaving-down', 'is-entering-from-top');
-    });
-  }
-  if (nextButton) {
-    nextButton.addEventListener('click', () => {
-      navigateTo(activeIndex + 1, 'is-leaving-up', 'is-entering-from-bottom');
-    });
-  }
+  if (previousButton) previousButton.addEventListener('click', () => navigateTo(activeIndex - 1, -1));
+  if (nextButton) nextButton.addEventListener('click', () => navigateTo(activeIndex + 1, 1));
 
   viewer.addEventListener('keydown', (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const target = event.target;
     if (target instanceof Element && target.closest('button, a, input, select, textarea, summary')) return;
 
-    if (event.key === 'ArrowLeft') {
+    if (event.key === 'ArrowUp' || event.key === 'PageUp') {
       event.preventDefault();
-      navigateTo(activeIndex - 1, 'is-leaving-right', 'is-entering-from-left');
-    } else if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      navigateTo(activeIndex + 1, 'is-leaving-left', 'is-entering-from-right');
-    } else if (event.key === 'ArrowUp' || event.key === 'PageUp') {
-      event.preventDefault();
-      navigateTo(activeIndex + 1, 'is-leaving-up', 'is-entering-from-bottom');
+      navigateTo(activeIndex + 1, 1);
     } else if (event.key === 'ArrowDown' || event.key === 'PageDown') {
       event.preventDefault();
-      navigateTo(activeIndex - 1, 'is-leaving-down', 'is-entering-from-top');
+      navigateTo(activeIndex - 1, -1);
     } else if (event.key === 'Home') {
       event.preventDefault();
-      navigateTo(0, activeIndex > 0 ? 'is-leaving-down' : 'is-leaving-up', activeIndex > 0 ? 'is-entering-from-top' : 'is-entering-from-bottom');
+      navigateTo(0, -1);
     } else if (event.key === 'End') {
       event.preventDefault();
-      navigateTo(slides.length - 1, activeIndex < slides.length - 1 ? 'is-leaving-up' : 'is-leaving-down', activeIndex < slides.length - 1 ? 'is-entering-from-bottom' : 'is-entering-from-top');
+      navigateTo(slides.length - 1, 1);
     } else if (event.key.toLowerCase() === 'f') {
       event.preventDefault();
       const button = slides[activeIndex].querySelector('[data-dig-flip]');
