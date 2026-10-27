@@ -279,7 +279,12 @@ describe('Mobile Dig app-like viewport', () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(768, 900);
 
-    await page.locator('[data-dig-next]').click();
+    await page.locator('[data-dig-next]').evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement) || button.disabled) {
+        throw new Error('Dig next-record control is missing or disabled');
+      }
+      button.click();
+    });
     await page.waitForTimeout(90);
     const inTransition = await page.locator('[data-dig-slide].is-active .dig-sleeve-interaction').evaluate((sleeve) => {
       const matrix = new DOMMatrixReadOnly(getComputedStyle(sleeve).transform);
