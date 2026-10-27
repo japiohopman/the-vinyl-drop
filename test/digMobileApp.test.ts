@@ -206,7 +206,7 @@ describe('Mobile Dig app-like viewport', () => {
     expect(state.stageAspectRatio).toBeLessThan(1.03);
     expect(Number(state.activeTitleOpacity)).toBe(1);
     expect(Number(state.activePriceOpacity)).toBe(1);
-    expect(await page.locator('[data-dig-flip]').isVisible()).toBe(true);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-flip]').isVisible()).toBe(true);
   });
 
   it('uses a horizontal swipe to draw the next card and the reverse swipe to return', async () => {
