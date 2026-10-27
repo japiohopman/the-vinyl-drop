@@ -299,6 +299,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
         // The seed/idempotency fixture uses the current listing_photos schema.
         '0014_add_listing_photo_roles.sql',
         '0015_dismiss_completed_listings.sql',
+      '0018_add_release_youtube_preview.sql',
       ];
 
       for (const file of migrationFiles) {
@@ -388,6 +389,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
         '0003_brainy_scarlet_witch.sql',
         '0004_mighty_spacker_dave.sql',
       '0015_dismiss_completed_listings.sql',
+      '0018_add_release_youtube_preview.sql',
       ];
 
       for (const file of migrationFiles) {
@@ -434,6 +436,7 @@ describe('Staging Seed Script Safety & Idempotency', () => {
         '0003_brainy_scarlet_witch.sql',
         '0004_mighty_spacker_dave.sql',
       '0015_dismiss_completed_listings.sql',
+      '0018_add_release_youtube_preview.sql',
       ];
 
       for (const file of migrationFiles) {
