@@ -183,7 +183,10 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       messagingEnabled: true,
     });
 
-    expect(htmlEnabled).toContain('/messages');
+    expect(htmlEnabled).not.toContain('href="/messages"');
+    expect(htmlEnabled).toContain('data-messaging-widget-trigger');
+    expect(htmlEnabled).toContain('<button type="button" class="desktop-you-menu-item messaging-widget-trigger"');
+    expect(htmlEnabled).toContain('<button type="button" class="mobile-you-action-link messaging-widget-trigger"');
     expect(htmlEnabled).toContain('Messages');
 
     const htmlDisabled = await renderNav({
@@ -312,7 +315,9 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.click('[data-message-minimize]');
     expect(await page.locator('#messaging-floating-window').evaluate((el) => el.classList.contains('is-minimized'))).toBe(false);
     await page.click('[data-message-close]');
+    await page.waitForSelector('#messaging-floating-window[hidden]');
     expect(await page.locator('#messaging-floating-window').getAttribute('hidden')).not.toBeNull();
+    expect(page.url()).not.toContain('/messages');
     expect(await page.evaluate(() => {
       const browser = globalThis as unknown as { document: { activeElement: { id: string } | null } };
       return browser.document.activeElement?.id;
@@ -346,6 +351,25 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
 
       if (pathname === '/messages/widget/unread-count') {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ unreadCount }) });
+        return;
+      }
+      if (pathname === '/messages/profile/saved-profile-1' && requestInfo.method() === 'POST') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'direct-1' }) });
+        return;
+      }
+      if (pathname === '/messages/widget/direct-1') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'direct-1',
+            conversationType: 'direct',
+            title: 'Direct conversation with @saved_digger',
+            unreadCount: 0,
+            otherParticipant: { username: 'saved_digger', displayName: 'Saved Digger' },
+            messages: [],
+          }),
+        });
         return;
       }
       if (pathname === '/messages/widget/data') {
@@ -429,9 +453,14 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(await backdrop.isVisible()).toBe(true);
     expect(await panel.getAttribute('aria-modal')).toBe('true');
     expect(page.url()).not.toContain('/messages');
-    // Opening the widget starts an asynchronous inbox request; wait for the server data to render.
-    await page.waitForSelector('.messaging-widget-saved-section', { state: 'visible' });
-    expect(await page.locator('.messaging-widget-saved-list').textContent()).toContain('Saved Digger');
+    // The inbox separates current conversations from private Saved People in accessible tabs.
+    await page.waitForSelector('[role="tablist"][aria-label="Messages and people"]', { state: 'visible' });
+    expect(await page.locator('#messaging-widget-tab-conversations').getAttribute('aria-selected')).toBe('true');
+    await page.locator('#messaging-widget-tab-people').click();
+    await page.waitForSelector('.messaging-widget-person-list', { state: 'visible' });
+    expect(await page.locator('.messaging-widget-person-list').textContent()).toContain('Saved Digger');
+    expect(await page.locator('.messaging-widget-person-profile').getAttribute('href')).toBe('/profiles/saved_digger');
+    expect(await page.locator('.messaging-widget-person-message').getAttribute('aria-label')).toBe('Message @saved_digger');
 
     const panelLayout = await panel.evaluate((element) => {
       const browser = globalThis as unknown as {
@@ -442,11 +471,27 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       return { top: rect.top, left: rect.left, width: rect.width, height: rect.height, position: styles.position };
     });
     expect(panelLayout.position).toBe('fixed');
-    expect(panelLayout.top).toBeCloseTo(0, 0);
-    expect(panelLayout.left).toBeCloseTo(0, 0);
-    expect(panelLayout.width).toBeCloseTo(375, 0);
+    expect(panelLayout.top).toBeGreaterThanOrEqual(12);
+    expect(panelLayout.top).toBeLessThan(14);
+    expect(panelLayout.left).toBeGreaterThanOrEqual(12);
+    expect(panelLayout.left).toBeLessThan(14);
+    expect(panelLayout.width).toBeCloseTo(351, 0);
     expect(panelLayout.height).toBeGreaterThan(760);
+    expect(await panel.evaluate((element) => {
+      const browser = globalThis as unknown as { window: { getComputedStyle: (target: unknown) => { borderRadius: string } } };
+      return browser.window.getComputedStyle(element).borderRadius;
+    })).toBe('5px');
 
+    // Starting a conversation from People returns to People, not to a duplicate /messages page.
+    await page.locator('.messaging-widget-person-message').click();
+    await page.waitForSelector('.messaging-widget-message-list');
+    expect(await page.locator('.messaging-floating-title').textContent()).toContain('Saved Digger');
+    expect(await page.locator('.messaging-widget-toolbar button').getAttribute('aria-label')).toBe('Back to people');
+    await page.locator('.messaging-widget-toolbar button').click();
+    await page.waitForSelector('.messaging-widget-person-list');
+    expect(page.url()).not.toContain('/messages');
+
+    await page.locator('#messaging-widget-tab-conversations').click();
     await page.locator('.messaging-widget-conversation').click();
     await page.waitForSelector('.messaging-widget-message');
     expect(await page.locator('.messaging-widget-message').textContent()).toContain('Hi from seller');
@@ -482,8 +527,10 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(await backdrop.isVisible()).toBe(true);
 
     await page.locator('[data-message-close]').click();
+    await page.waitForSelector('#messaging-floating-window[hidden]');
     expect(await panel.getAttribute('hidden')).not.toBeNull();
     expect(await backdrop.isVisible()).toBe(false);
+    expect(page.url()).not.toContain('/messages');
     const activeFocusId = await page.evaluate(() => {
       const browser = globalThis as unknown as { document: { activeElement: { id: string } | null } };
       return browser.document.activeElement?.id;
