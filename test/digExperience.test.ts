@@ -325,7 +325,7 @@ describe('Dig photo-role contract', () => {
     expect(html).toContain('href="/listings/listing-1"');
   });
 
-  it('renders an independent flat-perspective sleeve plane for every listing in the Dig stack', async () => {
+  it('renders a distinct straight-on sleeve card for every listing in the Dig stack', async () => {
     const viewPath = path.join(process.cwd(), 'views/browse/dig.ejs');
     const makeItem = (id: string, title: string, artist: string, priceFormatted: string) => ({
       id,
@@ -371,7 +371,8 @@ describe('Dig photo-role contract', () => {
     });
 
     expect((html.match(/data-dig-slide/g) ?? []).length).toBe(2);
-    expect((html.match(/data-dig-sleeve-plane/g) ?? []).length).toBe(2);
+    expect((html.match(/data-dig-sleeve-card/g) ?? []).length).toBe(2);
+    expect(html).not.toContain('data-dig-sleeve-plane');
     expect(html).toContain('First test release');
     expect(html).toContain('Second test release');
     expect(html).toContain('First artist');
@@ -418,11 +419,13 @@ describe('Dig photo-role contract', () => {
     const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     const css = rawCss.replace(/\r\n/g, '\n');
     expect(css).toContain('.dig-sleeve-image');
-    expect(css).toContain('.dig-sleeve-plane');
-    expect(css).toContain('rotateX(42deg)');
-    expect(css).toContain('.dig-slide.is-active .dig-listing-meta');
-    expect(css).toContain('transition-delay: 140ms;');
-    expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-plane');
+    expect(css).not.toContain('.dig-sleeve-plane');
+    expect(css).not.toContain('rotateX(42deg)');
+    expect(css).toContain('.dig-slide.is-leaving-left');
+    expect(css).toContain('.dig-slide.is-leaving-up');
+    expect(css).toContain('.dig-slide.is-entering-from-right');
+    expect(css).toContain('.dig-slide.is-entering-from-bottom');
+    expect(css).toContain('.dig-slide.is-active');
     expect(css).toContain('object-fit: contain');
     expect(css).toContain('touch-action: pinch-zoom;');
     expect(view).toContain('Front cover not photographed');
