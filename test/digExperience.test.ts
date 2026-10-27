@@ -325,6 +325,61 @@ describe('Dig photo-role contract', () => {
     expect(html).toContain('href="/listings/listing-1"');
   });
 
+  it('renders an independent flat-perspective sleeve plane for every listing in the Dig stack', async () => {
+    const viewPath = path.join(process.cwd(), 'views/browse/dig.ejs');
+    const makeItem = (id: string, title: string, artist: string, priceFormatted: string) => ({
+      id,
+      title,
+      artist,
+      releaseYear: 1994,
+      format: 'Vinyl, LP, Album',
+      priceFormatted,
+      isTrade: false,
+      mediaCondition: 'VG+',
+      sleeveCondition: 'VG',
+      sellerUsername: 'crate_digger',
+      sellerLocation: 'Amsterdam',
+      url: '/listings/' + id,
+      frontArtwork: {
+        src: '/assets/vinyl-placeholder.svg',
+        altText: 'Front cover of the physical sleeve for ' + title,
+        sourceLabel: 'Placeholder for missing seller photo',
+        sourceKind: 'placeholder',
+      },
+      backArtwork: null,
+      conditionSummary: 'Media VG+ · sleeve VG',
+    });
+    const html = await ejs.renderFile(viewPath, {
+      title: 'Crate Dig',
+      hasMore: false,
+      totalCount: 2,
+      filters: {
+        q: '',
+        genre: '',
+        condition: '',
+        minPrice: '',
+        maxPrice: '',
+        sort: 'newest',
+        formats: [],
+        whiteLabel: false,
+        view: 'dig',
+      },
+      items: [
+        makeItem('listing-alpha', 'First test release', 'First artist', '€10.00'),
+        makeItem('listing-beta', 'Second test release', 'Second artist', '€12.00'),
+      ],
+    });
+
+    expect((html.match(/data-dig-slide/g) ?? []).length).toBe(2);
+    expect((html.match(/data-dig-sleeve-plane/g) ?? []).length).toBe(2);
+    expect(html).toContain('First test release');
+    expect(html).toContain('Second test release');
+    expect(html).toContain('First artist');
+    expect(html).toContain('Second artist');
+    expect(html).toContain('€10.00');
+    expect(html).toContain('€12.00');
+  });
+
   it('uses one shared client fallback handler for artwork and broken profile avatars', () => {
     const fallbackScript = fs.readFileSync(path.join(process.cwd(), 'public/js/artwork-fallback.js'), 'utf8');
     const activityView = fs.readFileSync(path.join(process.cwd(), 'views/activity/index.ejs'), 'utf8');
@@ -363,6 +418,11 @@ describe('Dig photo-role contract', () => {
     const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     const css = rawCss.replace(/\r\n/g, '\n');
     expect(css).toContain('.dig-sleeve-image');
+    expect(css).toContain('.dig-sleeve-plane');
+    expect(css).toContain('rotateX(42deg)');
+    expect(css).toContain('.dig-slide.is-active .dig-listing-meta');
+    expect(css).toContain('transition-delay: 140ms;');
+    expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-plane');
     expect(css).toContain('object-fit: contain');
     expect(css).toContain('touch-action: pinch-zoom;');
     expect(view).toContain('Front cover not photographed');
