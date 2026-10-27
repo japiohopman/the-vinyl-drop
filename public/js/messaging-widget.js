@@ -13,6 +13,7 @@
   var content = panel.querySelector('[data-message-widget-content]');
   var status = panel.querySelector('[data-message-widget-status]');
   var title = panel.querySelector('[data-message-widget-title]');
+  var headerAvatar = panel.querySelector('[data-message-widget-avatar]');
   var dragHandle = panel.querySelector('[data-message-drag-handle]');
   var minimizeButton = panel.querySelector('[data-message-minimize]');
   var closeButton = panel.querySelector('[data-message-close]');
@@ -44,6 +45,43 @@
     icon.setAttribute('aria-hidden', 'true');
     icon.decoding = 'async';
     node.insertBefore(icon, node.firstChild);
+  }
+
+  function createAvatar(participant, className) {
+    var person = participant || {};
+    var name = person.displayName || person.username || person.name || 'You';
+    var avatar;
+
+    if (person.avatarUrl) {
+      avatar = element('img', className + ' messaging-avatar-image');
+      avatar.src = person.avatarUrl;
+      avatar.alt = '';
+      avatar.loading = 'lazy';
+      avatar.decoding = 'async';
+    } else {
+      avatar = element('span', className + ' messaging-avatar-fallback',
+        String(name).trim().substring(0, 1).toUpperCase() || '?');
+      avatar.setAttribute('aria-hidden', 'true');
+    }
+
+    return avatar;
+  }
+
+  function setHeaderAvatar(participant) {
+    if (!headerAvatar) return;
+    headerAvatar.replaceChildren();
+    if (participant) {
+      headerAvatar.appendChild(createAvatar(participant, 'messaging-floating-profile-avatar'));
+      headerAvatar.classList.add('has-profile-avatar');
+    } else {
+      var icon = element('img', 'messaging-floating-brand-icon');
+      icon.src = '/assets/svg/talk.svg';
+      icon.alt = '';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.decoding = 'async';
+      headerAvatar.appendChild(icon);
+      headerAvatar.classList.remove('has-profile-avatar');
+    }
   }
 
   function actionButton(text, className, handler, label) {
@@ -136,6 +174,7 @@
     activeConversationId = null;
     panel.classList.remove('is-conversation');
     title.textContent = 'Messages';
+    setHeaderAvatar(null);
     panel.setAttribute('aria-label', 'Private messages');
     content.replaceChildren(element('p', 'messaging-widget-loading', 'Loading messages…'));
     setStatus('Loading messages');
@@ -339,6 +378,7 @@
     title.textContent = conversation.title || (conversation.release
       ? conversation.release.artist + ' — ' + conversation.release.title
       : 'Direct conversation with @' + conversation.otherParticipant.username);
+    setHeaderAvatar(conversation.otherParticipant);
     panel.setAttribute('aria-label', conversation.release
       ? 'Conversation about ' + conversation.release.title
       : 'Direct conversation with @' + conversation.otherParticipant.username);
@@ -351,8 +391,22 @@
     }, 'Back to ' + returnLabel.toLowerCase());
     prependSvgIcon(backToConversations, '/assets/svg/conversation.svg', 'messaging-widget-icon');
     toolbar.appendChild(backToConversations);
+
+    var archiveButton = actionButton('', 'messaging-widget-archive-icon', function (button) {
+      button.disabled = true;
+      requestJson('/messages/' + encodeURIComponent(conversation.id) + '/archive', { method: 'POST' })
+        .then(function () { return Promise.all([loadInbox(), refreshUnread()]); })
+        .catch(function (error) { showError(error.message); });
+    }, 'Archive conversation');
+    archiveButton.title = 'Archive conversation';
+    prependSvgIcon(archiveButton, '/assets/svg/archive.svg', 'messaging-widget-icon');
+    toolbar.appendChild(archiveButton);
     content.appendChild(toolbar);
-    content.appendChild(element('p', 'messaging-widget-subtitle', 'With ' + (conversation.otherParticipant.displayName || '@' + conversation.otherParticipant.username)));
+
+    var subtitle = element('div', 'messaging-widget-subtitle messaging-widget-conversation-context');
+    subtitle.appendChild(element('span', 'messaging-widget-context-person',
+      'With ' + (conversation.otherParticipant.displayName || '@' + conversation.otherParticipant.username)));
+    content.appendChild(subtitle);
 
     var messageList = element('div', 'messaging-widget-message-list');
     messageList.setAttribute('aria-label', 'Conversation messages');
@@ -360,12 +414,26 @@
       messageList.appendChild(element('p', 'messaging-widget-empty', 'No messages yet. Start the conversation below.'));
     } else {
       conversation.messages.forEach(function (message) {
-        var bubble = element('div', 'messaging-widget-message' + (message.isOwnMessage ? ' is-own' : ''));
-        bubble.appendChild(element('div', '', message.body));
+        var ownMessage = Boolean(message.isOwnMessage);
+        var messageRow = element('div', 'messaging-widget-message-row' + (ownMessage ? ' is-own' : ''));
+        var avatarParticipant = ownMessage
+          ? { displayName: 'You', avatarUrl: conversation.currentUserAvatarUrl }
+          : conversation.otherParticipant;
+        var avatar = createAvatar(avatarParticipant, 'messaging-widget-message-avatar');
+
+        var bubble = element('div', 'messaging-widget-message' + (ownMessage ? ' is-own' : ''));
+        bubble.appendChild(element('div', 'messaging-widget-message-body', message.body));
         if (message.createdAt) {
           bubble.appendChild(element('time', 'messaging-widget-message-meta', formatDate(message.createdAt)));
         }
-        messageList.appendChild(bubble);
+        if (ownMessage) {
+          messageRow.appendChild(bubble);
+          messageRow.appendChild(avatar);
+        } else {
+          messageRow.appendChild(avatar);
+          messageRow.appendChild(bubble);
+        }
+        messageList.appendChild(messageRow);
       });
     }
     content.appendChild(messageList);
@@ -390,20 +458,26 @@
     }
 
     var compose = element('form', 'messaging-widget-compose');
-    var label = element('label', '', 'Send a message');
+    var label = element('label', 'messaging-widget-compose-label', 'Message');
+    var composeRow = element('div', 'messaging-widget-compose-row');
     var textarea = element('textarea');
     textarea.name = 'body';
     textarea.maxLength = 4000;
     textarea.required = true;
+    textarea.rows = 1;
+    textarea.placeholder = 'Write a message…';
     textarea.setAttribute('aria-label', 'Message body');
     label.htmlFor = 'messaging-widget-message-body';
     textarea.id = 'messaging-widget-message-body';
     compose.appendChild(label);
-    compose.appendChild(textarea);
-    var submit = element('button', 'messaging-widget-send', 'Send message');
+    composeRow.appendChild(textarea);
+    var submit = element('button', 'messaging-widget-send', '');
     submit.type = 'submit';
-    prependSvgIcon(submit, '/assets/svg/send.svg', 'messaging-widget-icon messaging-widget-icon-inverse');
-    compose.appendChild(submit);
+    submit.setAttribute('aria-label', 'Send message');
+    submit.title = 'Send message';
+    prependSvgIcon(submit, '/assets/svg/send.svg', 'messaging-widget-icon');
+    composeRow.appendChild(submit);
+    compose.appendChild(composeRow);
     compose.addEventListener('submit', function (event) {
       event.preventDefault();
       var body = textarea.value.trim();
@@ -425,14 +499,6 @@
       });
     });
     footer.appendChild(compose);
-    var archiveButton = actionButton('Archive conversation', '', function (button) {
-      button.disabled = true;
-      requestJson('/messages/' + encodeURIComponent(conversation.id) + '/archive', { method: 'POST' })
-        .then(function () { return Promise.all([loadInbox(), refreshUnread()]); })
-        .catch(function (error) { showError(error.message); });
-    });
-    archiveButton.classList.add('messaging-widget-archive');
-    footer.appendChild(archiveButton);
     content.appendChild(footer);
     setStatus('Conversation with ' + (conversation.otherParticipant.displayName || conversation.otherParticipant.username));
     messageList.scrollTop = messageList.scrollHeight;
