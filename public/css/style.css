@@ -2005,9 +2005,8 @@ select.form-control {
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
-  transform: translate3d(0, 90px, -155px) rotateX(-76deg);
-  transform-origin: 50% 50%;
-  transition: transform 520ms cubic-bezier(.2, .75, .25, 1), visibility 0s linear 520ms;
+  transform: none;
+  transition: visibility 0s linear 520ms;
 }
 
 .dig-slide.is-active {
@@ -2015,8 +2014,8 @@ select.form-control {
   visibility: visible;
   opacity: 1;
   pointer-events: auto;
-  /* Face-on and completely upright at rest. The 3D turn exists only in motion. */
-  transform: translate3d(0, 0, 0);
+  /* The record article stays still; only its sleeve moves through 3D space. */
+  transform: none;
   transition-delay: 0s;
 }
 
@@ -2054,12 +2053,13 @@ select.form-control {
   transition-delay: 0s;
 }
 
-.dig-slide.is-leaving-up {
+/* Rotate the album sleeve itself through the deck arc, not the whole listing UI. */
+.dig-slide.is-leaving-up .dig-sleeve-interaction {
   transform: translate3d(0, -112%, -175px) rotateX(82deg);
   transform-origin: 50% 0%;
 }
 
-.dig-slide.is-leaving-down {
+.dig-slide.is-leaving-down .dig-sleeve-interaction {
   transform: translate3d(0, 112%, -175px) rotateX(-82deg);
   transform-origin: 50% 100%;
 }
@@ -2074,6 +2074,10 @@ select.form-control {
 }
 
 .dig-slide.is-dragging {
+  transition: none !important;
+}
+
+.dig-slide.is-dragging .dig-sleeve-interaction {
   transition: none !important;
   will-change: transform;
 }
@@ -2109,6 +2113,10 @@ select.form-control {
   display: flex;
   justify-content: center;
   min-width: 0;
+  transform: translate3d(0, 0, 0);
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+  transition: transform 520ms cubic-bezier(.2, .75, .25, 1);
 }
 
 .dig-sleeve-stage {
