@@ -12,6 +12,7 @@ import {
   postCreateComment,
   getEditListingPage,
   postEditListing,
+  postUpdateReleaseYouTubePreview,
   postUploadPhoto,
   postDeletePhoto,
   postUpdatePhotoRole,
@@ -50,6 +51,7 @@ router.get('/:id/preview', requireAuth, getPreviewListingPage);
 // Editing & Details Updates
 router.get('/:id/edit', requireAuth, getEditListingPage);
 router.post('/:id/edit', requireAuth, validateSameOrigin, postEditListing);
+router.post('/:id/release-preview', requireAuth, validateSameOrigin, postUpdateReleaseYouTubePreview);
 
 // Photo Operations
 router.post('/:id/photos', requireAuth, validateSameOrigin, multipartUploadHandler, postUploadPhoto);

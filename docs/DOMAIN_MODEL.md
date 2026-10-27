@@ -52,6 +52,7 @@ Represents canonical metadata for a musical release.
   - `barcode` (text, optional);
   - `genre` (text, optional);
   - `coverArtUrl` (text, optional);
+  - `youtubeVideoId` (text, optional, normalized single-video YouTube ID; shared by all listings referencing this release);
   - `externalSource` (text, optional external metadata provider, e.g. `'discogs'`);
   - `externalId` (text, optional external release ID);
   - `lastImportedAt` (timestamp with time zone, optional);

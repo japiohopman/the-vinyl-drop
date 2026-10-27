@@ -50,6 +50,10 @@ State-changing HTTP requests (`POST`, `PUT`, `DELETE`, `PATCH`) pass through `va
 - **SQL Injection Prevention:** Database queries use Drizzle ORM parameterized SQL statements, eliminating raw string concatenation.
 - **XSS Prevention:** EJS template rendering automatically HTML-escapes string values (`<%= %>`). Comments and descriptions are rendered as plain text.
 
+## Optional YouTube player privacy boundary
+
+Release-level YouTube previews store only a validated video ID. Seller edits require authenticated listing ownership; the release association is resolved server-side through the listing's physical copy. No YouTube API key, video search, arbitrary iframe markup, downloaded media, or automatic video selection is used. The embedded player is not requested until a visitor explicitly activates it; the privacy-enhanced `youtube-nocookie.com` domain does not imply that no data is sent to YouTube. The visitor has a normal YouTube link when embedding is unavailable.
+
 ## Implemented file upload & photo security
 
 Listing photo uploads pass through a multi-stage security pipeline:

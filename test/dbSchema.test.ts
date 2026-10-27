@@ -49,6 +49,7 @@ describe('Drizzle Database Schema Boundaries', () => {
     expect(columns).toHaveProperty('externalSource');
     expect(columns).toHaveProperty('externalId');
     expect(columns).toHaveProperty('lastImportedAt');
+    expect(columns).toHaveProperty('youtubeVideoId');
     expect(columns).toHaveProperty('createdAt');
     expect(columns).toHaveProperty('updatedAt');
   });

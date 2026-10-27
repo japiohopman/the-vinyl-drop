@@ -1,4 +1,5 @@
-import { index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const releases = pgTable(
   'releases',
@@ -14,6 +15,7 @@ export const releases = pgTable(
     barcode: text('barcode'),
     genre: text('genre'),
     coverArtUrl: text('cover_art_url'),
+    youtubeVideoId: text('youtube_video_id'),
     externalSource: text('external_source'),
     externalId: text('external_id'),
     lastImportedAt: timestamp('last_imported_at', { withTimezone: true }),
@@ -21,6 +23,20 @@ export const releases = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    check(
+      'releases_youtube_video_id_check',
+      sql`${table.youtubeVideoId} IS NULL OR ${table.youtubeVideoId} ~ '^[A-Za-z0-9_-]{11}
+    index('releases_title_idx').on(table.title),
+    index('releases_label_idx').on(table.label),
+    index('releases_cat_num_idx').on(table.catalogueNumber),
+    index('releases_year_idx').on(table.releaseYear),
+  ]
+);
+
+export type Release = typeof releases.$inferSelect;
+export type NewRelease = typeof releases.$inferInsert;
+`
+    ),
     index('releases_artist_idx').on(table.artist),
     index('releases_title_idx').on(table.title),
     index('releases_label_idx').on(table.label),
