@@ -84,6 +84,7 @@ describe('YouTube release preview (#226)', () => {
       'https://youtube.com/embed/' + validId,
       'https://youtube.com/watch?v=bad',
       'https://youtube.com/watch?v=' + validId + '&list=PL123',
+      'https://youtu.be/' + validId + '?si=share-token&list=PL123',
       '<iframe src="https://youtube.com/embed/' + validId + '"></iframe>',
       'https://youtu.be/' + validId + '/extra',
       'https://youtube.com/watch?v=' + validId + '&v=' + validId,
@@ -180,7 +181,11 @@ describe('YouTube release preview (#226)', () => {
         expect(await page.locator('iframe').count()).toBe(0);
         expect(externalRequests).toHaveLength(0);
         expect(await page.locator('[data-youtube-preview] .youtube-preview-fallback a').isVisible()).toBe(true);
+        const youtubeRequest = page.waitForRequest((request) =>
+          request.url().startsWith('https://www.youtube-nocookie.com/')
+        );
         await page.locator('[data-youtube-preview-load]').click();
+        await youtubeRequest;
 
         const player = page.locator('iframe');
         await player.waitFor({ state: 'attached' });
