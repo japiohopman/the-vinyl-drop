@@ -250,7 +250,8 @@ describe('Mobile Dig app-like viewport', () => {
     expect(Number(state.activePriceOpacity)).toBe(1);
     expect(Number(state.inactivePriceOpacity)).toBe(0);
 
-    await page.locator('[data-dig-flip]').first().click();
+    await page.locator('[data-dig-viewer]').focus();
+    await page.keyboard.press('f');
     expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
       card.classList.contains('is-flipped')
     )).toBe(true);
