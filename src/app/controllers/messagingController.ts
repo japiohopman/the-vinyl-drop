@@ -85,6 +85,7 @@ export async function getWidgetConversation(req: Request, res: Response, next: N
       listing: conversation.listing ? { id: conversation.listing.id } : null,
       userRole,
       unreadCount,
+      currentUserAvatarUrl: req.profile?.avatarUrl ?? null,
       otherParticipant: {
         id: otherParticipant.id,
         username: otherParticipant.username,
