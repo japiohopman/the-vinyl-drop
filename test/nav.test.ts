@@ -609,6 +609,80 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(await panel.getAttribute('hidden')).not.toBeNull();
   });
 
+  it('opens the shared messenger from profile actions without navigating to the static inbox', async () => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    const requests: Array<{ path: string; method: string }> = [];
+
+    await page.route('**/messages/**', async (route) => {
+      const requestInfo = route.request();
+      const pathname = new URL(requestInfo.url()).pathname;
+      requests.push({ path: pathname, method: requestInfo.method() });
+
+      if (pathname === '/messages/widget/unread-count') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ unreadCount: 0 }) });
+        return;
+      }
+      if (pathname === '/messages/widget/data') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ unreadCount: 0, savedPeople: [], conversations: [] }),
+        });
+        return;
+      }
+      if (pathname === '/messages/profile/test-profile' && requestInfo.method() === 'POST') {
+        expect(requestInfo.headers()['x-messaging-widget']).toBe('1');
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ id: 'profile-direct-thread' }),
+        });
+        return;
+      }
+      if (pathname === '/messages/widget/profile-direct-thread') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'profile-direct-thread',
+            conversationType: 'direct',
+            title: 'Direct conversation with @a_very_long_username_for_small_screens',
+            unreadCount: 0,
+            otherParticipant: {
+              username: 'a_very_long_username_for_small_screens',
+              displayName: 'The Extraordinarily Long Collector Name',
+            },
+            messages: [],
+          }),
+        });
+        return;
+      }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) });
+    });
+
+    const profilePage = await renderProfilePage('show', false, true);
+    await page.setContent(profilePage);
+    expect(await page.locator('[data-message-profile-form]').count()).toBe(1);
+    await page.locator('[data-message-profile-form] button[type="submit"]').click();
+    await page.waitForSelector('.messaging-widget-message-list', { state: 'visible' });
+    expect(await page.locator('.messaging-floating-title').textContent()).toContain('@a_very_long_username_for_small_screens');
+    expect(await page.locator('.messaging-widget-toolbar button').getAttribute('aria-label')).toBe('Back to conversations');
+    expect(page.url()).not.toContain('/messages');
+    expect(requests.some((item) => item.path === '/messages/profile/test-profile' && item.method === 'POST')).toBe(true);
+    await page.locator('[data-message-close]').click();
+    await page.waitForSelector('#messaging-floating-window', { state: 'hidden' });
+
+    const ownProfilePage = await renderProfilePage('show', true, true);
+    await page.setContent(ownProfilePage);
+    const ownProfileMessagesButton = page.locator('.profile-owner-actions [data-messaging-widget-trigger]');
+    expect(await ownProfileMessagesButton.count()).toBe(1);
+    expect(await page.locator('a[href="/messages"]').count()).toBe(0);
+    expect(await page.locator('text=Inbox & Saved People').count()).toBe(0);
+    await ownProfileMessagesButton.click();
+    await page.waitForSelector('#messaging-floating-window.is-open', { state: 'visible' });
+    expect(page.url()).not.toContain('/messages');
+  });
+
   it('keeps profile landing and empty Crate usable without horizontal overflow across phone, tablet, and desktop widths', async () => {
     const viewports = [320, 360, 375, 414, 768, 1280];
 
