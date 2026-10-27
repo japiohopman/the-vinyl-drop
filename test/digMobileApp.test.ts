@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
