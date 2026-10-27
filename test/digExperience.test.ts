@@ -73,14 +73,11 @@ describe('Dig navigation and flip state', () => {
   it('normalizes the swipe transform without animating a second rotation', () => {
     const clientScript = fs.readFileSync(path.join(process.cwd(), 'public/js/dig-mode.js'), 'utf8');
 
-    expect(clientScript).toContain(
-      `card.style.transition = 'none';
-          card.style.transform = 'rotateY(' + angles.restingAngle + 'deg)';
-          void card.offsetHeight;
-          card.style.transform = '';
-          void card.offsetHeight;
-          card.style.transition = '';`
-    );
+    expect(clientScript).toContain("function settleFlipCard(card, restingAngle) {");
+    expect(clientScript).toContain("card.style.transform = 'rotateY(' + restingAngle + 'deg)';");
+    expect(clientScript).toContain('void card.offsetHeight;');
+    expect(clientScript).toContain('window.clearTimeout(flipSettleTimer)');
+    expect(clientScript).toContain('flushPendingFlipSettle();');
   });
 });
 
