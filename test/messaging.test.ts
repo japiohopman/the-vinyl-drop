@@ -349,6 +349,8 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         expect(detail.status).toBe(200);
         expect(detail.body.id).toBe(conv.id);
         expect(detail.body.unreadCount).toBeGreaterThanOrEqual(1);
+        expect(detail.body.currentUserAvatarUrl).toBeDefined();
+        expect(detail.body.otherParticipant.avatarUrl).toBeDefined();
         expect(detail.body.messages.some((message: { body: string; isOwnMessage: boolean }) =>
           message.body === 'A widget-only unread message' && message.isOwnMessage === false
         )).toBe(true);
