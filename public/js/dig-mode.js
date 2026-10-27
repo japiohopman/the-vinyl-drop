@@ -306,18 +306,20 @@
         card.style.transition = 'transform 260ms cubic-bezier(.2, .75, .25, 1)';
         card.style.transform = draggedTransform;
         void card.offsetHeight;
-        if (shouldFlip) {
-          setFlipState(slide, !wasFlipped);
-          const endAngle = wasFlipped
-            ? (deltaX > 0 ? 360 : 0)
-            : (deltaX > 0 ? 180 : -180);
-          card.style.transform = 'rotateY(' + endAngle + 'deg)';
-        } else {
-          card.style.transform = 'rotateY(' + (wasFlipped ? 180 : 0) + 'deg)';
-        }
+        const angles = digState.flipSwipeAngles(wasFlipped, deltaX, shouldFlip);
+        if (shouldFlip) setFlipState(slide, !wasFlipped);
+        card.style.transform = 'rotateY(' + angles.animationAngle + 'deg)';
+
         window.setTimeout(() => {
-          card.style.transition = '';
+          // The directional animation may end at -180 or 360. Normalize to
+          // the CSS class's canonical angle with transitions disabled, or
+          // clearing the inline transform can trigger a second full rotation.
+          card.style.transition = 'none';
+          card.style.transform = 'rotateY(' + angles.restingAngle + 'deg)';
+          void card.offsetHeight;
           card.style.transform = '';
+          void card.offsetHeight;
+          card.style.transition = '';
           card.classList.remove('is-dragging');
         }, 280);
       }

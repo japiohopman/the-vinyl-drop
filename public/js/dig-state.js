@@ -21,6 +21,21 @@
     nextFlipState(isFlipped) {
       return !Boolean(isFlipped);
     },
+
+    flipSwipeAngles(wasFlipped, deltaX, shouldFlip) {
+      const currentlyFlipped = Boolean(wasFlipped);
+      const endsFlipped = shouldFlip ? !currentlyFlipped : currentlyFlipped;
+      const restingAngle = endsFlipped ? 180 : 0;
+      let animationAngle = restingAngle;
+
+      if (shouldFlip) {
+        animationAngle = currentlyFlipped
+          ? (deltaX > 0 ? 360 : 0)
+          : (deltaX > 0 ? 180 : -180);
+      }
+
+      return { animationAngle, restingAngle };
+    },
   });
 
   if (typeof module === 'object' && module.exports) {

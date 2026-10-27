@@ -46,6 +46,42 @@ describe('Dig navigation and flip state', () => {
     expect(digState.nextFlipState(flipped)).toBe(false);
     expect(initialIndex).toBe(1);
   });
+
+  it('uses one directional turn and a canonical resting angle for either swipe direction', () => {
+    expect(digState.flipSwipeAngles(false, 80, true)).toEqual({
+      animationAngle: 180,
+      restingAngle: 180,
+    });
+    expect(digState.flipSwipeAngles(false, -80, true)).toEqual({
+      animationAngle: -180,
+      restingAngle: 180,
+    });
+    expect(digState.flipSwipeAngles(true, 80, true)).toEqual({
+      animationAngle: 360,
+      restingAngle: 0,
+    });
+    expect(digState.flipSwipeAngles(true, -80, true)).toEqual({
+      animationAngle: 0,
+      restingAngle: 0,
+    });
+    expect(digState.flipSwipeAngles(true, -20, false)).toEqual({
+      animationAngle: 180,
+      restingAngle: 180,
+    });
+  });
+
+  it('normalizes the swipe transform without animating a second rotation', () => {
+    const clientScript = fs.readFileSync(path.join(process.cwd(), 'public/js/dig-mode.js'), 'utf8');
+
+    expect(clientScript).toContain(
+      `card.style.transition = 'none';
+          card.style.transform = 'rotateY(' + angles.restingAngle + 'deg)';
+          void card.offsetHeight;
+          card.style.transform = '';
+          void card.offsetHeight;
+          card.style.transition = '';`
+    );
+  });
 });
 
 describe('Dig search-first responsive shell', () => {
