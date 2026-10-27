@@ -220,11 +220,17 @@ describe('Listing comments UX (#220)', () => {
       ...viewLocals,
       comments: [{ ...sampleComment, content: '<script>alert(1)</script>' }],
       commentsPage: false,
-      currentUser: null,
+      currentUser: viewLocals.currentUser,
     }, { filename: partialPath });
     expect(untrustedContent).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
     expect(untrustedContent).toContain('name="returnTo" value="thread"');
-    expect(untrustedContent).toContain('/auth/login?next=%2Flistings%2Flisting-220');
+
+    const signedOutContent = await ejs.renderFile(partialPath, {
+      ...viewLocals,
+      commentsPage: false,
+      currentUser: null,
+    }, { filename: partialPath });
+    expect(signedOutContent).toContain('/auth/login?next=%2Flistings%2Flisting-220');
   });
 
   it('renders listing context and a return link to the same listing without losing the sign-in next path', async () => {

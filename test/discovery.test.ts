@@ -546,7 +546,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('CSRF Forbidden');
     });
 
-    it('should post comment and redirect to #comments when authenticated and origin is valid', async () => {
+    it('should return to the listing with the desktop comments disclosure open after a valid post', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: mockUserBob },
         error: null,
@@ -569,7 +569,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
         .send({ content: 'Is shipping included?' });
 
       expect(res.status).toBe(302);
-      expect(res.header.location).toBe(`/listings/${mockPublishedListing.id}#comments`);
+      expect(res.header.location).toBe(`/listings/${mockPublishedListing.id}?commentsOpen=1#comments`);
       expect(commentService.addComment).toHaveBeenCalledWith(
         mockPublishedListing.id,
         mockUserBob.id,
