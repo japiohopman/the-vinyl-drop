@@ -78,29 +78,30 @@
 
               <div class="dig-sleeve-interaction">
                 <div class="dig-sleeve-stage" data-dig-swipe-area role="group" aria-label="Album cover. Swipe left or right to flip the cover. Swipe up for the next record or down for the previous record.">
-                  <div class="dig-sleeve-card" data-dig-sleeve-card>
-                    <div class="dig-sleeve-face dig-sleeve-face-front" aria-hidden="false">
-                      <% if (item.frontArtwork.sourceKind === 'placeholder') { %>
-                        <div class="dig-missing-front" role="status">
-                          <span class="dig-missing-front-mark" aria-hidden="true">▢</span>
-                          <strong>Front cover not photographed</strong>
-                          <p>No seller-selected front-cover photo has been added for this copy.</p>
-                        </div>
-                      <% } else { %>
-                        <img class="dig-sleeve-image" src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
-                      <% } %>
-                    </div>
-                    <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Back cover" aria-hidden="true">
-                      <% if (item.backArtwork) { %>
-                        <img class="dig-sleeve-image" src="<%= item.backArtwork.src %>" alt="<%= item.backArtwork.altText %>" draggable="false">
-
-                      <% } else { %>
-                        <div class="dig-missing-back" role="status">
-                          <span class="dig-missing-back-mark" aria-hidden="true">↻</span>
-                          <strong>Back cover not photographed</strong>
-                          <p>No back-cover photo was provided for this copy.</p>
-                        </div>
-                      <% } %>
+                  <div class="dig-sleeve-plane" data-dig-sleeve-plane>
+                    <div class="dig-sleeve-card" data-dig-sleeve-card>
+                      <div class="dig-sleeve-face dig-sleeve-face-front" aria-hidden="false">
+                        <% if (item.frontArtwork.sourceKind === 'placeholder') { %>
+                          <div class="dig-missing-front" role="status">
+                            <span class="dig-missing-front-mark" aria-hidden="true">▢</span>
+                            <strong>Front cover not photographed</strong>
+                            <p>No seller-selected front-cover photo has been added for this copy.</p>
+                          </div>
+                        <% } else { %>
+                          <img class="dig-sleeve-image" src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
+                        <% } %>
+                      </div>
+                      <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Back cover" aria-hidden="true">
+                        <% if (item.backArtwork) { %>
+                          <img class="dig-sleeve-image" src="<%= item.backArtwork.src %>" alt="<%= item.backArtwork.altText %>" draggable="false">
+                        <% } else { %>
+                          <div class="dig-missing-back" role="status">
+                            <span class="dig-missing-back-mark" aria-hidden="true">↻</span>
+                            <strong>Back cover not photographed</strong>
+                            <p>No back-cover photo was provided for this copy.</p>
+                          </div>
+                        <% } %>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -2033,11 +2033,29 @@ select.form-control {
   transform-origin: 50% 100%;
 }
 
-.dig-slide.is-next .dig-listing-meta,
-.dig-slide.is-next .dig-card-actions,
-.dig-slide.is-previous .dig-listing-meta,
-.dig-slide.is-previous .dig-card-actions {
-  visibility: hidden;
+/* Metadata belongs to the selected record, not to the background stack. */
+.dig-slide .dig-listing-meta,
+.dig-slide .dig-card-actions {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 220ms ease, transform 260ms ease;
+  transition-delay: 0s;
+}
+
+.dig-slide.is-active .dig-listing-meta,
+.dig-slide.is-active .dig-card-actions {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 140ms;
+}
+
+.dig-slide.is-leaving-up .dig-listing-meta,
+.dig-slide.is-leaving-up .dig-card-actions,
+.dig-slide.is-leaving-down .dig-listing-meta,
+.dig-slide.is-leaving-down .dig-card-actions {
+  opacity: 0;
+  transform: translateY(-5px);
+  transition-delay: 0s;
 }
 
 .dig-slide.is-leaving-up,
@@ -2091,10 +2109,13 @@ select.form-control {
 
 .dig-sleeve-stage {
   position: relative;
+  display: grid;
+  place-items: center;
   width: min(100%, 510px);
-  aspect-ratio: 1 / 1;
+  height: clamp(220px, 76vw, 390px);
   margin: 0 auto;
-  perspective: 1300px;
+  perspective: 1100px;
+  transform-style: preserve-3d;
   touch-action: pinch-zoom;
   user-select: none;
   -webkit-user-select: none;
@@ -2104,6 +2125,19 @@ select.form-control {
 .dig-sleeve-stage:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 4px;
+}
+
+/* The plane owns the tilt; the inner card keeps its independent rotateY flip. */
+.dig-sleeve-plane {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%) rotateX(42deg);
+  transform-origin: 50% 50%;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 16px 12px rgba(26, 26, 26, .23));
 }
 
 .dig-sleeve-card {
@@ -2342,8 +2376,46 @@ select.form-control {
 }
 
 .dig-page[data-reduced-motion="true"] .dig-slide,
-.dig-page[data-reduced-motion="true"] .dig-sleeve-card {
+.dig-page[data-reduced-motion="true"] .dig-sleeve-card,
+.dig-page[data-reduced-motion="true"] .dig-sleeve-plane,
+.dig-page[data-reduced-motion="true"] .dig-listing-meta,
+.dig-page[data-reduced-motion="true"] .dig-card-actions {
   transition: none !important;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-slide.is-active {
+  transform: none !important;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-slide:not(.is-active) {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  transform: none !important;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-slide .dig-listing-meta,
+.dig-page[data-reduced-motion="true"] .dig-slide .dig-card-actions {
+  opacity: 0;
+  transform: none !important;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-slide.is-active .dig-listing-meta,
+.dig-page[data-reduced-motion="true"] .dig-slide.is-active .dig-card-actions {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-sleeve-stage {
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-sleeve-plane {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none !important;
+  filter: none;
 }
 
 .dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped {
