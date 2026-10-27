@@ -280,7 +280,9 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.locator('.messaging-widget-conversation').click();
     await page.waitForSelector('.messaging-widget-message');
     expect(await page.locator('.messaging-widget-message').textContent()).toContain('Hi from seller');
-    expect(await page.locator('a[href="/messages/conversation-1"]').textContent()).toContain('Open full conversation');
+    expect(await page.locator('.messaging-widget-toolbar button').count()).toBe(1);
+    expect(await page.locator('.messaging-widget-toolbar button').getAttribute('aria-label')).toBe('Back to conversations');
+    expect(await page.locator('.messaging-widget-toolbar a').count()).toBe(0);
     expect(requests.some((item) => item.method === 'POST' && item.path.endsWith('/read'))).toBe(false);
 
     const initialLeft = await page.locator('#messaging-floating-window').evaluate((el) => el.getBoundingClientRect().left);
@@ -332,8 +334,9 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(requests.filter((item) => item.method === 'POST' && item.path.endsWith('/read'))).toHaveLength(1);
   });
 
-  it('follows the full-page inbox on mobile and keeps the desktop widget hidden', async () => {
+  it('opens the shared messaging widget as a full-screen messenger on mobile', async () => {
     await page.setViewportSize({ width: 375, height: 812 });
+    let unreadCount = 2;
     const requests: Array<{ path: string; method: string }> = [];
 
     await page.route('**/messages/**', async (route) => {
@@ -342,11 +345,58 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       requests.push({ path: pathname, method: requestInfo.method() });
 
       if (pathname === '/messages/widget/unread-count') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ unreadCount }) });
+        return;
+      }
+      if (pathname === '/messages/widget/data') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ unreadCount: 2 }),
+          body: JSON.stringify({
+            unreadCount,
+            savedPeople: [{ id: 'saved-profile-1', username: 'saved_digger', displayName: 'Saved Digger', avatarUrl: null }],
+            conversations: [{
+              id: 'conversation-1',
+              conversationType: 'listing',
+              releaseArtist: 'Pink Floyd',
+              releaseTitle: 'The Dark Side of the Moon',
+              otherParticipant: 'Seller User',
+              otherParticipantUsername: 'seller_user',
+              lastMessage: 'Hi from seller',
+              lastMessageAt: '2026-10-25T10:00:00.000Z',
+              unreadCount,
+            }],
+          }),
         });
+        return;
+      }
+      if (pathname === '/messages/widget/conversation-1') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'conversation-1',
+            conversationType: 'listing',
+            title: 'Pink Floyd — The Dark Side of the Moon',
+            release: { artist: 'Pink Floyd', title: 'The Dark Side of the Moon' },
+            listing: { id: 'listing-1' },
+            userRole: 'buyer',
+            unreadCount,
+            otherParticipant: { username: 'seller_user', displayName: 'Seller User' },
+            messages: [{
+              id: 'message-1',
+              messageSeq: 1,
+              isOwnMessage: false,
+              body: 'Hi from seller',
+              createdAt: '2026-10-25T10:00:00.000Z',
+            }],
+          }),
+        });
+        return;
+      }
+      if (pathname === '/messages/conversation-1/read' && requestInfo.method() === 'POST') {
+        unreadCount = 0;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) });
         return;
       }
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ok' }) });
@@ -367,47 +417,78 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       return Boolean(badge && !badge.hasAttribute('hidden') && badge.textContent === '2');
     });
 
+    await page.click('#mobile-you-trigger');
+    const mobileMessagesTrigger = page.locator('#mobile-you-surface [data-messaging-widget-trigger]');
+    expect(await mobileMessagesTrigger.textContent()).toContain('Messages & People');
+    expect(await mobileMessagesTrigger.getAttribute('aria-haspopup')).toBe('dialog');
+    await mobileMessagesTrigger.click();
+
     const panel = page.locator('#messaging-floating-window');
     const backdrop = page.locator('#messaging-mobile-backdrop');
-    expect(await panel.isVisible()).toBe(false);
-    expect(await backdrop.isVisible()).toBe(false);
+    expect(await panel.isVisible()).toBe(true);
+    expect(await backdrop.isVisible()).toBe(true);
+    expect(await panel.getAttribute('aria-modal')).toBe('true');
+    expect(page.url()).not.toContain('/messages');
+    // Opening the widget starts an asynchronous inbox request; wait for the server data to render.
+    await page.waitForSelector('.messaging-widget-saved-section', { state: 'visible' });
+    expect(await page.locator('.messaging-widget-saved-list').textContent()).toContain('Saved Digger');
 
-    await page.evaluate(() => {
+    const panelLayout = await panel.evaluate((element) => {
       const browser = globalThis as unknown as {
-        document: {
-          addEventListener: (type: string, listener: (event: Event) => void, options?: { once?: boolean }) => void;
-        };
-        window: { __mobileMessagesClick?: { href: string; defaultPreventedBeforeTestHandler: boolean } };
+        window: { getComputedStyle: (target: unknown) => { position: string } };
       };
-      browser.document.addEventListener('click', (event: Event) => {
-        const target = event.target as unknown as {
-          closest?: (selector: string) => { getAttribute: (name: string) => string | null } | null;
-        } | null;
-        if (!target || typeof target.closest !== 'function') return;
-        const trigger = target.closest('a[href="/messages"]');
-        if (!trigger) return;
-        browser.window.__mobileMessagesClick = {
-          href: trigger.getAttribute('href') || '',
-          defaultPreventedBeforeTestHandler: event.defaultPrevented,
-        };
-        // Observe the widget handler's decision without navigating away from this rendered test page.
-        event.preventDefault();
-      }, { once: true });
+      const rect = element.getBoundingClientRect();
+      const styles = browser.window.getComputedStyle(element);
+      return { top: rect.top, left: rect.left, width: rect.width, height: rect.height, position: styles.position };
     });
+    expect(panelLayout.position).toBe('fixed');
+    expect(panelLayout.top).toBeCloseTo(0, 0);
+    expect(panelLayout.left).toBeCloseTo(0, 0);
+    expect(panelLayout.width).toBeCloseTo(375, 0);
+    expect(panelLayout.height).toBeGreaterThan(760);
 
-    await page.click('#mobile-you-trigger');
-    const mobileInboxLink = page.locator('#mobile-you-surface a[href="/messages"]');
-    expect(await mobileInboxLink.getAttribute('data-messaging-widget-trigger')).toBeNull();
-    expect(await mobileInboxLink.getAttribute('aria-haspopup')).toBeNull();
-    expect(await mobileInboxLink.textContent()).toContain('Inbox & Saved People');
-    await mobileInboxLink.click();
-    const clickResult = await page.evaluate(() => {
-      const browser = globalThis as unknown as { window: { __mobileMessagesClick?: { href: string; defaultPreventedBeforeTestHandler: boolean } } };
-      return browser.window.__mobileMessagesClick;
-    });
-    expect(clickResult).toEqual({ href: '/messages', defaultPreventedBeforeTestHandler: false });
-    expect(await panel.isVisible()).toBe(false);
+    await page.locator('.messaging-widget-conversation').click();
+    await page.waitForSelector('.messaging-widget-message');
+    expect(await page.locator('.messaging-widget-message').textContent()).toContain('Hi from seller');
+    expect(await page.locator('.messaging-widget-compose textarea').isVisible()).toBe(true);
+    expect(await page.locator('.messaging-widget-send img').getAttribute('src')).toBe('/assets/svg/send.svg');
+    expect(await page.locator('.messaging-widget-toolbar a').count()).toBe(0);
+    expect(await page.locator('.messaging-widget-toolbar button').getAttribute('aria-label')).toBe('Back to conversations');
+
+    // Pulling the same widget header down minimizes it; pulling the launcher up restores it.
+    const dragBox = await page.locator('[data-message-drag-handle]').boundingBox();
+    expect(dragBox).not.toBeNull();
+    await page.mouse.move(dragBox!.x + 22, dragBox!.y + 20);
+    await page.mouse.down();
+    await page.mouse.move(dragBox!.x + 22, dragBox!.y + 130, { steps: 4 });
+    await page.mouse.up();
+    expect(await panel.evaluate((element) => element.classList.contains('is-minimized'))).toBe(true);
     expect(await backdrop.isVisible()).toBe(false);
+    const bodyOverflow = await page.locator('body').evaluate((element) => {
+      const browser = globalThis as unknown as {
+        window: { getComputedStyle: (target: unknown) => { overflow: string } };
+      };
+      return browser.window.getComputedStyle(element).overflow;
+    });
+    expect(bodyOverflow).not.toBe('hidden');
+
+    const minimizedHeader = await page.locator('[data-message-drag-handle]').boundingBox();
+    expect(minimizedHeader).not.toBeNull();
+    await page.mouse.move(minimizedHeader!.x + 22, minimizedHeader!.y + 22);
+    await page.mouse.down();
+    await page.mouse.move(minimizedHeader!.x + 22, minimizedHeader!.y - 90, { steps: 4 });
+    await page.mouse.up();
+    expect(await panel.evaluate((element) => element.classList.contains('is-minimized'))).toBe(false);
+    expect(await backdrop.isVisible()).toBe(true);
+
+    await page.locator('[data-message-close]').click();
+    expect(await panel.getAttribute('hidden')).not.toBeNull();
+    expect(await backdrop.isVisible()).toBe(false);
+    const activeFocusId = await page.evaluate(() => {
+      const browser = globalThis as unknown as { document: { activeElement: { id: string } | null } };
+      return browser.document.activeElement?.id;
+    });
+    expect(activeFocusId).toBe('mobile-you-trigger');
     expect(requests.some((item) => item.method === 'POST' && (item.path.endsWith('/read') || item.path.endsWith('/archive')))).toBe(false);
   });
 

@@ -47,8 +47,7 @@
             <a href="/profile/edit" class="desktop-you-menu-item">Edit Profile</a>
             <a href="/listings" class="desktop-you-menu-item">My Listings</a>
             <% if (isMessagingEnabled) { %>
-              <a href="/messages" class="desktop-you-menu-item messaging-widget-trigger" data-messaging-widget-trigger aria-controls="messaging-floating-window" aria-expanded="false" aria-haspopup="dialog">Messages <span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span></a>
-              <a href="/messages" class="desktop-you-menu-item">Inbox & Saved People</a>
+              <a href="/messages" class="desktop-you-menu-item messaging-widget-trigger" data-messaging-widget-trigger aria-controls="messaging-floating-window" aria-expanded="false" aria-haspopup="dialog">Messages &amp; People <span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span></a>
             <% } %>
           </div>
           <div class="desktop-you-menu-footer">
@@ -152,7 +151,7 @@
               </li>
               <% if (isMessagingEnabled) { %>
                 <li>
-                  <a href="/messages" class="mobile-you-action-link"><span>Inbox &amp; Saved People</span><span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span></a>
+                  <a href="/messages" class="mobile-you-action-link messaging-widget-trigger" data-messaging-widget-trigger aria-controls="messaging-floating-window" aria-expanded="false" aria-haspopup="dialog" aria-label="Open Messages and Saved People"><span>Messages &amp; People</span><span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span></a>
                 </li>
               <% } %>
             </ul>

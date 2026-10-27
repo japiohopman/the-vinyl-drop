@@ -754,35 +754,32 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       }
     });
 
-    test('mobile uses full-page conversations while the desktop widget remains enhanced', async () => {
+    test('uses one responsive messaging widget for desktop and mobile', async () => {
       const widgetSource = fs.readFileSync(path.join(process.cwd(), 'public/js/messaging-widget.js'), 'utf8');
       const cssSource = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
       const navSource = fs.readFileSync(path.join(process.cwd(), 'views/partials/nav.ejs'), 'utf8');
-      const headerSource = fs.readFileSync(path.join(process.cwd(), 'views/partials/header.ejs'), 'utf8');
-      const conversationViewSource = fs.readFileSync(path.join(process.cwd(), 'views/messages/show.ejs'), 'utf8');
-
-      expect(widgetSource).toContain("if (!desktopMedia.matches) return;");
-      expect(widgetSource).toContain("if (!desktopMedia.matches && !panel.hidden) closePanel(false);");
-      expect(navSource).toContain('id="messaging-mobile-backdrop"');
-      expect(cssSource).toContain('.messaging-widget-conversation-footer');
-      expect(cssSource).toContain('.conversation-compose-textarea');
-      expect(cssSource).toContain('@media (max-width: 1023px)');
-      expect(cssSource).toContain('display: none !important;');
-      expect(cssSource).not.toContain('height: min(82dvh');
-      expect(cssSource).toContain('@media (min-width: 1024px) and (max-height: 560px)');
-      expect(cssSource).toContain('env(safe-area-inset-bottom, 0px)');
-      expect(headerSource).toContain("mobileSectionLabel = 'MESSAGES'");
-      expect(navSource).toContain('src="/assets/svg/talk.svg"');
-      expect(conversationViewSource).toContain('src="/assets/svg/talk.svg"');
-      expect(conversationViewSource).toContain('src="/assets/svg/conversation.svg"');
-      expect(conversationViewSource).toContain('src="/assets/svg/send.svg"');
-      expect(conversationViewSource).toContain('class="conversation-compose-textarea"');
+      expect(widgetSource).not.toContain("if (!desktopMedia.matches) return;");
+      expect(widgetSource).toContain('window.visualViewport');
+      expect(widgetSource).toContain('gestureDistance > 80');
+      expect(widgetSource).toContain('gestureDistance < -60');
       expect(widgetSource).toContain("'/assets/svg/send.svg'");
       expect(widgetSource).toContain("'/assets/svg/conversation.svg'");
+      expect(cssSource).toContain('.messaging-floating-window:not([hidden])');
+      expect(cssSource).toContain('height: var(--messaging-visual-viewport-height, 100dvh)');
+      expect(cssSource).toContain('env(safe-area-inset-bottom, 0px)');
+      expect(cssSource).toContain('@media (max-width: 1023px)');
+      expect(cssSource).not.toContain('floating window is a desktop-only interaction');
+      expect(cssSource).not.toMatch(/\.messaging-floating-window,\s*\.messaging-mobile-backdrop\s*\{\s*display:\s*none !important;/);
+      expect(cssSource).toContain('Final mobile widget overrides');
+      expect(cssSource).toContain('min-height: 44px;');
+      expect(navSource).toContain('id="messaging-mobile-backdrop"');
+      expect(navSource).toContain('class="mobile-you-action-link messaging-widget-trigger"');
+      expect(navSource).not.toContain('Inbox &amp; Saved People');
+      expect(widgetSource).not.toContain('Open full inbox');
+      expect(widgetSource).not.toContain('Open full conversation');
       const sendSvgSource = fs.readFileSync(path.join(process.cwd(), 'public/assets/svg/send.svg'), 'utf8');
       expect(sendSvgSource).toContain('fill="currentColor"');
       expect(sendSvgSource).not.toContain('M0 0h512v512H0z');
-      expect(widgetSource).not.toContain("\\n        ?");
     });
   });
 

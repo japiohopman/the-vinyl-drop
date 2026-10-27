@@ -134,12 +134,14 @@ Implemented application primary navigation routes:
 - **Actionable Errors:** Error messages (validation, authorization, network) remain readable, persistent, and un-timed until resolved by the user. Rendered in inline form summaries or persistent banners (`role="alert"`, `aria-live="assertive"`).
 - **Architecture:** Extends existing EJS flash message locals (`res.locals.flashMessages`) without introducing secondary client notification frameworks.
 
-## Private Messaging Window Contract (Target for [#126](https://github.com/japiohopman/the-vinyl-drop/issues/126))
+## Private Messaging Window Contract (Responsive shared widget; follow-up to [#126](https://github.com/japiohopman/the-vinyl-drop/issues/126))
 
-- **Desktop Floating Chat Window:** Compact widget at viewport bottom-right with title bar, minimize, and close controls. Opening, minimizing, or closing does not delete, archive, or mark messages as read. Full inbox/conversation pages (`/messages` and `/messages/:conversationId`) serve as accessible fallbacks.
-- **Mobile Viewports:** Floating chat widget is disabled; mobile uses full-screen conversation threads.
-- **Truthful Unread Indicators:** Navigation message indicator reflects strictly the authenticated user's actual `unreadCount`. No fake numbers or data leaks across users.
-- **Security & Feature Flag Gating:** Private messaging remains disabled (`MESSAGING_ENABLED=false`) in staging/production even after prerequisites ([#49](https://github.com/japiohopman/the-vinyl-drop/issues/49)) and ([#119](https://github.com/japiohopman/the-vinyl-drop/issues/119)) close, until Jaap explicitly authorizes activation.
+- **One Messaging Hub:** The same floating messaging widget is the primary Messages & People experience on desktop and mobile. The mobile Me menu opens that widget instead of routing to a second primary inbox UI. Saved People, conversations, thread selection, and the composer stay within the shared widget.
+- **Desktop:** Compact draggable window at the viewport bottom-right, with minimize and close controls. Pointer dragging and keyboard-arrow repositioning remain available. Opening, minimizing, or closing does not delete, archive, or mark messages as read.
+- **Mobile:** The shared widget expands to the available visual viewport as a full-screen messenger, with a visible backdrop, safe-area support, focus containment, background-scroll lock, and touch-sized controls. VisualViewport resize handling keeps the composer reachable when the keyboard opens. A downward drag on the header minimizes the panel; an upward drag restores it.
+- **Route Fallbacks:** The full inbox/conversation routes (/messages and /messages/:conversationId) remain directly accessible as fallbacks, but are not duplicated as primary links inside Me or as “Open full inbox / Open full conversation” actions within the widget.
+- **Truthful Unread Indicators:** Navigation message indicator reflects strictly the authenticated user's actual unreadCount. No fake numbers or data leaks across users.
+- **Security & Feature Flag Gating:** Private messaging remains disabled (MESSAGING_ENABLED=false) in staging/production even after prerequisites ([#49](https://github.com/japiohopman/the-vinyl-drop/issues/49)) and ([#119](https://github.com/japiohopman/the-vinyl-drop/issues/119)) close, until Jaap explicitly authorizes activation.
 
 ## Home view (`/`)
 
