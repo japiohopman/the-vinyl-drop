@@ -459,7 +459,7 @@
     syncMobileViewportSize();
     var isClosing = panel.classList.contains('is-closing');
     var mobilePanelVisible = !desktopMedia.matches && !panel.hidden && !panel.classList.contains('is-minimized');
-    var expandedMobilePanel = mobilePanelVisible && !isClosing;
+    var expandedMobilePanel = mobilePanelVisible && !isClosing && panel.classList.contains('is-open');
     panel.setAttribute('aria-modal', expandedMobilePanel ? 'true' : 'false');
 
     if (mobileBackdrop) {
@@ -484,7 +484,7 @@
     }
     triggers.forEach(function (trigger) {
       trigger.setAttribute('aria-expanded',
-        !panel.hidden && !panel.classList.contains('is-minimized') && !isClosing ? 'true' : 'false');
+        !panel.hidden && !panel.classList.contains('is-minimized') && !isClosing && panel.classList.contains('is-open') ? 'true' : 'false');
     });
   }
 
