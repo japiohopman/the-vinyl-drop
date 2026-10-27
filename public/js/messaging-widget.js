@@ -7,6 +7,7 @@
 
   var desktopMedia = window.matchMedia ? window.matchMedia('(min-width: 1024px)') : { matches: window.innerWidth >= 1024 };
   var triggers = Array.prototype.slice.call(document.querySelectorAll('[data-messaging-widget-trigger]'));
+  var profileMessageForms = Array.prototype.slice.call(document.querySelectorAll('[data-message-profile-form]'));
   var desktopTriggers = Array.prototype.slice.call(document.querySelectorAll('#desktop-you-menu [data-messaging-widget-trigger]'));
   var badges = Array.prototype.slice.call(document.querySelectorAll('[data-messaging-unread-count]'));
   var content = panel.querySelector('[data-message-widget-content]');
@@ -112,11 +113,13 @@
     setStatus(message || 'Could not load messages.');
   }
 
-  function startDirectChat(profileId) {
-    var originatingTab = activeInboxTab;
+  function startDirectChat(profileId, sourceTab) {
+    var originatingTab = sourceTab === 'people' || sourceTab === 'conversations'
+      ? sourceTab
+      : activeInboxTab;
     returnInboxTab = originatingTab;
     setStatus('Opening conversation…');
-    requestJson('/messages/profile/' + encodeURIComponent(profileId), {
+    return requestJson('/messages/profile/' + encodeURIComponent(profileId), {
       method: 'POST',
       headers: {
         'X-Messaging-Widget': '1'
@@ -244,7 +247,7 @@
           'messaging-widget-person-message',
           function () {
             returnInboxTab = 'people';
-            startDirectChat(person.id);
+            startDirectChat(person.id, 'people');
           },
           'Message @' + person.username
         );
@@ -524,7 +527,7 @@
     }
   }
 
-  function openPanel(trigger) {
+  function openPanel(trigger, targetProfileId) {
     if (panelCloseTimer !== null) {
       window.clearTimeout(panelCloseTimer);
       panelCloseTimer = null;
@@ -544,7 +547,15 @@
     void panel.offsetWidth;
     panel.classList.add('is-open');
     syncResponsivePanelState();
+
     loadInbox().then(function () {
+      if (targetProfileId) {
+        activeInboxTab = 'conversations';
+        returnInboxTab = 'conversations';
+        return startDirectChat(targetProfileId, 'conversations');
+      }
+      return undefined;
+    }).then(function () {
       if (!panel.hidden && panel.classList.contains('is-open')) closeButton.focus();
     });
   }
@@ -600,6 +611,15 @@
     syncResponsivePanelState();
     if (!minimized) closeButton.focus();
   }
+
+  profileMessageForms.forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+      if (!panel || !form.dataset.messageProfileId) return;
+      event.preventDefault();
+      var submitButton = form.querySelector('button[type="submit"]');
+      openPanel(submitButton || form, form.dataset.messageProfileId);
+    });
+  });
 
   triggers.forEach(function (trigger) {
     trigger.addEventListener('click', function (event) {
