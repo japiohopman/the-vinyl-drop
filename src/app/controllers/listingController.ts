@@ -499,6 +499,56 @@ export async function postArchiveListing(req: Request, res: Response, next: Next
   }
 }
 
+export async function getListingCommentsPage(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const listingId = req.params.id;
+    const requestingUserId = req.user?.id;
+
+    let details;
+    try {
+      details = await getListingWithDetailsForView(listingId, requestingUserId);
+    } catch (err) {
+      if (err instanceof NotFoundError || err instanceof AuthorizationError) {
+        res.status(404);
+        return renderWithLayout(
+          res,
+          'errors/404',
+          {
+            title: 'Listing Not Found',
+            message: 'The requested record listing was not found or is no longer available.',
+          },
+          next
+        );
+      }
+      throw err;
+    }
+
+    const comments = await getListingComments(listingId, requestingUserId);
+    const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
+
+    return renderWithLayout(
+      res,
+      'listings/comments',
+      {
+        title: `Comments about ${details.release.title} — The Vinyl Drop`,
+        listing: details.listing,
+        physicalCopy: details.physicalCopy,
+        release: details.release,
+        seller: details.seller,
+        photos: details.photos,
+        priceFormatted: formatPrice(details.listing.price, isTradeOnly),
+        comments,
+        currentUser: req.user || null,
+        commentsPage: true,
+        commentError: (req.query.commentError as string) || null,
+      },
+      next
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getListingDetailPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const listingId = req.params.id;
@@ -547,6 +597,7 @@ export async function getListingDetailPage(req: Request, res: Response, next: Ne
         currentUser: req.user || null,
         isSeller: requestingUserId === details.listing.sellerId,
         isFavorited,
+        commentsInitiallyOpen: req.query.commentsOpen === '1',
         commentError: (req.query.commentError as string) || null,
       },
       next
@@ -564,10 +615,15 @@ export async function postCreateComment(req: Request, res: Response, next: NextF
 
     const listingId = req.params.id;
     const content = req.body.content || '';
+    // This is a closed presentation selector, not a redirect URL. Never redirect to user input.
+    const commentsPage = req.body.returnTo === 'comments';
 
     try {
       await addComment(listingId, req.user.id, content);
-      res.redirect(`/listings/${listingId}#comments`);
+      if (commentsPage) {
+        return res.redirect(`/listings/${listingId}/comments#comments`);
+      }
+      return res.redirect(`/listings/${listingId}?commentsOpen=1#comments`);
     } catch (err) {
       if (err instanceof NotFoundError) {
         res.status(404);
@@ -589,6 +645,28 @@ export async function postCreateComment(req: Request, res: Response, next: NextF
         const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
 
         res.status(400);
+        if (commentsPage) {
+          return renderWithLayout(
+            res,
+            'listings/comments',
+            {
+              title: `Comments about ${details.release.title} — The Vinyl Drop`,
+              listing: details.listing,
+              physicalCopy: details.physicalCopy,
+              release: details.release,
+              seller: details.seller,
+              photos: details.photos,
+              priceFormatted: formatPrice(details.listing.price, isTradeOnly),
+              comments,
+              currentUser: req.user,
+              commentsPage: true,
+              commentError: errMsg,
+              submittedContent: content,
+            },
+            next
+          );
+        }
+
         return renderWithLayout(
           res,
           'listings/show',
@@ -603,6 +681,7 @@ export async function postCreateComment(req: Request, res: Response, next: NextF
             comments,
             currentUser: req.user,
             isSeller: req.user.id === details.listing.sellerId,
+            commentsInitiallyOpen: true,
             commentError: errMsg,
             submittedContent: content,
           },

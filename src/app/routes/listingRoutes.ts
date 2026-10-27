@@ -8,6 +8,7 @@ import {
   getCreateListingPage,
   postCreateListing,
   getListingDetailPage,
+  getListingCommentsPage,
   postCreateComment,
   getEditListingPage,
   postEditListing,
@@ -33,6 +34,7 @@ router.get('/create', requireAuth, getCreateListingPage);
 router.post('/', requireAuth, validateSameOrigin, postCreateListing);
 
 // Public Listing Detail Page
+router.get('/:id/comments', getListingCommentsPage);
 router.get('/:id', getListingDetailPage);
 
 // Comment Thread Operations
