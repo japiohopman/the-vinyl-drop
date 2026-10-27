@@ -473,8 +473,16 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(page.url()).not.toContain('/messages');
     // The inbox separates current conversations from private Saved People in accessible tabs.
     await page.waitForSelector('[role="tablist"][aria-label="Messages and people"]', { state: 'visible' });
-    expect(await page.locator('#messaging-widget-tab-conversations').getAttribute('aria-selected')).toBe('true');
-    await page.locator('#messaging-widget-tab-people').click();
+    const conversationsTab = page.locator('#messaging-widget-tab-conversations');
+    const peopleTab = page.locator('#messaging-widget-tab-people');
+    expect(await conversationsTab.getAttribute('aria-selected')).toBe('true');
+    await conversationsTab.focus();
+    await page.keyboard.press('ArrowRight');
+    expect(await peopleTab.getAttribute('aria-selected')).toBe('true');
+    expect(await peopleTab.evaluate((element) => element === element.ownerDocument.activeElement)).toBe(true);
+    await page.keyboard.press('ArrowLeft');
+    expect(await conversationsTab.getAttribute('aria-selected')).toBe('true');
+    await peopleTab.click();
     await page.waitForSelector('.messaging-widget-person-list', { state: 'visible' });
     expect(await page.locator('.messaging-widget-person-list').textContent()).toContain('Saved Digger');
     expect(await page.locator('.messaging-widget-person-profile').getAttribute('href')).toBe('/profiles/saved_digger');
