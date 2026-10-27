@@ -105,7 +105,9 @@
     const previous = slides[activeIndex];
     const next = slides[targetIndex];
     const reducedMotion = motionPreference.matches;
-    const nextHasDragPose = Boolean(next.style.transform);
+    const previousStage = previous.querySelector('.dig-sleeve-interaction');
+    const nextStage = next.querySelector('.dig-sleeve-interaction');
+    const nextHasDragPose = Boolean(nextStage && nextStage.style.transform);
     window.clearTimeout(transitionTimer);
     window.clearTimeout(cancelGestureTimer);
     cancelGestureTimer = 0;
@@ -113,10 +115,11 @@
     updateNavigation();
 
     if (!reducedMotion && !nextHasDragPose) {
-      next.style.transform = direction > 0
-        ? 'translate3d(0, 84%, -155px) rotateX(-76deg)'
-        : 'translate3d(0, -84%, -155px) rotateX(76deg)';
-      next.style.visibility = 'visible';
+      if (nextStage) {
+        nextStage.style.transform = direction > 0
+          ? 'translate3d(0, 84%, -155px) rotateX(-76deg)'
+          : 'translate3d(0, -84%, -155px) rotateX(76deg)';
+      }
     }
 
     previous.classList.remove('is-dragging', 'is-active', 'is-next', 'is-previous');
@@ -133,18 +136,21 @@
     // from the exact drag position; button/keyboard navigation enters from depth.
     void previous.offsetHeight;
     void next.offsetHeight;
-    previous.style.transform = '';
+    if (previousStage) {
+      previousStage.style.transform = '';
+      previousStage.style.visibility = '';
+    }
     previous.style.visibility = '';
     clearMetadataOverrides(previous);
     clearMetadataOverrides(next);
 
     if (nextHasDragPose || reducedMotion) {
-      next.style.transform = '';
+      if (nextStage) nextStage.style.transform = '';
       next.style.visibility = '';
     } else {
       window.requestAnimationFrame(() => {
         if (isTransitioning && next.classList.contains('is-active')) {
-          next.style.transform = '';
+          if (nextStage) nextStage.style.transform = '';
           next.style.visibility = '';
         }
       });
@@ -157,13 +163,19 @@
     const finish = () => {
       window.clearTimeout(transitionTimer);
       previous.classList.remove('is-leaving-up', 'is-leaving-down', 'is-dragging');
-      previous.style.transform = '';
-      previous.style.transition = '';
+      if (previousStage) {
+        previousStage.style.transform = '';
+        previousStage.style.transition = '';
+        previousStage.style.visibility = '';
+      }
       previous.style.opacity = '';
       previous.style.visibility = '';
       clearFlip(previous);
-      next.style.transform = '';
-      next.style.transition = '';
+      if (nextStage) {
+        nextStage.style.transform = '';
+        nextStage.style.transition = '';
+        nextStage.style.visibility = '';
+      }
       next.style.opacity = '';
       next.style.visibility = '';
       clearMetadataOverrides(previous);
@@ -192,18 +204,29 @@
       neighbor.style.opacity = '';
     }
     const sleeveCard = slide.querySelector('[data-dig-sleeve-card]');
+    const movingStage = slide.querySelector('.dig-sleeve-interaction');
     if (sleeveCard) {
       sleeveCard.classList.remove('is-dragging');
       sleeveCard.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
       sleeveCard.style.transform = '';
     }
-    slide.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
-    slide.style.transform = '';
+    if (movingStage) {
+      movingStage.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
+      movingStage.style.transform = '';
+      movingStage.style.visibility = '';
+    }
     slide.style.opacity = '';
     slide.style.visibility = '';
     if (neighbor) {
-      neighbor.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
-      neighbor.style.transform = '';
+      const neighborStage = neighbor.querySelector('.dig-sleeve-interaction');
+      if (neighborStage) {
+        neighborStage.style.transition = motionPreference.matches ? 'none' : 'transform 200ms ease-out';
+        neighborStage.style.transform = '';
+        neighborStage.style.visibility = '';
+      }
+      neighbor.style.transition = '';
+      neighbor.style.visibility = '';
+      neighbor.style.opacity = '';
     }
     try {
       if (stage.hasPointerCapture(pointerId)) stage.releasePointerCapture(pointerId);
@@ -297,7 +320,12 @@
     const neighbor = adjacent === null ? null : slides[adjacent];
     if (gesture.neighbor && gesture.neighbor !== neighbor) {
       gesture.neighbor.classList.remove('is-dragging');
-      gesture.neighbor.style.transform = '';
+      const previousNeighborStage = gesture.neighbor.querySelector('.dig-sleeve-interaction');
+      if (previousNeighborStage) {
+        previousNeighborStage.style.transform = '';
+        previousNeighborStage.style.transition = '';
+        previousNeighborStage.style.visibility = '';
+      }
       gesture.neighbor.style.transition = '';
       gesture.neighbor.style.visibility = '';
       gesture.neighbor.style.opacity = '';
@@ -314,7 +342,10 @@
     // The card starts face-on; as it is drawn up/down, it tips toward the
     // horizontal deck plane and recedes in Z. Perspective creates the depth.
     const rotation = direction > 0 ? progressValue * 78 : -progressValue * 78;
-    gesture.slide.style.transform = `translate3d(0, ${softenedDelta}px, ${depth}px) rotateX(${rotation}deg)`;
+    const movingStage = gesture.slide.querySelector('.dig-sleeve-interaction');
+    if (movingStage) {
+      movingStage.style.transform = `translate3d(0, ${softenedDelta}px, ${depth}px) rotateX(${rotation}deg)`;
+    }
 
     const outgoingMetadataOpacity = String(Math.max(0, 1 - progressValue * 1.12));
     ['.dig-listing-meta', '.dig-card-actions'].forEach((selector) => {
@@ -333,7 +364,10 @@
       const neighborRotation = direction > 0
         ? -76 * (1 - progressValue)
         : 76 * (1 - progressValue);
-      neighbor.style.transform = `translate3d(0, ${offset}px, -${neighborDepth}px) rotateX(${neighborRotation}deg)`;
+      const neighborStage = neighbor.querySelector('.dig-sleeve-interaction');
+      if (neighborStage) {
+        neighborStage.style.transform = `translate3d(0, ${offset}px, -${neighborDepth}px) rotateX(${neighborRotation}deg)`;
+      }
       const incomingMetadataOpacity = String(Math.min(1, progressValue * 1.25));
       ['.dig-listing-meta', '.dig-card-actions'].forEach((selector) => {
         const element = neighbor.querySelector(selector);
