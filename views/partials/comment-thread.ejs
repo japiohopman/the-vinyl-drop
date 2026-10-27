@@ -2,7 +2,7 @@
   const commentsPageMode = typeof commentsPage !== 'undefined' && commentsPage;
   const commentsReturnPath = commentsPageMode ? `/listings/${listing.id}/comments` : `/listings/${listing.id}`;
 %>
-<section id="comments" class="comment-thread-section" aria-label="Listing comments">
+<section id="comments" class="comment-thread-section" aria-label="Listing comments" tabindex="-1">
   <% if (!(typeof hideContext !== 'undefined' && hideContext) && typeof release !== 'undefined' && release) { %>
     <div class="comment-thread-context">
       <div class="comment-thread-artwork">

@@ -235,7 +235,7 @@ describe('Listing comments UX (#220)', () => {
     expect(html).toContain('Blue Note All-Stars');
     expect(html).toContain('Listed by');
     expect(html).toContain('€24.00');
-    expect(html).toContain('id="comments"');
+    expect(html).toContain('id="comments" class="comment-thread-section" aria-label="Listing comments" tabindex="-1"');
     expect(html).toContain('/auth/login?next=%2Flistings%2Flisting-220%2Fcomments');
 
     const signedInHtml = await renderCommentsView({ currentUser: { id: 'buyer-220' } });
@@ -306,7 +306,8 @@ describe('Listing comments UX (#220)', () => {
 
   it('renders a compact mobile comments entry with a contextual header back link and no overflow', async () => {
     const listingHtml = await renderListingView();
-    expect(listingHtml).toContain('class="listing-comments-entry" id="comments-entry"');
+    expect(listingHtml).toContain('class="listing-comments-entry" id="comments-entry" tabindex="-1"');
+    expect(listingHtml).toContain('aria-controls="comments" aria-expanded="false"');
     expect(listingHtml).toContain('aria-controls="comments" aria-expanded="false"');
     expect(listingHtml).toContain('href="/listings/listing-220/comments"');
 
