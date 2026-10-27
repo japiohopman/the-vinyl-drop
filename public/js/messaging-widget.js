@@ -117,6 +117,7 @@
     var originatingTab = sourceTab === 'people' || sourceTab === 'conversations'
       ? sourceTab
       : activeInboxTab;
+    activeInboxTab = originatingTab;
     returnInboxTab = originatingTab;
     setStatus('Opening conversation…');
     return requestJson('/messages/profile/' + encodeURIComponent(profileId), {
@@ -547,6 +548,7 @@
     void panel.offsetWidth;
     panel.classList.add('is-open');
     syncResponsivePanelState();
+    if (targetProfileId) activeInboxTab = 'conversations';
 
     loadInbox().then(function () {
       if (targetProfileId) {
