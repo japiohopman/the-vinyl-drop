@@ -21,6 +21,8 @@
   let gesture = null;
   let transitionTimer = 0;
   let cancelGestureTimer = 0;
+  let flipSettleTimer = 0;
+  let pendingFlipSettle = null;
 
   function setReducedMotion() {
     root.dataset.reducedMotion = motionPreference.matches ? 'true' : 'false';
@@ -59,7 +61,27 @@
   }
 
 
+  function settleFlipCard(card, restingAngle) {
+    card.style.transition = 'none';
+    card.style.transform = 'rotateY(' + restingAngle + 'deg)';
+    void card.offsetHeight;
+    card.style.transform = '';
+    void card.offsetHeight;
+    card.style.transition = '';
+    card.classList.remove('is-dragging');
+  }
+
+  function flushPendingFlipSettle() {
+    if (!flipSettleTimer) return;
+    window.clearTimeout(flipSettleTimer);
+    flipSettleTimer = 0;
+    const pending = pendingFlipSettle;
+    pendingFlipSettle = null;
+    if (pending) settleFlipCard(pending.card, pending.restingAngle);
+  }
+
   function toggleFlip(slide) {
+    flushPendingFlipSettle();
     const card = slide.querySelector('[data-dig-sleeve-card]');
     if (!card) return;
     setFlipState(slide, digState.nextFlipState(card.classList.contains('is-flipped')));
@@ -101,6 +123,7 @@
 
   function navigateTo(targetIndex, direction) {
     if (isTransitioning || !digState.isValidIndex(targetIndex, slides.length) || targetIndex === activeIndex) return;
+    flushPendingFlipSettle();
 
     const previous = slides[activeIndex];
     const next = slides[targetIndex];
@@ -116,9 +139,13 @@
 
     if (!reducedMotion && !nextHasDragPose) {
       if (nextStage) {
+        const originalTransition = nextStage.style.transition;
+        nextStage.style.transition = 'none';
         nextStage.style.transform = direction > 0
           ? 'translate3d(0, 84%, -155px) rotateX(-76deg)'
           : 'translate3d(0, -84%, -155px) rotateX(76deg)';
+        void nextStage.offsetHeight;
+        nextStage.style.transition = originalTransition;
       }
     }
 
@@ -245,6 +272,7 @@
 
   function handlePointerDown(event) {
     if (isTransitioning || gesture || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    flushPendingFlipSettle();
 
     // A previous cancelled gesture may still have a delayed paintSlides reset queued.
     // Cancel it before a new drag starts so it cannot snap the sleeve back mid-gesture.
@@ -414,17 +442,12 @@
         if (shouldFlip) setFlipState(slide, !wasFlipped);
         card.style.transform = 'rotateY(' + angles.animationAngle + 'deg)';
 
-        window.setTimeout(() => {
-          // The directional animation may end at -180 or 360. Normalize to
-          // the CSS class's canonical angle with transitions disabled, or
-          // clearing the inline transform can trigger a second full rotation.
-          card.style.transition = 'none';
-          card.style.transform = 'rotateY(' + angles.restingAngle + 'deg)';
-          void card.offsetHeight;
-          card.style.transform = '';
-          void card.offsetHeight;
-          card.style.transition = '';
-          card.classList.remove('is-dragging');
+        window.clearTimeout(flipSettleTimer);
+        pendingFlipSettle = { card, restingAngle: angles.restingAngle };
+        flipSettleTimer = window.setTimeout(() => {
+          flipSettleTimer = 0;
+          pendingFlipSettle = null;
+          settleFlipCard(card, angles.restingAngle);
         }, 280);
       }
       return;
