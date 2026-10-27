@@ -404,13 +404,8 @@
     content.appendChild(toolbar);
 
     var subtitle = element('div', 'messaging-widget-subtitle messaging-widget-conversation-context');
-    subtitle.appendChild(element('span', 'messaging-widget-context-label', conversation.release
-      ? conversation.release.artist + ' — ' + conversation.release.title
-      : (conversation.otherParticipant.displayName || '@' + conversation.otherParticipant.username)));
-    if (conversation.release) {
-      subtitle.appendChild(element('span', 'messaging-widget-context-person',
-        'With ' + (conversation.otherParticipant.displayName || '@' + conversation.otherParticipant.username)));
-    }
+    subtitle.appendChild(element('span', 'messaging-widget-context-person',
+      'With ' + (conversation.otherParticipant.displayName || '@' + conversation.otherParticipant.username)));
     content.appendChild(subtitle);
 
     var messageList = element('div', 'messaging-widget-message-list');
