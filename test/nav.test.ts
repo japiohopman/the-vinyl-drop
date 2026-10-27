@@ -109,6 +109,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       <!doctype html>
       <html lang="en">
       <head>
+        <base href="http://127.0.0.1/">
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>${stylesheetContent}</style>
