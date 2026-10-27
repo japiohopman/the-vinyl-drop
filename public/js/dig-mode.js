@@ -265,12 +265,10 @@
     const translate = horizontal
       ? 'translate3d(' + String(softenedDelta) + 'px, 0, 0)'
       : 'translate3d(0, ' + String(softenedDelta) + 'px, 0)';
-    const scale = 1 - progressValue * 0.025;
 
-    // Keep the sleeve face-on. The gesture changes only its position and a
-    // restrained amount of opacity; there is no perspective/rotation tilt.
-    gesture.slide.style.transform = translate + ' scale(' + String(scale) + ')';
-    gesture.slide.style.opacity = String(1 - progressValue * 0.12);
+    // Keep the sleeve at a constant, face-on size: the gesture changes only
+    // its position. Metadata fades separately when the card leaves the deck. 
+    gesture.slide.style.transform = translate;
   }
 
   function handlePointerUp(event) {
