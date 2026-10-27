@@ -77,7 +77,7 @@
               </div>
 
               <div class="dig-sleeve-interaction">
-                <div class="dig-sleeve-stage" data-dig-swipe-area role="group" aria-label="Album cover. Swipe left or right to browse records. Swipe up to discard this record and continue; swipe down to return to the previous record. Use the Flip control to view the back cover.">
+                <div class="dig-sleeve-stage" data-dig-swipe-area role="group" aria-label="Album cover. Swipe left or right to flip this album between its front and back. Swipe up to discard this record and reveal the next; swipe down to restore the previous record.">
                   <div class="dig-sleeve-card" data-dig-sleeve-card>
                       <div class="dig-sleeve-face dig-sleeve-face-front" aria-hidden="false">
                         <% if (item.frontArtwork.sourceKind === 'placeholder') { %>
@@ -112,7 +112,7 @@
                   <% if (item.isTrade) { %><span class="dig-trade-note">Trade considered</span><% } %>
                 </p>
                 <a class="dig-listing-link" href="<%= item.url %>">Open listing <span aria-hidden="true">↗</span></a>
-                <button type="button" class="dig-flip-control" data-dig-flip aria-label="Flip cover to view the back" aria-pressed="false">Flip back</button>
+                <button type="button" class="dig-flip-control" data-dig-flip aria-label="Flip cover to view the back" aria-pressed="false">Flip cover</button>
               </div>
             </article>
           <% }); %>
