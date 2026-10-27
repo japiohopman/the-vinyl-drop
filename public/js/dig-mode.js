@@ -133,8 +133,9 @@
     next.setAttribute('aria-hidden', 'false');
     next.inert = false;
 
-    // Clearing the drag transform lets the outgoing card continue from the
-    // finger position toward its deck/discard exit direction.
+    // Capture the pointer's last dragged position before clearing its inline
+    // transform, so the outgoing card continues from the finger into its exit.
+    void previous.offsetHeight;
     previous.style.transform = '';
     previous.style.opacity = '';
     previous.style.transition = '';
