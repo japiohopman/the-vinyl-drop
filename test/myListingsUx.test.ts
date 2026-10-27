@@ -84,8 +84,6 @@ describe('My Listings UX (#219)', () => {
 
   async function loadHtml(page: Page, html: string, width = 375, height = 812): Promise<void> {
     await page.setViewportSize({ width, height });
-    // The view contract is layout and navigation; prevent sample artwork requests.
-    await page.route('**/*', (route) => route.abort());
     await page.setContent(html);
   }
 
@@ -96,6 +94,8 @@ describe('My Listings UX (#219)', () => {
     expect((header.match(/aria-label="Back to My Profile"/g) || []).length).toBe(1);
 
     const page = await browser.newPage({ viewport: { width: 375, height: 812 } });
+    // The view contract is layout and navigation; prevent sample artwork requests.
+    await page.route('**/*', (route) => route.abort());
     await loadHtml(page, documentHtml(header, await renderListings()));
     const back = page.locator('.mobile-context-header a[aria-label="Back to My Profile"]');
     expect(await back.count()).toBe(1);
@@ -169,6 +169,8 @@ describe('My Listings UX (#219)', () => {
 
   it('has no horizontal overflow and wraps actions cleanly from narrow phones to desktop', async () => {
     const page = await browser.newPage();
+    // The view contract is layout and navigation; prevent sample artwork requests.
+    await page.route('**/*', (route) => route.abort());
     const html = documentHtml(await renderHeader('/listings'), await renderListings());
 
     for (const viewport of [
