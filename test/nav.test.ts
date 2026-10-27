@@ -527,8 +527,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.locator('.messaging-widget-person-message').click();
     await page.waitForSelector('.messaging-widget-message-list');
     expect(await page.locator('.messaging-floating-title').textContent()).toContain('@saved_digger');
-    expect(await page.locator('.messaging-widget-toolbar button').getAttribute('aria-label')).toBe('Back to people');
-    await page.locator('.messaging-widget-toolbar button').click();
+    expect(await page.locator('.messaging-widget-toolbar button').first().getAttribute('aria-label')).toBe('Back to people');
+    await page.locator('.messaging-widget-toolbar button').first().click();
     await page.waitForSelector('.messaging-widget-person-list');
     expect(page.url()).not.toContain('/messages');
 
@@ -698,7 +698,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.locator('[data-message-profile-form] button[type="submit"]').click();
     await page.waitForSelector('.messaging-widget-message-list', { state: 'visible' });
     expect(await page.locator('.messaging-floating-title').textContent()).toContain('@a_very_long_username_for_small_screens');
-    expect(await page.locator('.messaging-widget-toolbar button').getAttribute('aria-label')).toBe('Back to conversations');
+    expect(await page.locator('.messaging-widget-toolbar button').first().getAttribute('aria-label')).toBe('Back to conversations');
     expect(page.url()).not.toContain('/messages');
     expect(requests.some((item) => item.path === '/messages/profile/test-profile' && item.method === 'POST')).toBe(true);
     await page.locator('[data-message-close]').click();
