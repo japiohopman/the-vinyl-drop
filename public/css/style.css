@@ -7010,6 +7010,5 @@ button.mobile-you-action-link.messaging-widget-trigger {
   .messaging-mobile-backdrop,
   .messaging-widget-tab {
     transition: none !important;
-    transform: none !important;
   }
 }
