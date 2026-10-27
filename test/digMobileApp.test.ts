@@ -164,6 +164,64 @@ describe('Mobile Dig app-like viewport', () => {
     }
   });
 
+  it('keeps each sleeve on its own flat 3D plane and fades metadata for the active record only', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812);
+    await page.waitForTimeout(500);
+
+    const initial = await page.evaluate(() => {
+      const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-dig-slide]'));
+      const active = slides.find((slide) => slide.classList.contains('is-active'));
+      const inactive = slides.find((slide) => !slide.classList.contains('is-active'));
+      const plane = active?.querySelector<HTMLElement>('[data-dig-sleeve-plane]');
+      return {
+        slideCount: slides.length,
+        planeCount: document.querySelectorAll('[data-dig-sleeve-plane]').length,
+        planeTransform: plane ? getComputedStyle(plane).transform : 'missing',
+        activeTitleOpacity: active ? getComputedStyle(active.querySelector('.dig-listing-meta')!).opacity : 'missing',
+        inactiveTitleOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-listing-meta')!).opacity : 'missing',
+        activePriceOpacity: active ? getComputedStyle(active.querySelector('.dig-card-actions')!).opacity : 'missing',
+        inactivePriceOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-card-actions')!).opacity : 'missing',
+        documentWidth: document.documentElement.scrollWidth,
+      };
+    });
+
+    expect(initial.slideCount).toBe(2);
+    expect(initial.planeCount).toBe(initial.slideCount);
+    expect(initial.planeTransform).not.toBe('none');
+    expect(Number(initial.activeTitleOpacity)).toBeGreaterThan(0.99);
+    expect(Number(initial.inactiveTitleOpacity)).toBeLessThan(0.01);
+    expect(Number(initial.activePriceOpacity)).toBeGreaterThan(0.99);
+    expect(Number(initial.inactivePriceOpacity)).toBeLessThan(0.01);
+    expect(initial.documentWidth).toBeLessThanOrEqual(375);
+
+    await page.locator('[data-dig-viewer]').focus();
+    await page.keyboard.press('ArrowUp');
+    await page.waitForTimeout(500);
+
+    const next = await page.evaluate(() => {
+      const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-dig-slide]'));
+      const active = slides.find((slide) => slide.classList.contains('is-active'));
+      const inactive = slides.find((slide) => !slide.classList.contains('is-active'));
+      const plane = active?.querySelector<HTMLElement>('[data-dig-sleeve-plane]');
+      return {
+        activeLabel: active?.getAttribute('aria-label') ?? '',
+        planeTransform: plane ? getComputedStyle(plane).transform : 'missing',
+        activeTitleOpacity: active ? getComputedStyle(active.querySelector('.dig-listing-meta')!).opacity : 'missing',
+        inactiveTitleOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-listing-meta')!).opacity : 'missing',
+        activePriceOpacity: active ? getComputedStyle(active.querySelector('.dig-card-actions')!).opacity : 'missing',
+        inactivePriceOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-card-actions')!).opacity : 'missing',
+      };
+    });
+
+    expect(next.activeLabel).toContain('Buhloone Mindstate');
+    expect(next.planeTransform).not.toBe('none');
+    expect(Number(next.activeTitleOpacity)).toBeGreaterThan(0.99);
+    expect(Number(next.inactiveTitleOpacity)).toBeLessThan(0.01);
+    expect(Number(next.activePriceOpacity)).toBeGreaterThan(0.99);
+    expect(Number(next.inactivePriceOpacity)).toBeLessThan(0.01);
+  });
+
   it('keeps the conventional Dig heading and browse controls unchanged on desktop', async () => {
     await loadPage(1280, 900);
     expect(await page.locator('.mobile-context-header').isVisible()).toBe(false);
