@@ -302,8 +302,10 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.locator('.messaging-widget-conversation').click();
     await page.waitForSelector('.messaging-widget-message');
     expect(await page.locator('.messaging-widget-message').textContent()).toContain('Hi from seller');
-    expect(await page.locator('.messaging-widget-toolbar button').count()).toBe(1);
-    expect(await page.locator('.messaging-widget-toolbar button').getAttribute('aria-label')).toBe('Back to conversations');
+    expect(await page.locator('.messaging-widget-toolbar button').count()).toBe(2);
+    expect(await page.locator('.messaging-widget-toolbar button').first().getAttribute('aria-label')).toBe('Back to conversations');
+    expect(await page.locator('.messaging-widget-toolbar button[aria-label="Archive conversation"]').isVisible()).toBe(true);
+    expect(await page.locator('.messaging-widget-conversation-footer .messaging-widget-archive-icon').count()).toBe(0);
     expect(await page.locator('.messaging-widget-toolbar a').count()).toBe(0);
     expect(requests.some((item) => item.method === 'POST' && item.path.endsWith('/read'))).toBe(false);
 
@@ -425,13 +427,25 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
             listing: { id: 'listing-1' },
             userRole: 'buyer',
             unreadCount,
-            otherParticipant: { username: 'seller_user', displayName: 'Seller User' },
+            currentUserAvatarUrl: 'https://example.test/avatar-current.png',
+            otherParticipant: {
+              id: 'seller-profile',
+              username: 'seller_user',
+              displayName: 'Seller User',
+              avatarUrl: 'https://example.test/avatar-seller.png',
+            },
             messages: [{
               id: 'message-1',
               messageSeq: 1,
               isOwnMessage: false,
               body: 'Hi from seller',
               createdAt: '2026-10-25T10:00:00.000Z',
+            }, {
+              id: 'message-2',
+              messageSeq: 2,
+              isOwnMessage: true,
+              body: 'Thanks!',
+              createdAt: '2026-10-25T10:01:00.000Z',
             }],
           }),
         });
@@ -521,11 +535,20 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.locator('#messaging-widget-tab-conversations').click();
     await page.locator('.messaging-widget-conversation').click();
     await page.waitForSelector('.messaging-widget-message');
-    expect(await page.locator('.messaging-widget-message').textContent()).toContain('Hi from seller');
+    expect(await page.locator('.messaging-widget-message').first().textContent()).toContain('Hi from seller');
+    expect(await page.locator('.messaging-widget-message').nth(1).textContent()).toContain('Thanks!');
     expect(await page.locator('.messaging-widget-compose textarea').isVisible()).toBe(true);
+    expect(await page.locator('.messaging-widget-compose textarea').getAttribute('placeholder')).toBe('Write a message…');
+    expect(await page.locator('.messaging-widget-send').getAttribute('aria-label')).toBe('Send message');
     expect(await page.locator('.messaging-widget-send img').getAttribute('src')).toBe('/assets/svg/send.svg');
+    expect(await page.locator('.messaging-widget-send').innerText()).toBe('');
+    expect(await page.locator('.messaging-floating-avatar img').getAttribute('src')).toBe('https://example.test/avatar-seller.png');
+    expect(await page.locator('.messaging-widget-message-row:not(.is-own) .messaging-widget-message-avatar').getAttribute('src')).toBe('https://example.test/avatar-seller.png');
+    expect(await page.locator('.messaging-widget-message-row.is-own .messaging-widget-message-avatar').getAttribute('src')).toBe('https://example.test/avatar-current.png');
     expect(await page.locator('.messaging-widget-toolbar a').count()).toBe(0);
-    expect(await page.locator('.messaging-widget-toolbar button').getAttribute('aria-label')).toBe('Back to conversations');
+    expect(await page.locator('.messaging-widget-toolbar button').first().getAttribute('aria-label')).toBe('Back to conversations');
+    expect(await page.locator('.messaging-widget-toolbar button[aria-label="Archive conversation"]').isVisible()).toBe(true);
+    expect(await page.locator('.messaging-widget-conversation-footer .messaging-widget-archive-icon').count()).toBe(0);
 
     // Pulling the same widget header down minimizes it; pulling the launcher up restores it.
     const dragBox = await page.locator('[data-message-drag-handle]').boundingBox();
