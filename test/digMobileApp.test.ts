@@ -258,8 +258,8 @@ describe('Mobile Dig app-like viewport', () => {
       const active = slides.find((slide) => slide.classList.contains('is-active'))!;
       const incoming = slides.find((slide) => slide !== active)!;
       return {
-        outgoingTransform: active.style.transform,
-        incomingTransform: incoming.style.transform,
+        outgoingTransform: active.querySelector<HTMLElement>('.dig-sleeve-interaction')!.style.transform,
+        incomingTransform: incoming.querySelector<HTMLElement>('.dig-sleeve-interaction')!.style.transform,
         incomingVisibility: getComputedStyle(incoming).visibility,
         outgoingMetaOpacity: Number(active.querySelector<HTMLElement>('.dig-listing-meta')!.style.opacity),
         incomingMetaOpacity: Number(incoming.querySelector<HTMLElement>('.dig-listing-meta')!.style.opacity),
@@ -282,7 +282,8 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
 
     const restingRotation = await page.locator('[data-dig-slide].is-active').evaluate((slide) => {
-      const matrix = new DOMMatrixReadOnly(getComputedStyle(slide).transform);
+      const sleeve = slide.querySelector<HTMLElement>('.dig-sleeve-interaction')!;
+      const matrix = new DOMMatrixReadOnly(getComputedStyle(sleeve).transform);
       return Math.abs(Math.atan2(matrix.m32, matrix.m33) * 180 / Math.PI);
     });
     expect(restingRotation).toBeLessThan(1);
