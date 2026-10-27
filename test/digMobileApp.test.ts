@@ -223,6 +223,40 @@ describe('Mobile Dig app-like viewport', () => {
     expect(Number(next.inactivePriceOpacity)).toBeLessThan(0.01);
   });
 
+  it('removes the 3D tilt and metadata transitions when reduced motion is requested', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await loadPage(375, 812);
+    await page.waitForTimeout(50);
+
+    const state = await page.evaluate(() => {
+      const slides = Array.from(document.querySelectorAll<HTMLElement>('[data-dig-slide]'));
+      const active = slides.find((slide) => slide.classList.contains('is-active'));
+      const inactive = slides.find((slide) => !slide.classList.contains('is-active'));
+      const plane = active?.querySelector<HTMLElement>('[data-dig-sleeve-plane]');
+      return {
+        reducedMotionFlag: document.querySelector('[data-dig-experience]')?.getAttribute('data-reduced-motion'),
+        planeTransform: plane ? getComputedStyle(plane).transform : 'missing',
+        activeTitleOpacity: active ? getComputedStyle(active.querySelector('.dig-listing-meta')!).opacity : 'missing',
+        inactiveTitleOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-listing-meta')!).opacity : 'missing',
+        activePriceOpacity: active ? getComputedStyle(active.querySelector('.dig-card-actions')!).opacity : 'missing',
+        inactivePriceOpacity: inactive ? getComputedStyle(inactive.querySelector('.dig-card-actions')!).opacity : 'missing',
+      };
+    });
+
+    expect(state.reducedMotionFlag).toBe('true');
+    expect(state.planeTransform).toBe('none');
+    expect(Number(state.activeTitleOpacity)).toBe(1);
+    expect(Number(state.inactiveTitleOpacity)).toBe(0);
+    expect(Number(state.activePriceOpacity)).toBe(1);
+    expect(Number(state.inactivePriceOpacity)).toBe(0);
+
+    await page.locator('[data-dig-flip]').first().click();
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(true);
+    expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back').getAttribute('aria-hidden')).toBe('false');
+  });
+
   it('keeps the conventional Dig heading and browse controls unchanged on desktop', async () => {
     await loadPage(1280, 900);
     expect(await page.locator('.mobile-context-header').isVisible()).toBe(false);
