@@ -68,26 +68,42 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     `;
   }
 
-  async function renderProfilePage(view: 'show' | 'crate', isOwner = false): Promise<string> {
+  async function renderProfilePage(view: 'show' | 'crate', isOwner = false, messagingEnabled = false): Promise<string> {
     const templatePath = path.join(__dirname, '../views/profiles', view === 'show' ? 'show.ejs' : 'crate.ejs');
+    const profile = {
+      id: 'test-profile',
+      username: 'a_very_long_username_for_small_screens',
+      displayName: 'The Extraordinarily Long Collector Name',
+      avatarUrl: null,
+      websiteUrl: 'https://example.test',
+      bio: 'A long but realistic profile bio about finding rare soul, jazz and funk records in local crates.',
+      location: 'Amsterdam Oost',
+      createdAt: new Date('2024-01-01T00:00:00Z'),
+    };
+    const user = messagingEnabled
+      ? { id: isOwner ? profile.id : 'viewer-profile', email: 'digger@example.com' }
+      : null;
+    const currentProfile = messagingEnabled
+      ? (isOwner ? { id: profile.id, username: profile.username } : { id: 'viewer-profile', username: 'viewer' })
+      : null;
     const renderedView = await ejs.renderFile(templatePath, {
       getIconSvg,
       title: 'Profile layout test',
-      profile: {
-        id: 'test-profile',
-        username: 'a_very_long_username_for_small_screens',
-        displayName: 'The Extraordinarily Long Collector Name',
-        avatarUrl: null,
-        websiteUrl: 'https://example.test',
-        bio: 'A long but realistic profile bio about finding rare soul, jazz and funk records in local crates.',
-        location: 'Amsterdam Oost',
-        createdAt: new Date('2024-01-01T00:00:00Z'),
-      },
+      profile,
+      user,
+      messagingEnabled,
       isOwner,
+      isSavedPerson: false,
       crateTotalCount: 12,
       listings: [],
       pagination: { totalCount: 12, page: 1, limit: 12, totalPages: 1 },
     }, { filename: templatePath });
+    const navHtml = messagingEnabled ? await renderNav({
+      currentPath: '/profiles/' + profile.username,
+      currentUser: user,
+      currentProfile,
+      messagingEnabled: true,
+    }) : '';
 
     return `
       <!doctype html>
@@ -98,7 +114,9 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         <style>${stylesheetContent}</style>
       </head>
       <body>
+        ${messagingEnabled ? '<div id="app">' + navHtml + '</div>' : ''}
         <main class="main-content container">${renderedView}</main>
+        ${messagingEnabled ? '<script>' + messagingWidgetScriptContent + '</script>' : ''}
       </body>
       </html>
     `;
