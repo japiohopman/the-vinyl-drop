@@ -2135,7 +2135,7 @@ select.form-control {
   width: 100%;
   aspect-ratio: 1 / 1;
   transform: translate(-50%, -50%) rotateX(42deg);
-  transform-origin: 50% 62%;
+  transform-origin: 50% 50%;
   transform-style: preserve-3d;
   filter: drop-shadow(0 16px 12px rgba(26, 26, 26, .23));
 }
