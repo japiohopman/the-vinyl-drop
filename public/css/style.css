@@ -6728,3 +6728,288 @@ body.messaging-mobile-panel-open {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+
+/* Issue #216 — the shared messenger uses the same inset overlay language as Me. */
+button.desktop-you-menu-item.messaging-widget-trigger {
+  box-sizing: border-box;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.desktop-you-menu-item.messaging-widget-trigger:focus-visible,
+button.mobile-you-action-link.messaging-widget-trigger:focus-visible {
+  outline: 3px solid var(--color-deep-green);
+  outline-offset: -3px;
+}
+
+button.mobile-you-action-link.messaging-widget-trigger {
+  box-sizing: border-box;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  border: var(--border-thick);
+  cursor: pointer;
+  text-align: left;
+}
+
+.messaging-widget-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: var(--border-thin);
+  border-radius: 5px;
+  background: var(--color-paper-muted);
+}
+
+.messaging-widget-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.messaging-widget-tab:hover {
+  color: var(--color-ink);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.messaging-widget-tab.is-active,
+.messaging-widget-tab[aria-selected="true"] {
+  border-color: var(--color-border-subtle);
+  border-bottom: 2px solid var(--color-rust);
+  background: var(--color-white);
+  color: var(--color-deep-green);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.messaging-widget-tab:focus-visible {
+  outline: 2px solid var(--color-deep-green);
+  outline-offset: 1px;
+}
+
+.messaging-widget-tab-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: var(--space-2);
+  min-width: 0;
+  outline: none;
+}
+
+.messaging-widget-person-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.messaging-widget-person-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2);
+  border: var(--border-thin);
+  border-radius: 5px;
+  background: var(--color-white);
+}
+
+.messaging-widget-person-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.messaging-widget-person-profile:hover {
+  color: var(--color-deep-green);
+  text-decoration: none;
+}
+
+.messaging-widget-person-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border: var(--border-thin);
+  border-radius: 50%;
+  background: var(--color-paper-muted);
+  object-fit: cover;
+}
+
+.messaging-widget-person-initial {
+  color: var(--color-deep-green);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+.messaging-widget-person-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.messaging-widget-person-name {
+  overflow: hidden;
+  color: var(--color-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.messaging-widget-person-message {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-deep-green);
+  border-radius: 5px;
+  background: var(--color-deep-green);
+  color: var(--color-white);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.messaging-widget-person-message:hover:not(:disabled) {
+  border-color: var(--color-rust-accessible);
+  background: var(--color-rust-accessible);
+  color: var(--color-white);
+}
+
+.messaging-widget-person-message:focus-visible {
+  outline: 2px solid var(--color-rust);
+  outline-offset: 2px;
+}
+
+/* Animated state is controlled by messaging-widget.js so close can finish before hidden is set. */
+.messaging-floating-window {
+  border-radius: 5px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(8px) scale(0.99);
+  transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
+}
+
+.messaging-floating-window.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition: opacity 180ms ease, transform 180ms ease, visibility 0s;
+}
+
+.messaging-floating-window.is-closing {
+  opacity: 0;
+  visibility: visible;
+  pointer-events: none;
+  transform: translateY(8px) scale(0.99);
+}
+
+@media (max-width: 1023px) {
+  .messaging-mobile-backdrop:not([hidden]) {
+    opacity: 0;
+    background: rgba(18, 18, 18, 0.56);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+    transition: opacity 180ms ease;
+  }
+
+  .messaging-mobile-backdrop.is-open {
+    opacity: 1;
+  }
+
+  .messaging-mobile-backdrop.is-closing {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .messaging-floating-window:not([hidden]) {
+    top: calc(var(--messaging-visual-viewport-top, 0px) + 12px + env(safe-area-inset-top, 0px));
+    left: calc(var(--messaging-visual-viewport-left, 0px) + 12px + env(safe-area-inset-left, 0px));
+    right: auto;
+    bottom: auto;
+    width: calc(var(--messaging-visual-viewport-width, 100vw) - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    max-width: none;
+    height: calc(var(--messaging-visual-viewport-height, 100dvh) - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(var(--messaging-visual-viewport-height, 100dvh) - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+    padding: 0;
+    border: var(--border-heavy);
+    border-radius: 5px;
+    background: var(--color-paper);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
+  }
+
+  .messaging-floating-window.is-open {
+    transition: opacity 180ms ease, transform 180ms ease, visibility 0s;
+  }
+
+  .messaging-floating-window.is-minimized:not([hidden]) {
+    top: auto;
+    left: auto;
+    right: 12px;
+    bottom: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px) + 12px);
+    width: min(280px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    padding-bottom: 0;
+    border-radius: 5px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+  }
+
+  .messaging-floating-header {
+    min-height: 56px;
+    padding: var(--space-1) var(--space-3) var(--space-2);
+    border-radius: 0;
+  }
+
+  .messaging-widget-person-item {
+    gap: var(--space-2);
+  }
+
+  .messaging-widget-person-message {
+    min-height: 44px;
+    padding-inline: var(--space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .messaging-floating-window,
+  .messaging-floating-window.is-open,
+  .messaging-floating-window.is-closing,
+  .messaging-mobile-backdrop,
+  .messaging-widget-tab {
+    transition: none !important;
+    transform: none !important;
+  }
+}
