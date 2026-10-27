@@ -280,6 +280,25 @@
     </div>
   </div>
 
-  <!-- Comment Thread Section -->
-  <%- include('../partials/comment-thread', { listing, release, photos, seller, comments, currentUser, commentError: typeof commentError !== 'undefined' ? commentError : null, submittedContent: typeof submittedContent !== 'undefined' ? submittedContent : '' }) %>
+  <section class="listing-comments-entry" id="comments-entry">
+    <a
+      href="/listings/<%= encodeURIComponent(listing.id) %>/comments"
+      class="listing-comments-entry-link"
+      aria-label="Comments / Ask a question, <%= comments.length %> <%= comments.length === 1 ? 'comment' : 'comments' %>"
+    >
+      <span class="listing-comments-entry-copy">
+        <span class="listing-comments-entry-label">Comments / Ask a question</span>
+        <span class="listing-comments-entry-help"><%= comments.length === 0 ? 'Start the conversation about this record' : 'Read the thread or ask the seller' %></span>
+      </span>
+      <span class="listing-comments-count"><%= comments.length %></span>
+    </a>
+  </section>
+
+  <details class="listing-comments-disclosure" id="listing-comments-disclosure" <% if (typeof commentsInitiallyOpen !== 'undefined' && commentsInitiallyOpen) { %>open<% } %>>
+    <summary aria-controls="comments" aria-expanded="<%= typeof commentsInitiallyOpen !== 'undefined' && commentsInitiallyOpen ? 'true' : 'false' %>">
+      <span>Comments / Ask a question</span>
+      <span class="listing-comments-summary-count"><%= comments.length %></span>
+    </summary>
+    <%- include('../partials/comment-thread', { listing, release, photos, seller, comments, currentUser, hideHeading: true, commentsPage: false, commentError: typeof commentError !== 'undefined' ? commentError : null, submittedContent: typeof submittedContent !== 'undefined' ? submittedContent : '' }) %>
+  </details>
 </div>

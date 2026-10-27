@@ -1,0 +1,51 @@
+<div class="listing-comments-page">
+  <a href="/listings/<%= encodeURIComponent(listing.id) %>#comments-entry" class="listing-comments-back-link">
+    <span aria-hidden="true">←</span> Back to listing
+  </a>
+
+  <header class="listing-comments-page-header">
+    <p class="comment-context-eyebrow">Listing discussion</p>
+    <h1>Comments / Ask a question</h1>
+    <p>Keep the conversation about this record in one public thread.</p>
+  </header>
+
+  <section class="listing-comments-context" aria-label="Listing context">
+    <%
+      const commentsArtworkUrl = photos && photos.length > 0
+        ? photos[0].publicUrl
+        : (release && release.coverArtUrl ? release.coverArtUrl : '/assets/vinyl-placeholder.svg');
+      const commentsArtworkAlt = photos && photos.length > 0
+        ? (photos[0].altText || `Artwork for ${release.title}`)
+        : `Artwork for ${release.title}`;
+    %>
+    <img
+      class="listing-comments-context-artwork"
+      src="<%= commentsArtworkUrl %>"
+      alt="<%= commentsArtworkAlt %>"
+      loading="lazy"
+      onerror="this.onerror=null;this.src='/assets/vinyl-placeholder.svg';"
+    >
+    <div class="listing-comments-context-copy">
+      <p class="listing-comments-context-eyebrow">About this drop</p>
+      <h2 class="listing-comments-context-title"><%= release.title %></h2>
+      <p class="listing-comments-context-artist"><%= release.artist %></p>
+      <p class="listing-comments-context-seller">
+        Listed by <a href="/profiles/<%= encodeURIComponent(seller.username) %>"><%= seller.displayName || seller.username %></a>
+      </p>
+      <p class="listing-comments-context-price"><%= priceFormatted %></p>
+    </div>
+  </section>
+
+  <%- include('../partials/comment-thread', {
+    listing,
+    release,
+    photos,
+    seller,
+    comments,
+    currentUser,
+    hideContext: true,
+    commentsPage: true,
+    commentError: typeof commentError !== 'undefined' ? commentError : null,
+    submittedContent: typeof submittedContent !== 'undefined' ? submittedContent : ''
+  }) %>
+</div>

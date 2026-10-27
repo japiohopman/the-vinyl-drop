@@ -2,6 +2,7 @@
   const headerPath = typeof currentPath !== 'undefined' ? currentPath : '/';
   const isCustomReleasePage = headerPath === '/releases/new';
   const isListingCreatePage = headerPath === '/listings/create';
+  const isListingCommentsPage = headerPath.startsWith('/listings/') && headerPath.endsWith('/comments') && headerPath.split('/').length === 4;
   const isListingEditPage = headerPath.startsWith('/listings/') && headerPath.endsWith('/edit') && headerPath.split('/').length === 4;
   const isMyListingsPage = headerPath === '/listings';
   const isDigRoute = headerPath === '/dig';
@@ -14,6 +15,8 @@
     mobileSectionLabel = 'HOME';
   } else if (headerPath.startsWith('/dig') || headerPath.startsWith('/browse')) {
     mobileSectionLabel = 'DIG';
+  } else if (isListingCommentsPage) {
+    mobileSectionLabel = 'COMMENTS';
   } else if (headerPath.startsWith('/drop') || headerPath.startsWith('/listings') || headerPath.startsWith('/releases')) {
     mobileSectionLabel = 'DROP';
   } else if (headerPath.startsWith('/messages')) {
@@ -47,6 +50,10 @@
         <span class="mobile-dig-position" data-dig-header-position aria-live="polite" aria-atomic="true">1 of <%= digItemCount %></span>
       <% } else if (isAboutPage) { %>
         <a href="/" class="mobile-context-back mobile-context-back-icon-only mobile-context-home" aria-label="Back to Home">
+          <span class="mobile-context-back-icon" aria-hidden="true">←</span>
+        </a>
+      <% } else if (isListingCommentsPage) { %>
+        <a href="/listings/<%= encodeURIComponent(headerPath.split('/')[2]) %>#comments-entry" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to listing">
           <span class="mobile-context-back-icon" aria-hidden="true">←</span>
         </a>
       <% } else if (isCustomReleasePage) { %>

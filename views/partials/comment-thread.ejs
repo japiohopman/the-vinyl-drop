@@ -1,91 +1,86 @@
-<section id="comments" class="comment-thread-section" style="margin-top: var(--space-12); padding-top: var(--space-8); border-top: var(--border-thick);">
-  <% if (typeof release !== 'undefined' && release) { %>
-    <div class="comment-thread-context" style="display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); padding: var(--space-3); background: var(--color-paper-muted); border: var(--border-thin); border-radius: var(--radius-sm);">
-      <div style="width: 48px; height: 48px; flex-shrink: 0; background: var(--color-white); border: var(--border-thin); border-radius: var(--radius-xs); overflow: hidden; display: flex; align-items: center; justify-content: center; aspect-ratio: 1/1;">
+<%
+  const commentsPageMode = typeof commentsPage !== 'undefined' && commentsPage;
+  const commentsReturnPath = commentsPageMode ? `/listings/${listing.id}/comments` : `/listings/${listing.id}`;
+%>
+<section id="comments" class="comment-thread-section" aria-label="Listing comments">
+  <% if (!(typeof hideContext !== 'undefined' && hideContext) && typeof release !== 'undefined' && release) { %>
+    <div class="comment-thread-context">
+      <div class="comment-thread-artwork">
         <% if (typeof photos !== 'undefined' && photos && photos.length > 0) { %>
-          <img src="<%= photos[0].publicUrl %>" alt="" style="width: 100%; height: 100%; object-fit: contain;">
+          <img src="<%= photos[0].publicUrl %>" alt="" loading="lazy">
         <% } else { %>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" style="color: var(--color-ink-muted);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <circle cx="12" cy="12" r="10"></circle>
             <circle cx="12" cy="12" r="3"></circle>
           </svg>
         <% } %>
       </div>
-      <div>
-        <div style="font-family: var(--font-mono); font-size: var(--font-size-3xs); text-transform: uppercase; color: var(--color-ink-muted);">Discussing drop</div>
-        <div style="font-family: var(--font-display); font-size: var(--font-size-sm); font-weight: 700; color: var(--color-ink); line-height: 1.2;">
-          <%= release.title %> <span style="font-weight: 400; color: var(--color-rust-accessible);">— <%= release.artist %></span>
-        </div>
+      <div class="comment-thread-context-copy">
+        <p class="comment-context-eyebrow">Discussing drop</p>
+        <p class="comment-thread-release-title">
+          <%= release.title %> <span>— <%= release.artist %></span>
+        </p>
       </div>
     </div>
   <% } %>
 
-  <h2 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-6);">
-    Community Discussion (<%= typeof comments !== 'undefined' && comments ? comments.length : 0 %>)
-  </h2>
+  <% if (!(typeof hideHeading !== 'undefined' && hideHeading)) { %>
+    <h2 class="comment-thread-heading">
+      Community Discussion (<%= typeof comments !== 'undefined' && comments ? comments.length : 0 %>)
+    </h2>
+  <% } %>
 
   <% if (typeof commentError !== 'undefined' && commentError) { %>
-    <div class="alert alert-error" role="alert" style="padding: var(--space-4); margin-bottom: var(--space-6); background: var(--color-error-bg); border: var(--border-thick) var(--color-error-border); border-radius: var(--radius-sm); color: var(--color-error-border);">
-      <p style="font-weight: 600;"><%= commentError %></p>
+    <div class="comment-error alert alert-error" role="alert" id="comment-error">
+      <p><%= commentError %></p>
     </div>
   <% } %>
 
-  <!-- Comment List -->
-  <div class="comment-list" style="display: flex; flex-direction: column; gap: var(--space-6); margin-bottom: var(--space-8);">
+  <div class="comment-list">
     <% if (typeof comments !== 'undefined' && comments && comments.length > 0) { %>
       <% comments.forEach(function(c) { %>
         <% const isSellerAuthor = (seller && c.authorId === seller.id) || (listing && c.authorId === listing.sellerId); %>
-        <article class="comment-card" style="padding: var(--space-4); border: var(--border-thin, 1px solid var(--color-border)); border-radius: var(--radius-sm); background: <%= isSellerAuthor ? 'var(--color-paper-muted)' : 'var(--color-white)' %>;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-2); flex-wrap: wrap; gap: var(--space-2);">
-            <div style="display: flex; align-items: center; gap: var(--space-3);">
-              <div class="comment-avatar" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--color-border); overflow: hidden; background: var(--color-paper-muted); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: var(--font-size-sm); flex-shrink: 0;">
+        <article class="comment-card <%= isSellerAuthor ? 'comment-card-seller' : '' %>">
+          <div class="comment-card-header">
+            <div class="comment-author">
+              <div class="comment-avatar">
                 <% if (c.author.avatarUrl) { %>
-                  <img src="<%= c.author.avatarUrl %>" alt="<%= c.author.displayName || c.author.username %>'s avatar" style="width: 100%; height: 100%; object-fit: cover;">
+                  <img src="<%= c.author.avatarUrl %>" alt="<%= c.author.displayName || c.author.username %>'s avatar" loading="lazy">
                 <% } else { %>
-                  <span><%= (c.author.displayName || c.author.username || 'U').substring(0, 1).toUpperCase() %></span>
+                  <span aria-hidden="true"><%= (c.author.displayName || c.author.username || 'U').substring(0, 1).toUpperCase() %></span>
                 <% } %>
               </div>
-
-              <div>
-                <a href="/profiles/<%= encodeURIComponent(c.author.username) %>" style="font-weight: 600; color: var(--color-ink); text-decoration: none;">
+              <div class="comment-author-identity">
+                <a href="/profiles/<%= encodeURIComponent(c.author.username) %>" class="comment-author-name">
                   <%= c.author.displayName || c.author.username %>
                 </a>
-                <span style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); margin-left: var(--space-1);">
-                  @<%= c.author.username %>
-                </span>
-
+                <span class="comment-author-handle">@<%= c.author.username %></span>
                 <% if (isSellerAuthor) { %>
-                  <span class="seller-badge" style="display: inline-block; margin-left: var(--space-2); padding: 1px var(--space-2); font-family: var(--font-mono); font-size: var(--font-size-3xs); text-transform: uppercase; font-weight: 700; background: var(--color-rust-accessible); color: var(--color-white); border-radius: var(--radius-xs);">
-                    Seller
-                  </span>
+                  <span class="seller-badge">Seller</span>
                 <% } %>
               </div>
             </div>
-
-            <time datetime="<%= new Date(c.createdAt).toISOString() %>" style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">
+            <time datetime="<%= new Date(c.createdAt).toISOString() %>" class="comment-time">
               <%= new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
             </time>
           </div>
-
-          <div class="comment-content" style="font-size: var(--font-size-base); line-height: 1.5; word-break: break-word; margin-top: var(--space-2);">
-            <p style="white-space: pre-wrap; margin: 0;"><%= c.content %></p>
+          <div class="comment-content">
+            <p><%= c.content %></p>
           </div>
         </article>
       <% }); %>
     <% } else { %>
-      <div class="empty-comments" style="padding: var(--space-6); text-align: center; border: 1px dashed var(--color-border-subtle); border-radius: var(--radius-sm); color: var(--color-ink-muted);">
+      <div class="empty-comments">
         <p>No comments yet. Be the first to start the discussion!</p>
       </div>
     <% } %>
   </div>
 
-  <!-- Comment Form or Sign-in Prompt -->
   <% if (typeof currentUser !== 'undefined' && currentUser) { %>
-    <form action="/listings/<%= listing.id %>/comments" method="POST" style="display: flex; flex-direction: column; gap: var(--space-4);">
+    <form id="comment-form" action="/listings/<%= listing.id %>/comments" method="POST" class="comment-form">
+      <input type="hidden" name="returnTo" value="<%= commentsPageMode ? 'comments' : 'thread' %>">
       <div class="form-group">
-        <label for="comment-content" style="display: block; font-family: var(--font-display); font-size: var(--font-size-sm); margin-bottom: var(--space-2);">
-          Post a comment or question
-        </label>
+        <label for="comment-content">Post a comment or question</label>
         <textarea
           id="comment-content"
           name="content"
@@ -93,20 +88,15 @@
           required
           maxlength="1000"
           placeholder="Ask the seller about media condition, pressing details, or drop availability..."
-          style="width: 100%; padding: var(--space-3); font-family: var(--font-body); font-size: var(--font-size-base); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-white);"
+          <% if (typeof commentError !== 'undefined' && commentError) { %>aria-describedby="comment-error" autofocus<% } %>
         ><%= typeof submittedContent !== 'undefined' ? submittedContent : '' %></textarea>
       </div>
-
-      <div>
-        <button type="submit" class="btn btn-primary">
-          Post Comment
-        </button>
-      </div>
+      <button type="submit" class="btn btn-primary">Post Comment</button>
     </form>
   <% } else { %>
-    <div class="login-prompt" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); text-align: center;">
-      <p style="margin-bottom: var(--space-3); font-size: var(--font-size-sm);">Have a question about this record?</p>
-      <a href="/auth/login?next=/listings/<%= listing.id %>" class="btn btn-outline btn-sm">
+    <div class="login-prompt">
+      <p>Have a question about this record?</p>
+      <a href="/auth/login?next=<%= encodeURIComponent(commentsReturnPath) %>" class="btn btn-outline btn-sm">
         Sign in to post a comment
       </a>
     </div>
