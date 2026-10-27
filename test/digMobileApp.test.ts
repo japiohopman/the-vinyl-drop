@@ -239,6 +239,76 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
+  it('cancels a pending flip-settle timer before a second horizontal drag', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812);
+
+    const dragArea = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const firstBox = await dragArea.boundingBox();
+    if (!firstBox) throw new Error('Active Dig sleeve has no bounding box');
+    const startX = firstBox.x + firstBox.width / 2;
+    const startY = firstBox.y + firstBox.height / 2;
+
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX - 110, startY, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForTimeout(60);
+
+    const secondBox = await page.locator('[data-dig-slide].is-active [data-dig-swipe-area]').boundingBox();
+    if (!secondBox) throw new Error('Active Dig sleeve has no bounding box');
+    const secondX = secondBox.x + secondBox.width / 2;
+    const secondY = secondBox.y + secondBox.height / 2;
+    await page.mouse.move(secondX, secondY);
+    await page.mouse.down();
+    await page.mouse.move(secondX + 100, secondY, { steps: 5 });
+
+    // Keep the second drag active beyond the first gesture's former 280 ms timer.
+    await page.waitForTimeout(320);
+    const dragState = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => ({
+      isDragging: card.classList.contains('is-dragging'),
+      transform: getComputedStyle(card).transform,
+    }));
+    expect(dragState.isDragging).toBe(true);
+    expect(dragState.transform).not.toBe('none');
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
+    await page.mouse.up();
+  });
+
+  it('animates button navigation from the 3D depth pose before settling face-on', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    // 700px keeps the responsive Dig viewer and its navigation controls rendered,
+    // while staying above the breakpoint that hides those controls.
+    await loadPage(700, 900);
+
+    await page.locator('[data-dig-next]').evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement) || button.disabled) {
+        throw new Error('Dig next-record control is missing or disabled');
+      }
+      button.click();
+    });
+    await page.waitForTimeout(90);
+    const inTransition = await page.locator('[data-dig-slide].is-active .dig-sleeve-interaction').evaluate((sleeve) => {
+      const matrix = new DOMMatrixReadOnly(getComputedStyle(sleeve).transform);
+      return {
+        transform: getComputedStyle(sleeve).transform,
+        z: matrix.m43,
+        rotation: Math.atan2(matrix.m23, matrix.m22) * 180 / Math.PI,
+      };
+    });
+    expect(inTransition.transform).not.toBe('none');
+    expect(inTransition.z).toBeLessThan(-1);
+    expect(Math.abs(inTransition.rotation)).toBeGreaterThan(1);
+
+    await page.waitForTimeout(600);
+    const restingRotation = await page.locator('[data-dig-slide].is-active .dig-sleeve-interaction').evaluate((sleeve) => {
+      const matrix = new DOMMatrixReadOnly(getComputedStyle(sleeve).transform);
+      return Math.atan2(matrix.m23, matrix.m22) * 180 / Math.PI;
+    });
+    expect(Math.abs(restingRotation)).toBeLessThan(1);
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('2 of 2');
+  });
+
   it('follows a real 3D deck arc during vertical drag, then settles the incoming record face-on', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);

@@ -73,14 +73,11 @@ describe('Dig navigation and flip state', () => {
   it('normalizes the swipe transform without animating a second rotation', () => {
     const clientScript = fs.readFileSync(path.join(process.cwd(), 'public/js/dig-mode.js'), 'utf8');
 
-    expect(clientScript).toContain(
-      `card.style.transition = 'none';
-          card.style.transform = 'rotateY(' + angles.restingAngle + 'deg)';
-          void card.offsetHeight;
-          card.style.transform = '';
-          void card.offsetHeight;
-          card.style.transition = '';`
-    );
+    expect(clientScript).toContain("function settleFlipCard(card, restingAngle) {");
+    expect(clientScript).toContain("card.style.transform = 'rotateY(' + restingAngle + 'deg)';");
+    expect(clientScript).toContain('void card.offsetHeight;');
+    expect(clientScript).toContain('window.clearTimeout(flipSettleTimer)');
+    expect(clientScript).toContain('flushPendingFlipSettle();');
   });
 });
 
@@ -439,6 +436,8 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('.dig-flip-control:focus-visible');
     expect(css).toContain('clip: rect(0, 0, 0, 0)');
     expect(view).toContain('Front cover not photographed');
+    expect(view).toContain('↑ next / discard · ↓ previous / restore');
+    expect(view).not.toContain('← previous · → next');
     expect(view).not.toContain('Release artwork');
     expect(view).not.toContain('dig-artwork-badge');
     expect(css).toContain('.dig-slide.is-leaving-up');
