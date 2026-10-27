@@ -425,6 +425,8 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('perspective: 1100px;');
     expect(css).toContain('transform-style: preserve-3d;');
     expect(css).toContain('overflow: clip;');
+    expect(css).toContain('.dig-slide.is-leaving-up .dig-sleeve-interaction');
+    expect(css).toContain('.dig-slide.is-leaving-down .dig-sleeve-interaction');
     expect(css).toContain('.dig-slide.is-leaving-up');
     expect(css).toContain('.dig-slide.is-leaving-down');
     expect(css).toContain('rotateX(82deg)');
