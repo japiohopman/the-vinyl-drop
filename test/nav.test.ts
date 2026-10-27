@@ -562,6 +562,33 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     await page.locator('[data-message-close]').click();
     expect(await panel.getAttribute('hidden')).not.toBeNull();
     expect(await panel.evaluate((element) => element.classList.contains('is-closing'))).toBe(false);
+
+    await page.setViewportSize({ width: 430, height: 932 });
+    await page.click('#mobile-you-trigger');
+    await page.locator('#mobile-you-surface [data-messaging-widget-trigger]').click();
+    await page.waitForFunction(() => {
+      const browser = globalThis as unknown as { document: { querySelector(selector: string): { getAttribute(name: string): string | null } | null } };
+      return browser.document.querySelector('#messaging-floating-window')?.getAttribute('aria-modal') === 'true';
+    });
+    const widePhoneLayout = await panel.evaluate((element) => {
+      const browser = globalThis as unknown as {
+        window: { innerWidth: number; getComputedStyle: (target: unknown) => { borderRadius: string } };
+      };
+      const rect = element.getBoundingClientRect();
+      return {
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        viewportWidth: browser.window.innerWidth,
+        borderRadius: browser.window.getComputedStyle(element).borderRadius,
+      };
+    });
+    expect(widePhoneLayout.left).toBeGreaterThanOrEqual(12);
+    expect(widePhoneLayout.right).toBeLessThanOrEqual(430 - 12);
+    expect(widePhoneLayout.width).toBeCloseTo(406, 0);
+    expect(widePhoneLayout.borderRadius).toBe('5px');
+    await page.locator('[data-message-close]').click();
+    expect(await panel.getAttribute('hidden')).not.toBeNull();
   });
 
   it('keeps profile landing and empty Crate usable without horizontal overflow across phone, tablet, and desktop widths', async () => {
