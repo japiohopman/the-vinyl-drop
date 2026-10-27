@@ -2514,6 +2514,7 @@ select.form-control {
 
 @media (prefers-reduced-motion: reduce) {
   .dig-slide,
+  .dig-sleeve-interaction,
   .dig-sleeve-card,
   .dig-listing-meta,
   .dig-card-actions {
