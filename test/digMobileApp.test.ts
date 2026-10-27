@@ -277,7 +277,9 @@ describe('Mobile Dig app-like viewport', () => {
 
   it('animates button navigation from the 3D depth pose before settling face-on', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await loadPage(768, 900);
+    // 700px keeps the responsive Dig viewer and its navigation controls rendered,
+    // while staying above the breakpoint that hides those controls.
+    await loadPage(700, 900);
 
     await page.locator('[data-dig-next]').evaluate((button) => {
       if (!(button instanceof HTMLButtonElement) || button.disabled) {
