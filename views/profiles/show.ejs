@@ -38,10 +38,24 @@
       <% if (isOwner) { %>
         <a href="/profile/edit" class="btn btn-outline btn-sm">Edit Profile</a>
         <% if (typeof messagingEnabled !== 'undefined' && messagingEnabled) { %>
-          <a href="/messages" class="btn btn-outline btn-sm">Inbox & Saved People</a>
+          <button
+            type="button"
+            class="btn btn-outline btn-sm messaging-widget-trigger"
+            data-messaging-widget-trigger
+            aria-controls="messaging-floating-window"
+            aria-expanded="false"
+            aria-haspopup="dialog"
+            aria-label="Open Messages and Saved People"
+          >Messages &amp; People</button>
         <% } %>
       <% } else if (typeof user !== 'undefined' && user && typeof messagingEnabled !== 'undefined' && messagingEnabled) { %>
-        <form action="/messages/profile/<%= profile.id %>" method="POST" class="inline-form">
+        <form
+          action="/messages/profile/<%= profile.id %>"
+          method="POST"
+          class="inline-form"
+          data-message-profile-form
+          data-message-profile-id="<%= profile.id %>"
+        >
           <button type="submit" class="btn btn-primary btn-sm">Message</button>
         </form>
         <form action="/messages/saved-people/<%= profile.id %>" method="POST" class="inline-form">
