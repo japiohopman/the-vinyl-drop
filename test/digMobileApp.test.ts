@@ -266,5 +266,11 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('.dig-search-control-bar').isVisible()).toBe(true);
     expect(await page.locator('.dig-responsive-desktop').isVisible()).toBe(true);
     expect(await page.locator('.mobile-dig-back').isVisible()).toBe(false);
+    const desktopWidths = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+    }));
+    expect(desktopWidths.documentWidth).toBeLessThanOrEqual(1280);
+    expect(desktopWidths.bodyWidth).toBeLessThanOrEqual(1280);
   });
 });
