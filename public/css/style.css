@@ -2006,6 +2006,7 @@ select.form-control {
   opacity: 0;
   pointer-events: none;
   transform: none;
+  transform-style: preserve-3d;
   transition: visibility 0s linear 520ms;
 }
 
