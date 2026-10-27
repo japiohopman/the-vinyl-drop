@@ -1,29 +1,36 @@
-<div class="listings-index-page" style="max-width: 900px; margin: var(--space-8) auto;">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6);">
-    <div>
-      <h1 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-1);">My Listings</h1>
-      <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted);">Manage your vinyl drops, drafts, and record trades.</p>
-      <nav aria-label="Listing views" style="display:flex;gap:var(--space-3);margin-top:var(--space-2);font-size:var(--font-size-sm);">
-        <a href="/listings" <%= !viewHidden ? 'aria-current="page"' : '' %>>Visible</a>
-        <a href="/listings?view=hidden" <%= viewHidden ? 'aria-current="page"' : '' %>>Hidden completed</a>
+<div class="my-listings-page">
+  <header class="my-listings-header">
+    <div class="my-listings-header-copy">
+      <h1 class="my-listings-title">My Listings</h1>
+      <p class="my-listings-description">Manage your vinyl drops, drafts, and record trades.</p>
+      <nav class="my-listings-view-tabs" aria-label="Listing views">
+        <a href="/listings" class="my-listings-view-tab" <%= !viewHidden ? 'aria-current="page"' : '' %>>Visible</a>
+        <a href="/listings?view=hidden" class="my-listings-view-tab" <%= viewHidden ? 'aria-current="page"' : '' %>>Hidden completed</a>
       </nav>
     </div>
-    <a href="/listings/new" class="btn btn-primary btn-md">+ Sell a Record</a>
-  </div>
+    <a href="/drop/new" class="btn btn-primary btn-md my-listings-sell-cta">
+      <%- include('../partials/icon', { name: 'plain-arrow', size: '1rem', ariaHidden: true }) %>
+      <span>+ Sell a Record</span>
+    </a>
+  </header>
 
   <% if (listings.length === 0) { %>
-    <div class="card" style="padding: var(--space-8); text-align: center; border: var(--border-thick); background: var(--color-surface-card);">
+    <section class="card my-listings-empty-state">
+      <%- include('../partials/icon', { name: 'cardboard-box-closed', size: '2rem', ariaHidden: true }) %>
       <% if (viewHidden) { %>
-        <p style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-2);">No hidden completed listings.</p>
-        <p style="color: var(--color-ink-muted);">Completed listings you dismiss will appear here and can be restored.</p>
+        <h2 class="my-listings-empty-title">No hidden completed listings.</h2>
+        <p class="my-listings-empty-description">Completed listings you dismiss will appear here and can be restored.</p>
       <% } else { %>
-        <p style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-2);">No listings yet!</p>
-      <p style="color: var(--color-ink-muted); margin-bottom: var(--space-4);">Ready to share your vinyl collection with local collectors?</p>
-      <a href="/listings/new" class="btn btn-primary btn-md">Create Your First Listing</a>
+        <h2 class="my-listings-empty-title">No listings yet!</h2>
+        <p class="my-listings-empty-description">Ready to share your vinyl collection with local collectors?</p>
+        <a href="/drop/new" class="btn btn-primary btn-md my-listings-empty-cta">
+          <%- include('../partials/icon', { name: 'plain-arrow', size: '1rem', ariaHidden: true }) %>
+          <span>Create Your First Listing</span>
+        </a>
       <% } %>
-    </div>
+    </section>
   <% } else { %>
-    <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+    <div class="my-listings-list">
       <% listings.forEach(function(item) { %>
         <%
           const sellerPhoto = (item.photos && item.photos.length > 0) ? item.photos[0] : null;
@@ -52,7 +59,7 @@
             secondaryAlt = 'Default vinyl placeholder for ' + item.release.title;
           }
         %>
-        <div class="card" style="padding: var(--space-4); border: var(--border-thick); background: var(--color-surface-card); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-3);">
+        <article class="card my-listings-card" data-listing-status="<%= item.status %>">
           <div class="my-listings-item-row">
             <div class="my-listings-thumbnail-frame">
               <img
@@ -68,60 +75,86 @@
                 onerror="handleMyListingsImageFallback(this)"
               />
             </div>
-            <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-1);">
-                <span class="badge" style="padding: 2px 8px; border-radius: 4px; font-size: var(--font-size-xs); font-weight: bold; text-transform: uppercase; background: <%= item.status === 'published' ? 'var(--color-accent-teal)' : item.status === 'draft' ? '#f59e0b' : '#6b7280' %>; color: #fff;">
+            <div class="my-listings-item-info">
+              <div class="my-listings-badges">
+                <span class="badge my-listings-status my-listings-status--<%= item.status %>">
                   <%= item.status %>
                 </span>
                 <% if (item.tradeAvailable) { %>
-                  <span style="font-size: var(--font-size-xs); font-family: var(--font-mono); font-weight: bold; color: var(--color-brand-primary);">[TRADE OK]</span>
+                  <span class="my-listings-trade-badge">[TRADE OK]</span>
                 <% } %>
               </div>
-              <h2 style="font-family: var(--font-heading); font-size: var(--font-size-md); margin: 0; overflow-wrap: anywhere;">
-                <%= item.release.title %>
-              </h2>
-              <p style="font-family: var(--font-mono); font-size: var(--font-size-sm); color: var(--color-ink-muted); margin: 0; overflow-wrap: anywhere;">
+              <h2 class="my-listings-release-title"><%= item.release.title %></h2>
+              <p class="my-listings-release-meta">
                 by <%= item.release.artist %> (<%= item.release.releaseYear || 'Unknown' %>) &bull; Media: <%= item.physicalCopy.mediaCondition %>, Sleeve: <%= item.physicalCopy.sleeveCondition %>
               </p>
             </div>
           </div>
 
-          <div style="font-family: var(--font-display); font-size: var(--font-size-md); font-weight: bold; min-width: 100px; text-align: right;">
-            <%= item.priceFormatted %>
-          </div>
+          <div class="my-listings-price"><%= item.priceFormatted %></div>
 
-          <div class="my-listings-actions" style="display: flex; gap: var(--space-2); align-items: center;">
-            <a href="/listings/<%= item.id %>/preview" class="btn btn-outline btn-sm">Preview</a>
+          <div class="my-listings-actions" aria-label="Actions for <%= item.release.title %>">
+            <a
+              href="/listings/<%= item.id %>/preview"
+              class="btn <%= !viewHidden && item.status !== 'published' ? 'btn-primary my-listings-action-primary' : 'btn-outline my-listings-action-secondary' %> btn-sm my-listings-action"
+            >
+              <%- include('../partials/icon', { name: 'search', size: '1rem', ariaHidden: true }) %>
+              <span>Preview</span>
+            </a>
+
             <% if (item.status !== 'sold' && item.status !== 'traded' && item.status !== 'archived') { %>
-              <a href="/listings/<%= item.id %>/edit" class="btn btn-outline btn-sm">Edit & Photos</a>
+              <a
+                href="/listings/<%= item.id %>/edit"
+                class="btn <%= !viewHidden && item.status === 'published' ? 'btn-primary my-listings-action-primary' : 'btn-outline my-listings-action-secondary' %> btn-sm my-listings-action"
+              >
+                <%- include('../partials/icon', { name: 'edit', size: '1rem', ariaHidden: true }) %>
+                <span>Edit &amp; Photos</span>
+              </a>
             <% } %>
+
             <% if (item.status === 'draft') { %>
-              <form action="/listings/<%= item.id %>/publish" method="POST" style="display: inline;">
-                <button type="submit" class="btn btn-primary btn-sm">Publish</button>
+              <form action="/listings/<%= item.id %>/publish" method="POST" class="my-listings-action-form">
+                <button type="submit" class="btn btn-outline btn-sm my-listings-action my-listings-action-secondary">
+                  <%- include('../partials/icon', { name: 'confirmed', size: '1rem', ariaHidden: true }) %>
+                  <span>Publish</span>
+                </button>
               </form>
             <% } %>
+
             <% if (item.status === 'published') { %>
-              <form action="/listings/<%= item.id %>/unpublish" method="POST" style="display: inline;">
-                <button type="submit" class="btn btn-outline btn-sm">Unpublish</button>
+              <form action="/listings/<%= item.id %>/unpublish" method="POST" class="my-listings-action-form">
+                <button type="submit" class="btn btn-outline btn-sm my-listings-action my-listings-action-quiet">
+                  <%- include('../partials/icon', { name: 'pause-button', size: '1rem', ariaHidden: true }) %>
+                  <span>Unpublish</span>
+                </button>
               </form>
             <% } %>
+
             <% if (viewHidden) { %>
-              <form action="/listings/<%= item.id %>/restore-dismissed" method="POST" style="display: inline;">
-                <button type="submit" class="btn btn-outline btn-sm">Restore</button>
+              <form action="/listings/<%= item.id %>/restore-dismissed" method="POST" class="my-listings-action-form">
+                <button type="submit" class="btn btn-primary btn-sm my-listings-action my-listings-action-primary">
+                  <%- include('../partials/icon', { name: 'next-button', size: '1rem', ariaHidden: true }) %>
+                  <span>Restore</span>
+                </button>
               </form>
             <% } else if (item.status === 'sold' || item.status === 'traded' || item.status === 'archived') { %>
-              <form action="/listings/<%= item.id %>/dismiss" method="POST" style="display: inline;">
-                <button type="submit" class="btn btn-outline btn-sm">Dismiss</button>
+              <form action="/listings/<%= item.id %>/dismiss" method="POST" class="my-listings-action-form">
+                <button type="submit" class="btn btn-outline btn-sm my-listings-action my-listings-action-quiet">
+                  <%- include('../partials/icon', { name: 'close', size: '1rem', ariaHidden: true }) %>
+                  <span>Dismiss</span>
+                </button>
               </form>
             <% } %>
           </div>
-        </div>
+        </article>
       <% }); %>
     </div>
   <% } %>
 </div>
 
 <script>
+  var myListingsTerminalFallbackIcon = <%- JSON.stringify(typeof getIconSvg === 'function' ? getIconSvg('cardboard-box-closed', { size: '1.25rem', ariaHidden: true }) : '') %>;
+
   function handleMyListingsImageFallback(img) {
     if (!img) return;
     var secondary = img.getAttribute('data-secondary-src');
@@ -164,7 +197,11 @@
       fallback.setAttribute('role', 'img');
       var label = img.getAttribute('data-placeholder-alt') || img.getAttribute('alt') || 'Default vinyl record placeholder';
       fallback.setAttribute('aria-label', label);
-      fallback.innerHTML = '<span aria-hidden="true" style="font-size:1.25rem;line-height:1;">🎵</span>';
+      if (myListingsTerminalFallbackIcon) {
+        fallback.innerHTML = myListingsTerminalFallbackIcon;
+      } else {
+        fallback.textContent = 'VINYL';
+      }
       frame.appendChild(fallback);
     }
   }
