@@ -176,7 +176,7 @@ describe('Mobile Dig app-like viewport', () => {
     await page.mouse.down();
     await page.mouse.move(startX + deltaX, startY + deltaY, { steps: 8 });
     await page.mouse.up();
-    await page.waitForTimeout(450);
+    await page.waitForTimeout(620);
   }
 
   it('shows one square face-on sleeve with no tilted plane or other album cover at rest', async () => {
