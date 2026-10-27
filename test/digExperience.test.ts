@@ -427,7 +427,7 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('.dig-slide.is-entering-from-bottom');
     expect(css).toContain('.dig-slide.is-active');
     expect(css).toContain('object-fit: contain');
-    expect(css).toContain('touch-action: pinch-zoom;');
+    expect(css).toContain('touch-action: none;');
     expect(view).toContain('Front cover not photographed');
     expect(view).not.toContain('Release artwork');
     expect(view).not.toContain('dig-artwork-badge');
