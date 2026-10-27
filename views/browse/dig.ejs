@@ -78,7 +78,8 @@
 
               <div class="dig-sleeve-interaction">
                 <div class="dig-sleeve-stage" data-dig-swipe-area role="group" aria-label="Album cover. Swipe left or right to flip the cover. Swipe up for the next record or down for the previous record.">
-                  <div class="dig-sleeve-card" data-dig-sleeve-card>
+                  <div class="dig-sleeve-plane" data-dig-sleeve-plane>
+                    <div class="dig-sleeve-card" data-dig-sleeve-card>
                     <div class="dig-sleeve-face dig-sleeve-face-front" aria-hidden="false">
                       <% if (item.frontArtwork.sourceKind === 'placeholder') { %>
                         <div class="dig-missing-front" role="status">
@@ -102,6 +103,7 @@
                         </div>
                       <% } %>
                     </div>
+                  </div>
                   </div>
                 </div>
               </div>
