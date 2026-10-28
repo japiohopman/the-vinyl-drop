@@ -96,16 +96,33 @@
     overflow: visible;
   }
 
-  .dig-responsive-mobile .dig-crate-stack {
+  /*
+   * The mobile scene is clipped only by the locked viewport (body overflow:hidden).
+   * Do not use the crate stack as an additional clip plane: perspective changes
+   * the projected bounds during a 180-degree flip and crops a corner intermittently.
+   */
+  body.mobile-dig-session .dig-responsive-mobile .dig-crate-stack {
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: 0;
-    /*
-     * Keep the stack as the outer clip, but extend its clip edge so perspective
-     * and the 3 mm side faces can paint past its static bounds mid-flip.
-     * This enlarges the safe paint area, not the flex layout or page height.
-     */
-    overflow-clip-margin: 24px;
+    overflow: visible;
+    overflow-clip-margin: 0;
+  }
+
+  /*
+   * Ancestors used to clip the rotating sleeve before it reached the stack.
+   * The body still locks the page to the viewport, so visible overflow here does
+   * not introduce page scrolling; it simply removes nested rectangular clip planes.
+   */
+  body.mobile-dig-session .main-content,
+  body.mobile-dig-session .dig-responsive-page,
+  body.mobile-dig-session .dig-responsive-mobile,
+  body.mobile-dig-session .dig-page,
+  body.mobile-dig-session .dig-explorer,
+  body.mobile-dig-session .dig-viewer,
+  body.mobile-dig-session .dig-sleeve-interaction,
+  body.mobile-dig-session .dig-sleeve-stage {
+    overflow: visible;
   }
 
   body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage {
@@ -125,9 +142,21 @@
 
   body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-card {
     position: absolute;
-    inset: 3%;
+    inset: 5% 4%;
     width: auto;
     height: auto;
+  }
+
+  /*
+   * Keep record metadata stationary while the sleeve rotates. Vertical gestures
+   * already drive opacity directly from the pointer; translateY transitions here
+   * cause a second, competing animation that looks like a flicker/glitch.
+   */
+  body.mobile-dig-session .dig-responsive-mobile .dig-slide .dig-listing-meta,
+  body.mobile-dig-session .dig-responsive-mobile .dig-slide .dig-card-actions {
+    transform: none !important;
+    transition: none !important;
+    transition-delay: 0s !important;
   }
 
   .dig-responsive-mobile .dig-crate-source {

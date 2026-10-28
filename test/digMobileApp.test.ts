@@ -284,6 +284,26 @@ describe('Mobile Dig app-like viewport', () => {
       if (!stack) throw new Error('Sleeve has no crate stack');
       const stackStyle = getComputedStyle(stack);
       const stageBefore = getComputedStyle(stage, '::before');
+      const overflowSelectors = [
+        '.main-content',
+        '.dig-responsive-page',
+        '.dig-responsive-mobile',
+        '.dig-page',
+        '.dig-explorer',
+        '.dig-viewer',
+        '.dig-sleeve-interaction',
+        '.dig-sleeve-stage',
+        '.dig-crate-stack',
+      ];
+      const overflowStates = overflowSelectors.map((selector) => {
+        const element = card.closest(selector);
+        if (!element) throw new Error('Missing clip ancestor: ' + selector);
+        return { selector, overflow: getComputedStyle(element).overflow };
+      });
+      const meta = card.closest('[data-dig-slide]')?.querySelector<HTMLElement>('.dig-listing-meta');
+      const actions = card.closest('[data-dig-slide]')?.querySelector<HTMLElement>('.dig-card-actions');
+      const price = card.closest('[data-dig-slide]')?.querySelector<HTMLElement>('.dig-price');
+      if (!meta || !actions || !price) throw new Error('Missing record metadata or price');
       return {
         width: sleeveCard.clientWidth,
         height: sleeveCard.clientHeight,
@@ -298,6 +318,19 @@ describe('Mobile Dig app-like viewport', () => {
         stageBeforeShadow: stageBefore.boxShadow,
         stackOverflow: stackStyle.overflow,
         stackClipMargin: stackStyle.getPropertyValue('overflow-clip-margin'),
+        overflowStates,
+        metadata: {
+          transform: getComputedStyle(meta).transform,
+          transitionDuration: getComputedStyle(meta).transitionDuration,
+        },
+        actions: {
+          transform: getComputedStyle(actions).transform,
+          transitionDuration: getComputedStyle(actions).transitionDuration,
+        },
+        price: {
+          transform: getComputedStyle(price).transform,
+          transitionDuration: getComputedStyle(price).transitionDuration,
+        },
         edges: {
           top: edge('top'),
           right: edge('right'),
@@ -310,11 +343,11 @@ describe('Mobile Dig app-like viewport', () => {
     const expectHinges = (geometry: Awaited<ReturnType<typeof readGeometry>>, rotating: boolean) => {
       const { width, height, edges } = geometry;
 
-      // The moving artwork has a real inset inside the larger touch/clip-safe stage.
-      expect(geometry.cardLeft).toBeCloseTo(geometry.stageWidth * 0.03, 0);
-      expect(geometry.cardTop).toBeCloseTo(geometry.stageHeight * 0.03, 0);
-      expect(width).toBeCloseTo(geometry.stageWidth * 0.94, 0);
-      expect(height).toBeCloseTo(geometry.stageHeight * 0.94, 0);
+      // The cover has a larger safety margin above/below and stays inset from both sides.
+      expect(geometry.cardLeft).toBeCloseTo(geometry.stageWidth * 0.04, 0);
+      expect(geometry.cardTop).toBeCloseTo(geometry.stageHeight * 0.05, 0);
+      expect(width).toBeCloseTo(geometry.stageWidth * 0.92, 0);
+      expect(height).toBeCloseTo(geometry.stageHeight * 0.90, 0);
 
       // Each plane is centered over the 3 mm thickness and its center sits
       // exactly on the cover perimeter; this removes the visible corner gaps.
@@ -353,8 +386,17 @@ describe('Mobile Dig app-like viewport', () => {
       expect(geometry.stageBeforeContent).toBe('none');
       expect(geometry.stageBeforeDisplay).toBe('none');
       expect(geometry.stageBeforeShadow).toBe('none');
-      expect(geometry.stackOverflow).toBe('clip');
-      expect(geometry.stackClipMargin).toBe('24px');
+      expect(geometry.stackOverflow).toBe('visible');
+      expect(geometry.stackClipMargin).toBe('0px');
+      expect(geometry.overflowStates).toEqual(
+        geometry.overflowStates.map(({ selector, overflow }) => ({ selector, overflow: 'visible' }))
+      );
+      expect(geometry.metadata.transform).toBe('none');
+      expect(geometry.metadata.transitionDuration).toBe('0s');
+      expect(geometry.actions.transform).toBe('none');
+      expect(geometry.actions.transitionDuration).toBe('0s');
+      expect(geometry.price.transform).toBe('none');
+      expect(geometry.price.transitionDuration).toBe('0s');
       if (rotating) expect(geometry.transform).not.toBe('none');
     };
 
