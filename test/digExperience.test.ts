@@ -386,6 +386,7 @@ describe('Dig photo-role contract', () => {
 
     expect((html.match(/data-dig-slide/g) ?? []).length).toBe(2);
     expect((html.match(/data-dig-sleeve-card/g) ?? []).length).toBe(2);
+    expect((html.match(/class="dig-sleeve-edge dig-sleeve-edge-(?:top|right|bottom|left)"/g) ?? []).length).toBe(8);
     expect(html).not.toContain('data-dig-sleeve-plane');
     expect(html).toContain('First test release');
     expect(html).toContain('Second test release');
@@ -433,6 +434,10 @@ describe('Dig photo-role contract', () => {
     const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     const css = rawCss.replace(/\r\n/g, '\n');
     expect(css).toContain('.dig-sleeve-image');
+    expect(css).toContain('.dig-sleeve-edge-top');
+    expect(css).toContain('.dig-sleeve-edge-right');
+    expect(css).toContain('.dig-sleeve-edge-bottom');
+    expect(css).toContain('.dig-sleeve-edge-left');
     expect(css).not.toContain('.dig-sleeve-plane');
     expect(css).not.toContain('rotateX(42deg)');
     expect(css).toContain('.dig-crate-stack {');
@@ -462,6 +467,17 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('@media (max-width: 680px)');
     expect(css).toContain('.dig-nav-button {\n    display: none;');
     expect(css).toContain('.dig-keyboard-note {\n    display: none;');
+  });
+
+  it('keeps cast shadow on the frame and off both animated sleeve faces', () => {
+    const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const mobileCss = fs.readFileSync(path.join(process.cwd(), 'public/css/dig-mobile-crate.css'), 'utf8');
+    const faceRule = rawCss.match(/\\.dig-sleeve-face\\s*\\{([^}]*)\\}/)?.[1] ?? '';
+    const edgeRule = rawCss.match(/\\.dig-sleeve-edge\\s*\\{([^}]*)\\}/)?.[1] ?? '';
+
+    expect(faceRule).not.toMatch(/box-shadow\\s*:/);
+    expect(edgeRule).toContain('pointer-events: none;');
+    expect(mobileCss).toContain('filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));');
   });
 });
 
