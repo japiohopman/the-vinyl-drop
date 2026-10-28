@@ -23,6 +23,7 @@ const otherUserId = 'other-youtube-226';
 const physicalCopyId = 'copy-youtube-226';
 const releaseId = 'release-youtube-226';
 const validId = 'dQw4w9WgXcQ';
+const playlistContextUrl = 'https://www.youtube.com/watch?v=b4FxjBAjn_s&list=OLAK5uy_nBfwErsGbb7yzzdJhsBXX4qHHu2OHxzDs';
 
 describe('YouTube release preview (#226)', () => {
   jest.setTimeout(30000);
@@ -67,7 +68,7 @@ describe('YouTube release preview (#226)', () => {
   describe('server-side URL normalization', () => {
     it('normalizes regular watch, short share, Shorts and live URLs to one video ID', () => {
       expect(normalizeYouTubeVideoId('https://www.youtube.com/watch?v=' + validId)).toBe(validId);
-      expect(normalizeYouTubeVideoId('https://www.youtube.com/watch?v=b4FxjBAjn_s&list=OLAK5uy_nBfwErsGbb7yzzdJhsBXX4qHHu2OHxzDs')).toBe('b4FxjBAjn_s');
+      expect(normalizeYouTubeVideoId(playlistContextUrl)).toBe('b4FxjBAjn_s');
       expect(normalizeYouTubeVideoId('https://www.youtube.com/watch?v=' + validId + '&list=PL123')).toBe(validId);
       expect(normalizeYouTubeVideoId('https://youtu.be/' + validId + '?si=share-token&list=PL123')).toBe(validId);
       expect(normalizeYouTubeVideoId('https://youtu.be/' + validId + '?si=share-token')).toBe(validId);
@@ -102,11 +103,11 @@ describe('YouTube release preview (#226)', () => {
       const updated = await updateReleaseYouTubePreviewForListing(
         listingId,
         sellerId,
-        'https://youtu.be/' + validId
+        playlistContextUrl
       );
       expect(physicalCopyRepository.findPhysicalCopyById).toHaveBeenCalledWith(physicalCopyId, undefined);
-      expect(releaseRepository.updateReleaseYouTubeVideoId).toHaveBeenCalledWith(releaseId, validId, undefined);
-      expect(updated.youtubeVideoId).toBe(validId);
+      expect(releaseRepository.updateReleaseYouTubeVideoId).toHaveBeenCalledWith(releaseId, 'b4FxjBAjn_s', undefined);
+      expect(updated.youtubeVideoId).toBe('b4FxjBAjn_s');
     });
 
     it('allows a seller to clear an optional preview', async () => {
