@@ -1,6 +1,6 @@
 <%
   const activePath = typeof currentPath !== 'undefined' ? currentPath : '/';
-  const isListingDetailPage = activePath !== '/listings/create' && /^\/listings\/[^/]+(?:\/preview)?$/.test(activePath);
+  const isListingDetailPage = activePath !== '/listings/create' && /^\/listings\/[^/]+$/.test(activePath);
   const user = typeof currentUser !== 'undefined' ? currentUser : null;
   const userProfile = typeof currentProfile !== 'undefined' ? currentProfile : null;
   const isMessagingEnabled = typeof messagingEnabled !== 'undefined' ? messagingEnabled : false;

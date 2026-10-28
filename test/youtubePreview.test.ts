@@ -239,5 +239,12 @@ describe('YouTube release preview (#226)', () => {
     expect(mainLayoutTemplate).toContain('listing-detail-page');
     expect(stylesheet).toContain('body.listing-detail-page .main-content');
     expect(stylesheet).toContain('env(safe-area-inset-bottom, 0px)');
+
+    const previewHeader = ejs.render(headerTemplate, {
+      ...locals,
+      currentPath: '/listings/' + listingId + '/preview',
+    }, { filename: headerPath });
+    expect(previewHeader).not.toContain('<span class="mobile-context-heading">RECORD</span>');
+    expect(previewHeader).not.toContain('aria-label="Back to Dig results"');
   });
 });

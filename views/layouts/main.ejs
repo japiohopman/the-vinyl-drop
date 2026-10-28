@@ -22,7 +22,7 @@
   <script src="/js/messaging-widget.js" defer></script>
 </head>
 <body>
-  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && /^\/listings\/[^/]+(?:\/preview)?$/.test(currentPath)) { %>
+  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && /^\/listings\/[^/]+$/.test(currentPath)) { %>
     <script>document.body.classList.add('listing-detail-page');</script>
   <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/dig' && typeof items !== 'undefined' && Array.isArray(items) && items.length > 0) { %>
