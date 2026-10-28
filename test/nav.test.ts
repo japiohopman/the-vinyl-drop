@@ -947,7 +947,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
 
       await page.setViewportSize({ width: 768, height: 812 });
       await page.setContent(html);
-      const tabletDocumentWidth = await page.locator('html').evaluate((element) => (element as HTMLElement).scrollWidth);
+      const tabletDocumentWidth = await page.locator('html').evaluate((element) => (element as unknown as { scrollWidth: number }).scrollWidth);
       expect(tabletDocumentWidth).toBeLessThanOrEqual(768);
     });
 
