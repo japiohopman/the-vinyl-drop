@@ -460,7 +460,7 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('overflow: clip;');
     const mobileCrateCss = fs.readFileSync(path.join(process.cwd(), 'public/css/dig-mobile-crate.css'), 'utf8');
     expect(mobileCrateCss).toContain('body.mobile-dig-session .dig-responsive-mobile .dig-crate-stack');
-    expect(mobileCrateCss).toContain('overflow-clip-margin: 0;');
+    expect(mobileCrateCss).toContain('overflow-clip-margin: 12px;');
     expect(mobileCrateCss).toContain('body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage');
     expect(mobileCrateCss).toContain('inset: 5% 4%;');
     expect(mobileCrateCss).toContain('transform: none !important;');
