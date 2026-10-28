@@ -419,6 +419,45 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
+  it('keeps the complete crate artwork visible across short and tall mobile viewports', async () => {
+    for (const viewport of [
+      { width: 320, height: 640 },
+      { width: 375, height: 640 },
+      { width: 375, height: 812 },
+      { width: 430, height: 896 },
+    ]) {
+      await loadPage(viewport.width, viewport.height);
+      const geometry = await page.evaluate(() => {
+        const stack = document.querySelector('[data-dig-stack]') as HTMLElement | null;
+        const image = document.querySelector('[data-dig-crate-source] img') as HTMLImageElement | null;
+        if (!stack || !image) return null;
+        const stackRect = stack.getBoundingClientRect();
+        const imageRect = image.getBoundingClientRect();
+        return {
+          viewportWidth: window.innerWidth,
+          stackLeft: stackRect.left,
+          stackWidth: stackRect.width,
+          imageTopOffset: imageRect.top - stackRect.top,
+          imageBottomGap: stackRect.bottom - imageRect.bottom,
+          imageLeftInset: imageRect.left - stackRect.left,
+          imageRightInset: stackRect.right - imageRect.right,
+          imageWidth: imageRect.width,
+          imageHeight: imageRect.height,
+        };
+      });
+
+      expect(geometry).not.toBeNull();
+      expect(Math.abs(geometry!.stackLeft)).toBeLessThanOrEqual(1);
+      expect(geometry!.stackWidth).toBeCloseTo(viewport.width, 0);
+      expect(Math.abs(geometry!.imageTopOffset)).toBeLessThanOrEqual(1);
+      expect(geometry!.imageBottomGap).toBeGreaterThanOrEqual(-1);
+      expect(geometry!.imageLeftInset).toBeGreaterThan(0);
+      expect(geometry!.imageRightInset).toBeGreaterThan(0);
+      expect(geometry!.imageWidth).toBeGreaterThan(0);
+      expect(geometry!.imageHeight).toBeGreaterThan(0);
+    }
+  });
+
   it('uses the supplied crate and preserves filter values when the mobile overlay is cancelled', async () => {
     await loadPage(375, 812);
 
