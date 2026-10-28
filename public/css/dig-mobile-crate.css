@@ -102,8 +102,10 @@
     margin-right: 0;
   }
 
-  .dig-responsive-mobile .dig-sleeve-stage {
-    width: min(94vw, 510px, calc(100vw - 24px), calc(100dvh - 320px));
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage {
+    width: min(88vw, 480px, calc(100vw - 40px), calc(100dvh - 330px));
+    flex: 0 1 auto;
+    max-width: 100%;
   }
 
   .dig-responsive-mobile .dig-crate-source {
@@ -142,13 +144,14 @@
    * shadow. It reads as a UI frame and breaks the sleeve's physical flip.
    * Thickness now belongs to the moving sleeve's four side faces only.
    */
-  .dig-responsive-mobile .dig-sleeve-stage::before {
-    content: none;
-    display: none;
-    border: 0;
-    box-shadow: none;
-    background: transparent;
-    transform: none;
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage::before {
+    content: none !important;
+    display: none !important;
+    visibility: hidden !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    transform: none !important;
   }
 
   /* Warm paper backdrop for the crate area, without adding another shadow frame. */

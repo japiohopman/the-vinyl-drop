@@ -167,7 +167,9 @@ describe('Mobile Dig app-like viewport', () => {
       expect(dimensions.bodyWidth).toBeLessThanOrEqual(viewport.width);
       expect(dimensions.documentHeight).toBeLessThanOrEqual(viewport.height);
       expect(dimensions.bodyHeight).toBeLessThanOrEqual(viewport.height);
-      expect(dimensions.stageWidth).toBeGreaterThanOrEqual(viewport.width - 48);
+      const expectedSleeveWidth = Math.min(viewport.width * 0.88, 480, viewport.width - 40, viewport.height - 330);
+      expect(dimensions.stageWidth).toBeLessThanOrEqual(expectedSleeveWidth + 1);
+      expect(dimensions.stageWidth).toBeGreaterThan(expectedSleeveWidth * 0.9);
       expect(dimensions.stageBottom).toBeLessThanOrEqual(viewport.height - 60 + 1);
     }
   });
@@ -254,74 +256,70 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
-  it('keeps sleeve thickness faces anchored through both horizontal flips and settled states', async () => {
+  it('keeps a single left cardboard spine aligned during both horizontal flips', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);
 
     const readGeometry = async () => page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
-      const edge = (side: 'top' | 'right' | 'bottom' | 'left') => {
-        const element = card.querySelector<HTMLElement>('.dig-sleeve-edge-' + side);
-        if (!element) throw new Error('Missing sleeve edge: ' + side);
-        const style = getComputedStyle(element);
-        const origin = style.transformOrigin.split(/\s+/).map((value) => Number.parseFloat(value));
-        return {
-          left: element.offsetLeft,
-          top: element.offsetTop,
-          width: element.offsetWidth,
-          height: element.offsetHeight,
-          originX: origin[0],
-          originY: origin[1],
-          transform: style.transform,
-        };
-      };
+      const spine = card.querySelector<HTMLElement>('.dig-sleeve-spine-edge');
+      const front = card.querySelector<HTMLElement>('.dig-sleeve-face-front');
+      const back = card.querySelector<HTMLElement>('.dig-sleeve-face-back');
+      if (!spine || !front || !back) throw new Error('Sleeve is missing its spine or a face');
+      const spineStyle = getComputedStyle(spine);
+      const stage = card.closest('.dig-sleeve-stage');
+      if (!stage) throw new Error('Sleeve is missing its clipping stage');
+      const stageStyle = getComputedStyle(stage, '::before');
       return {
         width: card.clientWidth,
         height: card.clientHeight,
         transform: getComputedStyle(card).transform,
         flipped: card.classList.contains('is-flipped'),
-        edges: {
-          top: edge('top'),
-          right: edge('right'),
-          bottom: edge('bottom'),
-          left: edge('left'),
+        spine: {
+          left: Number.parseFloat(spineStyle.left),
+          width: spine.offsetWidth,
+          height: spine.offsetHeight,
+          transform: spineStyle.transform,
+          shadow: spineStyle.boxShadow,
         },
+        front: {
+          left: front.offsetLeft,
+          top: front.offsetTop,
+          width: front.offsetWidth,
+          height: front.offsetHeight,
+          shadow: getComputedStyle(front).boxShadow,
+        },
+        back: {
+          left: back.offsetLeft,
+          top: back.offsetTop,
+          width: back.offsetWidth,
+          height: back.offsetHeight,
+          shadow: getComputedStyle(back).boxShadow,
+        },
+        stageBeforeContent: stageStyle.content,
+        stageBeforeDisplay: stageStyle.display,
+        stageBeforeShadow: stageStyle.boxShadow,
       };
     });
 
-    const expectHinges = (geometry: Awaited<ReturnType<typeof readGeometry>>, rotating: boolean) => {
-      const { width, height, edges } = geometry;
-
-      // Validate the side faces' local geometry and hinge origins. Their
-      // projected getBoundingClientRect() values naturally extend past the
-      // card's 2D bounds during a 3D rotation, so those bounds are not a
-      // reliable attachment/clipping assertion.
-      expect(edges.top.left).toBe(0);
-      expect(edges.top.top).toBe(0);
-      expect(edges.top.width).toBe(width);
-      expect(edges.top.originX).toBeCloseTo(width / 2, 1);
-      expect(edges.top.originY).toBe(0);
-
-      expect(edges.bottom.left).toBe(0);
-      expect(edges.bottom.top).toBe(height - edges.bottom.height);
-      expect(edges.bottom.width).toBe(width);
-      expect(edges.bottom.originX).toBeCloseTo(width / 2, 1);
-      expect(edges.bottom.originY).toBe(edges.bottom.height);
-
-      expect(edges.left.left).toBe(0);
-      expect(edges.left.top).toBe(0);
-      expect(edges.left.height).toBe(height);
-      expect(edges.left.originX).toBe(0);
-      expect(edges.left.originY).toBeCloseTo(height / 2, 1);
-
-      expect(edges.right.left).toBe(width - edges.right.width);
-      expect(edges.right.top).toBe(0);
-      expect(edges.right.height).toBe(height);
-      expect(edges.right.originX).toBe(edges.right.width);
-      expect(edges.right.originY).toBeCloseTo(height / 2, 1);
-
-      for (const side of ['top', 'right', 'bottom', 'left'] as const) {
-        expect(edges[side].transform).not.toBe('none');
-      }
+    const expectSpine = (geometry: Awaited<ReturnType<typeof readGeometry>>, rotating: boolean) => {
+      expect(geometry.spine.left).toBeCloseTo(-1.5, 1);
+      expect(geometry.spine.width).toBe(3);
+      expect(geometry.spine.height).toBe(geometry.height);
+      expect(geometry.spine.transform).not.toBe('none');
+      expect(geometry.spine.shadow).toBe('none');
+      expect(geometry.front.left).toBe(0);
+      expect(geometry.front.top).toBe(1);
+      expect(geometry.front.width).toBe(geometry.width - 1);
+      expect(geometry.front.height).toBe(geometry.height - 2);
+      expect(geometry.back.left).toBe(0);
+      expect(geometry.back.top).toBe(1);
+      expect(geometry.back.width).toBe(geometry.width - 1);
+      expect(geometry.back.height).toBe(geometry.height - 2);
+      expect(geometry.front.shadow).toBe('none');
+      expect(geometry.back.shadow).toBe('none');
+      expect(geometry.stageBeforeContent).toBe('none');
+      expect(geometry.stageBeforeDisplay).toBe('none');
+      expect(geometry.stageBeforeShadow).toBe('none');
       if (rotating) expect(geometry.transform).not.toBe('none');
     };
 
@@ -337,39 +335,34 @@ describe('Mobile Dig app-like viewport', () => {
       await page.waitForTimeout(35);
     };
 
-    // Partial leftward rotation from the front face.
     await startPartialDrag(-42);
     let geometry = await readGeometry();
-    expectHinges(geometry, true);
+    expectSpine(geometry, true);
     expect(geometry.flipped).toBe(false);
     await page.mouse.up();
     await page.waitForTimeout(320);
     geometry = await readGeometry();
-    expectHinges(geometry, false);
+    expectSpine(geometry, false);
     expect(geometry.flipped).toBe(false);
 
-    // Complete the flip, then verify the settled back face.
     await swipeActive(-110, 0);
     geometry = await readGeometry();
-    expectHinges(geometry, false);
+    expectSpine(geometry, false);
     expect(geometry.flipped).toBe(true);
 
-    // Partial rightward rotation from the back face exercises the opposite
-    // rotation direction without making assumptions about projected bounds.
     await startPartialDrag(42);
     geometry = await readGeometry();
-    expectHinges(geometry, true);
+    expectSpine(geometry, true);
     expect(geometry.flipped).toBe(true);
     await page.mouse.up();
     await page.waitForTimeout(320);
     geometry = await readGeometry();
-    expectHinges(geometry, false);
+    expectSpine(geometry, false);
     expect(geometry.flipped).toBe(true);
 
-    // Return to the front and ensure the hinges remain anchored after settling.
     await swipeActive(110, 0);
     geometry = await readGeometry();
-    expectHinges(geometry, false);
+    expectSpine(geometry, false);
     expect(geometry.flipped).toBe(false);
   });
 
@@ -631,11 +624,10 @@ describe('Mobile Dig app-like viewport', () => {
     expect(crateGeometry!.imageWidth).toBeCloseTo(Math.min(375 * 0.94, 510, 375 - 24, 812 - 320), 0);
     expect(crateGeometry!.imageLeftInset).toBeGreaterThanOrEqual(8);
     expect(crateGeometry!.imageRightInset).toBeGreaterThanOrEqual(8);
-    expect(crateGeometry!.stageWidth).toBeGreaterThanOrEqual(375 * 0.92);
-    expect(crateGeometry!.stageWidth).toBeLessThanOrEqual(375 * 0.95);
-    expect(Math.abs(crateGeometry!.stageWidth - crateGeometry!.imageWidth)).toBeLessThanOrEqual(3);
-    expect(crateGeometry!.stageLeftInset).toBeGreaterThanOrEqual(8);
-    expect(crateGeometry!.stageRightInset).toBeGreaterThanOrEqual(8);
+    expect(crateGeometry!.stageWidth).toBeCloseTo(Math.min(375 * 0.88, 480, 375 - 40, 812 - 330), 0);
+    expect(crateGeometry!.stageWidth).toBeLessThan(crateGeometry!.imageWidth - 12);
+    expect(crateGeometry!.stageLeftInset).toBeGreaterThanOrEqual(15);
+    expect(crateGeometry!.stageRightInset).toBeGreaterThanOrEqual(15);
     expect(Math.abs(crateGeometry!.imageTopOffset)).toBeLessThanOrEqual(1);
     expect(crateGeometry!.transformOrigin.endsWith(' 0px')).toBe(true);
 
