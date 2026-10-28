@@ -14,15 +14,44 @@
     return;
   }
 
-  const closeDialog = () => {
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let closeTimer = 0;
+
+  const finishClose = () => {
+    if (closeTimer) {
+      window.clearTimeout(closeTimer);
+      closeTimer = 0;
+    }
     if (!dialog.open) return;
-    trigger.setAttribute('aria-expanded', 'false');
-    form.reset();
+    dialog.classList.remove('is-closing');
     dialog.close('cancel');
   };
 
+  const closeDialog = () => {
+    if (!dialog.open || dialog.classList.contains('is-closing')) return;
+    trigger.setAttribute('aria-expanded', 'false');
+
+    // The mobile panel slides down before leaving the top layer. Desktop and
+    // reduced-motion users keep an immediate close.
+    if (!window.matchMedia('(max-width: 767px)').matches || reducedMotion.matches) {
+      finishClose();
+      return;
+    }
+
+    dialog.classList.add('is-closing');
+    closeTimer = window.setTimeout(finishClose, 360);
+  };
+
+  dialog.addEventListener('transitionend', (event) => {
+    if (event.target === dialog && event.propertyName === 'transform' &&
+        dialog.classList.contains('is-closing')) {
+      finishClose();
+    }
+  });
+
   trigger.addEventListener('click', () => {
     if (dialog.open) return;
+    dialog.classList.remove('is-closing');
     dialog.showModal();
     trigger.setAttribute('aria-expanded', 'true');
     const firstControl = dialog.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled])');
@@ -44,9 +73,9 @@
     if (event.target === dialog) closeDialog();
   });
 
-  dialog.addEventListener('cancel', () => {
-    trigger.setAttribute('aria-expanded', 'false');
-    form.reset();
+  dialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    closeDialog();
   });
 
   dialog.addEventListener('close', () => {
