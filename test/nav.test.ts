@@ -1,3 +1,5 @@
+/// <reference lib="dom" />
+
 import ejs from 'ejs';
 import path from 'path';
 import fs from 'fs';
@@ -206,6 +208,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(htmlEnabled).toContain('data-messaging-widget-trigger');
     expect(htmlEnabled).toContain('<button type="button" class="desktop-you-menu-item messaging-widget-trigger"');
     expect(htmlEnabled).toContain('<button type="button" class="mobile-you-action-link messaging-widget-trigger"');
+    const mobileMessagingButton = htmlEnabled.match(/<button type="button" class="mobile-you-action-link messaging-widget-trigger"[\s\S]*?<\/button>/);
+    expect(mobileMessagingButton?.[0]).toContain('mobile-you-action-icon');
     expect(htmlEnabled).toContain('Messages');
 
     const htmlDisabled = await renderNav({
@@ -883,6 +887,120 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await isElementVisible(menuSel)).toBe(false);
     });
 
+    it('matches Messenger panel styling and prevents horizontal movement on mobile Me', async () => {
+      const html = await renderFullHtmlPage({
+        currentPath: '/',
+        currentUser: { id: 'user-123', email: 'digger@example.com' },
+        currentProfile: { id: 'user-123', username: 'cratedigger' },
+        messagingEnabled: false,
+      });
+
+      for (const width of [320, 360, 375, 414, 430]) {
+        await page.setViewportSize({ width, height: 812 });
+        await page.setContent(html);
+        await page.click('#mobile-you-trigger');
+        await page.waitForTimeout(190);
+
+        const presentation = await page.evaluate(() => {
+          const browser = globalThis as unknown as {
+            document: {
+              documentElement: { scrollWidth: number };
+              querySelector: (selector: string) => { getBoundingClientRect: () => { left: number; right: number } } | null;
+            };
+            window: {
+              innerWidth: number;
+              getComputedStyle: (element: unknown) => {
+                backgroundColor: string;
+                borderRadius: string;
+                touchAction: string;
+                transform: string;
+              };
+            };
+          };
+          const surface = browser.document.querySelector('#mobile-you-surface');
+          const backdrop = browser.document.querySelector('.mobile-you-surface-backdrop');
+          const panel = browser.document.querySelector('.mobile-you-surface-content');
+          const aboutView = browser.document.querySelector('#mobile-you-about-view');
+          if (!surface || !backdrop || !panel || !aboutView) throw new Error('Me surface elements missing');
+          const rect = panel.getBoundingClientRect();
+          const aboutTransform = browser.window.getComputedStyle(aboutView).transform;
+          const matrix = aboutTransform.match(/^matrix\(([^)]+)\)$/);
+          const matrixValues = matrix ? matrix[1].split(',').map(Number) : [];
+          return {
+            documentWidth: browser.document.documentElement.scrollWidth,
+            viewportWidth: browser.window.innerWidth,
+            panelLeft: rect.left,
+            panelRight: rect.right,
+            backdropColor: browser.window.getComputedStyle(backdrop).backgroundColor,
+            panelRadius: browser.window.getComputedStyle(panel).borderRadius,
+            touchAction: browser.window.getComputedStyle(surface).touchAction,
+            panelTouchAction: browser.window.getComputedStyle(panel).touchAction,
+            aboutTranslateX: matrixValues.length === 6 ? matrixValues[4] : 0,
+          };
+        });
+
+        expect(presentation.backdropColor).toBe('rgba(18, 18, 18, 0.48)');
+        expect(presentation.panelRadius).toBe('5px');
+        expect(presentation.touchAction).toBe('pan-y pinch-zoom');
+        expect(presentation.panelTouchAction).toBe('pan-y pinch-zoom');
+        expect(presentation.aboutTranslateX).toBeCloseTo(0, 1);
+        expect(presentation.documentWidth).toBeLessThanOrEqual(presentation.viewportWidth);
+        expect(presentation.panelLeft).toBeGreaterThanOrEqual(0);
+        expect(presentation.panelRight).toBeLessThanOrEqual(presentation.viewportWidth);
+        expect(await page.locator('.mobile-you-action-icon').count()).toBe(3);
+      }
+
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.setContent(html);
+      await page.click('#mobile-you-trigger');
+      await page.waitForTimeout(190);
+      await page.click('#mobile-you-about-trigger');
+      await page.waitForFunction(() => {
+        const aboutView = document.querySelector('#mobile-you-about-view');
+        if (!aboutView) return false;
+        const transform = window.getComputedStyle(aboutView).transform;
+        const matrix = transform.match(/^matrix\(([^)]+)\)$/);
+        if (!matrix) return transform === 'none';
+        const values = matrix[1].split(',').map(Number);
+        return values.length === 6 && Math.abs(values[4]) < 0.05 && Math.abs(values[5]) < 0.05;
+      });
+      const viewAxes = await page.evaluate(() => {
+        const mainView = document.querySelector('#mobile-you-main-view');
+        const aboutView = document.querySelector('#mobile-you-about-view');
+        if (!mainView || !aboutView) throw new Error('Me/About views missing');
+        const getAxes = (element: Element) => {
+          const transform = window.getComputedStyle(element).transform;
+          const matrix = transform.match(/^matrix\(([^)]+)\)$/);
+          if (!matrix) return { x: 0, y: 0 };
+          const values = matrix[1].split(',').map(Number);
+          return { x: values.length === 6 ? values[4] : 0, y: values.length === 6 ? values[5] : 0 };
+        };
+        const backControl = document.querySelector('#mobile-you-about-back');
+        if (!backControl) throw new Error('About back control missing');
+        const backStyle = window.getComputedStyle(backControl);
+        return {
+          main: getAxes(mainView),
+          about: getAxes(aboutView),
+          back: {
+            radius: backStyle.borderRadius,
+            background: backStyle.backgroundColor,
+            boxShadow: backStyle.boxShadow,
+          },
+        };
+      });
+      expect(viewAxes.main.x).toBeCloseTo(0, 1);
+      expect(viewAxes.about.x).toBeCloseTo(0, 1);
+      expect(viewAxes.about.y).toBeCloseTo(0, 1);
+      expect(viewAxes.back.radius).toBe('5px');
+      expect(viewAxes.back.background).toBe('rgba(0, 0, 0, 0)');
+      expect(viewAxes.back.boxShadow).toBe('none');
+
+      await page.setViewportSize({ width: 768, height: 812 });
+      await page.setContent(html);
+      const tabletDocumentWidth = await page.locator('html').evaluate((element) => (element as unknown as { scrollWidth: number }).scrollWidth);
+      expect(tabletDocumentWidth).toBeLessThanOrEqual(768);
+    });
+
     it('opens About as a nested view and returns to Me without closing the overlay', async () => {
       const fullHtml = await renderFullHtmlPage({
         currentPath: '/',
@@ -1065,7 +1183,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         return { color, alpha: Number(alphaMatch?.[1] ?? 1) };
       })()`) as { color: string; alpha: number } | null;
       expect(backdrop).not.toBeNull();
-      expect(backdrop!.alpha).toBeGreaterThanOrEqual(0.85);
+      expect(backdrop!.alpha).toBeCloseTo(0.48, 2);
 
       await page.click('#mobile-you-trigger');
       const insets = await page.evaluate(String.raw`(() => {
