@@ -15,7 +15,10 @@
   }
 
   const closeDialog = () => {
-    if (dialog.open) dialog.close('cancel');
+    if (!dialog.open) return;
+    trigger.setAttribute('aria-expanded', 'false');
+    form.reset();
+    dialog.close('cancel');
   };
 
   trigger.addEventListener('click', () => {
@@ -32,6 +35,11 @@
 
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog) closeDialog();
+  });
+
+  dialog.addEventListener('cancel', () => {
+    trigger.setAttribute('aria-expanded', 'false');
+    form.reset();
   });
 
   dialog.addEventListener('close', () => {
