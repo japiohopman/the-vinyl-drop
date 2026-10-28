@@ -386,10 +386,21 @@ describe('Mobile Dig app-like viewport', () => {
       expect(geometry.stageBeforeContent).toBe('none');
       expect(geometry.stageBeforeDisplay).toBe('none');
       expect(geometry.stageBeforeShadow).toBe('none');
-      expect(geometry.stackOverflow).toBe('visible');
-      expect(geometry.stackClipMargin).toBe('0px');
+      expect(geometry.stackOverflow).toBe('clip');
+      expect(geometry.stackClipMargin).toBe('12px');
       expect(geometry.overflowStates).toHaveLength(9);
-      expect(geometry.overflowStates.every(({ overflow }) => overflow === 'visible')).toBe(true);
+      const expectedOverflow = new Map([
+        ['.main-content', 'hidden'],
+        ['.dig-responsive-page', 'hidden'],
+        ['.dig-responsive-mobile', 'hidden'],
+        ['.dig-page', 'hidden'],
+        ['.dig-explorer', 'hidden'],
+        ['.dig-viewer', 'hidden'],
+        ['.dig-sleeve-interaction', 'visible'],
+        ['.dig-sleeve-stage', 'visible'],
+        ['.dig-crate-stack', 'clip'],
+      ]);
+      expect(geometry.overflowStates.every(({ selector, overflow }) => expectedOverflow.get(selector) === overflow)).toBe(true);
       expect(geometry.metadata.transform).toBe('none');
       expect(geometry.metadata.transitionDuration).toBe('0s');
       expect(geometry.actions.transform).toBe('none');
