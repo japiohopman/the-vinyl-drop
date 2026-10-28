@@ -254,6 +254,48 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
+  it('keeps the sleeve top and bottom thickness faces flush during a horizontal flip', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812);
+
+    const dragArea = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const box = await dragArea.boundingBox();
+    if (!box) throw new Error('Active Dig sleeve has no bounding box');
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX - 42, startY, { steps: 3 });
+    await page.waitForTimeout(35);
+
+    const geometry = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const cardRect = card.getBoundingClientRect();
+      const top = card.querySelector<HTMLElement>('.dig-sleeve-edge-top')!.getBoundingClientRect();
+      const bottom = card.querySelector<HTMLElement>('.dig-sleeve-edge-bottom')!.getBoundingClientRect();
+      return {
+        transform: getComputedStyle(card).transform,
+        cardTop: cardRect.top,
+        cardBottom: cardRect.bottom,
+        topTop: top.top,
+        topBottom: top.bottom,
+        bottomTop: bottom.top,
+        bottomBottom: bottom.bottom,
+      };
+    });
+
+    expect(geometry.transform).not.toBe('none');
+    // The side faces must stay anchored to the cover perimeter instead of
+    // swinging out beyond it and being clipped by the crate viewport.
+    expect(geometry.topTop).toBeGreaterThanOrEqual(geometry.cardTop - 4);
+    expect(geometry.topBottom).toBeLessThanOrEqual(geometry.cardTop + 8);
+    expect(geometry.bottomTop).toBeGreaterThanOrEqual(geometry.cardBottom - 8);
+    expect(geometry.bottomBottom).toBeLessThanOrEqual(geometry.cardBottom + 4);
+
+    await page.mouse.up();
+    await page.waitForTimeout(320);
+  });
+
   it('cancels a pending flip-settle timer before a second horizontal drag', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);
