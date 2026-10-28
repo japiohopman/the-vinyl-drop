@@ -272,8 +272,8 @@ Keep Me/About transitions vertical/fade-only. The overlay may scroll vertically,
 
 ## Mobile Dig crate and contextual filters — Issue #241
 
-The supplied `public/assets/UI/dig_crate.webp` is the top-down crate source for the **mobile Dig experience only**. Keep the image behind the active sleeve so the crate reads as the physical origin of the existing deck transition without exposing neighbouring album artwork at rest. Preserve the asset's 2:3 aspect ratio.
+The supplied `public/assets/UI/dig_crate.webp` is the top-down crate source for the **mobile Dig experience only**. It is a full-width, top-anchored backdrop (100vw) behind every album sleeve, including entering/leaving slides; keep its 2:3 aspect ratio and place its stacking layer behind the sleeve/deck content. Do not render it as a small thumbnail anchored to the bottom.
 
-Mobile Dig offers a compact Filters trigger that opens an accessible dialog for the existing server-side `/dig` filters. Preserve query, genre, condition, price range, sort, format selections, white-label state, and the current view parameter. Cancel/Close discards unsaved dialog edits; Clear all resets the filters through `/dig`.
+Place the full-width Filters trigger directly below the mobile crate/sleeve explorer. It opens an accessible dialog for the existing server-side `/dig` filters. Preserve query, genre, condition, price range, sort, format selections, white-label state, and the current view parameter. Cancel/Close discards unsaved dialog edits; Clear all resets the filters through `/dig`. When no records match, keep the existing filter controls available without showing the crate-only trigger/dialog.
 
 **Desktop is explicitly unchanged:** at widths of 768px and above, do not show the crate art, mobile filter trigger, or dialog. Preserve the existing desktop grid/list and filter controls.
