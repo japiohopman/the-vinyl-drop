@@ -253,3 +253,10 @@ Automated accessibility checks run against WCAG 2.1 AA rule sets (`npm run test:
 ## Scope boundary reminder
 
 Payment widgets, checkout flows, shipping calculators, and native PWA capabilities (context in [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52)) are **not part of current application scope** and are not implemented.
+
+
+## Mobile Me overlay parity — Issue #234
+
+The mobile Me/About account surface shares the Messenger panel's visual language: 12px outer inset, 5px corners, a restrained shadow, and the same light `rgba(18, 18, 18, 0.48)` backdrop without the heavy blur. The header uses the deep-green surface and infrared divider; account actions use the shared SVG icon partial, compact 1px borders, and at least 44px touch targets.
+
+Keep Me/About transitions vertical/fade-only. The overlay may scroll vertically, but it must not pan horizontally or create page-level horizontal overflow. Preserve focus containment/restoration, Escape and backdrop close, scroll locking, reduced-motion support, existing account routes, POST logout, and strict `MESSAGING_ENABLED` gating. This is presentation polish only; it does not enable or alter messaging.
