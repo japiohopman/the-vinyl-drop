@@ -2179,6 +2179,7 @@ select.form-control {
 /* The cardboard core and four side walls provide thickness without a cast sleeve shadow. */
 .dig-sleeve-card {
   --dig-sleeve-thickness: 4px;
+  --dig-sleeve-half-thickness: 2px;
   position: relative;
   z-index: 1;
   width: 100%;
@@ -2208,12 +2209,12 @@ select.form-control {
 }
 
 .dig-sleeve-edge-top {
-  top: calc(var(--dig-sleeve-thickness) / -2);
+  top: -2px;
   transform: rotateX(90deg);
 }
 
 .dig-sleeve-edge-bottom {
-  bottom: calc(var(--dig-sleeve-thickness) / -2);
+  bottom: -2px;
   transform: rotateX(90deg);
 }
 
@@ -2225,12 +2226,12 @@ select.form-control {
 }
 
 .dig-sleeve-edge-left {
-  left: calc(var(--dig-sleeve-thickness) / -2);
+  left: -2px;
   transform: rotateY(90deg);
 }
 
 .dig-sleeve-edge-right {
-  right: calc(var(--dig-sleeve-thickness) / -2);
+  right: -2px;
   transform: rotateY(90deg);
 }
 
@@ -2243,6 +2244,10 @@ select.form-control {
   justify-content: stretch;
   overflow: hidden;
   border: var(--border-thick);
+  border-top-color: #e4dbcd;
+  border-left-color: #d2c7b7;
+  border-right-color: #958a7a;
+  border-bottom-color: #7f7568;
   background: var(--color-white);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -2250,11 +2255,11 @@ select.form-control {
 
 .dig-sleeve-face-front {
   z-index: 2;
-  transform: translateZ(calc(var(--dig-sleeve-thickness) / 2));
+  transform: translateZ(var(--dig-sleeve-half-thickness));
 }
 
 .dig-sleeve-face-back {
-  transform: rotateY(180deg) translateZ(calc(var(--dig-sleeve-thickness) / 2));
+  transform: rotateY(180deg) translateZ(var(--dig-sleeve-half-thickness));
 }
 
 .dig-sleeve-image {
