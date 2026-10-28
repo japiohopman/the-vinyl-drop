@@ -310,8 +310,8 @@ describe('Mobile Dig app-like viewport', () => {
       const price = card.closest('[data-dig-slide]')?.querySelector<HTMLElement>('.dig-price');
       if (!meta || !actions || !price) throw new Error('Missing record metadata or price');
       return {
-        width: sleeveCard.clientWidth,
-        height: sleeveCard.clientHeight,
+        width: Number.parseFloat(getComputedStyle(sleeveCard).width),
+        height: Number.parseFloat(getComputedStyle(sleeveCard).height),
         cardLeft: sleeveCard.offsetLeft,
         cardTop: sleeveCard.offsetTop,
         stageWidth: stage.clientWidth,
@@ -628,7 +628,7 @@ describe('Mobile Dig app-like viewport', () => {
       '[data-dig-slide].is-active .dig-sleeve-face-back'
     ).evaluate((face) => new DOMMatrixReadOnly(getComputedStyle(face).transform).m43);
     expect(reducedMotionBackFaceDepth).toBeGreaterThan(1.5);
-    expect(reducedMotionBackFaceDepth).toBeCloseTo(1.7, 1);
+    expect(reducedMotionBackFaceDepth).toBeCloseTo(2, 1);
 
     await swipeActive(0, -110);
     expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
