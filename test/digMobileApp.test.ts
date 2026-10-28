@@ -238,6 +238,9 @@ describe('Mobile Dig app-like viewport', () => {
     const reverseFaceBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back')
       .evaluate((face) => getComputedStyle(face).backgroundColor);
     expect(reverseFaceBackground).toBe('rgba(0, 0, 0, 0)');
+    const deckUnderlayBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-stage')
+      .evaluate((stage) => getComputedStyle(stage, '::before').backgroundColor);
+    expect(deckUnderlayBackground).toBe('rgba(0, 0, 0, 0)');
     const frontFaceBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-face-front')
       .evaluate((face) => getComputedStyle(face).backgroundColor);
     expect(frontFaceBackground).not.toBe('rgba(0, 0, 0, 0)');
@@ -521,6 +524,10 @@ describe('Mobile Dig app-like viewport', () => {
         .evaluateAll((faces) => faces.map((face) => getComputedStyle(face).backgroundColor));
       expect(desktopBackFaceBackgrounds.length).toBeGreaterThan(0);
       expect(desktopBackFaceBackgrounds.every((color) => color !== 'rgba(0, 0, 0, 0)')).toBe(true);
+      const desktopUnderlayBackgrounds = await page.locator('.dig-responsive-mobile .dig-sleeve-stage')
+        .evaluateAll((stages) => stages.map((stage) => getComputedStyle(stage, '::before').backgroundColor));
+      expect(desktopUnderlayBackgrounds.length).toBeGreaterThan(0);
+      expect(desktopUnderlayBackgrounds.every((color) => color !== 'rgba(0, 0, 0, 0)')).toBe(true);
     }
 
     const desktopWidths = await page.evaluate(() => ({
