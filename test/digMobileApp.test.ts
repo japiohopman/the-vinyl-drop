@@ -591,6 +591,7 @@ describe('Mobile Dig app-like viewport', () => {
   });
 
   it('uses the supplied crate and preserves filter values when the mobile overlay is cancelled', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);
 
     const crateImage = page.locator('[data-dig-crate-source] img');
@@ -737,6 +738,21 @@ describe('Mobile Dig app-like viewport', () => {
       return !(currentDialog instanceof HTMLDialogElement) || !currentDialog.open;
     });
     expect(await dialog.isVisible()).toBe(false);
+    expect(await trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('closes the mobile filter sheet immediately when reduced motion is requested', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await loadPage(375, 812);
+
+    const trigger = page.locator('[data-dig-filter-open]');
+    const dialog = page.locator('[data-dig-filter-dialog]');
+    await trigger.click();
+    expect(await dialog.isVisible()).toBe(true);
+
+    await dialog.locator('[data-dig-filter-cancel]').click();
+    expect(await dialog.isVisible()).toBe(false);
+    expect(await dialog.evaluate((element) => element.classList.contains('is-closing'))).toBe(false);
     expect(await trigger.getAttribute('aria-expanded')).toBe('false');
   });
 
