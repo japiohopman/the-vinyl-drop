@@ -81,6 +81,8 @@
       totalCount,
       hasMore,
       filters,
+      formatOptions,
+      whiteLabelAvailable,
       errorMessage
     }) %>
   </section>
@@ -97,6 +99,7 @@
     if (!searchForm || !searchInput || !filterForm) return;
 
     const filterQuery = filterForm.querySelector('input[type="hidden"][name="q"]');
+    const crateFilterQuery = document.querySelector('.dig-crate-filter-form input[name="q"]');
     const filterMappings = [
       { name: 'genre', selector: '#filter-genre' },
       { name: 'condition', selector: '#filter-condition' },
@@ -107,6 +110,7 @@
 
     const syncQueryToFilters = () => {
       if (filterQuery) filterQuery.value = searchInput.value;
+      if (crateFilterQuery) crateFilterQuery.value = searchInput.value;
     };
 
     const syncFiltersToSearch = () => {

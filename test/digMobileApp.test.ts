@@ -10,9 +10,11 @@ describe('Mobile Dig app-like viewport', () => {
 
   const headerPath = path.join(__dirname, '../views/partials/header.ejs');
   const digPath = path.join(__dirname, '../views/browse/responsive-dig.ejs');
-  const css = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8') +
+    '\n' + fs.readFileSync(path.join(__dirname, '../public/css/dig-mobile-crate.css'), 'utf8');
   const digState = fs.readFileSync(path.join(__dirname, '../public/js/dig-state.js'), 'utf8');
   const digMode = fs.readFileSync(path.join(__dirname, '../public/js/dig-mode.js'), 'utf8');
+  const digCrateFilter = fs.readFileSync(path.join(__dirname, '../public/js/dig-crate-filter.js'), 'utf8');
   let browser: Browser;
   let page: Page;
 
@@ -111,6 +113,7 @@ describe('Mobile Dig app-like viewport', () => {
     await page.setContent(await renderPage());
     await page.addScriptTag({ content: digState });
     await page.addScriptTag({ content: digMode });
+    await page.addScriptTag({ content: digCrateFilter });
   }
 
   it('keeps the live session counter in the mobile header without a Dig back link', async () => {
@@ -404,6 +407,46 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
+  it('uses the supplied crate and preserves filter values when the mobile overlay is cancelled', async () => {
+    await loadPage(375, 812);
+
+    const crateImage = page.locator('[data-dig-crate-source] img');
+    expect(await crateImage.getAttribute('src')).toBe('/assets/UI/dig_crate.webp');
+    expect(await crateImage.getAttribute('alt')).toBe('');
+
+    const trigger = page.locator('[data-dig-filter-open]');
+    const dialog = page.locator('[data-dig-filter-dialog]');
+    expect(await trigger.isVisible()).toBe(true);
+    expect(await dialog.isVisible()).toBe(false);
+    expect(await trigger.getAttribute('aria-expanded')).toBe('false');
+
+    await trigger.click();
+    expect(await dialog.isVisible()).toBe(true);
+    expect(await trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(await dialog.locator('form').getAttribute('action')).toBe('/dig');
+    expect(await dialog.locator('input[name="q"]').inputValue()).toBe('De La Soul');
+    expect(await dialog.locator('select[name="genre"]').inputValue()).toBe('Hip Hop');
+    expect(await dialog.locator('select[name="condition"]').inputValue()).toBe('VG+');
+    expect(await dialog.locator('input[name="minPrice"]').inputValue()).toBe('10.00');
+    expect(await dialog.locator('input[name="maxPrice"]').inputValue()).toBe('50.00');
+    expect(await dialog.locator('select[name="sort"]').inputValue()).toBe('price_asc');
+    expect(await dialog.locator('input[name="whiteLabel"]').isChecked()).toBe(true);
+    expect(await dialog.locator('input[name="format"]:checked').evaluateAll((elements) =>
+      elements.map((element) => (element as HTMLInputElement).value)
+    )).toEqual(['LP', '7-inch']);
+
+    await dialog.locator('input[name="q"]').fill('cancelled query');
+    await dialog.locator('[data-dig-filter-cancel]').click();
+    expect(await dialog.isVisible()).toBe(false);
+    expect(await trigger.getAttribute('aria-expanded')).toBe('false');
+
+    await trigger.click();
+    expect(await dialog.locator('input[name="q"]').inputValue()).toBe('De La Soul');
+    await page.keyboard.press('Escape');
+    expect(await dialog.isVisible()).toBe(false);
+    expect(await trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('keeps the conventional Dig heading and browse controls unchanged on desktop', async () => {
     await loadPage(1280, 900);
     expect(await page.locator('.mobile-context-header').isVisible()).toBe(false);
@@ -412,6 +455,9 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('.dig-search-control-bar').isVisible()).toBe(true);
     expect(await page.locator('.dig-responsive-desktop').isVisible()).toBe(true);
     expect(await page.locator('.mobile-dig-back').isVisible()).toBe(false);
+    expect(await page.locator('[data-dig-crate-toolbar]').isVisible()).toBe(false);
+    expect(await page.locator('[data-dig-crate-source]').isVisible()).toBe(false);
+    expect(await page.locator('[data-dig-filter-dialog]').isVisible()).toBe(false);
     const desktopWidths = await page.evaluate(() => ({
       documentWidth: document.documentElement.scrollWidth,
       bodyWidth: document.body.scrollWidth,

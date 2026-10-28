@@ -12,6 +12,18 @@
   ].filter(Boolean).join('&');
   const browseReturnUrl = '/browse?' + baseQueryParams + '&view=grid';
   const visibleItems = Array.isArray(items) ? items : [];
+  const digFilterFormats = typeof formatOptions !== 'undefined' && Array.isArray(formatOptions) ? formatOptions : [];
+  const digWhiteLabelAvailable = typeof whiteLabelAvailable !== 'undefined' && whiteLabelAvailable === true;
+  const digActiveFilterCount = [
+    filters.q,
+    filters.genre,
+    filters.condition,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.sort && filters.sort !== 'newest',
+    selectedFormats.length > 0,
+    filters.whiteLabel
+  ].filter(Boolean).length;
 %>
 
 <div class="dig-page" data-dig-experience data-reduced-motion="false">
@@ -26,6 +38,24 @@
   <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
     <div role="alert" class="alert alert-error"><%= errorMessage %></div>
   <% } %>
+
+  <div class="dig-crate-toolbar" data-dig-crate-toolbar>
+    <button
+      type="button"
+      class="dig-crate-filter-trigger"
+      data-dig-filter-open
+      aria-controls="dig-crate-filter-dialog"
+      aria-haspopup="dialog"
+      aria-expanded="false"
+      aria-label="Open Dig filters<%= digActiveFilterCount ? ', ' + digActiveFilterCount + ' active' : '' %>"
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 5h16l-6.2 7.1v5.2l-3.6 1.8v-7z"></path>
+      </svg>
+      <span>Filters</span>
+      <% if (digActiveFilterCount) { %><span class="dig-crate-filter-count"><%= digActiveFilterCount %></span><% } %>
+    </button>
+  </div>
 
   <% if (visibleItems.length === 0) { %>
     <section class="dig-empty-state" aria-labelledby="dig-empty-title">
@@ -60,6 +90,9 @@
     <section class="dig-explorer" aria-label="Crate Dig album explorer">
       <div class="dig-viewer" data-dig-viewer tabindex="0" role="region" aria-label="Crate Dig. Use the up and down arrow keys to browse records.">
         <div class="dig-crate-stack" data-dig-stack>
+          <div class="dig-crate-source" data-dig-crate-source aria-hidden="true">
+            <img src="/assets/UI/dig_crate.webp" alt="" draggable="false" loading="lazy" decoding="async">
+          </div>
           <% visibleItems.forEach(function(item, index) { %>
             <article
               class="dig-slide <%= index === 0 ? 'is-active' : (index === 1 ? 'is-next' : (index === 0 ? 'is-previous' : '')) %>"
@@ -134,7 +167,91 @@
       <p class="dig-keyboard-note">Keyboard: ↑ next / discard · ↓ previous / restore · Home first · End last · F flips the cover.</p>
     </section>
   <% } %>
+
+  <dialog class="dig-crate-filter-dialog" id="dig-crate-filter-dialog" data-dig-filter-dialog aria-labelledby="dig-crate-filter-title">
+    <header class="dig-crate-filter-header">
+      <div>
+        <p class="dig-crate-filter-eyebrow">THE VINYL DROP / DIG</p>
+        <h2 id="dig-crate-filter-title">Filter this crate</h2>
+      </div>
+      <button type="button" class="dig-crate-filter-close" data-dig-filter-close aria-label="Close Dig filters">×</button>
+    </header>
+
+    <form action="/dig" method="GET" class="dig-crate-filter-form" data-dig-filter-form>
+      <input type="hidden" name="view" value="<%= filters.view === 'list' ? 'list' : 'grid' %>">
+
+      <div class="dig-crate-filter-field">
+        <label for="dig-filter-search">Search records</label>
+        <input id="dig-filter-search" type="search" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
+      </div>
+
+      <div class="dig-crate-filter-field">
+        <label for="dig-filter-genre">Genre</label>
+        <select id="dig-filter-genre" name="genre">
+          <option value="">All genres</option>
+          <% ['Electronic', 'Hip Hop', 'Rock', 'Jazz', 'Funk / Soul', 'Reggae', 'Ambient', 'Classical', 'Pop'].forEach(function(genre) { %>
+            <option value="<%= genre %>" <%= filters.genre === genre ? 'selected' : '' %>><%= genre %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <fieldset class="dig-crate-filter-fieldset">
+        <legend>Format</legend>
+        <div class="dig-crate-format-options">
+          <% digFilterFormats.forEach(function(option) { %>
+            <label class="dig-crate-filter-checkbox">
+              <input type="checkbox" name="format" value="<%= option.value %>" <%= selectedFormats.includes(option.value) ? 'checked' : '' %>>
+              <span><%= option.label %></span>
+            </label>
+          <% }); %>
+          <% if (digWhiteLabelAvailable) { %>
+            <label class="dig-crate-filter-checkbox">
+              <input type="checkbox" name="whiteLabel" value="1" <%= filters.whiteLabel ? 'checked' : '' %>>
+              <span>White label</span>
+            </label>
+          <% } %>
+        </div>
+      </fieldset>
+
+      <div class="dig-crate-filter-grid">
+        <div class="dig-crate-filter-field">
+          <label for="dig-filter-condition">Condition</label>
+          <select id="dig-filter-condition" name="condition">
+            <option value="">Any condition</option>
+            <% ['M', 'NM', 'VG+', 'VG', 'VG-', 'G+', 'G', 'F', 'P'].forEach(function(condition) { %>
+              <option value="<%= condition %>" <%= filters.condition === condition ? 'selected' : '' %>><%= condition %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="dig-crate-filter-field">
+          <label for="dig-filter-sort">Sort by</label>
+          <select id="dig-filter-sort" name="sort">
+            <option value="newest" <%= filters.sort === 'newest' || !filters.sort ? 'selected' : '' %>>Newest additions</option>
+            <option value="price_asc" <%= filters.sort === 'price_asc' ? 'selected' : '' %>>Price: low to high</option>
+            <option value="price_desc" <%= filters.sort === 'price_desc' ? 'selected' : '' %>>Price: high to low</option>
+            <option value="artist_asc" <%= filters.sort === 'artist_asc' ? 'selected' : '' %>>Artist: A–Z</option>
+            <option value="title_asc" <%= filters.sort === 'title_asc' ? 'selected' : '' %>>Title: A–Z</option>
+          </select>
+        </div>
+        <div class="dig-crate-filter-field">
+          <label for="dig-filter-min-price">Min price (€)</label>
+          <input id="dig-filter-min-price" type="number" name="minPrice" step="0.01" min="0" value="<%= filters.minPrice || '' %>" placeholder="0.00">
+        </div>
+        <div class="dig-crate-filter-field">
+          <label for="dig-filter-max-price">Max price (€)</label>
+          <input id="dig-filter-max-price" type="number" name="maxPrice" step="0.01" min="0" value="<%= filters.maxPrice || '' %>" placeholder="500.00">
+        </div>
+      </div>
+
+      <footer class="dig-crate-filter-actions">
+        <a class="dig-crate-filter-clear" href="/dig?view=<%= filters.view === 'list' ? 'list' : 'grid' %>">Clear all</a>
+        <button type="button" class="dig-crate-filter-cancel" data-dig-filter-cancel>Cancel</button>
+        <button type="submit" class="dig-crate-filter-apply">Apply filters</button>
+      </footer>
+    </form>
+  </dialog>
 </div>
 
 <script src="/js/dig-state.js" defer></script>
 <script src="/js/dig-mode.js" defer></script>
+<script src="/js/dig-crate-filter.js" defer></script>
