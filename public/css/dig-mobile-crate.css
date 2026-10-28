@@ -90,7 +90,7 @@
   }
 
   .dig-responsive-mobile .dig-sleeve-stage {
-    width: min(94vw, 510px);
+    width: min(94vw, 510px, calc(100vw - 24px), calc(100dvh - 320px));
   }
 
   .dig-responsive-mobile .dig-crate-source {
@@ -107,7 +107,7 @@
     top: 0;
     left: 50%;
     display: block;
-    width: min(94vw, 510px);
+    width: min(94vw, 510px, calc(100vw - 24px), calc(100dvh - 320px));
     max-width: none;
     height: auto;
     aspect-ratio: 2 / 3;
