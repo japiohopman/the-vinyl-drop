@@ -21,7 +21,7 @@
   <script src="/js/listing-comments-disclosure.js" defer></script>
   <script src="/js/messaging-widget.js" defer></script>
 </head>
-<body>
+<body class="<%= typeof currentPath !== 'undefined' && /^\/listings\/[^/]+(?:\/preview)?$/.test(currentPath) ? 'listing-detail-page' : '' %>">
   <% if (typeof currentPath !== 'undefined' && currentPath === '/dig' && typeof items !== 'undefined' && Array.isArray(items) && items.length > 0) { %>
     <script>document.body.classList.add('mobile-dig-session');</script>
   <% } %>

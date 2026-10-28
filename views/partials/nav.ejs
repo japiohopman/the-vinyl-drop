@@ -1,5 +1,6 @@
 <%
   const activePath = typeof currentPath !== 'undefined' ? currentPath : '/';
+  const isListingDetailPage = /^\/listings\/[^/]+(?:\/preview)?$/.test(activePath);
   const user = typeof currentUser !== 'undefined' ? currentUser : null;
   const userProfile = typeof currentProfile !== 'undefined' ? currentProfile : null;
   const isMessagingEnabled = typeof messagingEnabled !== 'undefined' ? messagingEnabled : false;
@@ -16,7 +17,7 @@
       <a href="/dig" class="nav-link<%= (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' active' : '' %>"<%- (activePath.startsWith('/browse') || activePath.startsWith('/dig')) ? ' aria-current="page"' : '' %>>DIG</a>
     </li>
     <li class="nav-item">
-      <a href="/drop/new" class="nav-link nav-link-action<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' aria-current="page"' : '' %>>+ DROP</a>
+      <a href="/drop/new" class="nav-link nav-link-action<%= !isListingDetailPage && (activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases')) ? ' active' : '' %>"<%- !isListingDetailPage && (activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases')) ? ' aria-current="page"' : '' %>>+ DROP</a>
     </li>
     <li class="nav-item">
       <a href="/activity" class="nav-link<%= activePath.startsWith('/activity') ? ' active' : '' %>"<%- activePath.startsWith('/activity') ? ' aria-current="page"' : '' %>>ACTIVITY</a>
@@ -77,7 +78,7 @@
       <%- include('./icon', { name: 'cardboard-box-closed', size: '1.25rem', ariaHidden: true }) %>
       <span>DIG</span>
     </a>
-    <a href="/drop/new" class="mobile-nav-item mobile-nav-drop<%= activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' active' : '' %>"<%- activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases') ? ' aria-current="page"' : '' %>>
+    <a href="/drop/new" class="mobile-nav-item mobile-nav-drop<%= !isListingDetailPage && (activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases')) ? ' active' : '' %>"<%- !isListingDetailPage && (activePath.startsWith('/drop') || activePath.startsWith('/listings') || activePath.startsWith('/releases')) ? ' aria-current="page"' : '' %>>
       <%- include('./icon', { name: 'plain-arrow', size: '1.25rem', ariaHidden: true }) %>
       <span>+ DROP</span>
     </a>

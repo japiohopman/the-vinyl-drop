@@ -8335,3 +8335,15 @@ button.mobile-you-action-link.messaging-widget-trigger {
     animation: none !important;
   }
 }
+
+
+/* Issue #232 — keep the listing detail's mobile context and fixed navigation clear. */
+@media (max-width: 767px) {
+  body.listing-detail-page .listing-detail-container > .breadcrumb-nav {
+    display: none !important;
+  }
+
+  body.listing-detail-page .main-content {
+    padding-bottom: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px) + var(--space-6));
+  }
+}
