@@ -2209,13 +2209,15 @@ select.form-control {
 }
 
 .dig-sleeve-edge-top {
-  top: -2px;
-  transform: rotateX(90deg);
+  top: 0;
+  transform-origin: top;
+  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateX(-90deg);
 }
 
 .dig-sleeve-edge-bottom {
-  bottom: -2px;
-  transform: rotateX(90deg);
+  bottom: 0;
+  transform-origin: bottom;
+  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateX(90deg);
 }
 
 .dig-sleeve-edge-left,
@@ -2226,13 +2228,15 @@ select.form-control {
 }
 
 .dig-sleeve-edge-left {
-  left: -2px;
-  transform: rotateY(90deg);
+  left: 0;
+  transform-origin: left;
+  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(-90deg);
 }
 
 .dig-sleeve-edge-right {
-  right: -2px;
-  transform: rotateY(90deg);
+  right: 0;
+  transform-origin: right;
+  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(90deg);
 }
 
 .dig-sleeve-face {
