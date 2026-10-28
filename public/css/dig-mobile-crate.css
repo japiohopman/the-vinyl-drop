@@ -168,16 +168,7 @@
     filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));
   }
 
-  /*
-   * Let the crate show through empty space around the reverse-cover photo.
-   * The sub-pixel overlap keeps the edge planes tucked behind a face-on cover,
-   * preventing a cardboard-coloured hairline around the front artwork.
-   */
-  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-face-front,
-  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-face-back {
-    inset: -0.5px;
-  }
-
+  /* Let the crate show through empty space around the reverse-cover photo. */
   .dig-responsive-mobile .dig-sleeve-face-back {
     background: transparent;
   }
