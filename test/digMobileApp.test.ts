@@ -254,46 +254,123 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
-  it('keeps the sleeve top and bottom thickness faces flush during a horizontal flip', async () => {
+  it('keeps sleeve thickness faces anchored through both horizontal flips and settled states', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);
 
-    const dragArea = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
-    const box = await dragArea.boundingBox();
-    if (!box) throw new Error('Active Dig sleeve has no bounding box');
-    const startX = box.x + box.width / 2;
-    const startY = box.y + box.height / 2;
-
-    await page.mouse.move(startX, startY);
-    await page.mouse.down();
-    await page.mouse.move(startX - 42, startY, { steps: 3 });
-    await page.waitForTimeout(35);
-
-    const geometry = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
-      const cardRect = card.getBoundingClientRect();
-      const top = card.querySelector<HTMLElement>('.dig-sleeve-edge-top')!.getBoundingClientRect();
-      const bottom = card.querySelector<HTMLElement>('.dig-sleeve-edge-bottom')!.getBoundingClientRect();
+    const readGeometry = async () => page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const edge = (side: 'top' | 'right' | 'bottom' | 'left') => {
+        const element = card.querySelector<HTMLElement>('.dig-sleeve-edge-' + side);
+        if (!element) throw new Error('Missing sleeve edge: ' + side);
+        const style = getComputedStyle(element);
+        const origin = style.transformOrigin.split(/\\s+/).map((value) => Number.parseFloat(value));
+        return {
+          left: element.offsetLeft,
+          top: element.offsetTop,
+          width: element.offsetWidth,
+          height: element.offsetHeight,
+          originX: origin[0],
+          originY: origin[1],
+          transform: style.transform,
+        };
+      };
       return {
+        width: card.clientWidth,
+        height: card.clientHeight,
         transform: getComputedStyle(card).transform,
-        cardTop: cardRect.top,
-        cardBottom: cardRect.bottom,
-        topTop: top.top,
-        topBottom: top.bottom,
-        bottomTop: bottom.top,
-        bottomBottom: bottom.bottom,
+        flipped: card.classList.contains('is-flipped'),
+        edges: {
+          top: edge('top'),
+          right: edge('right'),
+          bottom: edge('bottom'),
+          left: edge('left'),
+        },
       };
     });
 
-    expect(geometry.transform).not.toBe('none');
-    // The side faces must stay anchored to the cover perimeter instead of
-    // swinging out beyond it and being clipped by the crate viewport.
-    expect(geometry.topTop).toBeGreaterThanOrEqual(geometry.cardTop - 4);
-    expect(geometry.topBottom).toBeLessThanOrEqual(geometry.cardTop + 8);
-    expect(geometry.bottomTop).toBeGreaterThanOrEqual(geometry.cardBottom - 8);
-    expect(geometry.bottomBottom).toBeLessThanOrEqual(geometry.cardBottom + 4);
+    const expectHinges = (geometry: Awaited<ReturnType<typeof readGeometry>>, rotating: boolean) => {
+      const { width, height, edges } = geometry;
 
+      // Validate the side faces' local geometry and hinge origins. Their
+      // projected getBoundingClientRect() values naturally extend past the
+      // card's 2D bounds during a 3D rotation, so those bounds are not a
+      // reliable attachment/clipping assertion.
+      expect(edges.top.left).toBe(0);
+      expect(edges.top.top).toBe(0);
+      expect(edges.top.width).toBe(width);
+      expect(edges.top.originX).toBeCloseTo(width / 2, 1);
+      expect(edges.top.originY).toBe(0);
+
+      expect(edges.bottom.left).toBe(0);
+      expect(edges.bottom.top).toBe(height - edges.bottom.height);
+      expect(edges.bottom.width).toBe(width);
+      expect(edges.bottom.originX).toBeCloseTo(width / 2, 1);
+      expect(edges.bottom.originY).toBe(edges.bottom.height);
+
+      expect(edges.left.left).toBe(0);
+      expect(edges.left.top).toBe(0);
+      expect(edges.left.height).toBe(height);
+      expect(edges.left.originX).toBe(0);
+      expect(edges.left.originY).toBeCloseTo(height / 2, 1);
+
+      expect(edges.right.left).toBe(width - edges.right.width);
+      expect(edges.right.top).toBe(0);
+      expect(edges.right.height).toBe(height);
+      expect(edges.right.originX).toBe(edges.right.width);
+      expect(edges.right.originY).toBeCloseTo(height / 2, 1);
+
+      for (const side of ['top', 'right', 'bottom', 'left'] as const) {
+        expect(edges[side].transform).not.toBe('none');
+      }
+      if (rotating) expect(geometry.transform).not.toBe('none');
+    };
+
+    const dragArea = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const startPartialDrag = async (deltaX: number) => {
+      const box = await dragArea.boundingBox();
+      if (!box) throw new Error('Active Dig sleeve has no bounding box');
+      const startX = box.x + box.width / 2;
+      const startY = box.y + box.height / 2;
+      await page.mouse.move(startX, startY);
+      await page.mouse.down();
+      await page.mouse.move(startX + deltaX, startY, { steps: 3 });
+      await page.waitForTimeout(35);
+    };
+
+    // Partial leftward rotation from the front face.
+    await startPartialDrag(-42);
+    let geometry = await readGeometry();
+    expectHinges(geometry, true);
+    expect(geometry.flipped).toBe(false);
     await page.mouse.up();
     await page.waitForTimeout(320);
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(geometry.flipped).toBe(false);
+
+    // Complete the flip, then verify the settled back face.
+    await swipeActive(-110, 0);
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(geometry.flipped).toBe(true);
+
+    // Partial rightward rotation from the back face exercises the opposite
+    // rotation direction without making assumptions about projected bounds.
+    await startPartialDrag(42);
+    geometry = await readGeometry();
+    expectHinges(geometry, true);
+    expect(geometry.flipped).toBe(true);
+    await page.mouse.up();
+    await page.waitForTimeout(320);
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(geometry.flipped).toBe(true);
+
+    // Return to the front and ensure the hinges remain anchored after settling.
+    await swipeActive(110, 0);
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(geometry.flipped).toBe(false);
   });
 
   it('cancels a pending flip-settle timer before a second horizontal drag', async () => {
