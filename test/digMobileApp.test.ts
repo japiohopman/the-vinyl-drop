@@ -358,32 +358,36 @@ describe('Mobile Dig app-like viewport', () => {
       expect(width).toBeCloseTo(geometry.stageWidth * 0.92, 0);
       expect(height).toBeCloseTo(geometry.stageHeight * 0.90, 0);
 
-      // Each plane is centered over the 3 mm thickness and its center sits
-      // exactly on the cover perimeter; this removes the visible corner gaps.
+      // Each wall stays 3px thick but its projected center sits 0.5px inside
+      // the cover perimeter, allowing the face plane to occlude it face-on.
       expect(edges.top.left).toBe(0);
-      expect(edges.top.top).toBeCloseTo(-1.5, 1);
+      expect(edges.top.top).toBeCloseTo(-1, 1);
       expect(edges.top.width).toBe(width);
       expect(edges.top.height).toBe(3);
+      expect(edges.top.top + edges.top.height / 2).toBeCloseTo(0.5, 1);
       expect(edges.top.originX).toBeCloseTo(width / 2, 0);
       expect(edges.top.originY).toBeCloseTo(1.5, 1);
 
       expect(edges.bottom.left).toBe(0);
-      expect(edges.bottom.top).toBeCloseTo(height - 1.5, 1);
+      expect(edges.bottom.top).toBeCloseTo(height - 2, 1);
       expect(edges.bottom.width).toBe(width);
       expect(edges.bottom.height).toBe(3);
+      expect(edges.bottom.top + edges.bottom.height / 2).toBeCloseTo(height - 0.5, 1);
       expect(edges.bottom.originX).toBeCloseTo(width / 2, 0);
       expect(edges.bottom.originY).toBeCloseTo(1.5, 1);
 
-      expect(edges.left.left).toBeCloseTo(-1.5, 1);
+      expect(edges.left.left).toBeCloseTo(-1, 1);
       expect(edges.left.top).toBe(0);
       expect(edges.left.width).toBe(3);
+      expect(edges.left.left + edges.left.width / 2).toBeCloseTo(0.5, 1);
       expect(edges.left.height).toBe(height);
       expect(edges.left.originX).toBeCloseTo(1.5, 1);
       expect(edges.left.originY).toBeCloseTo(height / 2, 0);
 
-      expect(edges.right.left).toBeCloseTo(width - 1.5, 1);
+      expect(edges.right.left).toBeCloseTo(width - 2, 1);
       expect(edges.right.top).toBe(0);
       expect(edges.right.width).toBe(3);
+      expect(edges.right.left + edges.right.width / 2).toBeCloseTo(width - 0.5, 1);
       expect(edges.right.height).toBe(height);
       expect(edges.right.originX).toBeCloseTo(1.5, 1);
       expect(edges.right.originY).toBeCloseTo(height / 2, 0);
