@@ -235,6 +235,12 @@ describe('Mobile Dig app-like viewport', () => {
     )).toBe(true);
     expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-front').getAttribute('aria-hidden')).toBe('true');
     expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back').getAttribute('aria-hidden')).toBe('false');
+    const reverseFaceBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back')
+      .evaluate((face) => getComputedStyle(face).backgroundColor);
+    expect(reverseFaceBackground).toBe('rgba(0, 0, 0, 0)');
+    const frontFaceBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-face-front')
+      .evaluate((face) => getComputedStyle(face).backgroundColor);
+    expect(frontFaceBackground).toBe('rgb(255, 255, 255)');
 
     await swipeActive(110, 0);
     expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toBe(initialLabel);
@@ -511,6 +517,9 @@ describe('Mobile Dig app-like viewport', () => {
       expect(await page.locator('[data-dig-crate-toolbar]').isVisible()).toBe(false);
       expect(await page.locator('[data-dig-crate-source]').isVisible()).toBe(false);
       expect(await page.locator('[data-dig-filter-dialog]').isVisible()).toBe(false);
+      const desktopBackFaceBackground = await page.locator('.dig-responsive-mobile .dig-sleeve-face-back')
+        .evaluate((face) => getComputedStyle(face).backgroundColor);
+      expect(desktopBackFaceBackground).toBe('rgb(255, 255, 255)');
     }
 
     const desktopWidths = await page.evaluate(() => ({
