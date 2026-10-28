@@ -138,22 +138,28 @@ describe('Compact mobile back navigation', () => {
     expect(listingDetailView).toContain('href="/dig"');
     expect(listingDetailView).toContain('aria-label="Back to Dig results"');
 
-    for (const view of [listingPreviewView, releaseSelectView]) {
-      expect(view).toContain('class="mobile-back-control"');
-      expect(view).toContain('aria-label="Back to My Listings"');
-      expect(view).toContain('href="/listings"');
-    }
+    expect(listingPreviewView).toContain('class="listing-preview-desktop-back"');
+    expect(listingPreviewView).toContain('aria-label="Back to My Listings"');
+    expect(listingPreviewView).toContain('href="/listings"');
+    expect(listingPreviewView).not.toContain('class="mobile-back-control"');
+
+    expect(releaseSelectView).toContain('class="mobile-back-control"');
+    expect(releaseSelectView).toContain('aria-label="Back to My Listings"');
+    expect(releaseSelectView).toContain('href="/listings"');
 
     const listingEditView = fs.readFileSync(path.join(process.cwd(), 'views/listings/edit.ejs'), 'utf8');
     expect(listingEditView).not.toContain('class="mobile-back-control"');
 
     const sharedHeader = fs.readFileSync(path.join(process.cwd(), 'views/partials/header.ejs'), 'utf8');
     expect(sharedHeader).toContain('isListingEditPage');
+    expect(sharedHeader).toContain('isListingPreviewPage');
+    expect(sharedHeader).toContain("mobileSectionLabel = 'PREVIEW'");
     expect(sharedHeader).toContain('href="/listings" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to My Listings"');
 
     expect(mobileStyles).toContain('.mobile-back-control');
     expect(mobileStyles).toContain('min-height: 44px;');
-    expect(mobileStyles).toContain('.listing-preview-header .mobile-back-control');
+    expect(mobileStyles).toContain('.listing-preview-desktop-back');
+    expect(mobileStyles).toContain('.listing-preview-header');
     expect(mobileStyles).toContain('.select-release-header > .mobile-back-control');
   });
 });
