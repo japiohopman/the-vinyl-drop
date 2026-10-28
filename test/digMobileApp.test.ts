@@ -87,7 +87,10 @@ describe('Mobile Dig app-like viewport', () => {
       hasMore: false,
       filters,
       listings: [],
-      formatOptions: [{ value: 'LP', label: 'LP', description: 'Long-play records' }],
+      formatOptions: [
+        { value: 'LP', label: 'LP', description: 'Long-play records' },
+        { value: '7-inch', label: '7-inch', description: '7-inch records' },
+      ],
       whiteLabelAvailable: true,
       pagination: { page: 2, limit: 12, totalCount: 28, totalPages: 3 },
       errorMessage: null,
