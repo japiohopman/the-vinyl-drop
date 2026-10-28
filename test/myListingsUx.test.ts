@@ -109,6 +109,13 @@ describe('My Listings UX (#219)', () => {
     await page.close();
   });
 
+  it('uses the shared mobile context header for the seller listing preview', async () => {
+    const previewHeader = await renderHeader('/listings/11111111-1111-4111-8111-111111111111/preview');
+    expect(previewHeader).toContain('<span class="mobile-context-heading">PREVIEW</span>');
+    expect(previewHeader).toContain('href="/listings" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to My Listings"');
+    expect(previewHeader).not.toContain('aria-label="Back to My Profile"');
+  });
+
   it('routes both sell/create entry points to /drop/new and renders the shared SVG action language', async () => {
     const populatedHtml = await renderListings();
     expect(populatedHtml).toContain('href="/drop/new"');

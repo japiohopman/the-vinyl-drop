@@ -962,7 +962,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         const matrix = transform.match(/^matrix\(([^)]+)\)$/);
         if (!matrix) return transform === 'none';
         const values = matrix[1].split(',').map(Number);
-        return values.length === 6 && Math.abs(values[4]) < 0.5 && Math.abs(values[5]) < 0.5;
+        return values.length === 6 && Math.abs(values[4]) < 0.05 && Math.abs(values[5]) < 0.05;
       });
       const viewAxes = await page.evaluate(() => {
         const mainView = document.querySelector('#mobile-you-main-view');
