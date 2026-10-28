@@ -487,6 +487,14 @@ describe('Dig photo-role contract', () => {
     expect(faceRule).not.toContain('box-shadow:');
     expect(edgeRuleStart).toBeGreaterThanOrEqual(0);
     expect(edgeRule).toContain('pointer-events: none;');
+    expect(rawCss).toContain('transform-origin: top;');
+    expect(rawCss).toContain('transform-origin: bottom;');
+    expect(rawCss).toContain('transform-origin: left;');
+    expect(rawCss).toContain('transform-origin: right;');
+    expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateX(-90deg)');
+    expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateX(90deg)');
+    expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateY(-90deg)');
+    expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateY(90deg)');
     expect(mobileCss).toContain('filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));');
   });
 });
