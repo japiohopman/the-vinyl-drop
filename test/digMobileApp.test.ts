@@ -624,6 +624,11 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
       card.classList.contains('is-flipped')
     )).toBe(true);
+    const reducedMotionBackFaceDepth = await page.locator(
+      '[data-dig-slide].is-active .dig-sleeve-face-back'
+    ).evaluate((face) => new DOMMatrixReadOnly(getComputedStyle(face).transform).m43);
+    expect(reducedMotionBackFaceDepth).toBeGreaterThan(1.5);
+    expect(reducedMotionBackFaceDepth).toBeCloseTo(1.7, 1);
 
     await swipeActive(0, -110);
     expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
