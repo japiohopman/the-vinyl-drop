@@ -465,7 +465,7 @@ describe('Dig photo-role contract', () => {
     expect(mobileCrateCss).toContain('body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage');
     expect(mobileCrateCss).toContain('inset: 5% 4%;');
     expect(mobileCrateCss).not.toContain('inset: -0.5px;');
-    expect(css).toContain('--dig-sleeve-face-overlap: 0.2px;');
+    expect(css).toContain('--dig-sleeve-face-overlap: 0.5px;');
     expect(css).toContain('transform: translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));');
     expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped .dig-sleeve-face-back');
     expect(mobileCrateCss).toContain('width: 128px;');
@@ -538,7 +538,7 @@ describe('Dig photo-role contract', () => {
     expect(rawCss).toContain('background: linear-gradient(180deg, #826746 0%, #c5ad88 100%);');
     expect(rawCss).toContain('background: linear-gradient(90deg, #6b5436 0%, #b79b70 48%, #826746 100%);');
     expect(rawCss).toContain('background: linear-gradient(90deg, #f1e5cf 0%, #c5ad88 100%);');
-    expect(mobileCss).toContain('inset: 3%;');
+    expect(mobileCss).toContain('inset: 5% 4%;');
     expect(mobileCss).toContain('width: auto;');
     expect(mobileCss).toContain('height: auto;');
     expect(mobileCss).toContain('content: none !important;');

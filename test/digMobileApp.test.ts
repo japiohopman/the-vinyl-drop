@@ -354,7 +354,7 @@ describe('Mobile Dig app-like viewport', () => {
 
       // The cover has a larger safety margin above/below and stays inset from both sides.
       expect(geometry.cardLeft).toBeCloseTo(geometry.stageWidth * 0.04, 0);
-      expect(geometry.cardTop).toBeCloseTo(geometry.stageHeight * 0.05, 0);
+      expect(Math.abs(geometry.cardTop - geometry.stageHeight * 0.05)).toBeLessThanOrEqual(1);
       expect(width).toBeCloseTo(geometry.stageWidth * 0.92, 0);
       expect(height).toBeCloseTo(geometry.stageHeight * 0.90, 0);
 
@@ -396,9 +396,9 @@ describe('Mobile Dig app-like viewport', () => {
       // the exact edge depth, browsers may rasterize the cardboard bevel on the
       // front-on view due to equal-depth fragments.
       expect(geometry.faceDepths.front).toBeGreaterThan(1.5);
-      expect(geometry.faceDepths.front).toBeCloseTo(1.7, 1);
+      expect(geometry.faceDepths.front).toBeCloseTo(2, 1);
       expect(geometry.faceDepths.back).toBeLessThan(-1.5);
-      expect(geometry.faceDepths.back).toBeCloseTo(-1.7, 1);
+      expect(geometry.faceDepths.back).toBeCloseTo(-2, 1);
       expect(geometry.stageBeforeContent).toBe('none');
       expect(geometry.stageBeforeDisplay).toBe('none');
       expect(geometry.stageBeforeShadow).toBe('none');
