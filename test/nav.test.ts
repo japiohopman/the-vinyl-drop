@@ -1,3 +1,5 @@
+/// <reference lib="dom" />
+
 import ejs from 'ejs';
 import path from 'path';
 import fs from 'fs';
@@ -973,11 +975,25 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
           const values = matrix[1].split(',').map(Number);
           return { x: values.length === 6 ? values[4] : 0, y: values.length === 6 ? values[5] : 0 };
         };
-        return { main: getAxes(mainView), about: getAxes(aboutView) };
+        const backControl = document.querySelector('#mobile-you-about-back');
+        if (!backControl) throw new Error('About back control missing');
+        const backStyle = window.getComputedStyle(backControl);
+        return {
+          main: getAxes(mainView),
+          about: getAxes(aboutView),
+          back: {
+            radius: backStyle.borderRadius,
+            background: backStyle.backgroundColor,
+            boxShadow: backStyle.boxShadow,
+          },
+        };
       });
       expect(viewAxes.main.x).toBeCloseTo(0, 1);
       expect(viewAxes.about.x).toBeCloseTo(0, 1);
       expect(viewAxes.about.y).toBeCloseTo(0, 1);
+      expect(viewAxes.back.radius).toBe('5px');
+      expect(viewAxes.back.background).toBe('rgba(0, 0, 0, 0)');
+      expect(viewAxes.back.boxShadow).toBe('none');
 
       await page.setViewportSize({ width: 768, height: 812 });
       await page.setContent(html);
