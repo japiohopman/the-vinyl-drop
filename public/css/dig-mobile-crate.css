@@ -1,0 +1,286 @@
+/* Mobile Dig only: top-down crate source and the contextual filter dialog. */
+.dig-crate-toolbar,
+.dig-crate-source {
+  display: none;
+}
+
+.dig-crate-filter-dialog {
+  color: var(--color-ink);
+  background: var(--color-paper);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-tactile);
+  padding: 0;
+  width: min(460px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: min(82dvh, 680px);
+  overflow: auto;
+}
+
+.dig-crate-filter-dialog::backdrop {
+  background: rgba(18, 18, 18, 0.52);
+}
+
+@media (max-width: 767px) {
+  .dig-responsive-mobile .dig-crate-toolbar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+    margin: 0 var(--space-1) var(--space-1);
+  }
+
+  .dig-responsive-mobile .dig-crate-filter-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    min-width: 44px;
+    min-height: 40px;
+    padding: var(--space-1) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-ink);
+    background: var(--color-paper);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .dig-responsive-mobile .dig-crate-filter-trigger:focus-visible,
+  .dig-crate-filter-dialog button:focus-visible,
+  .dig-crate-filter-dialog a:focus-visible,
+  .dig-crate-filter-dialog input:focus-visible,
+  .dig-crate-filter-dialog select:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .dig-crate-filter-trigger svg {
+    flex: 0 0 auto;
+  }
+
+  .dig-crate-filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    border-radius: 10px;
+    color: var(--color-white);
+    background: var(--color-rust);
+    font-size: var(--font-size-xs);
+    line-height: 1;
+  }
+
+  .dig-responsive-mobile .dig-crate-source {
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: clamp(160px, 48%, 300px);
+    pointer-events: none;
+    opacity: 0.94;
+  }
+
+  .dig-responsive-mobile .dig-crate-source img {
+    display: block;
+    width: auto;
+    height: 100%;
+    max-width: min(78%, 320px);
+    aspect-ratio: 2 / 3;
+    object-fit: contain;
+    object-position: center bottom;
+    filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));
+  }
+
+  .dig-crate-filter-dialog {
+    margin: auto;
+  }
+
+  .dig-crate-filter-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    color: var(--color-white);
+    background: var(--color-deep-green);
+    border-bottom: 3px solid var(--color-rust);
+  }
+
+  .dig-crate-filter-eyebrow {
+    margin: 0 0 2px;
+    color: rgba(255, 255, 255, 0.72);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+
+  .dig-crate-filter-header h2 {
+    margin: 0;
+    color: var(--color-white);
+    font-family: var(--font-display);
+    font-size: var(--font-size-xl);
+    line-height: 1.15;
+  }
+
+  .dig-crate-filter-close {
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: var(--radius-sm);
+    color: var(--color-white);
+    background: transparent;
+    font: inherit;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .dig-crate-filter-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    min-width: 0;
+  }
+
+  .dig-crate-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+  }
+
+  .dig-crate-filter-field > label,
+  .dig-crate-filter-fieldset legend {
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+  }
+
+  .dig-crate-filter-field input,
+  .dig-crate-filter-field select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-ink);
+    background: var(--color-white);
+    font: inherit;
+  }
+
+  .dig-crate-filter-fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .dig-crate-format-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
+  .dig-crate-filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--space-2);
+    border: 1px solid var(--color-border-subtle);
+    background: var(--color-white);
+  }
+
+  .dig-crate-filter-checkbox input {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-rust);
+  }
+
+  .dig-crate-filter-checkbox span {
+    overflow-wrap: anywhere;
+    font-size: var(--font-size-sm);
+  }
+
+  .dig-crate-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .dig-crate-filter-actions {
+    position: sticky;
+    bottom: calc(-1 * var(--space-4));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-1) calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-border-subtle);
+    background: var(--color-paper);
+  }
+
+  .dig-crate-filter-actions button,
+  .dig-crate-filter-actions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .dig-crate-filter-clear {
+    color: var(--color-ink);
+    background: transparent;
+  }
+
+  .dig-crate-filter-cancel {
+    color: var(--color-ink);
+    background: var(--color-white);
+  }
+
+  .dig-crate-filter-apply {
+    color: var(--color-white);
+    background: var(--color-rust);
+    border-color: var(--color-rust) !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .dig-responsive-mobile .dig-crate-toolbar,
+  .dig-responsive-mobile .dig-crate-source,
+  .dig-crate-filter-dialog {
+    display: none !important;
+  }
+}

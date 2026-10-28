@@ -268,3 +268,12 @@ The profile editor changes only the authenticated user's public profile properti
 The mobile Me/About account surface shares the Messenger panel's visual language: 12px outer inset, 5px corners, a restrained shadow, and the same light `rgba(18, 18, 18, 0.48)` backdrop without the heavy blur. The header uses the deep-green surface and infrared divider; account actions use the shared SVG icon partial, compact 1px borders, and at least 44px touch targets.
 
 Keep Me/About transitions vertical/fade-only. The overlay may scroll vertically, but it must not pan horizontally or create page-level horizontal overflow. Preserve focus containment/restoration, Escape and backdrop close, scroll locking, reduced-motion support, existing account routes, POST logout, and strict `MESSAGING_ENABLED` gating. This is presentation polish only; it does not enable or alter messaging.
+
+
+## Mobile Dig crate and contextual filters — Issue #241
+
+The supplied `public/assets/UI/dig_crate.webp` is the top-down crate source for the **mobile Dig experience only**. Keep the image behind the active sleeve so the crate reads as the physical origin of the existing deck transition without exposing neighbouring album artwork at rest. Preserve the asset's 2:3 aspect ratio.
+
+Mobile Dig offers a compact Filters trigger that opens an accessible dialog for the existing server-side `/dig` filters. Preserve query, genre, condition, price range, sort, format selections, white-label state, and the current view parameter. Cancel/Close discards unsaved dialog edits; Clear all resets the filters through `/dig`.
+
+**Desktop is explicitly unchanged:** at widths of 768px and above, do not show the crate art, mobile filter trigger, or dialog. Preserve the existing desktop grid/list and filter controls.

@@ -135,6 +135,10 @@ describe('Compact mobile back navigation', () => {
 
     expect(digView).toContain('aria-label="Back to Dig results"');
     expect(digView).toContain('href="<%= browseReturnUrl %>"');
+    expect(digView).toContain('src="/assets/UI/dig_crate.webp"');
+    expect(digView).toContain('data-dig-crate-toolbar');
+    expect(digView).toContain('data-dig-filter-dialog');
+    expect(digView).toContain('form action="/dig" method="GET" class="dig-crate-filter-form"');
     expect(listingDetailView).toContain('href="/dig"');
     expect(listingDetailView).toContain('aria-label="Back to Dig results"');
     expect(listingDetailView).toContain('Condition</h3>');
