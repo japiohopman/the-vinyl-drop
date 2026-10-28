@@ -206,7 +206,7 @@
 
       <!-- Message Seller Action Button for Non-Seller when Messaging Enabled -->
       <% if (currentUser && !isSeller && listing.status === 'published' && typeof messagingEnabled !== 'undefined' && messagingEnabled) { %>
-        <div class="message-seller-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);">
+        <div class="message-seller-card">
 
           <form action="/messages/listing/<%= listing.id %>" method="POST" style="margin: 0;">
             <button type="submit" class="btn btn-primary">
