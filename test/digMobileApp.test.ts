@@ -456,7 +456,7 @@ describe('Mobile Dig app-like viewport', () => {
     expect(crateGeometry!.imagePosition).toBe('absolute');
     expect(crateGeometry!.stackLeft).toBeCloseTo(0, 0);
     expect(crateGeometry!.stackWidth).toBeCloseTo(375, 0);
-    expect(crateGeometry!.imageWidth).toBeCloseTo(Math.min(375 * 0.94, 510), 0);
+    expect(crateGeometry!.imageWidth).toBeCloseTo(Math.min(375 * 0.94, 510, 375 - 24, 812 - 320), 0);
     expect(crateGeometry!.imageLeftInset).toBeGreaterThanOrEqual(8);
     expect(crateGeometry!.imageRightInset).toBeGreaterThanOrEqual(8);
     expect(crateGeometry!.stageWidth).toBeGreaterThanOrEqual(375 * 0.92);
