@@ -2197,6 +2197,8 @@ select.form-control {
   display: block;
   z-index: 0;
   pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   background: linear-gradient(180deg, #eee6d8 0%, #c8bdad 48%, #a69a89 100%);
 }
 
