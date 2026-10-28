@@ -2510,7 +2510,8 @@ select.form-control {
 }
 
 .dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped .dig-sleeve-face-back {
-  transform: none;
+  /* A reduced-motion flip shows the back face-on, but keeps it ahead of edges. */
+  transform: translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));
 }
 
 @media (max-width: 680px) {
