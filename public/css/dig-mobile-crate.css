@@ -60,7 +60,9 @@
     outline-offset: 2px;
   }
 
+  .dig-crate-filter-trigger img,
   .dig-crate-filter-trigger svg {
+    display: block;
     flex: 0 0 auto;
   }
 
@@ -457,6 +459,17 @@
     background: var(--color-rust);
     border-color: var(--color-rust) !important;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dig-crate-filter-dialog,
+  .dig-crate-filter-dialog::backdrop {
+    transition: none !important;
+  }
+}
+
+.dig-crate-filter-dialog.is-closing::backdrop {
+  background: rgba(18, 18, 18, 0);
 }
 
 @media (min-width: 768px) {
