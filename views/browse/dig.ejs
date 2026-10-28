@@ -39,6 +39,7 @@
     <div role="alert" class="alert alert-error"><%= errorMessage %></div>
   <% } %>
 
+  <% if (visibleItems.length > 0) { %>
   <div class="dig-crate-toolbar" data-dig-crate-toolbar>
     <button
       type="button"
@@ -56,6 +57,7 @@
       <% if (digActiveFilterCount) { %><span class="dig-crate-filter-count"><%= digActiveFilterCount %></span><% } %>
     </button>
   </div>
+  <% } %>
 
   <% if (visibleItems.length === 0) { %>
     <section class="dig-empty-state" aria-labelledby="dig-empty-title">
@@ -168,6 +170,7 @@
     </section>
   <% } %>
 
+  <% if (visibleItems.length > 0) { %>
   <dialog class="dig-crate-filter-dialog" id="dig-crate-filter-dialog" data-dig-filter-dialog aria-labelledby="dig-crate-filter-title">
     <header class="dig-crate-filter-header">
       <div>
@@ -250,6 +253,7 @@
       </footer>
     </form>
   </dialog>
+  <% } %>
 </div>
 
 <script src="/js/dig-state.js" defer></script>
