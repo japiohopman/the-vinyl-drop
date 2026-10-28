@@ -2176,7 +2176,7 @@ select.form-control {
   pointer-events: none;
 }
 
-/* A record jacket is thin cardboard, not a raised UI card. */
+/* Thin cardboard thickness, using the same edge-hinge geometry as the book reader. */
 .dig-sleeve-card {
   --dig-sleeve-thickness: 3px;
   --dig-sleeve-half-thickness: 1.5px;
@@ -2184,7 +2184,6 @@ select.form-control {
   z-index: 1;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, #7f6748 0%, #b09368 1.5px, #d4c19f 3px, #cbb590 100%);
   transform-style: preserve-3d;
   transition: transform 420ms cubic-bezier(.2, .75, .25, 1);
 }
@@ -2193,33 +2192,66 @@ select.form-control {
   transform: rotateY(180deg);
 }
 
-/* One narrow wall at the left is the sleeve spine, spanning front-to-back. */
-.dig-sleeve-spine-edge {
+.dig-sleeve-edge {
   position: absolute;
-  top: 0;
-  left: -1.5px;
   display: block;
-  z-index: 1;
-  width: var(--dig-sleeve-thickness);
-  height: 100%;
+  z-index: 0;
   pointer-events: none;
-  background: linear-gradient(180deg, #b79b70 0%, #826746 100%);
-  transform-origin: center;
-  transform: rotateY(90deg);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
+.dig-sleeve-edge-top,
+.dig-sleeve-edge-bottom {
+  left: 0;
+  width: 100%;
+  height: var(--dig-sleeve-thickness);
+}
+
+.dig-sleeve-edge-top {
+  top: 0;
+  transform-origin: top;
+  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateX(-90deg);
+  background: linear-gradient(90deg, #d9c9ab 0%, #bba27b 100%);
+}
+
+.dig-sleeve-edge-bottom {
+  bottom: 0;
+  transform-origin: bottom;
+  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateX(90deg);
+  background: linear-gradient(90deg, #9b805b 0%, #c5ad88 100%);
+}
+
+.dig-sleeve-edge-left,
+.dig-sleeve-edge-right {
+  top: 0;
+  width: var(--dig-sleeve-thickness);
+  height: 100%;
+}
+
+.dig-sleeve-edge-left {
+  left: 0;
+  transform-origin: left;
+  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(-90deg);
+  background: linear-gradient(180deg, #b79b70 0%, #826746 100%);
+}
+
+.dig-sleeve-edge-right {
+  right: 0;
+  transform-origin: right;
+  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(90deg);
+  background: linear-gradient(180deg, #e6d8be 0%, #c5ad88 100%);
+}
+
 .dig-sleeve-face {
   position: absolute;
-  inset: 1px 1px 1px 0;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: stretch;
   overflow: hidden;
   border: 0;
-  border-left: 1px solid #ad8f61;
   background: var(--color-white);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;

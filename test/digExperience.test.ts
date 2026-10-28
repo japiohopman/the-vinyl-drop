@@ -388,11 +388,9 @@ describe('Dig photo-role contract', () => {
     const sleeveCards = html.split('data-dig-sleeve-card').slice(1);
     expect(sleeveCards).toHaveLength(2);
     for (const sleeveCard of sleeveCards) {
-      expect((sleeveCard.match(/class="dig-sleeve-spine-edge"/g) ?? []).length).toBe(1);
-      expect(sleeveCard).not.toContain('dig-sleeve-edge-top');
-      expect(sleeveCard).not.toContain('dig-sleeve-edge-right');
-      expect(sleeveCard).not.toContain('dig-sleeve-edge-bottom');
-      expect(sleeveCard).not.toContain('dig-sleeve-edge-left');
+      for (const side of ['top', 'right', 'bottom', 'left']) {
+        expect((sleeveCard.match(new RegExp(`class="dig-sleeve-edge dig-sleeve-edge-${side}"`, 'g')) ?? []).length).toBe(1);
+      }
     }
     expect(html).not.toContain('data-dig-sleeve-plane');
     expect(html).toContain('First test release');
@@ -441,14 +439,16 @@ describe('Dig photo-role contract', () => {
     const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     const css = rawCss.replace(/\r\n/g, '\n');
     expect(css).toContain('.dig-sleeve-image');
-    expect(css).toContain('.dig-sleeve-spine-edge');
-    expect(css).toContain('width: var(--dig-sleeve-thickness);');
-    expect(css).toContain('transform: rotateY(90deg);');
-    expect(css).toContain('border-left: 1px solid #ad8f61;');
-    expect(css).not.toContain('.dig-sleeve-edge-top');
-    expect(css).not.toContain('.dig-sleeve-edge-right');
-    expect(css).not.toContain('.dig-sleeve-edge-bottom');
-    expect(css).not.toContain('.dig-sleeve-edge-left');
+    expect(css).toContain('.dig-sleeve-edge-top');
+    expect(css).toContain('.dig-sleeve-edge-right');
+    expect(css).toContain('.dig-sleeve-edge-bottom');
+    expect(css).toContain('.dig-sleeve-edge-left');
+    expect(css).toContain('transform-origin: left;');
+    expect(css).toContain('transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(-90deg);');
+    expect(css).toContain('transform-origin: right;');
+    expect(css).toContain('transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(90deg);');
+    expect(css).toContain('.dig-sleeve-card {');
+    expect(css).not.toContain('.dig-sleeve-spine-edge');
     expect(css).not.toContain('.dig-sleeve-plane');
     expect(css).not.toContain('rotateX(42deg)');
     expect(css).toContain('.dig-crate-stack {');
@@ -488,10 +488,10 @@ describe('Dig photo-role contract', () => {
     const faceRule = faceRuleStart >= 0 && faceRuleEnd >= 0
       ? rawCss.slice(faceRuleStart, faceRuleEnd)
       : '';
-    const spineRuleStart = rawCss.indexOf('.dig-sleeve-spine-edge {');
-    const spineRuleEnd = rawCss.indexOf('\n}', spineRuleStart);
-    const spineRule = spineRuleStart >= 0 && spineRuleEnd >= 0
-      ? rawCss.slice(spineRuleStart, spineRuleEnd)
+    const edgeRuleStart = rawCss.indexOf('.dig-sleeve-edge {');
+    const edgeRuleEnd = rawCss.indexOf('\n}', edgeRuleStart);
+    const edgeRule = edgeRuleStart >= 0 && edgeRuleEnd >= 0
+      ? rawCss.slice(edgeRuleStart, edgeRuleEnd)
       : '';
 
     expect(faceRuleStart).toBeGreaterThanOrEqual(0);
@@ -508,12 +508,16 @@ describe('Dig photo-role contract', () => {
     expect(mobileBackStart).toBeGreaterThanOrEqual(0);
     expect(mobileBackEnd).toBeGreaterThan(mobileBackStart);
     expect(mobileCss.slice(mobileBackStart, mobileBackEnd)).not.toContain('box-shadow:');
-    expect(spineRuleStart).toBeGreaterThanOrEqual(0);
-    expect(spineRule).toContain('pointer-events: none;');
-    expect(spineRule).toContain('left: -1.5px;');
-    expect(spineRule).toContain('transform: rotateY(90deg);');
-    expect(rawCss).toContain('transform: translateZ(var(--dig-sleeve-half-thickness));');
-    expect(rawCss).toContain('transform: rotateY(180deg) translateZ(var(--dig-sleeve-half-thickness));');
+    expect(edgeRuleStart).toBeGreaterThanOrEqual(0);
+    expect(edgeRule).toContain('pointer-events: none;');
+    expect(rawCss).toContain('transform-origin: top;');
+    expect(rawCss).toContain('transform-origin: bottom;');
+    expect(rawCss).toContain('transform-origin: left;');
+    expect(rawCss).toContain('transform-origin: right;');
+    expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateX(-90deg)');
+    expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateX(90deg)');
+    expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateY(-90deg)');
+    expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateY(90deg)');
     expect(mobileCss).toContain('content: none !important;');
     expect(mobileCss).toContain('box-shadow: none !important;');
     expect(mobileCss).toContain('filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));');

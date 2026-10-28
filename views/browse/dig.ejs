@@ -96,7 +96,10 @@
               <div class="dig-sleeve-interaction">
                 <div class="dig-sleeve-stage" data-dig-swipe-area role="group" aria-label="Album cover. Swipe left or right to flip this album between its front and back. Swipe up to discard this record and reveal the next; swipe down to restore the previous record.">
                   <div class="dig-sleeve-card" data-dig-sleeve-card>
-                      <span class="dig-sleeve-spine-edge" aria-hidden="true"></span>
+                      <span class="dig-sleeve-edge dig-sleeve-edge-top" aria-hidden="true"></span>
+                      <span class="dig-sleeve-edge dig-sleeve-edge-right" aria-hidden="true"></span>
+                      <span class="dig-sleeve-edge dig-sleeve-edge-bottom" aria-hidden="true"></span>
+                      <span class="dig-sleeve-edge dig-sleeve-edge-left" aria-hidden="true"></span>
                       <div class="dig-sleeve-face dig-sleeve-face-front" aria-hidden="false">
                         <% if (item.frontArtwork.sourceKind === 'placeholder') { %>
                           <div class="dig-missing-front" role="status">
