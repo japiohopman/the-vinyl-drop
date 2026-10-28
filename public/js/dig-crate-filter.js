@@ -33,6 +33,13 @@
   closeButton.addEventListener('click', closeDialog);
   cancelButton.addEventListener('click', closeDialog);
 
+  dialog.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && dialog.open) {
+      event.preventDefault();
+      closeDialog();
+    }
+  });
+
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog) closeDialog();
   });
