@@ -1,18 +1,13 @@
 (() => {
   document.querySelectorAll('[data-youtube-preview]').forEach((section) => {
-    const button = section.querySelector('[data-youtube-preview-load]');
     const frame = section.querySelector('[data-youtube-preview-frame]');
-    const status = section.querySelector('[data-youtube-preview-status]');
-    if (!button || !frame || !status) return;
+    if (!frame) return;
 
-    button.addEventListener('click', () => {
+    const loadPlayer = () => {
       if (frame.querySelector('iframe')) return;
 
       const videoId = section.getAttribute('data-video-id') || '';
-      if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
-        status.textContent = 'This preview link is invalid. Open the release on YouTube instead.';
-        return;
-      }
+      if (!/^[A-Za-z0-9_-]{11}$/.test(videoId)) return;
 
       const title = section.getAttribute('data-release-title') || 'this release';
       const player = document.createElement('iframe');
@@ -25,10 +20,19 @@
       player.allow = 'accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share';
       player.allowFullscreen = true;
 
-      frame.hidden = false;
-      frame.appendChild(player);
-      button.hidden = true;
-      status.textContent = 'YouTube player loaded. Playback may be unavailable for some videos; use the Open on YouTube link if needed.';
-    });
+      frame.replaceChildren(player);
+    };
+
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          loadPlayer();
+        }
+      }, { rootMargin: '0px 0px 80px 0px' });
+      observer.observe(frame);
+    } else {
+      loadPlayer();
+    }
   });
 })();

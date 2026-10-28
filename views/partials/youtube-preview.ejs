@@ -2,14 +2,10 @@
 <% if (previewVideoId) { %>
   <section class="listing-music-preview" aria-labelledby="listingMusicPreviewTitle" data-youtube-preview data-video-id="<%= previewVideoId %>" data-release-title="<%= release.title %>">
     <h2 id="listingMusicPreviewTitle">Listen to this release</h2>
-    <p class="listing-music-preview-intro">A preview chosen by the seller for this release.</p>
-    <button type="button" class="btn btn-outline btn-md youtube-preview-load" data-youtube-preview-load>Load YouTube preview</button>
-    <p class="youtube-preview-privacy-note">Loading the player contacts YouTube and may share basic network and browser/device information. The privacy-enhanced domain does not mean no data reaches YouTube. The player is only loaded after you choose to load it.</p>
-    <div class="youtube-preview-frame" data-youtube-preview-frame hidden></div>
-    <p class="youtube-preview-fallback">
-      If the video cannot play here or embedding is disabled, <a href="<%= 'https://www.youtube.com/watch?v=' + encodeURIComponent(previewVideoId) %>" target="_blank" rel="noopener noreferrer">open this preview on YouTube</a>.
-    </p>
-    <p class="youtube-preview-status" data-youtube-preview-status role="status" aria-live="polite"></p>
+    <p class="listing-music-preview-intro">A preview chosen by the seller. Playback starts only when you press Play.</p>
+    <p class="youtube-preview-privacy-note">The player loads automatically as the preview approaches the screen. Loading it contacts YouTube and may share basic network and browser/device information. The privacy-enhanced domain does not mean YouTube receives no data.</p>
+    <div class="youtube-preview-frame" data-youtube-preview-frame></div>
+    <p class="youtube-preview-fallback">Can't play here or embedding is disabled? <a href="<%= 'https://www.youtube.com/watch?v=' + encodeURIComponent(previewVideoId) %>" target="_blank" rel="noopener noreferrer">Open this preview on YouTube</a>.</p>
   </section>
   <script src="/js/youtube-preview.js" defer></script>
 <% } %>

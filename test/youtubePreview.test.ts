@@ -29,7 +29,13 @@ describe('YouTube release preview (#226)', () => {
   jest.setTimeout(30000);
 
   const partialPath = path.join(process.cwd(), 'views/partials/youtube-preview.ejs');
+  const headerPath = path.join(process.cwd(), 'views/partials/header.ejs');
+  const navPath = path.join(process.cwd(), 'views/partials/nav.ejs');
+  const mainLayoutPath = path.join(process.cwd(), 'views/layouts/main.ejs');
   const partial = fs.readFileSync(partialPath, 'utf8');
+  const headerTemplate = fs.readFileSync(headerPath, 'utf8');
+  const navTemplate = fs.readFileSync(navPath, 'utf8');
+  const mainLayoutTemplate = fs.readFileSync(mainLayoutPath, 'utf8');
   const stylesheet = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
   const playerScriptPath = path.join(process.cwd(), 'public/js/youtube-preview.js');
   const routeSource = fs.readFileSync(path.join(process.cwd(), 'src/app/routes/listingRoutes.ts'), 'utf8');
@@ -136,11 +142,14 @@ describe('YouTube release preview (#226)', () => {
     });
   });
 
-  it('renders a deferred preview only for a valid release video ID and omits it when missing/invalid', () => {
+  it('renders an automatic preview only for a valid release video ID and omits it when missing/invalid', () => {
     const valid = ejs.render(partial, { release: { id: releaseId, title: 'Sample Release', youtubeVideoId: validId } });
     expect(valid).toContain('data-youtube-preview');
-    expect(valid).toContain('Load YouTube preview');
-    expect(valid).toContain('open this preview on YouTube');
+    expect(valid).toContain('data-youtube-preview-frame');
+    expect(valid).not.toContain('data-youtube-preview-load');
+    expect(valid).toContain('Open this preview on YouTube');
+    expect(valid).toContain('Playback starts only when you press Play');
+    expect(valid).toContain('loads automatically as the preview approaches the screen');
     expect(valid).not.toContain('<iframe');
 
     expect(ejs.render(partial, { release: { title: 'Sample Release', youtubeVideoId: null } }).trim()).toBe('');
@@ -157,10 +166,11 @@ describe('YouTube release preview (#226)', () => {
     expect(editTemplate).toContain('YouTube preview for this release — shared by all listings of this release');
     expect(editTemplate).toContain('name="youtubePreviewUrl"');
     expect(privacyTemplate).toContain('youtube-nocookie.com');
-    expect(privacyTemplate).toContain('explicitly selects “Load YouTube preview”');
+    expect(privacyTemplate).toContain('loads automatically when the preview approaches the visitor\'s viewport');
+    expect(privacyTemplate).toContain('playback does not start automatically');
   });
 
-  it('loads the privacy-enhanced player only after a click and meets minimum size on mobile and desktop', async () => {
+  it('loads the privacy-enhanced player automatically near the viewport without autoplay and meets minimum size on mobile and desktop', async () => {
     const browser: Browser = await chromium.launch({ headless: true });
     try {
       const start = stylesheet.indexOf('/* Issue #226 — optional release-level YouTube preview');
@@ -179,16 +189,18 @@ describe('YouTube release preview (#226)', () => {
           if (request.url().startsWith('https://www.youtube-nocookie.com/')) externalRequests.push(request.url());
         });
         await page.route('https://www.youtube-nocookie.com/**', (route) => route.abort());
-        await page.setContent('<style>' + playerCss + '</style>' + renderedPartial);
+        await page.setContent('<style>' + playerCss + '</style><div style="height: 1500px"></div>' + renderedPartial);
         await page.addScriptTag({ path: playerScriptPath });
 
         expect(await page.locator('iframe').count()).toBe(0);
         expect(externalRequests).toHaveLength(0);
+        expect(await page.locator('[data-youtube-preview-load]').count()).toBe(0);
         expect(await page.locator('[data-youtube-preview] .youtube-preview-fallback a').isVisible()).toBe(true);
+
         const youtubeRequest = page.waitForRequest((request) =>
           request.url().startsWith('https://www.youtube-nocookie.com/')
         );
-        await page.locator('[data-youtube-preview-load]').click();
+        await page.evaluate(() => window.scrollTo(0, 900));
         await youtubeRequest;
 
         const player = page.locator('iframe');
@@ -207,5 +219,32 @@ describe('YouTube release preview (#226)', () => {
     } finally {
       await browser.close();
     }
+  });
+
+  it('uses the shared mobile header back control for a listing detail route and does not mark + Drop active', () => {
+    const locals = {
+      currentPath: '/listings/' + listingId,
+      currentUser: null,
+      currentProfile: null,
+      messagingEnabled: false,
+    };
+    const renderedHeader = ejs.render(headerTemplate, locals, { filename: headerPath });
+    const renderedNav = ejs.render(navTemplate, locals, { filename: navPath });
+
+    expect(renderedHeader).toContain('<span class="mobile-context-heading">RECORD</span>');
+    expect(renderedHeader).toContain('aria-label="Back to Dig results"');
+    expect(renderedHeader).toContain('href="/dig"');
+    expect(renderedNav).toContain('href="/drop/new" class="nav-link nav-link-action"');
+    expect(renderedNav).toContain('href="/drop/new" class="mobile-nav-item mobile-nav-drop"');
+    expect(mainLayoutTemplate).toContain('listing-detail-page');
+    expect(stylesheet).toContain('body.listing-detail-page .main-content');
+    expect(stylesheet).toContain('env(safe-area-inset-bottom, 0px)');
+
+    const previewHeader = ejs.render(headerTemplate, {
+      ...locals,
+      currentPath: '/listings/' + listingId + '/preview',
+    }, { filename: headerPath });
+    expect(previewHeader).not.toContain('<span class="mobile-context-heading">RECORD</span>');
+    expect(previewHeader).not.toContain('aria-label="Back to Dig results"');
   });
 });
