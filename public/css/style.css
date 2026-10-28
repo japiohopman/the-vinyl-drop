@@ -2207,7 +2207,14 @@ select.form-control {
   left: 0;
   width: 100%;
   height: var(--dig-sleeve-thickness);
-  background: linear-gradient(90deg, #eee6d8 0%, #c8bdad 48%, #a69a89 100%);
+}
+
+.dig-sleeve-edge-top {
+  background: linear-gradient(90deg, #e8ddc8 0%, #c9b99d 48%, #a38d6b 100%);
+}
+
+.dig-sleeve-edge-bottom {
+  background: linear-gradient(90deg, #9d8869 0%, #b8a384 48%, #d3c2a5 100%);
 }
 
 .dig-sleeve-edge-top {
@@ -2229,16 +2236,19 @@ select.form-control {
   height: 100%;
 }
 
+/* The sleeve spine is the left edge; keep it darker than the open edge. */
 .dig-sleeve-edge-left {
   left: 0;
   transform-origin: left;
   transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(-90deg);
+  background: linear-gradient(180deg, #b5a080 0%, #806b4f 100%);
 }
 
 .dig-sleeve-edge-right {
   right: 0;
   transform-origin: right;
   transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(90deg);
+  background: linear-gradient(180deg, #e5d9c4 0%, #bca889 100%);
 }
 
 .dig-sleeve-face {
@@ -2249,11 +2259,12 @@ select.form-control {
   align-items: stretch;
   justify-content: stretch;
   overflow: hidden;
-  border: var(--border-thick);
-  border-top-color: #e4dbcd;
-  border-left-color: #d2c7b7;
-  border-right-color: #958a7a;
-  border-bottom-color: #7f7568;
+  /* A hairline kraft-paper edge, not a raised UI frame. */
+  border: 1px solid #c6b89f;
+  border-top-color: #e6dcc9;
+  border-left-color: #ad9878;
+  border-right-color: #c8b99f;
+  border-bottom-color: #a18b6c;
   background: var(--color-white);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
