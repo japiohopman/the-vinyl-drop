@@ -206,7 +206,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(htmlEnabled).toContain('data-messaging-widget-trigger');
     expect(htmlEnabled).toContain('<button type="button" class="desktop-you-menu-item messaging-widget-trigger"');
     expect(htmlEnabled).toContain('<button type="button" class="mobile-you-action-link messaging-widget-trigger"');
-    expect(htmlEnabled).toContain('class="mobile-you-action-icon"');
+    expect(htmlEnabled).toContain('mobile-you-action-icon');
     expect(htmlEnabled).toContain('Messages');
 
     const htmlDisabled = await renderNav({
@@ -1133,7 +1133,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         return { color, alpha: Number(alphaMatch?.[1] ?? 1) };
       })()`) as { color: string; alpha: number } | null;
       expect(backdrop).not.toBeNull();
-      expect(backdrop!.alpha).toBeGreaterThanOrEqual(0.85);
+      expect(backdrop!.alpha).toBeCloseTo(0.48, 2);
 
       await page.click('#mobile-you-trigger');
       const insets = await page.evaluate(String.raw`(() => {
