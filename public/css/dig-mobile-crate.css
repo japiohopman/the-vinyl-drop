@@ -83,6 +83,17 @@
    * album stay slightly inset inside that full-bleed stage, preserving their
    * visible edges and leaving room for the cover's corners during 3D flips.
    */
+  /*
+   * These wrappers normally clip their children to keep the app-like session
+   * tidy. The full-bleed crate and a sleeve's 3D rotation must pass through
+   * them; the viewport shell and the crate stack still provide the outer clip.
+   */
+  body.mobile-dig-session .dig-responsive-mobile .dig-explorer,
+  body.mobile-dig-session .dig-responsive-mobile .dig-viewer,
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-interaction {
+    overflow: visible;
+  }
+
   .dig-responsive-mobile .dig-crate-stack {
     width: 100vw;
     margin-left: calc(50% - 50vw);
