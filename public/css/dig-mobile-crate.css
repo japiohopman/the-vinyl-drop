@@ -108,6 +108,22 @@
     max-width: 100%;
   }
 
+  /*
+   * The stage is the swipe/clip-safe area; inset the actual rotating jacket
+   * inside it so perspective cannot send a corner into the crate-stack clip.
+   * Keep the margin inside the stage rather than adding a frame around the art.
+   */
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage {
+    overflow: visible;
+  }
+
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-card {
+    position: absolute;
+    inset: 3%;
+    width: auto;
+    height: auto;
+  }
+
   .dig-responsive-mobile .dig-crate-source {
     position: absolute;
     inset: 0;

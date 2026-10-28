@@ -518,6 +518,13 @@ describe('Dig photo-role contract', () => {
     expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateX(90deg)');
     expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateY(-90deg)');
     expect(rawCss).toContain('translateZ(var(--dig-sleeve-half-thickness)) rotateY(90deg)');
+    expect(rawCss).toContain('background: linear-gradient(180deg, #e6d8be 0%, #bba27b 100%);');
+    expect(rawCss).toContain('background: linear-gradient(180deg, #826746 0%, #c5ad88 100%);');
+    expect(rawCss).toContain('background: linear-gradient(90deg, #6b5436 0%, #b79b70 48%, #826746 100%);');
+    expect(rawCss).toContain('background: linear-gradient(90deg, #f1e5cf 0%, #c5ad88 100%);');
+    expect(mobileCss).toContain('inset: 3%;');
+    expect(mobileCss).toContain('width: auto;');
+    expect(mobileCss).toContain('height: auto;');
     expect(mobileCss).toContain('content: none !important;');
     expect(mobileCss).toContain('box-shadow: none !important;');
     expect(mobileCss).toContain('filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));');

@@ -283,6 +283,10 @@ describe('Mobile Dig app-like viewport', () => {
       return {
         width: card.clientWidth,
         height: card.clientHeight,
+        cardLeft: card.offsetLeft,
+        cardTop: card.offsetTop,
+        stageWidth: stage.clientWidth,
+        stageHeight: stage.clientHeight,
         transform: getComputedStyle(card).transform,
         flipped: card.classList.contains('is-flipped'),
         stageBeforeContent: stageBefore.content,
@@ -299,6 +303,13 @@ describe('Mobile Dig app-like viewport', () => {
 
     const expectHinges = (geometry: Awaited<ReturnType<typeof readGeometry>>, rotating: boolean) => {
       const { width, height, edges } = geometry;
+
+      // The moving artwork has a real inset inside the larger touch/clip-safe stage.
+      expect(geometry.cardLeft).toBeCloseTo(geometry.stageWidth * 0.03, 0);
+      expect(geometry.cardTop).toBeCloseTo(geometry.stageHeight * 0.03, 0);
+      expect(width).toBeCloseTo(geometry.stageWidth * 0.94, 0);
+      expect(height).toBeCloseTo(geometry.stageHeight * 0.94, 0);
+
       expect(edges.top.left).toBe(0);
       expect(edges.top.top).toBe(0);
       expect(edges.top.width).toBe(width);
