@@ -60,7 +60,9 @@
     outline-offset: 2px;
   }
 
+  .dig-crate-filter-trigger img,
   .dig-crate-filter-trigger svg {
+    display: block;
     flex: 0 0 auto;
   }
 
@@ -84,9 +86,9 @@
    * visible edges and leaving room for the cover's corners during 3D flips.
    */
   /*
-   * These wrappers normally clip their children to keep the app-like session
-   * tidy. The full-bleed crate and a sleeve's 3D rotation must pass through
-   * them; the viewport shell and the crate stack still provide the outer clip.
+   * Let the crate artwork reach the viewport edges and let the sleeve rotate.
+   * The outer responsive/page/main-content shells remain clipped, protecting
+   * the fixed mobile navigation at the bottom of the screen.
    */
   body.mobile-dig-session .dig-responsive-mobile .dig-explorer,
   body.mobile-dig-session .dig-responsive-mobile .dig-viewer,
@@ -94,14 +96,50 @@
     overflow: visible;
   }
 
-  .dig-responsive-mobile .dig-crate-stack {
+  /*
+   * The crate remains full-bleed, but keeps its clip plane. The sleeve itself is
+   * inset inside the stage and interaction region so its perspective rotation
+   * has clearance without disabling clipping on the mobile app shell.
+   */
+  body.mobile-dig-session .dig-responsive-mobile .dig-crate-stack {
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: 0;
+    overflow: clip;
+    overflow-clip-margin: 12px;
   }
 
-  .dig-responsive-mobile .dig-sleeve-stage {
-    width: min(94vw, 510px, calc(100vw - 24px), calc(100dvh - 320px));
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage {
+    width: min(88vw, 480px, calc(100vw - 40px), calc(100dvh - 330px));
+    flex: 0 1 auto;
+    max-width: 100%;
+  }
+
+  /*
+   * The stage is the swipe/clip-safe area; inset the actual rotating jacket
+   * inside it so perspective cannot send a corner into the crate-stack clip.
+   * Keep the margin inside the stage rather than adding a frame around the art.
+   */
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage {
+    overflow: visible;
+  }
+
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-card {
+    position: absolute;
+    inset: 5% 4%;
+    width: auto;
+    height: auto;
+  }
+
+  /*
+   * Keep the title and action row stationary. Their opacity is controlled by the
+   * swipe gesture; no second translateY animation should run alongside it.
+   */
+  body.mobile-dig-session .dig-responsive-mobile .dig-slide .dig-listing-meta,
+  body.mobile-dig-session .dig-responsive-mobile .dig-slide .dig-card-actions {
+    transform: none !important;
+    transition: none !important;
+    transition-delay: 0s !important;
   }
 
   .dig-responsive-mobile .dig-crate-source {
@@ -136,16 +174,158 @@
   }
 
   /*
-   * The offset deck-edge pseudo-element otherwise paints a solid paper-colored
-   * square behind the transparent reverse face. Keep its border/shadow cue,
-   * but let the crate backdrop show through the surface.
+   * The stage pseudo-element was a second, offset card with its own border and
+   * shadow. It reads as a UI frame and breaks the sleeve's physical flip.
+   * Thickness now belongs to the moving sleeve's four side faces only.
    */
-  .dig-responsive-mobile .dig-sleeve-stage::before {
-    background: transparent;
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage::before {
+    content: none !important;
+    display: none !important;
+    visibility: hidden !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    transform: none !important;
   }
 
+  /* Warm paper backdrop for the crate area, without adding another shadow frame. */
+  body.mobile-dig-session .dig-responsive-mobile .dig-explorer {
+    background: #e8e1d5;
+    border: 0;
+    box-shadow: none;
+  }
+
+  /* Keep record metadata on a stable paper label instead of over busy crate art. */
+  body.mobile-dig-session .dig-listing-meta {
+    position: relative;
+    z-index: 5;
+    width: min(94%, 510px);
+    box-sizing: border-box;
+    margin: 0 auto 4px;
+    padding: 5px 10px 6px;
+    border: 1px solid #bcb09c;
+    background: rgba(250, 248, 242, 0.98);
+    text-align: center;
+    box-shadow: none;
+  }
+
+  body.mobile-dig-session .dig-listing-meta h2 {
+    color: #211f1b;
+    font-size: clamp(1rem, 4.2vw, 1.2rem);
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+
+  body.mobile-dig-session .dig-artist {
+    margin-top: 2px;
+    color: #514b41;
+    font-size: clamp(0.72rem, 3vw, 0.82rem);
+    line-height: 1.1;
+  }
+
+  /* The paper price tag is a real asset behind the monetary value. */
+  body.mobile-dig-session .dig-price {
+    display: inline-flex;
+    flex: 0 0 128px;
+    align-items: center;
+    justify-content: center;
+    width: 128px;
+    min-width: 128px;
+    height: 64px;
+    min-height: 64px;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0 18px;
+    gap: 0;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    background: url('/assets/UI/price_tag.svg') center / 100% 100% no-repeat;
+  }
+
+  body.mobile-dig-session .dig-price strong {
+    color: #211f1b;
+    font-size: clamp(1.1rem, 4.5vw, 1.35rem);
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  body.mobile-dig-session .dig-listing-link {
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    box-sizing: border-box;
+    margin-left: auto;
+    padding: 4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #1c1c1c;
+    text-decoration: none;
+  }
+
+  body.mobile-dig-session .dig-listing-link img {
+    display: block;
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+  }
+
+  body.mobile-dig-session .dig-listing-link:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  /* Bottom-sheet filter: no centered modal frame on the mobile Dig screen. */
   .dig-crate-filter-dialog {
-    margin: auto;
+    position: fixed;
+    inset: auto 0 0;
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: none;
+    max-height: min(86dvh, 720px);
+    margin: 0;
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    overflow: auto;
+    border: 0;
+    border-top: 3px solid var(--color-rust);
+    border-radius: 18px 18px 0 0;
+    transform: translateY(105%);
+    opacity: 0;
+    transition: transform 300ms cubic-bezier(.2, .75, .25, 1), opacity 240ms ease;
+    overscroll-behavior: contain;
+  }
+
+  .dig-crate-filter-dialog[open]:not(.is-closing) {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .dig-crate-filter-dialog.is-closing {
+    transform: translateY(105%);
+    opacity: 0;
+  }
+
+  @starting-style {
+    .dig-crate-filter-dialog[open] {
+      transform: translateY(105%);
+      opacity: 0;
+    }
+  }
+
+  .dig-crate-filter-dialog::backdrop {
+    background: rgba(18, 18, 18, 0.52);
+    transition: background-color 240ms ease;
+  }
+
+  @starting-style {
+    .dig-crate-filter-dialog[open]::backdrop {
+      background: rgba(18, 18, 18, 0);
+    }
   }
 
   .dig-crate-filter-header {
@@ -320,6 +500,17 @@
     background: var(--color-rust);
     border-color: var(--color-rust) !important;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dig-crate-filter-dialog,
+  .dig-crate-filter-dialog::backdrop {
+    transition: none !important;
+  }
+}
+
+.dig-crate-filter-dialog.is-closing::backdrop {
+  background: rgba(18, 18, 18, 0);
 }
 
 @media (min-width: 768px) {

@@ -385,7 +385,13 @@ describe('Dig photo-role contract', () => {
     });
 
     expect((html.match(/data-dig-slide/g) ?? []).length).toBe(2);
-    expect((html.match(/data-dig-sleeve-card/g) ?? []).length).toBe(2);
+    const sleeveCards = html.split('data-dig-sleeve-card').slice(1);
+    expect(sleeveCards).toHaveLength(2);
+    for (const sleeveCard of sleeveCards) {
+      for (const side of ['top', 'right', 'bottom', 'left']) {
+        expect((sleeveCard.match(new RegExp(`class="dig-sleeve-edge dig-sleeve-edge-${side}"`, 'g')) ?? []).length).toBe(1);
+      }
+    }
     expect(html).not.toContain('data-dig-sleeve-plane');
     expect(html).toContain('First test release');
     expect(html).toContain('Second test release');
@@ -433,6 +439,17 @@ describe('Dig photo-role contract', () => {
     const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     const css = rawCss.replace(/\r\n/g, '\n');
     expect(css).toContain('.dig-sleeve-image');
+    expect(css).toContain('.dig-sleeve-edge-top');
+    expect(css).toContain('.dig-sleeve-edge-right');
+    expect(css).toContain('.dig-sleeve-edge-bottom');
+    expect(css).toContain('.dig-sleeve-edge-left');
+    expect(css).toContain('transform-origin: center;');
+    expect(css).toContain('left: -1.5px;');
+    expect(css).toContain('right: -1.5px;');
+    expect(css).toContain('transform: rotateY(-90deg);');
+    expect(css).toContain('transform: rotateY(90deg);');
+    expect(css).toContain('.dig-sleeve-card {');
+    expect(css).not.toContain('.dig-sleeve-spine-edge');
     expect(css).not.toContain('.dig-sleeve-plane');
     expect(css).not.toContain('rotateX(42deg)');
     expect(css).toContain('.dig-crate-stack {');
@@ -441,6 +458,20 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('.dig-slide {');
     expect(css).toContain('transform-style: preserve-3d;');
     expect(css).toContain('overflow: clip;');
+    const mobileCrateCss = fs.readFileSync(path.join(process.cwd(), 'public/css/dig-mobile-crate.css'), 'utf8');
+    expect(mobileCrateCss).toContain('body.mobile-dig-session .dig-responsive-mobile .dig-crate-stack');
+    expect(mobileCrateCss).toContain('overflow: clip;');
+    expect(mobileCrateCss).toContain('overflow-clip-margin: 12px;');
+    expect(mobileCrateCss).toContain('body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage');
+    expect(mobileCrateCss).toContain('inset: 5% 4%;');
+    expect(mobileCrateCss).not.toContain('inset: -0.5px;');
+    expect(css).toContain('--dig-sleeve-face-overlap: 0.5px;');
+    expect(css).toContain('transform: translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));');
+    expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped .dig-sleeve-face-back');
+    expect(mobileCrateCss).toContain('width: 128px;');
+    expect(mobileCrateCss).toContain('height: 64px;');
+    expect(mobileCrateCss).toContain('transform: none !important;');
+    expect(mobileCrateCss).toContain('transition: none !important;');
     expect(css).toContain('.dig-slide.is-leaving-up .dig-sleeve-interaction');
     expect(css).toContain('.dig-slide.is-leaving-down .dig-sleeve-interaction');
     expect(css).toContain('.dig-slide.is-leaving-up');
@@ -462,6 +493,57 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('@media (max-width: 680px)');
     expect(css).toContain('.dig-nav-button {\n    display: none;');
     expect(css).toContain('.dig-keyboard-note {\n    display: none;');
+  });
+
+  it('keeps cast shadow on the frame and off both animated sleeve faces', () => {
+    const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const mobileCss = fs.readFileSync(path.join(process.cwd(), 'public/css/dig-mobile-crate.css'), 'utf8');
+    const faceRuleStart = rawCss.indexOf('.dig-sleeve-face {');
+    const faceRuleEnd = rawCss.indexOf('\n}', faceRuleStart);
+    const faceRule = faceRuleStart >= 0 && faceRuleEnd >= 0
+      ? rawCss.slice(faceRuleStart, faceRuleEnd)
+      : '';
+    const edgeRuleStart = rawCss.indexOf('.dig-sleeve-edge {');
+    const edgeRuleEnd = rawCss.indexOf('\n}', edgeRuleStart);
+    const edgeRule = edgeRuleStart >= 0 && edgeRuleEnd >= 0
+      ? rawCss.slice(edgeRuleStart, edgeRuleEnd)
+      : '';
+
+    expect(faceRuleStart).toBeGreaterThanOrEqual(0);
+    expect(faceRule).not.toContain('box-shadow:');
+    for (const selector of ['.dig-sleeve-face-front {', '.dig-sleeve-face-back {']) {
+      const start = rawCss.indexOf(selector);
+      const end = rawCss.indexOf('\n}', start);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(end).toBeGreaterThan(start);
+      expect(rawCss.slice(start, end)).not.toContain('box-shadow:');
+    }
+    const mobileBackStart = mobileCss.indexOf('.dig-responsive-mobile .dig-sleeve-face-back {');
+    const mobileBackEnd = mobileCss.indexOf('\n  }', mobileBackStart);
+    expect(mobileBackStart).toBeGreaterThanOrEqual(0);
+    expect(mobileBackEnd).toBeGreaterThan(mobileBackStart);
+    expect(mobileCss.slice(mobileBackStart, mobileBackEnd)).not.toContain('box-shadow:');
+    expect(edgeRuleStart).toBeGreaterThanOrEqual(0);
+    expect(edgeRule).toContain('pointer-events: none;');
+    expect(rawCss).toContain('transform-origin: center;');
+    expect(rawCss).toContain('top: -1.5px;');
+    expect(rawCss).toContain('bottom: -1.5px;');
+    expect(rawCss).toContain('left: -1.5px;');
+    expect(rawCss).toContain('right: -1.5px;');
+    expect(rawCss).toContain('transform: rotateX(90deg);');
+    expect(rawCss).toContain('transform: rotateX(-90deg);');
+    expect(rawCss).toContain('transform: rotateY(-90deg);');
+    expect(rawCss).toContain('transform: rotateY(90deg);');
+    expect(rawCss).toContain('background: linear-gradient(180deg, #e6d8be 0%, #bba27b 100%);');
+    expect(rawCss).toContain('background: linear-gradient(180deg, #826746 0%, #c5ad88 100%);');
+    expect(rawCss).toContain('background: linear-gradient(90deg, #6b5436 0%, #b79b70 48%, #826746 100%);');
+    expect(rawCss).toContain('background: linear-gradient(90deg, #f1e5cf 0%, #c5ad88 100%);');
+    expect(mobileCss).toContain('inset: 5% 4%;');
+    expect(mobileCss).toContain('width: auto;');
+    expect(mobileCss).toContain('height: auto;');
+    expect(mobileCss).toContain('content: none !important;');
+    expect(mobileCss).toContain('box-shadow: none !important;');
+    expect(mobileCss).toContain('filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));');
   });
 });
 

@@ -167,7 +167,9 @@ describe('Mobile Dig app-like viewport', () => {
       expect(dimensions.bodyWidth).toBeLessThanOrEqual(viewport.width);
       expect(dimensions.documentHeight).toBeLessThanOrEqual(viewport.height);
       expect(dimensions.bodyHeight).toBeLessThanOrEqual(viewport.height);
-      expect(dimensions.stageWidth).toBeGreaterThanOrEqual(viewport.width - 48);
+      const expectedSleeveWidth = Math.min(viewport.width * 0.88, 480, viewport.width - 40, viewport.height - 330);
+      expect(dimensions.stageWidth).toBeLessThanOrEqual(expectedSleeveWidth + 1);
+      expect(dimensions.stageWidth).toBeGreaterThan(expectedSleeveWidth * 0.9);
       expect(dimensions.stageBottom).toBeLessThanOrEqual(viewport.height - 60 + 1);
     }
   });
@@ -252,6 +254,219 @@ describe('Mobile Dig app-like viewport', () => {
       card.classList.contains('is-flipped')
     )).toBe(false);
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
+  });
+
+  it('keeps the cardboard sleeve edges hinged to the cover during both horizontal flips', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812);
+
+    const readGeometry = async () => page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const sleeveCard = card as HTMLElement;
+      const edge = (side: 'top' | 'right' | 'bottom' | 'left') => {
+        const element = card.querySelector<HTMLElement>('.dig-sleeve-edge-' + side);
+        if (!element) throw new Error('Missing sleeve edge: ' + side);
+        const style = getComputedStyle(element);
+        const origin = style.transformOrigin.split(/\s+/).map((value) => Number.parseFloat(value));
+        return {
+          left: Number.parseFloat(style.left),
+          top: Number.parseFloat(style.top),
+          width: Number.parseFloat(style.width),
+          height: Number.parseFloat(style.height),
+          originX: origin[0],
+          originY: origin[1],
+          transform: style.transform,
+          shadow: style.boxShadow,
+        };
+      };
+      const faceDepth = (selector: string) => {
+        const face = card.querySelector<HTMLElement>(selector);
+        if (!face) throw new Error('Missing sleeve face: ' + selector);
+        return new DOMMatrixReadOnly(getComputedStyle(face).transform).m43;
+      };
+      const stage = card.closest('.dig-sleeve-stage');
+      if (!stage) throw new Error('Sleeve has no stage');
+      const stack = card.closest('.dig-crate-stack');
+      if (!stack) throw new Error('Sleeve has no crate stack');
+      const stackStyle = getComputedStyle(stack);
+      const stageBefore = getComputedStyle(stage, '::before');
+      const overflowSelectors = [
+        '.main-content',
+        '.dig-responsive-page',
+        '.dig-responsive-mobile',
+        '.dig-page',
+        '.dig-explorer',
+        '.dig-viewer',
+        '.dig-sleeve-interaction',
+        '.dig-sleeve-stage',
+        '.dig-crate-stack',
+      ];
+      const overflowStates = overflowSelectors.map((selector) => {
+        const element = card.closest(selector);
+        if (!element) throw new Error('Missing clip ancestor: ' + selector);
+        return { selector, overflow: getComputedStyle(element).overflow };
+      });
+      const meta = card.closest('[data-dig-slide]')?.querySelector<HTMLElement>('.dig-listing-meta');
+      const actions = card.closest('[data-dig-slide]')?.querySelector<HTMLElement>('.dig-card-actions');
+      const price = card.closest('[data-dig-slide]')?.querySelector<HTMLElement>('.dig-price');
+      if (!meta || !actions || !price) throw new Error('Missing record metadata or price');
+      return {
+        width: Number.parseFloat(getComputedStyle(sleeveCard).width),
+        height: Number.parseFloat(getComputedStyle(sleeveCard).height),
+        cardLeft: sleeveCard.offsetLeft,
+        cardTop: sleeveCard.offsetTop,
+        stageWidth: stage.clientWidth,
+        stageHeight: stage.clientHeight,
+        transform: getComputedStyle(sleeveCard).transform,
+        flipped: sleeveCard.classList.contains('is-flipped'),
+        faceDepths: {
+          front: faceDepth('.dig-sleeve-face-front'),
+          back: faceDepth('.dig-sleeve-face-back'),
+        },
+        stageBeforeContent: stageBefore.content,
+        stageBeforeDisplay: stageBefore.display,
+        stageBeforeShadow: stageBefore.boxShadow,
+        stackOverflow: stackStyle.overflow,
+        stackClipMargin: stackStyle.getPropertyValue('overflow-clip-margin'),
+        overflowStates,
+        metadata: {
+          transform: getComputedStyle(meta).transform,
+          transitionDuration: getComputedStyle(meta).transitionDuration,
+        },
+        actions: {
+          transform: getComputedStyle(actions).transform,
+          transitionDuration: getComputedStyle(actions).transitionDuration,
+        },
+        price: {
+          transform: getComputedStyle(price).transform,
+          transitionDuration: getComputedStyle(price).transitionDuration,
+        },
+        edges: {
+          top: edge('top'),
+          right: edge('right'),
+          bottom: edge('bottom'),
+          left: edge('left'),
+        },
+      };
+    });
+
+    const expectHinges = (geometry: Awaited<ReturnType<typeof readGeometry>>, rotating: boolean) => {
+      const { width, height, edges } = geometry;
+
+      // The cover has a larger safety margin above/below and stays inset from both sides.
+      expect(geometry.cardLeft).toBeCloseTo(geometry.stageWidth * 0.04, 0);
+      expect(Math.abs(geometry.cardTop - geometry.stageHeight * 0.05)).toBeLessThanOrEqual(1);
+      expect(width).toBeCloseTo(geometry.stageWidth * 0.92, 0);
+      expect(height).toBeCloseTo(geometry.stageHeight * 0.90, 0);
+
+      // Each plane is centered over the 3 mm thickness and its center sits
+      // exactly on the cover perimeter; this removes the visible corner gaps.
+      expect(edges.top.left).toBe(0);
+      expect(edges.top.top).toBeCloseTo(-1.5, 1);
+      expect(edges.top.width).toBe(width);
+      expect(edges.top.height).toBe(3);
+      expect(edges.top.originX).toBeCloseTo(width / 2, 0);
+      expect(edges.top.originY).toBeCloseTo(1.5, 1);
+
+      expect(edges.bottom.left).toBe(0);
+      expect(edges.bottom.top).toBeCloseTo(height - 1.5, 1);
+      expect(edges.bottom.width).toBe(width);
+      expect(edges.bottom.height).toBe(3);
+      expect(edges.bottom.originX).toBeCloseTo(width / 2, 0);
+      expect(edges.bottom.originY).toBeCloseTo(1.5, 1);
+
+      expect(edges.left.left).toBeCloseTo(-1.5, 1);
+      expect(edges.left.top).toBe(0);
+      expect(edges.left.width).toBe(3);
+      expect(edges.left.height).toBe(height);
+      expect(edges.left.originX).toBeCloseTo(1.5, 1);
+      expect(edges.left.originY).toBeCloseTo(height / 2, 0);
+
+      expect(edges.right.left).toBeCloseTo(width - 1.5, 1);
+      expect(edges.right.top).toBe(0);
+      expect(edges.right.width).toBe(3);
+      expect(edges.right.height).toBe(height);
+      expect(edges.right.originX).toBeCloseTo(1.5, 1);
+      expect(edges.right.originY).toBeCloseTo(height / 2, 0);
+
+      for (const side of ['top', 'right', 'bottom', 'left'] as const) {
+        expect(edges[side].transform).not.toBe('none');
+        expect(edges[side].shadow).toBe('none');
+      }
+      // The cover faces must sit just outside the side walls in Z. If they share
+      // the exact edge depth, browsers may rasterize the cardboard bevel on the
+      // front-on view due to equal-depth fragments.
+      expect(geometry.faceDepths.front).toBeGreaterThan(1.5);
+      expect(geometry.faceDepths.front).toBeCloseTo(2, 1);
+      expect(geometry.faceDepths.back).toBeLessThan(-1.5);
+      expect(geometry.faceDepths.back).toBeCloseTo(-2, 1);
+      expect(geometry.stageBeforeContent).toBe('none');
+      expect(geometry.stageBeforeDisplay).toBe('none');
+      expect(geometry.stageBeforeShadow).toBe('none');
+      expect(geometry.stackOverflow).toBe('clip');
+      expect(geometry.stackClipMargin).toBe('12px');
+      expect(geometry.overflowStates).toHaveLength(9);
+      const expectedOverflow = new Map([
+        ['.main-content', 'hidden'],
+        ['.dig-responsive-page', 'hidden'],
+        ['.dig-responsive-mobile', 'hidden'],
+        ['.dig-page', 'hidden'],
+        ['.dig-explorer', 'visible'],
+        ['.dig-viewer', 'visible'],
+        ['.dig-sleeve-interaction', 'visible'],
+        ['.dig-sleeve-stage', 'visible'],
+        ['.dig-crate-stack', 'clip'],
+      ]);
+      expect(geometry.overflowStates.every(({ selector, overflow }) => expectedOverflow.get(selector) === overflow)).toBe(true);
+      expect(geometry.metadata.transform).toBe('none');
+      expect(geometry.metadata.transitionDuration).toBe('0s');
+      expect(geometry.actions.transform).toBe('none');
+      expect(geometry.actions.transitionDuration).toBe('0s');
+      expect(geometry.price.transform).toBe('none');
+      expect(geometry.price.transitionDuration).toBe('0s');
+      if (rotating) expect(geometry.transform).not.toBe('none');
+    };
+
+    const dragArea = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const startPartialDrag = async (deltaX: number) => {
+      const box = await dragArea.boundingBox();
+      if (!box) throw new Error('Active Dig sleeve has no bounding box');
+      const startX = box.x + box.width / 2;
+      const startY = box.y + box.height / 2;
+      await page.mouse.move(startX, startY);
+      await page.mouse.down();
+      await page.mouse.move(startX + deltaX, startY, { steps: 3 });
+      await page.waitForTimeout(35);
+    };
+
+    await startPartialDrag(-42);
+    let geometry = await readGeometry();
+    expectHinges(geometry, true);
+    expect(geometry.flipped).toBe(false);
+    await page.mouse.up();
+    await page.waitForTimeout(320);
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(geometry.flipped).toBe(false);
+
+    await swipeActive(-110, 0);
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(geometry.flipped).toBe(true);
+
+    await startPartialDrag(42);
+    geometry = await readGeometry();
+    expectHinges(geometry, true);
+    expect(geometry.flipped).toBe(true);
+    await page.mouse.up();
+    await page.waitForTimeout(320);
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(geometry.flipped).toBe(true);
+
+    await swipeActive(110, 0);
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(geometry.flipped).toBe(false);
   });
 
   it('cancels a pending flip-settle timer before a second horizontal drag', async () => {
@@ -409,6 +624,11 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
       card.classList.contains('is-flipped')
     )).toBe(true);
+    const reducedMotionBackFaceDepth = await page.locator(
+      '[data-dig-slide].is-active .dig-sleeve-face-back'
+    ).evaluate((face) => new DOMMatrixReadOnly(getComputedStyle(face).transform).m43);
+    expect(reducedMotionBackFaceDepth).toBeGreaterThan(1.5);
+    expect(reducedMotionBackFaceDepth).toBeCloseTo(2, 1);
 
     await swipeActive(0, -110);
     expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
@@ -472,6 +692,7 @@ describe('Mobile Dig app-like viewport', () => {
   });
 
   it('uses the supplied crate and preserves filter values when the mobile overlay is cancelled', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);
 
     const crateImage = page.locator('[data-dig-crate-source] img');
@@ -511,13 +732,48 @@ describe('Mobile Dig app-like viewport', () => {
     expect(crateGeometry!.imageWidth).toBeCloseTo(Math.min(375 * 0.94, 510, 375 - 24, 812 - 320), 0);
     expect(crateGeometry!.imageLeftInset).toBeGreaterThanOrEqual(8);
     expect(crateGeometry!.imageRightInset).toBeGreaterThanOrEqual(8);
-    expect(crateGeometry!.stageWidth).toBeGreaterThanOrEqual(375 * 0.92);
-    expect(crateGeometry!.stageWidth).toBeLessThanOrEqual(375 * 0.95);
-    expect(Math.abs(crateGeometry!.stageWidth - crateGeometry!.imageWidth)).toBeLessThanOrEqual(3);
-    expect(crateGeometry!.stageLeftInset).toBeGreaterThanOrEqual(8);
-    expect(crateGeometry!.stageRightInset).toBeGreaterThanOrEqual(8);
+    expect(crateGeometry!.stageWidth).toBeCloseTo(Math.min(375 * 0.88, 480, 375 - 40, 812 - 330), 0);
+    expect(crateGeometry!.stageWidth).toBeLessThan(crateGeometry!.imageWidth - 12);
+    expect(crateGeometry!.stageLeftInset).toBeGreaterThanOrEqual(15);
+    expect(crateGeometry!.stageRightInset).toBeGreaterThanOrEqual(15);
     expect(Math.abs(crateGeometry!.imageTopOffset)).toBeLessThanOrEqual(1);
     expect(crateGeometry!.transformOrigin.endsWith(' 0px')).toBe(true);
+
+    const visualTreatment = await page.evaluate(() => {
+      const stage = document.querySelector('[data-dig-slide].is-active .dig-sleeve-stage') as HTMLElement | null;
+      const meta = document.querySelector('[data-dig-slide].is-active .dig-listing-meta') as HTMLElement | null;
+      const price = document.querySelector('[data-dig-slide].is-active .dig-price') as HTMLElement | null;
+      const listingLink = document.querySelector('[data-dig-slide].is-active .dig-listing-link') as HTMLAnchorElement | null;
+      const filterIcon = document.querySelector('[data-dig-filter-open] img') as HTMLImageElement | null;
+      if (!stage || !meta || !price || !listingLink || !filterIcon) return null;
+      return {
+        pseudoContent: getComputedStyle(stage, '::before').content,
+        pseudoDisplay: getComputedStyle(stage, '::before').display,
+        pseudoShadow: getComputedStyle(stage, '::before').boxShadow,
+        explorerBackground: getComputedStyle(document.querySelector('.dig-explorer')!).backgroundColor,
+        metaBackground: getComputedStyle(meta).backgroundColor,
+        priceBackgroundImage: getComputedStyle(price).backgroundImage,
+        listingLabel: listingLink.getAttribute('aria-label'),
+        listingText: listingLink.textContent?.trim(),
+        listingIcon: listingLink.querySelector('img')?.getAttribute('src'),
+        filterIcon: filterIcon.getAttribute('src'),
+      };
+    });
+    expect(visualTreatment).not.toBeNull();
+    expect(visualTreatment!.pseudoContent).toBe('none');
+    expect(visualTreatment!.pseudoDisplay).toBe('none');
+    expect(visualTreatment!.pseudoShadow).toBe('none');
+    expect(visualTreatment!.explorerBackground).toBe('rgb(232, 225, 213)');
+    expect(visualTreatment!.metaBackground).toBe('rgba(250, 248, 242, 0.98)');
+    expect(visualTreatment!.priceBackgroundImage).toContain('/assets/UI/price_tag.svg');
+    expect(visualTreatment!.listingLabel).toContain('Open listing for');
+    expect(visualTreatment!.listingText).toBe('');
+    expect(visualTreatment!.listingIcon).toBe('/assets/svg/look-at.svg');
+    expect(visualTreatment!.filterIcon).toBe('/assets/svg/funnel.svg');
+
+    const lookAtSvg = fs.readFileSync(path.join(__dirname, '../public/assets/svg/look-at.svg'), 'utf8');
+    expect(lookAtSvg).not.toContain('M0 0h512v512H0z');
+    expect(lookAtSvg).toContain('fill="#1c1c1c"');
 
     const toolbar = page.locator('[data-dig-crate-toolbar]');
     const explorer = page.locator('.dig-explorer');
@@ -544,6 +800,14 @@ describe('Mobile Dig app-like viewport', () => {
     await trigger.click();
     expect(await dialog.isVisible()).toBe(true);
     expect(await trigger.getAttribute('aria-expanded')).toBe('true');
+    const sheetGeometry = await dialog.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return { position: style.position, top: rect.top, bottom: rect.bottom, height: rect.height };
+    });
+    expect(sheetGeometry.position).toBe('fixed');
+    expect(Math.abs(sheetGeometry.bottom - 812)).toBeLessThanOrEqual(1);
+    expect(sheetGeometry.height).toBeGreaterThan(0);
     expect(await dialog.locator('form').getAttribute('action')).toBe('/dig');
     expect(await dialog.locator('input[name="q"]').inputValue()).toBe('De La Soul');
     expect(await dialog.locator('select[name="genre"]').inputValue()).toBe('Hip Hop');
@@ -558,13 +822,37 @@ describe('Mobile Dig app-like viewport', () => {
 
     await dialog.locator('input[name="q"]').fill('cancelled query');
     await dialog.locator('[data-dig-filter-cancel]').click();
+    expect(await dialog.evaluate((element) => element.classList.contains('is-closing'))).toBe(true);
+    await page.waitForFunction(() => {
+      const currentDialog = document.querySelector('[data-dig-filter-dialog]');
+      return !(currentDialog instanceof HTMLDialogElement) || !currentDialog.open;
+    });
     expect(await dialog.isVisible()).toBe(false);
     expect(await trigger.getAttribute('aria-expanded')).toBe('false');
 
     await trigger.click();
     expect(await dialog.locator('input[name="q"]').inputValue()).toBe('De La Soul');
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => {
+      const currentDialog = document.querySelector('[data-dig-filter-dialog]');
+      return !(currentDialog instanceof HTMLDialogElement) || !currentDialog.open;
+    });
     expect(await dialog.isVisible()).toBe(false);
+    expect(await trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('closes the mobile filter sheet immediately when reduced motion is requested', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await loadPage(375, 812);
+
+    const trigger = page.locator('[data-dig-filter-open]');
+    const dialog = page.locator('[data-dig-filter-dialog]');
+    await trigger.click();
+    expect(await dialog.isVisible()).toBe(true);
+
+    await dialog.locator('[data-dig-filter-cancel]').click();
+    expect(await dialog.isVisible()).toBe(false);
+    expect(await dialog.evaluate((element) => element.classList.contains('is-closing'))).toBe(false);
     expect(await trigger.getAttribute('aria-expanded')).toBe('false');
   });
 

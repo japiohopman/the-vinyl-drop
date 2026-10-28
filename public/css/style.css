@@ -2176,7 +2176,16 @@ select.form-control {
   pointer-events: none;
 }
 
+/* Thin cardboard thickness, using the same edge-hinge geometry as the book reader. */
 .dig-sleeve-card {
+  --dig-sleeve-thickness: 3px;
+  --dig-sleeve-half-thickness: 1.5px;
+  /*
+   * Keep the printed faces clearly ahead of the cardboard walls. The earlier
+   * 0.2px clearance still left a visible fringe in the face-on view; half a
+   * CSS pixel gives the artwork a more reliable frontmost surface.
+   */
+  --dig-sleeve-face-overlap: 0.5px;
   position: relative;
   z-index: 1;
   width: 100%;
@@ -2189,6 +2198,57 @@ select.form-control {
   transform: rotateY(180deg);
 }
 
+.dig-sleeve-edge {
+  position: absolute;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.dig-sleeve-edge-top,
+.dig-sleeve-edge-bottom {
+  left: 0;
+  width: 100%;
+  height: var(--dig-sleeve-thickness);
+}
+
+.dig-sleeve-edge-top {
+  top: -1.5px;
+  transform-origin: center;
+  transform: rotateX(90deg);
+  background: linear-gradient(180deg, #e6d8be 0%, #bba27b 100%);
+}
+
+.dig-sleeve-edge-bottom {
+  bottom: -1.5px;
+  transform-origin: center;
+  transform: rotateX(-90deg);
+  background: linear-gradient(180deg, #826746 0%, #c5ad88 100%);
+}
+
+.dig-sleeve-edge-left,
+.dig-sleeve-edge-right {
+  top: 0;
+  width: var(--dig-sleeve-thickness);
+  height: 100%;
+}
+
+.dig-sleeve-edge-left {
+  left: -1.5px;
+  transform-origin: center;
+  transform: rotateY(-90deg);
+  background: linear-gradient(90deg, #6b5436 0%, #b79b70 48%, #826746 100%);
+}
+
+.dig-sleeve-edge-right {
+  right: -1.5px;
+  transform-origin: center;
+  transform: rotateY(90deg);
+  background: linear-gradient(90deg, #f1e5cf 0%, #c5ad88 100%);
+}
+
 .dig-sleeve-face {
   position: absolute;
   inset: 0;
@@ -2197,20 +2257,19 @@ select.form-control {
   align-items: stretch;
   justify-content: stretch;
   overflow: hidden;
-  border: var(--border-thick);
+  border: 0;
   background: var(--color-white);
-  box-shadow: 6px 8px 0 rgba(26, 26, 26, .14);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
 .dig-sleeve-face-front {
   z-index: 2;
-  transform: rotateY(0deg);
+  transform: translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));
 }
 
 .dig-sleeve-face-back {
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));
 }
 
 .dig-sleeve-image {
@@ -2451,7 +2510,8 @@ select.form-control {
 }
 
 .dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped .dig-sleeve-face-back {
-  transform: none;
+  /* A reduced-motion flip shows the back face-on, but keeps it ahead of edges. */
+  transform: translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));
 }
 
 @media (max-width: 680px) {
