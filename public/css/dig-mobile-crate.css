@@ -113,6 +113,15 @@
     background: transparent;
   }
 
+  /*
+   * The offset deck-edge pseudo-element otherwise paints a solid paper-colored
+   * square behind the transparent reverse face. Keep its border/shadow cue,
+   * but let the crate backdrop show through the surface.
+   */
+  .dig-responsive-mobile .dig-sleeve-stage::before {
+    background: transparent;
+  }
+
   .dig-crate-filter-dialog {
     margin: auto;
   }
