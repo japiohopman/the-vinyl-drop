@@ -200,7 +200,7 @@ describe('YouTube release preview (#226)', () => {
         const youtubeRequest = page.waitForRequest((request) =>
           request.url().startsWith('https://www.youtube-nocookie.com/')
         );
-        await page.evaluate(() => window.scrollTo(0, 700));
+        await page.evaluate(() => window.scrollTo(0, 900));
         await youtubeRequest;
 
         const player = page.locator('iframe');
