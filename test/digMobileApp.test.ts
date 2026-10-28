@@ -263,7 +263,7 @@ describe('Mobile Dig app-like viewport', () => {
         const element = card.querySelector<HTMLElement>('.dig-sleeve-edge-' + side);
         if (!element) throw new Error('Missing sleeve edge: ' + side);
         const style = getComputedStyle(element);
-        const origin = style.transformOrigin.split(/\\s+/).map((value) => Number.parseFloat(value));
+        const origin = style.transformOrigin.split(/\s+/).map((value) => Number.parseFloat(value));
         return {
           left: element.offsetLeft,
           top: element.offsetTop,
