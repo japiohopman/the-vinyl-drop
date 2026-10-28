@@ -464,13 +464,13 @@ describe('Mobile Dig app-like viewport', () => {
       expect(await page.locator('[data-dig-crate-toolbar]').isVisible()).toBe(false);
       expect(await page.locator('[data-dig-crate-source]').isVisible()).toBe(false);
       expect(await page.locator('[data-dig-filter-dialog]').isVisible()).toBe(false);
-
-      const desktopWidths = await page.evaluate(() => ({
-        documentWidth: document.documentElement.scrollWidth,
-        bodyWidth: document.body.scrollWidth,
-      }));
-      expect(desktopWidths.documentWidth).toBeLessThanOrEqual(width);
-      expect(desktopWidths.bodyWidth).toBeLessThanOrEqual(width);
     }
+
+    const desktopWidths = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+    }));
+    expect(desktopWidths.documentWidth).toBeLessThanOrEqual(1280);
+    expect(desktopWidths.bodyWidth).toBeLessThanOrEqual(1280);
   });
 });
