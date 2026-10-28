@@ -670,6 +670,10 @@ describe('Mobile Dig app-like viewport', () => {
     expect(visualTreatment!.listingIcon).toBe('/assets/svg/look-at.svg');
     expect(visualTreatment!.filterIcon).toBe('/assets/svg/funnel.svg');
 
+    const lookAtSvg = fs.readFileSync(path.join(__dirname, '../public/assets/svg/look-at.svg'), 'utf8');
+    expect(lookAtSvg).not.toContain('M0 0h512v512H0z');
+    expect(lookAtSvg).toContain('fill="#1c1c1c"');
+
     const toolbar = page.locator('[data-dig-crate-toolbar]');
     const explorer = page.locator('.dig-explorer');
     expect(await toolbar.evaluate((element, explorerElement) => {
@@ -717,6 +721,7 @@ describe('Mobile Dig app-like viewport', () => {
 
     await dialog.locator('input[name="q"]').fill('cancelled query');
     await dialog.locator('[data-dig-filter-cancel]').click();
+    expect(await dialog.evaluate((element) => element.classList.contains('is-closing'))).toBe(true);
     await page.waitForFunction(() => {
       const currentDialog = document.querySelector('[data-dig-filter-dialog]');
       return !(currentDialog instanceof HTMLDialogElement) || !currentDialog.open;
