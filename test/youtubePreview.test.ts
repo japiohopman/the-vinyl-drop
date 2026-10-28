@@ -147,7 +147,7 @@ describe('YouTube release preview (#226)', () => {
     expect(valid).toContain('data-youtube-preview');
     expect(valid).toContain('data-youtube-preview-frame');
     expect(valid).not.toContain('data-youtube-preview-load');
-    expect(valid).toContain('open this preview on YouTube');
+    expect(valid).toContain('Open this preview on YouTube');
     expect(valid).toContain('Playback starts only when you press Play');
     expect(valid).toContain('loads automatically as the preview approaches the screen');
     expect(valid).not.toContain('<iframe');

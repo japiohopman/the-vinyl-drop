@@ -2,7 +2,7 @@
   const headerPath = typeof currentPath !== 'undefined' ? currentPath : '/';
   const isCustomReleasePage = headerPath === '/releases/new';
   const isListingCreatePage = headerPath === '/listings/create';
-  const isListingDetailPage = /^\/listings\/[^/]+(?:\/preview)?$/.test(headerPath);
+  const isListingDetailPage = headerPath !== '/listings/create' && /^\/listings\/[^/]+(?:\/preview)?$/.test(headerPath);
   const isListingCommentsPage = headerPath.startsWith('/listings/') && headerPath.endsWith('/comments') && headerPath.split('/').length === 4;
   const isListingEditPage = headerPath.startsWith('/listings/') && headerPath.endsWith('/edit') && headerPath.split('/').length === 4;
   const isMyListingsPage = headerPath === '/listings';
