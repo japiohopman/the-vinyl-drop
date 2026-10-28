@@ -492,13 +492,13 @@ describe('Dig photo-role contract', () => {
     expect(faceRule).not.toContain('box-shadow:');
     for (const selector of ['.dig-sleeve-face-front {', '.dig-sleeve-face-back {']) {
       const start = rawCss.indexOf(selector);
-      const end = rawCss.indexOf('\\n}', start);
+      const end = rawCss.indexOf('\n}', start);
       expect(start).toBeGreaterThanOrEqual(0);
       expect(end).toBeGreaterThan(start);
       expect(rawCss.slice(start, end)).not.toContain('box-shadow:');
     }
     const mobileBackStart = mobileCss.indexOf('.dig-responsive-mobile .dig-sleeve-face-back {');
-    const mobileBackEnd = mobileCss.indexOf('\\n}', mobileBackStart);
+    const mobileBackEnd = mobileCss.indexOf('\n}', mobileBackStart);
     expect(mobileBackStart).toBeGreaterThanOrEqual(0);
     expect(mobileBackEnd).toBeGreaterThan(mobileBackStart);
     expect(mobileCss.slice(mobileBackStart, mobileBackEnd)).not.toContain('box-shadow:');
