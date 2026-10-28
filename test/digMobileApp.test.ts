@@ -638,6 +638,38 @@ describe('Mobile Dig app-like viewport', () => {
     expect(Math.abs(crateGeometry!.imageTopOffset)).toBeLessThanOrEqual(1);
     expect(crateGeometry!.transformOrigin.endsWith(' 0px')).toBe(true);
 
+    const visualTreatment = await page.evaluate(() => {
+      const stage = document.querySelector('[data-dig-slide].is-active .dig-sleeve-stage') as HTMLElement | null;
+      const meta = document.querySelector('[data-dig-slide].is-active .dig-listing-meta') as HTMLElement | null;
+      const price = document.querySelector('[data-dig-slide].is-active .dig-price') as HTMLElement | null;
+      const listingLink = document.querySelector('[data-dig-slide].is-active .dig-listing-link') as HTMLAnchorElement | null;
+      const filterIcon = document.querySelector('[data-dig-filter-open] img') as HTMLImageElement | null;
+      if (!stage || !meta || !price || !listingLink || !filterIcon) return null;
+      return {
+        pseudoContent: getComputedStyle(stage, '::before').content,
+        pseudoDisplay: getComputedStyle(stage, '::before').display,
+        pseudoShadow: getComputedStyle(stage, '::before').boxShadow,
+        explorerBackground: getComputedStyle(document.querySelector('.dig-explorer')!).backgroundColor,
+        metaBackground: getComputedStyle(meta).backgroundColor,
+        priceBackgroundImage: getComputedStyle(price).backgroundImage,
+        listingLabel: listingLink.getAttribute('aria-label'),
+        listingText: listingLink.textContent?.trim(),
+        listingIcon: listingLink.querySelector('img')?.getAttribute('src'),
+        filterIcon: filterIcon.getAttribute('src'),
+      };
+    });
+    expect(visualTreatment).not.toBeNull();
+    expect(visualTreatment!.pseudoContent).toBe('none');
+    expect(visualTreatment!.pseudoDisplay).toBe('none');
+    expect(visualTreatment!.pseudoShadow).toBe('none');
+    expect(visualTreatment!.explorerBackground).toBe('rgb(232, 225, 213)');
+    expect(visualTreatment!.metaBackground).toBe('rgba(250, 248, 242, 0.98)');
+    expect(visualTreatment!.priceBackgroundImage).toContain('/assets/UI/price_tag.svg');
+    expect(visualTreatment!.listingLabel).toContain('Open listing for');
+    expect(visualTreatment!.listingText).toBe('');
+    expect(visualTreatment!.listingIcon).toBe('/assets/svg/look-at.svg');
+    expect(visualTreatment!.filterIcon).toBe('/assets/svg/funnel.svg');
+
     const toolbar = page.locator('[data-dig-crate-toolbar]');
     const explorer = page.locator('.dig-explorer');
     expect(await toolbar.evaluate((element, explorerElement) => {
@@ -663,6 +695,14 @@ describe('Mobile Dig app-like viewport', () => {
     await trigger.click();
     expect(await dialog.isVisible()).toBe(true);
     expect(await trigger.getAttribute('aria-expanded')).toBe('true');
+    const sheetGeometry = await dialog.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return { position: style.position, top: rect.top, bottom: rect.bottom, height: rect.height };
+    });
+    expect(sheetGeometry.position).toBe('fixed');
+    expect(Math.abs(sheetGeometry.bottom - 812)).toBeLessThanOrEqual(1);
+    expect(sheetGeometry.height).toBeGreaterThan(0);
     expect(await dialog.locator('form').getAttribute('action')).toBe('/dig');
     expect(await dialog.locator('input[name="q"]').inputValue()).toBe('De La Soul');
     expect(await dialog.locator('select[name="genre"]').inputValue()).toBe('Hip Hop');
@@ -677,12 +717,20 @@ describe('Mobile Dig app-like viewport', () => {
 
     await dialog.locator('input[name="q"]').fill('cancelled query');
     await dialog.locator('[data-dig-filter-cancel]').click();
+    await page.waitForFunction(() => {
+      const currentDialog = document.querySelector('[data-dig-filter-dialog]');
+      return !(currentDialog instanceof HTMLDialogElement) || !currentDialog.open;
+    });
     expect(await dialog.isVisible()).toBe(false);
     expect(await trigger.getAttribute('aria-expanded')).toBe('false');
 
     await trigger.click();
     expect(await dialog.locator('input[name="q"]').inputValue()).toBe('De La Soul');
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => {
+      const currentDialog = document.querySelector('[data-dig-filter-dialog]');
+      return !(currentDialog instanceof HTMLDialogElement) || !currentDialog.open;
+    });
     expect(await dialog.isVisible()).toBe(false);
     expect(await trigger.getAttribute('aria-expanded')).toBe('false');
   });
