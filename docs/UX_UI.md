@@ -258,3 +258,7 @@ Payment widgets, checkout flows, shipping calculators, and native PWA capabiliti
 ## Listing detail and seller preview polish — Issue #236
 
 Keep the public listing detail focused on the record: preserve real release metadata, price, condition, trade/status, seller, description, YouTube/privacy disclosure, and the comments entry, but remove redundant helper sentences and repeated headings where they add little. The seller-only `/listings/:id/preview` uses `PREVIEW` and a shared icon-only back-to-My-Listings action in the mobile context header. Its in-content back link remains a desktop fallback only. Publish/edit/archive behavior and seller authorization remain unchanged.
+
+## Profile edit and Saved People boundaries — Issue #237
+
+The profile editor changes only the authenticated user's public profile properties (username, display name, location, avatar URL, website URL, and bio) through the existing validated `/profile/edit` route. Saved People is a different private relationship between the current owner and another profile, accessed through Messages & People; it is not a profile field, does not change the target user's profile, and is not a public Follow graph. Keep these data paths and authorization boundaries separate while using consistent UI styling.
