@@ -6248,6 +6248,68 @@ body.messaging-mobile-panel-open {
 }
 
 
+/* Issue #236 — concise listing detail and shared seller-preview navigation. */
+.listing-preview-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 800px;
+  min-width: 0;
+  margin: var(--space-8) auto;
+  padding: 0 var(--space-4);
+}
+
+.listing-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+  margin-bottom: var(--space-4);
+}
+
+.listing-preview-desktop-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.listing-preview-desktop-back:hover {
+  color: var(--color-ink);
+  text-decoration: underline;
+}
+
+.listing-preview-page > .card {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  .listing-preview-page {
+    margin-top: var(--space-4);
+    padding: 0 var(--space-3);
+  }
+
+  .listing-preview-header {
+    justify-content: flex-end;
+  }
+
+  .listing-preview-desktop-back {
+    display: none;
+  }
+
+  .listing-preview-page > .card {
+    padding: var(--space-4) !important;
+    border-width: 1px !important;
+    border-radius: 5px !important;
+  }
+}
+
 /* Profile / Crate split — Issue #202 */
 .profile-landing-page,
 .profile-crate-page {
@@ -8348,65 +8410,3 @@ button.mobile-you-action-link.messaging-widget-trigger {
   }
 }
 
-
-/* Issue #236 — concise listing detail and shared seller-preview navigation. */
-.listing-preview-page {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 800px;
-  min-width: 0;
-  margin: var(--space-8) auto;
-  padding: 0 var(--space-4);
-}
-
-.listing-preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-width: 0;
-  margin-bottom: var(--space-4);
-}
-
-.listing-preview-desktop-back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 44px;
-  color: var(--color-ink-muted);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
-  text-decoration: none;
-}
-
-.listing-preview-desktop-back:hover {
-  color: var(--color-ink);
-  text-decoration: underline;
-}
-
-.listing-preview-page > .card {
-  box-sizing: border-box;
-  min-width: 0;
-  max-width: 100%;
-}
-
-@media (max-width: 767px) {
-  .listing-preview-page {
-    margin-top: var(--space-4);
-    padding: 0 var(--space-3);
-  }
-
-  .listing-preview-header {
-    justify-content: flex-end;
-  }
-
-  .listing-preview-desktop-back {
-    display: none;
-  }
-
-  .listing-preview-page > .card {
-    padding: var(--space-4) !important;
-    border-width: 1px !important;
-    border-radius: 5px !important;
-  }
-}
