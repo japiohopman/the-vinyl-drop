@@ -39,25 +39,7 @@
     <div role="alert" class="alert alert-error"><%= errorMessage %></div>
   <% } %>
 
-  <% if (visibleItems.length > 0) { %>
-  <div class="dig-crate-toolbar" data-dig-crate-toolbar>
-    <button
-      type="button"
-      class="dig-crate-filter-trigger"
-      data-dig-filter-open
-      aria-controls="dig-crate-filter-dialog"
-      aria-haspopup="dialog"
-      aria-expanded="false"
-      aria-label="Open Dig filters<%= digActiveFilterCount ? ', ' + digActiveFilterCount + ' active' : '' %>"
-    >
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M4 5h16l-6.2 7.1v5.2l-3.6 1.8v-7z"></path>
-      </svg>
-      <span>Filters</span>
-      <% if (digActiveFilterCount) { %><span class="dig-crate-filter-count"><%= digActiveFilterCount %></span><% } %>
-    </button>
-  </div>
-  <% } %>
+
 
   <% if (visibleItems.length === 0) { %>
     <section class="dig-empty-state" aria-labelledby="dig-empty-title">
@@ -93,7 +75,7 @@
       <div class="dig-viewer" data-dig-viewer tabindex="0" role="region" aria-label="Crate Dig. Use the up and down arrow keys to browse records.">
         <div class="dig-crate-stack" data-dig-stack>
           <div class="dig-crate-source" data-dig-crate-source aria-hidden="true">
-            <img src="/assets/UI/dig_crate.webp" alt="" draggable="false" loading="lazy" decoding="async">
+            <img src="/assets/UI/dig_crate.webp" alt="" draggable="false" loading="eager" fetchpriority="high" decoding="async">
           </div>
           <% visibleItems.forEach(function(item, index) { %>
             <article
@@ -168,6 +150,24 @@
 
       <p class="dig-keyboard-note">Keyboard: ↑ next / discard · ↓ previous / restore · Home first · End last · F flips the cover.</p>
     </section>
+
+    <div class="dig-crate-toolbar" data-dig-crate-toolbar>
+      <button
+        type="button"
+        class="dig-crate-filter-trigger"
+        data-dig-filter-open
+        aria-controls="dig-crate-filter-dialog"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-label="Open Dig filters<%= digActiveFilterCount ? ', ' + digActiveFilterCount + ' active' : '' %>"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 5h16l-6.2 7.1v5.2l-3.6 1.8v-7z"></path>
+        </svg>
+        <span>Filters</span>
+        <% if (digActiveFilterCount) { %><span class="dig-crate-filter-count"><%= digActiveFilterCount %></span><% } %>
+      </button>
+    </div>
   <% } %>
 
   <% if (visibleItems.length > 0) { %>
