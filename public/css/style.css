@@ -2180,6 +2180,12 @@ select.form-control {
 .dig-sleeve-card {
   --dig-sleeve-thickness: 3px;
   --dig-sleeve-half-thickness: 1.5px;
+  /*
+   * The cover faces sit a hair outside the side walls. Equal Z coordinates
+   * put the edge planes and front artwork on the same raster plane, so the
+   * cardboard can leak through in a face-on view due to depth tie-breaking.
+   */
+  --dig-sleeve-face-overlap: 0.2px;
   position: relative;
   z-index: 1;
   width: 100%;
@@ -2259,11 +2265,11 @@ select.form-control {
 
 .dig-sleeve-face-front {
   z-index: 2;
-  transform: translateZ(var(--dig-sleeve-half-thickness));
+  transform: translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));
 }
 
 .dig-sleeve-face-back {
-  transform: rotateY(180deg) translateZ(var(--dig-sleeve-half-thickness));
+  transform: rotateY(180deg) translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));
 }
 
 .dig-sleeve-image {
