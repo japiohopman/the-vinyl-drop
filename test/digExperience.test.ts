@@ -498,7 +498,7 @@ describe('Dig photo-role contract', () => {
       expect(rawCss.slice(start, end)).not.toContain('box-shadow:');
     }
     const mobileBackStart = mobileCss.indexOf('.dig-responsive-mobile .dig-sleeve-face-back {');
-    const mobileBackEnd = mobileCss.indexOf('\n}', mobileBackStart);
+    const mobileBackEnd = mobileCss.indexOf('\n  }', mobileBackStart);
     expect(mobileBackStart).toBeGreaterThanOrEqual(0);
     expect(mobileBackEnd).toBeGreaterThan(mobileBackStart);
     expect(mobileCss.slice(mobileBackStart, mobileBackEnd)).not.toContain('box-shadow:');
