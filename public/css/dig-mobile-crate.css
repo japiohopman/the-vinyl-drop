@@ -110,6 +110,7 @@
     width: min(94vw, 510px, calc(100vw - 24px), calc(100dvh - 320px));
     max-width: none;
     height: auto;
+    max-height: 100%;
     aspect-ratio: 2 / 3;
     object-fit: contain;
     object-position: center top;
