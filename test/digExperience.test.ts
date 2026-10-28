@@ -385,8 +385,13 @@ describe('Dig photo-role contract', () => {
     });
 
     expect((html.match(/data-dig-slide/g) ?? []).length).toBe(2);
-    expect((html.match(/data-dig-sleeve-card/g) ?? []).length).toBe(2);
-    expect((html.match(/class="dig-sleeve-edge dig-sleeve-edge-(?:top|right|bottom|left)"/g) ?? []).length).toBe(8);
+    const sleeveCards = html.split('data-dig-sleeve-card').slice(1);
+    expect(sleeveCards).toHaveLength(2);
+    for (const sleeveCard of sleeveCards) {
+      for (const side of ['top', 'right', 'bottom', 'left']) {
+        expect((sleeveCard.match(new RegExp(`class="dig-sleeve-edge dig-sleeve-edge-${side}"`, 'g')) ?? []).length).toBe(1);
+      }
+    }
     expect(html).not.toContain('data-dig-sleeve-plane');
     expect(html).toContain('First test release');
     expect(html).toContain('Second test release');
@@ -485,8 +490,22 @@ describe('Dig photo-role contract', () => {
 
     expect(faceRuleStart).toBeGreaterThanOrEqual(0);
     expect(faceRule).not.toContain('box-shadow:');
+    for (const selector of ['.dig-sleeve-face-front {', '.dig-sleeve-face-back {']) {
+      const start = rawCss.indexOf(selector);
+      const end = rawCss.indexOf('\\n}', start);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(end).toBeGreaterThan(start);
+      expect(rawCss.slice(start, end)).not.toContain('box-shadow:');
+    }
+    const mobileBackStart = mobileCss.indexOf('.dig-responsive-mobile .dig-sleeve-face-back {');
+    const mobileBackEnd = mobileCss.indexOf('\\n}', mobileBackStart);
+    expect(mobileBackStart).toBeGreaterThanOrEqual(0);
+    expect(mobileBackEnd).toBeGreaterThan(mobileBackStart);
+    expect(mobileCss.slice(mobileBackStart, mobileBackEnd)).not.toContain('box-shadow:');
     expect(edgeRuleStart).toBeGreaterThanOrEqual(0);
     expect(edgeRule).toContain('pointer-events: none;');
+    expect(rawCss).toContain('transform: translateZ(var(--dig-sleeve-half-thickness));');
+    expect(rawCss).toContain('transform: rotateY(180deg) translateZ(var(--dig-sleeve-half-thickness));');
     expect(rawCss).toContain('transform-origin: top;');
     expect(rawCss).toContain('transform-origin: bottom;');
     expect(rawCss).toContain('transform-origin: left;');
