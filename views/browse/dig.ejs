@@ -132,7 +132,9 @@
                   <strong><%= item.priceFormatted %></strong>
                   <% if (item.isTrade) { %><span class="dig-trade-note">Trade considered</span><% } %>
                 </p>
-                <a class="dig-listing-link" href="<%= item.url %>">Open listing <span aria-hidden="true">↗</span></a>
+                <a class="dig-listing-link" href="<%= item.url %>" aria-label="Open listing for <%= item.title %> by <%= item.artist %>">
+                  <img src="/assets/svg/look-at.svg" width="26" height="26" alt="" aria-hidden="true">
+                </a>
                 <button type="button" class="dig-flip-control" data-dig-flip aria-label="Flip cover to view the back" aria-pressed="false">Flip cover</button>
               </div>
             </article>
@@ -165,9 +167,7 @@
         aria-expanded="false"
         aria-label="Open Dig filters<%= digActiveFilterCount ? ', ' + digActiveFilterCount + ' active' : '' %>"
       >
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M4 5h16l-6.2 7.1v5.2l-3.6 1.8v-7z"></path>
-        </svg>
+        <img src="/assets/svg/funnel.svg" width="18" height="18" alt="" aria-hidden="true">
         <span>Filters</span>
         <% if (digActiveFilterCount) { %><span class="dig-crate-filter-count"><%= digActiveFilterCount %></span><% } %>
       </button>
