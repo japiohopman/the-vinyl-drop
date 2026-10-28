@@ -167,7 +167,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
         .set('Cookie', ['sb-access-token=alice-token']);
 
       expect(res.status).toBe(200);
-      expect(res.text).toContain('Edit Your Profile');
+      expect(res.text).toContain('Edit profile');
       expect(res.text).toContain('value="alice_records"');
       expect(res.text).toContain('value="Alice Cooper"');
     });
