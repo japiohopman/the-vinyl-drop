@@ -206,6 +206,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(htmlEnabled).toContain('data-messaging-widget-trigger');
     expect(htmlEnabled).toContain('<button type="button" class="desktop-you-menu-item messaging-widget-trigger"');
     expect(htmlEnabled).toContain('<button type="button" class="mobile-you-action-link messaging-widget-trigger"');
+    expect(htmlEnabled).toContain('class="mobile-you-action-icon"');
     expect(htmlEnabled).toContain('Messages');
 
     const htmlDisabled = await renderNav({
@@ -881,6 +882,73 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         extInput.focus();
       });
       expect(await isElementVisible(menuSel)).toBe(false);
+    });
+
+    it('matches Messenger panel styling and prevents horizontal movement on mobile Me', async () => {
+      const html = await renderFullHtmlPage({
+        currentPath: '/',
+        currentUser: { id: 'user-123', email: 'digger@example.com' },
+        currentProfile: { id: 'user-123', username: 'cratedigger' },
+        messagingEnabled: false,
+      });
+
+      for (const width of [320, 360, 375, 414, 430]) {
+        await page.setViewportSize({ width, height: 812 });
+        await page.setContent(html);
+        await page.click('#mobile-you-trigger');
+        await page.waitForTimeout(190);
+
+        const presentation = await page.evaluate(() => {
+          const browser = globalThis as unknown as {
+            document: {
+              documentElement: { scrollWidth: number };
+              querySelector: (selector: string) => { getBoundingClientRect: () => { left: number; right: number } } | null;
+            };
+            window: {
+              innerWidth: number;
+              getComputedStyle: (element: unknown) => {
+                backgroundColor: string;
+                borderRadius: string;
+                touchAction: string;
+                transform: string;
+              };
+            };
+          };
+          const surface = browser.document.querySelector('#mobile-you-surface');
+          const backdrop = browser.document.querySelector('.mobile-you-surface-backdrop');
+          const panel = browser.document.querySelector('.mobile-you-surface-content');
+          const aboutView = browser.document.querySelector('#mobile-you-about-view');
+          if (!surface || !backdrop || !panel || !aboutView) throw new Error('Me surface elements missing');
+          const rect = panel.getBoundingClientRect();
+          const aboutTransform = browser.window.getComputedStyle(aboutView).transform;
+          const matrix = aboutTransform.match(/^matrix\(([^)]+)\)$/);
+          const matrixValues = matrix ? matrix[1].split(',').map(Number) : [];
+          return {
+            documentWidth: browser.document.documentElement.scrollWidth,
+            viewportWidth: browser.window.innerWidth,
+            panelLeft: rect.left,
+            panelRight: rect.right,
+            backdropColor: browser.window.getComputedStyle(backdrop).backgroundColor,
+            panelRadius: browser.window.getComputedStyle(panel).borderRadius,
+            touchAction: browser.window.getComputedStyle(surface).touchAction,
+            aboutTranslateX: matrixValues.length === 6 ? matrixValues[4] : 0,
+          };
+        });
+
+        expect(presentation.backdropColor).toBe('rgba(18, 18, 18, 0.48)');
+        expect(presentation.panelRadius).toBe('5px');
+        expect(presentation.touchAction).toBe('pan-y');
+        expect(presentation.aboutTranslateX).toBeCloseTo(0, 1);
+        expect(presentation.documentWidth).toBeLessThanOrEqual(presentation.viewportWidth);
+        expect(presentation.panelLeft).toBeGreaterThanOrEqual(0);
+        expect(presentation.panelRight).toBeLessThanOrEqual(presentation.viewportWidth);
+        expect(await page.locator('.mobile-you-action-icon').count()).toBe(3);
+      }
+
+      await page.setViewportSize({ width: 768, height: 812 });
+      await page.setContent(html);
+      const tabletDocumentWidth = await page.locator('html').evaluate((element) => (element as HTMLElement).scrollWidth);
+      expect(tabletDocumentWidth).toBeLessThanOrEqual(768);
     });
 
     it('opens About as a nested view and returns to Me without closing the overlay', async () => {
