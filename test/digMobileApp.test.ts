@@ -388,9 +388,8 @@ describe('Mobile Dig app-like viewport', () => {
       expect(geometry.stageBeforeShadow).toBe('none');
       expect(geometry.stackOverflow).toBe('visible');
       expect(geometry.stackClipMargin).toBe('0px');
-      expect(geometry.overflowStates).toEqual(
-        geometry.overflowStates.map(({ selector, overflow }) => ({ selector, overflow: 'visible' }))
-      );
+      expect(geometry.overflowStates).toHaveLength(9);
+      expect(geometry.overflowStates.every(({ overflow }) => overflow === 'visible')).toBe(true);
       expect(geometry.metadata.transform).toBe('none');
       expect(geometry.metadata.transitionDuration).toBe('0s');
       expect(geometry.actions.transform).toBe('none');
