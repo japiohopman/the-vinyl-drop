@@ -417,6 +417,44 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await crateImage.getAttribute('src')).toBe('/assets/UI/dig_crate.webp');
     expect(await crateImage.getAttribute('alt')).toBe('');
 
+    const crateGeometry = await page.evaluate(() => {
+      const source = document.querySelector('[data-dig-crate-source') as HTMLElement | null;
+      const image = source?.querySelector('img') as HTMLImageElement | null;
+      const stack = document.querySelector('[data-dig-stack]') as HTMLElement | null;
+      if (!source || !image || !stack) return null;
+      const imageRect = image.getBoundingClientRect();
+      const stackRect = stack.getBoundingClientRect();
+      return {
+        sourceZIndex: getComputedStyle(source).zIndex,
+        imagePosition: getComputedStyle(image).position,
+        imageWidth: imageRect.width,
+        imageTopOffset: imageRect.top - stackRect.top,
+        transformOrigin: getComputedStyle(image).transformOrigin,
+      };
+    });
+    expect(crateGeometry).not.toBeNull();
+    expect(crateGeometry!.sourceZIndex).toBe('-1');
+    expect(crateGeometry!.imagePosition).toBe('absolute');
+    expect(crateGeometry!.imageWidth).toBeCloseTo(375, 0);
+    expect(Math.abs(crateGeometry!.imageTopOffset)).toBeLessThanOrEqual(1);
+    expect(crateGeometry!.transformOrigin.endsWith(' 0px')).toBe(true);
+
+    const toolbar = page.locator('[data-dig-crate-toolbar]');
+    const explorer = page.locator('.dig-explorer');
+    expect(await toolbar.evaluate((element, explorerElement) => {
+      return Boolean(explorerElement && explorerElement.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }, await explorer.elementHandle())).toBe(true);
+    const buttonWidths = await page.evaluate(() => {
+      const toolbarElement = document.querySelector('[data-dig-crate-toolbar]') as HTMLElement | null;
+      const buttonElement = document.querySelector('[data-dig-filter-open]') as HTMLElement | null;
+      return {
+        toolbarWidth: toolbarElement?.getBoundingClientRect().width ?? 0,
+        buttonWidth: buttonElement?.getBoundingClientRect().width ?? 0,
+      };
+    });
+    expect(buttonWidths.toolbarWidth).toBeGreaterThan(0);
+    expect(Math.abs(buttonWidths.toolbarWidth - buttonWidths.buttonWidth)).toBeLessThanOrEqual(1);
+
     const trigger = page.locator('[data-dig-filter-open]');
     const dialog = page.locator('[data-dig-filter-dialog]');
     expect(await trigger.isVisible()).toBe(true);
