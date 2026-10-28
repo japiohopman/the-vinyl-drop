@@ -270,8 +270,8 @@ describe('Mobile Dig app-like viewport', () => {
         return {
           left: Number.parseFloat(style.left),
           top: Number.parseFloat(style.top),
-          width: element.offsetWidth,
-          height: element.offsetHeight,
+          width: Number.parseFloat(style.width),
+          height: Number.parseFloat(style.height),
           originX: origin[0],
           originY: origin[1],
           transform: style.transform,
