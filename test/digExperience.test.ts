@@ -464,7 +464,9 @@ describe('Dig photo-role contract', () => {
     expect(mobileCrateCss).toContain('overflow-clip-margin: 12px;');
     expect(mobileCrateCss).toContain('body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage');
     expect(mobileCrateCss).toContain('inset: 5% 4%;');
-    expect(mobileCrateCss).toContain('inset: -0.5px;');
+    expect(mobileCrateCss).not.toContain('inset: -0.5px;');
+    expect(css).toContain('--dig-sleeve-face-overlap: 0.2px;');
+    expect(css).toContain('var(--dig-sleeve-face-overlap)');
     expect(mobileCrateCss).toContain('width: 128px;');
     expect(mobileCrateCss).toContain('height: 64px;');
     expect(mobileCrateCss).toContain('transform: none !important;');
