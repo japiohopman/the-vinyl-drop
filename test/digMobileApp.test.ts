@@ -430,7 +430,10 @@ describe('Mobile Dig app-like viewport', () => {
       const geometry = await page.evaluate(() => {
         const stack = document.querySelector('[data-dig-stack]') as HTMLElement | null;
         const image = document.querySelector('[data-dig-crate-source] img') as HTMLImageElement | null;
-        if (!stack || !image) return null;
+        const explorer = document.querySelector('.dig-responsive-mobile .dig-explorer') as HTMLElement | null;
+        const viewer = document.querySelector('.dig-responsive-mobile .dig-viewer') as HTMLElement | null;
+        const interaction = document.querySelector('[data-dig-slide].is-active .dig-sleeve-interaction') as HTMLElement | null;
+        if (!stack || !image || !explorer || !viewer || !interaction) return null;
         const stackRect = stack.getBoundingClientRect();
         const imageRect = image.getBoundingClientRect();
         return {
@@ -443,6 +446,10 @@ describe('Mobile Dig app-like viewport', () => {
           imageRightInset: stackRect.right - imageRect.right,
           imageWidth: imageRect.width,
           imageHeight: imageRect.height,
+          explorerOverflow: getComputedStyle(explorer).overflow,
+          viewerOverflow: getComputedStyle(viewer).overflow,
+          interactionOverflow: getComputedStyle(interaction).overflow,
+          stackOverflow: getComputedStyle(stack).overflow,
         };
       });
 
@@ -455,6 +462,12 @@ describe('Mobile Dig app-like viewport', () => {
       expect(geometry!.imageRightInset).toBeGreaterThan(0);
       expect(geometry!.imageWidth).toBeGreaterThan(0);
       expect(geometry!.imageHeight).toBeGreaterThan(0);
+      // Let the viewport-width crate bleed past padded wrappers and allow 3D sleeve corners to rotate freely.
+      expect(geometry!.explorerOverflow).toBe('visible');
+      expect(geometry!.viewerOverflow).toBe('visible');
+      expect(geometry!.interactionOverflow).toBe('visible');
+      // Keep clipping at the deck boundary, not around the sleeve itself.
+      expect(geometry!.stackOverflow).toBe('clip');
     }
   });
 
