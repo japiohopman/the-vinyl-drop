@@ -86,43 +86,25 @@
    * visible edges and leaving room for the cover's corners during 3D flips.
    */
   /*
-   * These wrappers normally clip their children to keep the app-like session
-   * tidy. The full-bleed crate and a sleeve's 3D rotation must pass through
-   * them; the viewport shell and the crate stack still provide the outer clip.
+   * Only the interaction region must allow the rotating sleeve to move freely.
+   * Keep the app shell, viewer and explorer clipped so they cannot spill over
+   * the fixed mobile navigation at the bottom of the screen.
    */
-  body.mobile-dig-session .dig-responsive-mobile .dig-explorer,
-  body.mobile-dig-session .dig-responsive-mobile .dig-viewer,
   body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-interaction {
     overflow: visible;
   }
 
   /*
-   * The mobile scene is clipped only by the locked viewport (body overflow:hidden).
-   * Do not use the crate stack as an additional clip plane: perspective changes
-   * the projected bounds during a 180-degree flip and crops a corner intermittently.
+   * The crate remains full-bleed, but keeps its clip plane. The sleeve itself is
+   * inset inside the stage and interaction region so its perspective rotation
+   * has clearance without disabling clipping on the mobile app shell.
    */
   body.mobile-dig-session .dig-responsive-mobile .dig-crate-stack {
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: 0;
-    overflow: visible;
-    overflow-clip-margin: 0;
-  }
-
-  /*
-   * Ancestors used to clip the rotating sleeve before it reached the stack.
-   * The body still locks the page to the viewport, so visible overflow here does
-   * not introduce page scrolling; it simply removes nested rectangular clip planes.
-   */
-  body.mobile-dig-session .main-content,
-  body.mobile-dig-session .dig-responsive-page,
-  body.mobile-dig-session .dig-responsive-mobile,
-  body.mobile-dig-session .dig-page,
-  body.mobile-dig-session .dig-explorer,
-  body.mobile-dig-session .dig-viewer,
-  body.mobile-dig-session .dig-sleeve-interaction,
-  body.mobile-dig-session .dig-sleeve-stage {
-    overflow: visible;
+    overflow: clip;
+    overflow-clip-margin: 12px;
   }
 
   body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage {
@@ -148,9 +130,8 @@
   }
 
   /*
-   * Keep record metadata stationary while the sleeve rotates. Vertical gestures
-   * already drive opacity directly from the pointer; translateY transitions here
-   * cause a second, competing animation that looks like a flicker/glitch.
+   * Keep the title and action row stationary. Their opacity is controlled by the
+   * swipe gesture; no second translateY animation should run alongside it.
    */
   body.mobile-dig-session .dig-responsive-mobile .dig-slide .dig-listing-meta,
   body.mobile-dig-session .dig-responsive-mobile .dig-slide .dig-card-actions {
@@ -185,7 +166,16 @@
     filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));
   }
 
-  /* Let the crate show through empty space around the reverse-cover photo. */
+  /*
+   * Let the crate show through empty space around the reverse-cover photo.
+   * The sub-pixel overlap keeps the edge planes tucked behind a face-on cover,
+   * preventing a cardboard-coloured hairline around the front artwork.
+   */
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-face-front,
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-face-back {
+    inset: -0.5px;
+  }
+
   .dig-responsive-mobile .dig-sleeve-face-back {
     background: transparent;
   }
@@ -243,15 +233,19 @@
   /* The paper price tag is a real asset behind the monetary value. */
   body.mobile-dig-session .dig-price {
     display: inline-flex;
-    flex: 0 0 auto;
+    flex: 0 0 128px;
     align-items: center;
     justify-content: center;
-    min-width: 112px;
-    min-height: 56px;
+    width: 128px;
+    min-width: 128px;
+    height: 64px;
+    min-height: 64px;
     box-sizing: border-box;
     margin: 0;
-    padding: 10px 18px 9px;
+    padding: 0 18px;
     gap: 0;
+    flex-wrap: nowrap;
+    white-space: nowrap;
     background: url('/assets/UI/price_tag.svg') center / 100% 100% no-repeat;
   }
 
