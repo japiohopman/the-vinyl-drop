@@ -5,7 +5,7 @@
   const isListingDetailPage = headerPath !== '/listings/create' && /^\/listings\/[^/]+$/.test(headerPath);
   const isListingCommentsPage = headerPath.startsWith('/listings/') && headerPath.endsWith('/comments') && headerPath.split('/').length === 4;
   const isListingEditPage = headerPath.startsWith('/listings/') && headerPath.endsWith('/edit') && headerPath.split('/').length === 4;
-  const isListingPreviewPage = /^\\/listings\\/[^/]+\\/preview$/.test(headerPath);
+  const isListingPreviewPage = headerPath.startsWith('/listings/') && headerPath.endsWith('/preview') && headerPath.split('/').length === 4;
   const isMyListingsPage = headerPath === '/listings';
   const isDigRoute = headerPath === '/dig';
   const digItemCount = typeof items !== 'undefined' && Array.isArray(items) ? items.length : 0;
