@@ -444,8 +444,8 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('.dig-sleeve-edge-bottom');
     expect(css).toContain('.dig-sleeve-edge-left');
     expect(css).toContain('transform-origin: center;');
-    expect(css).toContain('left: -1.5px;');
-    expect(css).toContain('right: -1.5px;');
+    expect(css).toContain('left: -1px;');
+    expect(css).toContain('right: -1px;');
     expect(css).toContain('transform: rotateY(-90deg);');
     expect(css).toContain('transform: rotateY(90deg);');
     expect(css).toContain('.dig-sleeve-card {');
@@ -526,10 +526,10 @@ describe('Dig photo-role contract', () => {
     expect(edgeRuleStart).toBeGreaterThanOrEqual(0);
     expect(edgeRule).toContain('pointer-events: none;');
     expect(rawCss).toContain('transform-origin: center;');
-    expect(rawCss).toContain('top: -1.5px;');
-    expect(rawCss).toContain('bottom: -1.5px;');
-    expect(rawCss).toContain('left: -1.5px;');
-    expect(rawCss).toContain('right: -1.5px;');
+    expect(rawCss).toContain('top: -1px;');
+    expect(rawCss).toContain('bottom: -1px;');
+    expect(rawCss).toContain('left: -1px;');
+    expect(rawCss).toContain('right: -1px;');
     expect(rawCss).toContain('transform: rotateX(90deg);');
     expect(rawCss).toContain('transform: rotateX(-90deg);');
     expect(rawCss).toContain('transform: rotateY(-90deg);');
