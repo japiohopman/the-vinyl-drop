@@ -171,7 +171,6 @@
       <!-- Price & Status Bar -->
       <div class="price-status-card">
         <div>
-          <div style="font-family: var(--font-mono); font-size: var(--font-size-2xs); text-transform: uppercase; color: var(--color-ink-muted);">Listing Price</div>
           <div style="font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; color: var(--color-ink);">
             <%= priceFormatted %>
           </div>
@@ -180,7 +179,7 @@
         <div style="display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
           <% if (listing.tradeAvailable) { %>
             <span style="padding: var(--space-1) var(--space-3); font-family: var(--font-mono); font-size: var(--font-size-xs); background: var(--color-deep-green); color: var(--color-white); border-radius: var(--radius-sm); font-weight: 600;">
-              Trade Open
+              Trade
             </span>
           <% } %>
           <span style="padding: var(--space-1) var(--space-3); font-family: var(--font-mono); font-size: var(--font-size-xs); text-transform: uppercase; background: var(--color-white); border: var(--border-thick); border-radius: var(--radius-sm); font-weight: 700;">
@@ -207,14 +206,12 @@
 
       <!-- Message Seller Action Button for Non-Seller when Messaging Enabled -->
       <% if (currentUser && !isSeller && listing.status === 'published' && typeof messagingEnabled !== 'undefined' && messagingEnabled) { %>
-        <div class="message-seller-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-sm); background: var(--color-paper-muted); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);">
-          <div>
-            <div style="font-family: var(--font-display); font-size: var(--font-size-md); font-weight: 700;">Interested in this record?</div>
-            <div style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">Send a private message directly to the seller</div>
-          </div>
+        <div class="message-seller-card">
+
           <form action="/messages/listing/<%= listing.id %>" method="POST" style="margin: 0;">
             <button type="submit" class="btn btn-primary">
-              💬 Message Seller
+              <%- include('../partials/icon', { name: 'talk', size: '1rem', ariaHidden: true }) %>
+              Message seller
             </button>
           </form>
         </div>
@@ -222,11 +219,11 @@
 
       <!-- Condition Grades -->
       <div class="condition-section">
-        <h3 style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-3);">Condition Grading</h3>
+        <h3 style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-3);">Condition</h3>
         <%- include('../partials/condition-badge', { mediaCondition: physicalCopy.mediaCondition, sleeveCondition: physicalCopy.sleeveCondition, size: 'md' }) %>
         <% if (physicalCopy.notes) { %>
           <p style="margin-top: var(--space-3); font-size: var(--font-size-sm); color: var(--color-ink-muted); font-style: italic;">
-            Sleeve/media copy notes: "<%= physicalCopy.notes %>"
+            Notes: "<%= physicalCopy.notes %>"
           </p>
         <% } %>
       </div>
@@ -234,7 +231,7 @@
       <!-- Description -->
       <% if (listing.description) { %>
         <div class="description-section">
-          <h3 style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-2);">Seller Description</h3>
+          <h3 style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-2);">Description</h3>
           <p style="line-height: var(--line-height-base); font-size: var(--font-size-base); white-space: pre-wrap;"><%= listing.description %></p>
         </div>
       <% } %>
@@ -254,7 +251,7 @@
             <div style="font-weight: 700; font-family: var(--font-display); font-size: var(--font-size-base);"><%= seller.displayName || seller.username %></div>
             <div style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted);">@<%= seller.username %></div>
             <% if (seller.location) { %>
-              <div style="font-size: var(--font-size-xs); color: var(--color-ink-muted); margin-top: 2px;">📍 <%= seller.location %></div>
+              <div style="display: flex; align-items: center; gap: var(--space-1); font-size: var(--font-size-xs); color: var(--color-ink-muted); margin-top: 2px;"><%- include('../partials/icon', { name: 'position-marker', size: '0.875rem', ariaHidden: true }) %><span><%= seller.location %></span></div>
             <% } %>
           </div>
         </div>
@@ -268,9 +265,6 @@
 
       <% if (isSeller) { %>
         <div class="seller-actions" style="padding: var(--space-3); border: 2px dashed var(--color-rust-accessible); border-radius: var(--radius-sm); background: var(--color-error-bg);">
-          <p style="font-family: var(--font-mono); font-size: var(--font-size-xs); margin-bottom: var(--space-2); font-weight: 600; color: var(--color-rust-accessible);">
-            You own this listing
-          </p>
           <div style="display: flex; gap: var(--space-3);">
             <a href="/listings/<%= listing.id %>/edit" class="btn btn-primary btn-sm">Edit Listing</a>
             <a href="/listings/<%= listing.id %>/preview" class="btn btn-outline btn-sm">Preview Status</a>
@@ -289,8 +283,7 @@
       aria-label="Comments / Ask a question, <%= comments.length %> <%= comments.length === 1 ? 'comment' : 'comments' %>"
     >
       <span class="listing-comments-entry-copy">
-        <span class="listing-comments-entry-label">Comments / Ask a question</span>
-        <span class="listing-comments-entry-help"><%= comments.length === 0 ? 'Start the conversation about this record' : 'Read the thread or ask the seller' %></span>
+        <span class="listing-comments-entry-label">Comments</span>
       </span>
       <span class="listing-comments-count"><%= comments.length %></span>
     </a>
@@ -298,7 +291,7 @@
 
   <details class="listing-comments-disclosure" id="listing-comments-disclosure" <% if (typeof commentsInitiallyOpen !== 'undefined' && commentsInitiallyOpen) { %>open<% } %>>
     <summary aria-controls="comments" aria-expanded="<%= typeof commentsInitiallyOpen !== 'undefined' && commentsInitiallyOpen ? 'true' : 'false' %>">
-      <span>Comments / Ask a question</span>
+      <span>Comments</span>
       <span class="listing-comments-summary-count"><%= comments.length %></span>
     </summary>
     <%- include('../partials/comment-thread', { listing, release, photos, seller, comments, currentUser, hideHeading: true, commentsPage: false, commentError: typeof commentError !== 'undefined' ? commentError : null, submittedContent: typeof submittedContent !== 'undefined' ? submittedContent : '' }) %>
