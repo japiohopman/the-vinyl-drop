@@ -253,3 +253,8 @@ Automated accessibility checks run against WCAG 2.1 AA rule sets (`npm run test:
 ## Scope boundary reminder
 
 Payment widgets, checkout flows, shipping calculators, and native PWA capabilities (context in [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52)) are **not part of current application scope** and are not implemented.
+
+
+## Listing detail and seller preview polish — Issue #236
+
+Keep the public listing detail focused on the record: preserve real release metadata, price, condition, trade/status, seller, description, YouTube/privacy disclosure, and the comments entry, but remove redundant helper sentences and repeated headings where they add little. The seller-only `/listings/:id/preview` uses `PREVIEW` and a shared icon-only back-to-My-Listings action in the mobile context header. Its in-content back link remains a desktop fallback only. Publish/edit/archive behavior and seller authorization remain unchanged.
