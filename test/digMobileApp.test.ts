@@ -235,6 +235,15 @@ describe('Mobile Dig app-like viewport', () => {
     )).toBe(true);
     expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-front').getAttribute('aria-hidden')).toBe('true');
     expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back').getAttribute('aria-hidden')).toBe('false');
+    const reverseFaceBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back')
+      .evaluate((face) => getComputedStyle(face).backgroundColor);
+    expect(reverseFaceBackground).toBe('rgba(0, 0, 0, 0)');
+    const deckUnderlayBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-stage')
+      .evaluate((stage) => getComputedStyle(stage, '::before').backgroundColor);
+    expect(deckUnderlayBackground).toBe('rgba(0, 0, 0, 0)');
+    const frontFaceBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-face-front')
+      .evaluate((face) => getComputedStyle(face).backgroundColor);
+    expect(frontFaceBackground).not.toBe('rgba(0, 0, 0, 0)');
 
     await swipeActive(110, 0);
     expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toBe(initialLabel);
@@ -410,12 +419,121 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
+  it('keeps the complete crate artwork visible across short and tall mobile viewports', async () => {
+    for (const viewport of [
+      { width: 320, height: 640 },
+      { width: 375, height: 640 },
+      { width: 375, height: 812 },
+      { width: 430, height: 896 },
+    ]) {
+      await loadPage(viewport.width, viewport.height);
+      const geometry = await page.evaluate(() => {
+        const stack = document.querySelector('[data-dig-stack]') as HTMLElement | null;
+        const image = document.querySelector('[data-dig-crate-source] img') as HTMLImageElement | null;
+        const explorer = document.querySelector('.dig-responsive-mobile .dig-explorer') as HTMLElement | null;
+        const viewer = document.querySelector('.dig-responsive-mobile .dig-viewer') as HTMLElement | null;
+        const interaction = document.querySelector('[data-dig-slide].is-active .dig-sleeve-interaction') as HTMLElement | null;
+        if (!stack || !image || !explorer || !viewer || !interaction) return null;
+        const stackRect = stack.getBoundingClientRect();
+        const imageRect = image.getBoundingClientRect();
+        return {
+          viewportWidth: window.innerWidth,
+          stackLeft: stackRect.left,
+          stackWidth: stackRect.width,
+          imageTopOffset: imageRect.top - stackRect.top,
+          imageBottomGap: stackRect.bottom - imageRect.bottom,
+          imageLeftInset: imageRect.left - stackRect.left,
+          imageRightInset: stackRect.right - imageRect.right,
+          imageWidth: imageRect.width,
+          imageHeight: imageRect.height,
+          explorerOverflow: getComputedStyle(explorer).overflow,
+          viewerOverflow: getComputedStyle(viewer).overflow,
+          interactionOverflow: getComputedStyle(interaction).overflow,
+          stackOverflow: getComputedStyle(stack).overflow,
+        };
+      });
+
+      expect(geometry).not.toBeNull();
+      expect(Math.abs(geometry!.stackLeft)).toBeLessThanOrEqual(1);
+      expect(geometry!.stackWidth).toBeCloseTo(viewport.width, 0);
+      expect(Math.abs(geometry!.imageTopOffset)).toBeLessThanOrEqual(1);
+      expect(geometry!.imageBottomGap).toBeGreaterThanOrEqual(-1);
+      expect(geometry!.imageLeftInset).toBeGreaterThan(0);
+      expect(geometry!.imageRightInset).toBeGreaterThan(0);
+      expect(geometry!.imageWidth).toBeGreaterThan(0);
+      expect(geometry!.imageHeight).toBeGreaterThan(0);
+      // Let the viewport-width crate bleed past padded wrappers and allow 3D sleeve corners to rotate freely.
+      expect(geometry!.explorerOverflow).toBe('visible');
+      expect(geometry!.viewerOverflow).toBe('visible');
+      expect(geometry!.interactionOverflow).toBe('visible');
+      // Keep clipping at the deck boundary, not around the sleeve itself.
+      expect(geometry!.stackOverflow).toBe('clip');
+    }
+  });
+
   it('uses the supplied crate and preserves filter values when the mobile overlay is cancelled', async () => {
     await loadPage(375, 812);
 
     const crateImage = page.locator('[data-dig-crate-source] img');
     expect(await crateImage.getAttribute('src')).toBe('/assets/UI/dig_crate.webp');
     expect(await crateImage.getAttribute('alt')).toBe('');
+
+    const crateGeometry = await page.evaluate(() => {
+      const source = document.querySelector('[data-dig-crate-source]') as HTMLElement | null;
+      const image = source?.querySelector('img') as HTMLImageElement | null;
+      const stack = document.querySelector('[data-dig-stack]') as HTMLElement | null;
+      if (!source || !image || !stack) return null;
+      const imageRect = image.getBoundingClientRect();
+      const stackRect = stack.getBoundingClientRect();
+      const stage = document.querySelector('[data-dig-slide].is-active .dig-sleeve-stage') as HTMLElement | null;
+      if (!stage) return null;
+      const stageRect = stage.getBoundingClientRect();
+      return {
+        sourceZIndex: getComputedStyle(source).zIndex,
+        imagePosition: getComputedStyle(image).position,
+        imageWidth: imageRect.width,
+        imageLeftInset: imageRect.left - stackRect.left,
+        imageRightInset: stackRect.right - imageRect.right,
+        stackLeft: stackRect.left,
+        stackWidth: stackRect.width,
+        stageWidth: stageRect.width,
+        stageLeftInset: stageRect.left - stackRect.left,
+        stageRightInset: stackRect.right - stageRect.right,
+        imageTopOffset: imageRect.top - stackRect.top,
+        transformOrigin: getComputedStyle(image).transformOrigin,
+      };
+    });
+    expect(crateGeometry).not.toBeNull();
+    expect(crateGeometry!.sourceZIndex).toBe('-1');
+    expect(crateGeometry!.imagePosition).toBe('absolute');
+    expect(crateGeometry!.stackLeft).toBeCloseTo(0, 0);
+    expect(crateGeometry!.stackWidth).toBeCloseTo(375, 0);
+    expect(crateGeometry!.imageWidth).toBeCloseTo(Math.min(375 * 0.94, 510, 375 - 24, 812 - 320), 0);
+    expect(crateGeometry!.imageLeftInset).toBeGreaterThanOrEqual(8);
+    expect(crateGeometry!.imageRightInset).toBeGreaterThanOrEqual(8);
+    expect(crateGeometry!.stageWidth).toBeGreaterThanOrEqual(375 * 0.92);
+    expect(crateGeometry!.stageWidth).toBeLessThanOrEqual(375 * 0.95);
+    expect(Math.abs(crateGeometry!.stageWidth - crateGeometry!.imageWidth)).toBeLessThanOrEqual(3);
+    expect(crateGeometry!.stageLeftInset).toBeGreaterThanOrEqual(8);
+    expect(crateGeometry!.stageRightInset).toBeGreaterThanOrEqual(8);
+    expect(Math.abs(crateGeometry!.imageTopOffset)).toBeLessThanOrEqual(1);
+    expect(crateGeometry!.transformOrigin.endsWith(' 0px')).toBe(true);
+
+    const toolbar = page.locator('[data-dig-crate-toolbar]');
+    const explorer = page.locator('.dig-explorer');
+    expect(await toolbar.evaluate((element, explorerElement) => {
+      return Boolean(explorerElement && explorerElement.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }, await explorer.elementHandle())).toBe(true);
+    const buttonWidths = await page.evaluate(() => {
+      const toolbarElement = document.querySelector('[data-dig-crate-toolbar]') as HTMLElement | null;
+      const buttonElement = document.querySelector('[data-dig-filter-open]') as HTMLElement | null;
+      return {
+        toolbarWidth: toolbarElement?.getBoundingClientRect().width ?? 0,
+        buttonWidth: buttonElement?.getBoundingClientRect().width ?? 0,
+      };
+    });
+    expect(buttonWidths.toolbarWidth).toBeGreaterThan(0);
+    expect(Math.abs(buttonWidths.toolbarWidth - buttonWidths.buttonWidth)).toBeLessThanOrEqual(1);
 
     const trigger = page.locator('[data-dig-filter-open]');
     const dialog = page.locator('[data-dig-filter-dialog]');
@@ -473,6 +591,14 @@ describe('Mobile Dig app-like viewport', () => {
       expect(await page.locator('[data-dig-crate-toolbar]').isVisible()).toBe(false);
       expect(await page.locator('[data-dig-crate-source]').isVisible()).toBe(false);
       expect(await page.locator('[data-dig-filter-dialog]').isVisible()).toBe(false);
+      const desktopBackFaceBackgrounds = await page.locator('.dig-responsive-mobile .dig-sleeve-face-back')
+        .evaluateAll((faces) => faces.map((face) => getComputedStyle(face).backgroundColor));
+      expect(desktopBackFaceBackgrounds.length).toBeGreaterThan(0);
+      expect(desktopBackFaceBackgrounds.every((color) => color !== 'rgba(0, 0, 0, 0)')).toBe(true);
+      const desktopUnderlayBackgrounds = await page.locator('.dig-responsive-mobile .dig-sleeve-stage')
+        .evaluateAll((stages) => stages.map((stage) => getComputedStyle(stage, '::before').backgroundColor));
+      expect(desktopUnderlayBackgrounds.length).toBeGreaterThan(0);
+      expect(desktopUnderlayBackgrounds.every((color) => color !== 'rgba(0, 0, 0, 0)')).toBe(true);
     }
 
     const desktopWidths = await page.evaluate(() => ({

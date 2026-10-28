@@ -23,22 +23,24 @@
 
 @media (max-width: 767px) {
   .dig-responsive-mobile .dig-crate-toolbar {
-    display: flex;
+    display: block;
     flex: 0 0 auto;
-    align-items: center;
-    justify-content: flex-end;
+    width: 100%;
     min-width: 0;
-    margin: 0 var(--space-1) var(--space-1);
+    box-sizing: border-box;
+    margin: var(--space-2) 0 0;
   }
 
   .dig-responsive-mobile .dig-crate-filter-trigger {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    min-width: 44px;
-    min-height: 40px;
-    padding: var(--space-1) var(--space-3);
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     color: var(--color-ink);
@@ -76,27 +78,70 @@
     line-height: 1;
   }
 
+  /*
+   * Let the clipping stack itself reach both viewport edges. The image and
+   * album stay slightly inset inside that full-bleed stage, preserving their
+   * visible edges and leaving room for the cover's corners during 3D flips.
+   */
+  /*
+   * These wrappers normally clip their children to keep the app-like session
+   * tidy. The full-bleed crate and a sleeve's 3D rotation must pass through
+   * them; the viewport shell and the crate stack still provide the outer clip.
+   */
+  body.mobile-dig-session .dig-responsive-mobile .dig-explorer,
+  body.mobile-dig-session .dig-responsive-mobile .dig-viewer,
+  body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-interaction {
+    overflow: visible;
+  }
+
+  .dig-responsive-mobile .dig-crate-stack {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: 0;
+  }
+
+  .dig-responsive-mobile .dig-sleeve-stage {
+    width: min(94vw, 510px, calc(100vw - 24px), calc(100dvh - 320px));
+  }
+
   .dig-responsive-mobile .dig-crate-source {
     position: absolute;
-    inset: auto 0 0;
-    z-index: 1;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    height: clamp(160px, 48%, 300px);
+    inset: 0;
+    z-index: -1;
+    display: block;
     pointer-events: none;
     opacity: 0.94;
   }
 
   .dig-responsive-mobile .dig-crate-source img {
+    position: absolute;
+    top: 0;
+    left: 50%;
     display: block;
-    width: auto;
-    height: 100%;
-    max-width: min(78%, 320px);
+    width: min(94vw, 510px, calc(100vw - 24px), calc(100dvh - 320px));
+    max-width: none;
+    height: auto;
+    max-height: 100%;
     aspect-ratio: 2 / 3;
     object-fit: contain;
-    object-position: center bottom;
+    object-position: center top;
+    transform: translateX(-50%);
+    transform-origin: center top;
     filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));
+  }
+
+  /* Let the crate show through empty space around the reverse-cover photo. */
+  .dig-responsive-mobile .dig-sleeve-face-back {
+    background: transparent;
+  }
+
+  /*
+   * The offset deck-edge pseudo-element otherwise paints a solid paper-colored
+   * square behind the transparent reverse face. Keep its border/shadow cue,
+   * but let the crate backdrop show through the surface.
+   */
+  .dig-responsive-mobile .dig-sleeve-stage::before {
+    background: transparent;
   }
 
   .dig-crate-filter-dialog {
