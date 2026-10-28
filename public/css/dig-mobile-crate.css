@@ -136,12 +136,105 @@
   }
 
   /*
-   * The offset deck-edge pseudo-element otherwise paints a solid paper-colored
-   * square behind the transparent reverse face. Keep its border/shadow cue,
-   * but let the crate backdrop show through the surface.
+   * The stage pseudo-element was a second, offset card with its own border and
+   * shadow. It reads as a UI frame and breaks the sleeve's physical flip.
+   * Thickness now belongs to the moving sleeve's four side faces only.
    */
   .dig-responsive-mobile .dig-sleeve-stage::before {
+    content: none;
+    display: none;
+    border: 0;
+    box-shadow: none;
     background: transparent;
+    transform: none;
+  }
+
+  /* Warm paper backdrop for the crate area, without adding another shadow frame. */
+  body.mobile-dig-session .dig-responsive-mobile .dig-explorer {
+    background: #e8e1d5;
+    border: 0;
+    box-shadow: none;
+  }
+
+  /* Keep record metadata on a stable paper label instead of over busy crate art. */
+  body.mobile-dig-session .dig-listing-meta {
+    position: relative;
+    z-index: 5;
+    width: min(94%, 510px);
+    box-sizing: border-box;
+    margin: 0 auto 4px;
+    padding: 5px 10px 6px;
+    border: 1px solid #bcb09c;
+    background: rgba(250, 248, 242, 0.98);
+    text-align: center;
+    box-shadow: none;
+  }
+
+  body.mobile-dig-session .dig-listing-meta h2 {
+    color: #211f1b;
+    font-size: clamp(1rem, 4.2vw, 1.2rem);
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+
+  body.mobile-dig-session .dig-artist {
+    margin-top: 2px;
+    color: #514b41;
+    font-size: clamp(0.72rem, 3vw, 0.82rem);
+    line-height: 1.1;
+  }
+
+  /* The paper price tag is a real asset behind the monetary value. */
+  body.mobile-dig-session .dig-price {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 112px;
+    min-height: 56px;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 10px 18px 9px;
+    gap: 0;
+    background: url('/assets/UI/price_tag.svg') center / 100% 100% no-repeat;
+  }
+
+  body.mobile-dig-session .dig-price strong {
+    color: #211f1b;
+    font-size: clamp(1.1rem, 4.5vw, 1.35rem);
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  body.mobile-dig-session .dig-listing-link {
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    box-sizing: border-box;
+    margin-left: auto;
+    padding: 4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #1c1c1c;
+    text-decoration: none;
+  }
+
+  body.mobile-dig-session .dig-listing-link img {
+    display: block;
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+  }
+
+  body.mobile-dig-session .dig-listing-link:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
   }
 
   .dig-crate-filter-dialog {
