@@ -433,10 +433,20 @@ describe('Mobile Dig app-like viewport', () => {
       if (!source || !image || !stack) return null;
       const imageRect = image.getBoundingClientRect();
       const stackRect = stack.getBoundingClientRect();
+      const stage = document.querySelector('[data-dig-slide].is-active .dig-sleeve-stage') as HTMLElement | null;
+      if (!stage) return null;
+      const stageRect = stage.getBoundingClientRect();
       return {
         sourceZIndex: getComputedStyle(source).zIndex,
         imagePosition: getComputedStyle(image).position,
         imageWidth: imageRect.width,
+        imageLeftInset: imageRect.left - stackRect.left,
+        imageRightInset: stackRect.right - imageRect.right,
+        stackLeft: stackRect.left,
+        stackWidth: stackRect.width,
+        stageWidth: stageRect.width,
+        stageLeftInset: stageRect.left - stackRect.left,
+        stageRightInset: stackRect.right - stageRect.right,
         imageTopOffset: imageRect.top - stackRect.top,
         transformOrigin: getComputedStyle(image).transformOrigin,
       };
@@ -444,7 +454,14 @@ describe('Mobile Dig app-like viewport', () => {
     expect(crateGeometry).not.toBeNull();
     expect(crateGeometry!.sourceZIndex).toBe('-1');
     expect(crateGeometry!.imagePosition).toBe('absolute');
-    expect(crateGeometry!.imageWidth).toBeCloseTo(375, 0);
+    expect(crateGeometry!.stackLeft).toBeCloseTo(0, 0);
+    expect(crateGeometry!.stackWidth).toBeCloseTo(375, 0);
+    expect(crateGeometry!.imageWidth).toBeCloseTo(Math.min(375 * 0.94, 510), 0);
+    expect(crateGeometry!.imageLeftInset).toBeGreaterThanOrEqual(8);
+    expect(crateGeometry!.imageRightInset).toBeGreaterThanOrEqual(8);
+    expect(crateGeometry!.stageWidth).toBeCloseTo(Math.min(375 * 0.94, 510), 0);
+    expect(crateGeometry!.stageLeftInset).toBeGreaterThanOrEqual(8);
+    expect(crateGeometry!.stageRightInset).toBeGreaterThanOrEqual(8);
     expect(Math.abs(crateGeometry!.imageTopOffset)).toBeLessThanOrEqual(1);
     expect(crateGeometry!.transformOrigin.endsWith(' 0px')).toBe(true);
 
