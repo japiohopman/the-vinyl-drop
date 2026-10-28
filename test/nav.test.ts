@@ -206,7 +206,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(htmlEnabled).toContain('data-messaging-widget-trigger');
     expect(htmlEnabled).toContain('<button type="button" class="desktop-you-menu-item messaging-widget-trigger"');
     expect(htmlEnabled).toContain('<button type="button" class="mobile-you-action-link messaging-widget-trigger"');
-    const mobileMessagingButton = htmlEnabled.match(/<button type="button" class="mobile-you-action-link messaging-widget-trigger"[\\s\\S]*?<\\/button>/);
+    const mobileMessagingButton = htmlEnabled.match(/<button type="button" class="mobile-you-action-link messaging-widget-trigger"[\s\S]*?<\/button>/);
     expect(mobileMessagingButton?.[0]).toContain('mobile-you-action-icon');
     expect(htmlEnabled).toContain('Messages');
 
@@ -957,7 +957,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         const aboutView = document.querySelector('#mobile-you-about-view');
         if (!aboutView) return false;
         const transform = window.getComputedStyle(aboutView).transform;
-        const matrix = transform.match(/^matrix\\(([^)]+)\\)$/);
+        const matrix = transform.match(/^matrix\(([^)]+)\)$/);
         if (!matrix) return transform === 'none';
         const values = matrix[1].split(',').map(Number);
         return values.length === 6 && Math.abs(values[4]) < 0.5 && Math.abs(values[5]) < 0.5;
@@ -968,7 +968,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         if (!mainView || !aboutView) throw new Error('Me/About views missing');
         const getAxes = (element: Element) => {
           const transform = window.getComputedStyle(element).transform;
-          const matrix = transform.match(/^matrix\\(([^)]+)\\)$/);
+          const matrix = transform.match(/^matrix\(([^)]+)\)$/);
           if (!matrix) return { x: 0, y: 0 };
           const values = matrix[1].split(',').map(Number);
           return { x: values.length === 6 ? values[4] : 0, y: values.length === 6 ? values[5] : 0 };
