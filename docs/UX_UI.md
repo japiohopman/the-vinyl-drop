@@ -262,3 +262,9 @@ Keep the public listing detail focused on the record: preserve real release meta
 ## Profile edit and Saved People boundaries — Issue #237
 
 The profile editor changes only the authenticated user's public profile properties (username, display name, location, avatar URL, website URL, and bio) through the existing validated `/profile/edit` route. Saved People is a different private relationship between the current owner and another profile, accessed through Messages & People; it is not a profile field, does not change the target user's profile, and is not a public Follow graph. Keep these data paths and authorization boundaries separate while using consistent UI styling.
+
+## Mobile Me overlay parity — Issue #234
+
+The mobile Me/About account surface shares the Messenger panel's visual language: 12px outer inset, 5px corners, a restrained shadow, and the same light `rgba(18, 18, 18, 0.48)` backdrop without the heavy blur. The header uses the deep-green surface and infrared divider; account actions use the shared SVG icon partial, compact 1px borders, and at least 44px touch targets.
+
+Keep Me/About transitions vertical/fade-only. The overlay may scroll vertically, but it must not pan horizontally or create page-level horizontal overflow. Preserve focus containment/restoration, Escape and backdrop close, scroll locking, reduced-motion support, existing account routes, POST logout, and strict `MESSAGING_ENABLED` gating. This is presentation polish only; it does not enable or alter messaging.

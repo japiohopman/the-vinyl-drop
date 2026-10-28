@@ -142,17 +142,30 @@
           <nav aria-label="Account Actions">
             <ul class="mobile-you-actions-list">
               <li>
-                <a href="<%= profileUrl %>" class="mobile-you-action-link"><span>View Profile</span></a>
+                <a href="<%= profileUrl %>" class="mobile-you-action-link">
+                  <%- include('./icon', { name: 'user', size: '1.25rem', className: 'mobile-you-action-icon', ariaHidden: true }) %>
+                  <span class="mobile-you-action-label">View Profile</span>
+                </a>
               </li>
               <li>
-                <a href="/profile/edit" class="mobile-you-action-link"><span>Edit Profile</span></a>
+                <a href="/profile/edit" class="mobile-you-action-link">
+                  <%- include('./icon', { name: 'edit', size: '1.25rem', className: 'mobile-you-action-icon', ariaHidden: true }) %>
+                  <span class="mobile-you-action-label">Edit Profile</span>
+                </a>
               </li>
               <li>
-                <a href="/listings" class="mobile-you-action-link"><span>My Listings</span></a>
+                <a href="/listings" class="mobile-you-action-link">
+                  <%- include('./icon', { name: 'cardboard-box-closed', size: '1.25rem', className: 'mobile-you-action-icon', ariaHidden: true }) %>
+                  <span class="mobile-you-action-label">My Listings</span>
+                </a>
               </li>
               <% if (isMessagingEnabled) { %>
                 <li>
-                  <button type="button" class="mobile-you-action-link messaging-widget-trigger" data-messaging-widget-trigger aria-controls="messaging-floating-window" aria-expanded="false" aria-haspopup="dialog" aria-label="Open Messages and Saved People"><span>Messages &amp; People</span><span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span></button>
+                  <button type="button" class="mobile-you-action-link messaging-widget-trigger" data-messaging-widget-trigger aria-controls="messaging-floating-window" aria-expanded="false" aria-haspopup="dialog" aria-label="Open Messages and Saved People">
+                    <%- include('./icon', { name: 'talk', size: '1.25rem', className: 'mobile-you-action-icon', ariaHidden: true }) %>
+                    <span class="mobile-you-action-label">Messages &amp; People</span>
+                    <span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span>
+                  </button>
                 </li>
               <% } %>
             </ul>
