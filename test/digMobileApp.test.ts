@@ -74,7 +74,7 @@ describe('Mobile Dig app-like viewport', () => {
     if (page) await page.close();
   });
 
-  async function renderPage(): Promise<string> {
+  async function renderPage(pageItems = items): Promise<string> {
     const locals = {
       getIconSvg,
       currentPath: '/dig',
@@ -82,8 +82,8 @@ describe('Mobile Dig app-like viewport', () => {
       currentProfile: null,
       messagingEnabled: false,
       title: 'Dig — The Vinyl Drop',
-      items,
-      totalCount: 28,
+      items: pageItems,
+      totalCount: pageItems.length ? 28 : 0,
       hasMore: false,
       filters,
       listings: [],
@@ -107,13 +107,13 @@ describe('Mobile Dig app-like viewport', () => {
     return '<!doctype html><html lang="en"><head>' +
       '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<style>' + css + '</style></head>' +
-      '<body class="mobile-dig-session">' + headerHtml +
+      '<body' + (pageItems.length > 0 ? ' class="mobile-dig-session"' : '') + '>' + headerHtml +
       '<main class="main-content container">' + bodyContent + '</main></body></html>';
   }
 
-  async function loadPage(width: number, height: number): Promise<void> {
+  async function loadPage(width: number, height: number, pageItems = items): Promise<void> {
     await page.setViewportSize({ width, height });
-    await page.setContent(await renderPage());
+    await page.setContent(await renderPage(pageItems));
     await page.addScriptTag({ content: digState });
     await page.addScriptTag({ content: digMode });
     await page.addScriptTag({ content: digCrateFilter });
@@ -448,6 +448,15 @@ describe('Mobile Dig app-like viewport', () => {
     await page.keyboard.press('Escape');
     expect(await dialog.isVisible()).toBe(false);
     expect(await trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('leaves the existing filters available when no mobile Dig records match', async () => {
+    await loadPage(375, 812, []);
+
+    expect(await page.locator('[data-dig-crate-toolbar]').count()).toBe(0);
+    expect(await page.locator('[data-dig-crate-source]').count()).toBe(0);
+    expect(await page.locator('[data-dig-filter-dialog]').count()).toBe(0);
+    expect(await page.locator('.browse-filter-form').isVisible()).toBe(true);
   });
 
   it('keeps the conventional Dig heading and browse controls unchanged at desktop breakpoints', async () => {
