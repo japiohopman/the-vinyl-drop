@@ -2209,16 +2209,16 @@ select.form-control {
 }
 
 .dig-sleeve-edge-top {
-  top: 0;
-  transform-origin: top;
-  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateX(-90deg);
+  top: -1.5px;
+  transform-origin: center;
+  transform: rotateX(90deg);
   background: linear-gradient(180deg, #e6d8be 0%, #bba27b 100%);
 }
 
 .dig-sleeve-edge-bottom {
-  bottom: 0;
-  transform-origin: bottom;
-  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateX(90deg);
+  bottom: -1.5px;
+  transform-origin: center;
+  transform: rotateX(-90deg);
   background: linear-gradient(180deg, #826746 0%, #c5ad88 100%);
 }
 
@@ -2230,16 +2230,16 @@ select.form-control {
 }
 
 .dig-sleeve-edge-left {
-  left: 0;
-  transform-origin: left;
-  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(-90deg);
+  left: -1.5px;
+  transform-origin: center;
+  transform: rotateY(-90deg);
   background: linear-gradient(90deg, #6b5436 0%, #b79b70 48%, #826746 100%);
 }
 
 .dig-sleeve-edge-right {
-  right: 0;
-  transform-origin: right;
-  transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(90deg);
+  right: -1.5px;
+  transform-origin: center;
+  transform: rotateY(90deg);
   background: linear-gradient(90deg, #f1e5cf 0%, #c5ad88 100%);
 }
 

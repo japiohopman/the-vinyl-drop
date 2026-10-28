@@ -261,14 +261,15 @@ describe('Mobile Dig app-like viewport', () => {
     await loadPage(375, 812);
 
     const readGeometry = async () => page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const sleeveCard = card as HTMLElement;
       const edge = (side: 'top' | 'right' | 'bottom' | 'left') => {
         const element = card.querySelector<HTMLElement>('.dig-sleeve-edge-' + side);
         if (!element) throw new Error('Missing sleeve edge: ' + side);
         const style = getComputedStyle(element);
         const origin = style.transformOrigin.split(/\s+/).map((value) => Number.parseFloat(value));
         return {
-          left: element.offsetLeft,
-          top: element.offsetTop,
+          left: Number.parseFloat(style.left),
+          top: Number.parseFloat(style.top),
           width: element.offsetWidth,
           height: element.offsetHeight,
           originX: origin[0],
@@ -281,14 +282,14 @@ describe('Mobile Dig app-like viewport', () => {
       if (!stage) throw new Error('Sleeve has no stage');
       const stageBefore = getComputedStyle(stage, '::before');
       return {
-        width: card.clientWidth,
-        height: card.clientHeight,
-        cardLeft: card.offsetLeft,
-        cardTop: card.offsetTop,
+        width: sleeveCard.clientWidth,
+        height: sleeveCard.clientHeight,
+        cardLeft: sleeveCard.offsetLeft,
+        cardTop: sleeveCard.offsetTop,
         stageWidth: stage.clientWidth,
         stageHeight: stage.clientHeight,
-        transform: getComputedStyle(card).transform,
-        flipped: card.classList.contains('is-flipped'),
+        transform: getComputedStyle(sleeveCard).transform,
+        flipped: sleeveCard.classList.contains('is-flipped'),
         stageBeforeContent: stageBefore.content,
         stageBeforeDisplay: stageBefore.display,
         stageBeforeShadow: stageBefore.boxShadow,
@@ -310,30 +311,34 @@ describe('Mobile Dig app-like viewport', () => {
       expect(width).toBeCloseTo(geometry.stageWidth * 0.94, 0);
       expect(height).toBeCloseTo(geometry.stageHeight * 0.94, 0);
 
+      // Each plane is centered over the 3 mm thickness and its center sits
+      // exactly on the cover perimeter; this removes the visible corner gaps.
       expect(edges.top.left).toBe(0);
-      expect(edges.top.top).toBe(0);
+      expect(edges.top.top).toBeCloseTo(-1.5, 1);
       expect(edges.top.width).toBe(width);
+      expect(edges.top.height).toBe(3);
       expect(edges.top.originX).toBeCloseTo(width / 2, 1);
-      expect(edges.top.originY).toBe(0);
+      expect(edges.top.originY).toBeCloseTo(1.5, 1);
 
       expect(edges.bottom.left).toBe(0);
-      expect(edges.bottom.top).toBe(height - edges.bottom.height);
+      expect(edges.bottom.top).toBeCloseTo(height - 1.5, 1);
       expect(edges.bottom.width).toBe(width);
+      expect(edges.bottom.height).toBe(3);
       expect(edges.bottom.originX).toBeCloseTo(width / 2, 1);
-      expect(edges.bottom.originY).toBe(edges.bottom.height);
+      expect(edges.bottom.originY).toBeCloseTo(1.5, 1);
 
-      expect(edges.left.left).toBe(0);
+      expect(edges.left.left).toBeCloseTo(-1.5, 1);
       expect(edges.left.top).toBe(0);
       expect(edges.left.width).toBe(3);
       expect(edges.left.height).toBe(height);
-      expect(edges.left.originX).toBe(0);
+      expect(edges.left.originX).toBeCloseTo(1.5, 1);
       expect(edges.left.originY).toBeCloseTo(height / 2, 1);
 
-      expect(edges.right.left).toBe(width - edges.right.width);
+      expect(edges.right.left).toBeCloseTo(width - 1.5, 1);
       expect(edges.right.top).toBe(0);
       expect(edges.right.width).toBe(3);
       expect(edges.right.height).toBe(height);
-      expect(edges.right.originX).toBe(edges.right.width);
+      expect(edges.right.originX).toBeCloseTo(1.5, 1);
       expect(edges.right.originY).toBeCloseTo(height / 2, 1);
 
       for (const side of ['top', 'right', 'bottom', 'left'] as const) {
