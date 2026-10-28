@@ -79,10 +79,20 @@
   }
 
   /*
-   * The crate is a full-viewport backdrop, not a small extra card.
-   * Keep it at the top of the stack and behind every sleeve, including
-   * the leaving/entering slides that use higher 3D z-indexes.
+   * Let the clipping stack itself reach both viewport edges. The image and
+   * album stay slightly inset inside that full-bleed stage, preserving their
+   * visible edges and leaving room for the cover's corners during 3D flips.
    */
+  .dig-responsive-mobile .dig-crate-stack {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-right: 0;
+  }
+
+  .dig-responsive-mobile .dig-sleeve-stage {
+    width: min(94vw, 510px);
+  }
+
   .dig-responsive-mobile .dig-crate-source {
     position: absolute;
     inset: 0;
@@ -97,7 +107,7 @@
     top: 0;
     left: 50%;
     display: block;
-    width: 100vw;
+    width: min(94vw, 510px);
     max-width: none;
     height: auto;
     aspect-ratio: 2 / 3;
