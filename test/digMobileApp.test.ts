@@ -278,6 +278,11 @@ describe('Mobile Dig app-like viewport', () => {
           shadow: style.boxShadow,
         };
       };
+      const faceDepth = (selector: string) => {
+        const face = card.querySelector<HTMLElement>(selector);
+        if (!face) throw new Error('Missing sleeve face: ' + selector);
+        return new DOMMatrixReadOnly(getComputedStyle(face).transform).m43;
+      };
       const stage = card.closest('.dig-sleeve-stage');
       if (!stage) throw new Error('Sleeve has no stage');
       const stack = card.closest('.dig-crate-stack');
@@ -313,6 +318,10 @@ describe('Mobile Dig app-like viewport', () => {
         stageHeight: stage.clientHeight,
         transform: getComputedStyle(sleeveCard).transform,
         flipped: sleeveCard.classList.contains('is-flipped'),
+        faceDepths: {
+          front: faceDepth('.dig-sleeve-face-front'),
+          back: faceDepth('.dig-sleeve-face-back'),
+        },
         stageBeforeContent: stageBefore.content,
         stageBeforeDisplay: stageBefore.display,
         stageBeforeShadow: stageBefore.boxShadow,
@@ -383,6 +392,13 @@ describe('Mobile Dig app-like viewport', () => {
         expect(edges[side].transform).not.toBe('none');
         expect(edges[side].shadow).toBe('none');
       }
+      // The cover faces must sit just outside the side walls in Z. If they share
+      // the exact edge depth, browsers may rasterize the cardboard bevel on the
+      // front-on view due to equal-depth fragments.
+      expect(geometry.faceDepths.front).toBeGreaterThan(1.5);
+      expect(geometry.faceDepths.front).toBeCloseTo(1.7, 1);
+      expect(geometry.faceDepths.back).toBeLessThan(-1.5);
+      expect(geometry.faceDepths.back).toBeCloseTo(-1.7, 1);
       expect(geometry.stageBeforeContent).toBe('none');
       expect(geometry.stageBeforeDisplay).toBe('none');
       expect(geometry.stageBeforeShadow).toBe('none');
