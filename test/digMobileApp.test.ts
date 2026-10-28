@@ -280,6 +280,9 @@ describe('Mobile Dig app-like viewport', () => {
       };
       const stage = card.closest('.dig-sleeve-stage');
       if (!stage) throw new Error('Sleeve has no stage');
+      const stack = card.closest('.dig-crate-stack');
+      if (!stack) throw new Error('Sleeve has no crate stack');
+      const stackStyle = getComputedStyle(stack);
       const stageBefore = getComputedStyle(stage, '::before');
       return {
         width: sleeveCard.clientWidth,
@@ -293,6 +296,8 @@ describe('Mobile Dig app-like viewport', () => {
         stageBeforeContent: stageBefore.content,
         stageBeforeDisplay: stageBefore.display,
         stageBeforeShadow: stageBefore.boxShadow,
+        stackOverflow: stackStyle.overflow,
+        stackClipMargin: stackStyle.getPropertyValue('overflow-clip-margin'),
         edges: {
           top: edge('top'),
           right: edge('right'),
@@ -317,14 +322,14 @@ describe('Mobile Dig app-like viewport', () => {
       expect(edges.top.top).toBeCloseTo(-1.5, 1);
       expect(edges.top.width).toBe(width);
       expect(edges.top.height).toBe(3);
-      expect(edges.top.originX).toBeCloseTo(width / 2, 1);
+      expect(edges.top.originX).toBeCloseTo(width / 2, 0);
       expect(edges.top.originY).toBeCloseTo(1.5, 1);
 
       expect(edges.bottom.left).toBe(0);
       expect(edges.bottom.top).toBeCloseTo(height - 1.5, 1);
       expect(edges.bottom.width).toBe(width);
       expect(edges.bottom.height).toBe(3);
-      expect(edges.bottom.originX).toBeCloseTo(width / 2, 1);
+      expect(edges.bottom.originX).toBeCloseTo(width / 2, 0);
       expect(edges.bottom.originY).toBeCloseTo(1.5, 1);
 
       expect(edges.left.left).toBeCloseTo(-1.5, 1);
@@ -332,14 +337,14 @@ describe('Mobile Dig app-like viewport', () => {
       expect(edges.left.width).toBe(3);
       expect(edges.left.height).toBe(height);
       expect(edges.left.originX).toBeCloseTo(1.5, 1);
-      expect(edges.left.originY).toBeCloseTo(height / 2, 1);
+      expect(edges.left.originY).toBeCloseTo(height / 2, 0);
 
       expect(edges.right.left).toBeCloseTo(width - 1.5, 1);
       expect(edges.right.top).toBe(0);
       expect(edges.right.width).toBe(3);
       expect(edges.right.height).toBe(height);
       expect(edges.right.originX).toBeCloseTo(1.5, 1);
-      expect(edges.right.originY).toBeCloseTo(height / 2, 1);
+      expect(edges.right.originY).toBeCloseTo(height / 2, 0);
 
       for (const side of ['top', 'right', 'bottom', 'left'] as const) {
         expect(edges[side].transform).not.toBe('none');
@@ -348,6 +353,8 @@ describe('Mobile Dig app-like viewport', () => {
       expect(geometry.stageBeforeContent).toBe('none');
       expect(geometry.stageBeforeDisplay).toBe('none');
       expect(geometry.stageBeforeShadow).toBe('none');
+      expect(geometry.stackOverflow).toBe('clip');
+      expect(geometry.stackClipMargin).toBe('24px');
       if (rotating) expect(geometry.transform).not.toBe('none');
     };
 

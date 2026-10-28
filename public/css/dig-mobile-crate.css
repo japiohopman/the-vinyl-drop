@@ -100,6 +100,12 @@
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: 0;
+    /*
+     * Keep the stack as the outer clip, but extend its clip edge so perspective
+     * and the 3 mm side faces can paint past its static bounds mid-flip.
+     * This enlarges the safe paint area, not the flex layout or page height.
+     */
+    overflow-clip-margin: 24px;
   }
 
   body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage {

@@ -443,10 +443,11 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('.dig-sleeve-edge-right');
     expect(css).toContain('.dig-sleeve-edge-bottom');
     expect(css).toContain('.dig-sleeve-edge-left');
-    expect(css).toContain('transform-origin: left;');
-    expect(css).toContain('transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(-90deg);');
-    expect(css).toContain('transform-origin: right;');
-    expect(css).toContain('transform: translateZ(var(--dig-sleeve-half-thickness)) rotateY(90deg);');
+    expect(css).toContain('transform-origin: center;');
+    expect(css).toContain('left: -1.5px;');
+    expect(css).toContain('right: -1.5px;');
+    expect(css).toContain('transform: rotateY(-90deg);');
+    expect(css).toContain('transform: rotateY(90deg);');
     expect(css).toContain('.dig-sleeve-card {');
     expect(css).not.toContain('.dig-sleeve-spine-edge');
     expect(css).not.toContain('.dig-sleeve-plane');
@@ -457,6 +458,8 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('.dig-slide {');
     expect(css).toContain('transform-style: preserve-3d;');
     expect(css).toContain('overflow: clip;');
+    const mobileCrateCss = fs.readFileSync(path.join(process.cwd(), 'public/css/dig-mobile-crate.css'), 'utf8');
+    expect(mobileCrateCss).toContain('overflow-clip-margin: 24px;');
     expect(css).toContain('.dig-slide.is-leaving-up .dig-sleeve-interaction');
     expect(css).toContain('.dig-slide.is-leaving-down .dig-sleeve-interaction');
     expect(css).toContain('.dig-slide.is-leaving-up');
