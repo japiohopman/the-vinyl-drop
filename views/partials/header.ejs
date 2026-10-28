@@ -5,6 +5,7 @@
   const isListingDetailPage = headerPath !== '/listings/create' && /^\/listings\/[^/]+$/.test(headerPath);
   const isListingCommentsPage = headerPath.startsWith('/listings/') && headerPath.endsWith('/comments') && headerPath.split('/').length === 4;
   const isListingEditPage = headerPath.startsWith('/listings/') && headerPath.endsWith('/edit') && headerPath.split('/').length === 4;
+  const isListingPreviewPage = /^\\/listings\\/[^/]+\\/preview$/.test(headerPath);
   const isMyListingsPage = headerPath === '/listings';
   const isDigRoute = headerPath === '/dig';
   const digItemCount = typeof items !== 'undefined' && Array.isArray(items) ? items.length : 0;
@@ -20,6 +21,8 @@
     mobileSectionLabel = 'COMMENTS';
   } else if (isListingDetailPage) {
     mobileSectionLabel = 'RECORD';
+  } else if (isListingPreviewPage) {
+    mobileSectionLabel = 'PREVIEW';
   } else if (headerPath.startsWith('/drop') || headerPath.startsWith('/listings') || headerPath.startsWith('/releases')) {
     mobileSectionLabel = 'DROP';
   } else if (headerPath.startsWith('/messages')) {
@@ -75,7 +78,7 @@
         <a href="/profile" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to My Profile">
           <span class="mobile-context-back-icon" aria-hidden="true">←</span>
         </a>
-      <% } else if (isListingEditPage) { %>
+      <% } else if (isListingEditPage || isListingPreviewPage) { %>
         <a href="/listings" class="mobile-context-back mobile-context-back-icon-only" aria-label="Back to My Listings">
           <span class="mobile-context-back-icon" aria-hidden="true">←</span>
         </a>
