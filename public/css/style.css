@@ -274,6 +274,7 @@ code, kbd, samp, pre {
 
 body.account-surface-open {
   overflow: hidden !important;
+  overscroll-behavior-x: none;
 }
 
 /* Base Body Shell Safe-Area & Mobile Bottom Bar Compensation */
@@ -546,6 +547,8 @@ body.account-surface-open {
     justify-content: center;
     box-sizing: border-box;
     padding: 12px;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -571,9 +574,9 @@ body.account-surface-open {
     position: absolute;
     inset: 0;
     opacity: 0;
-    background-color: rgba(21, 21, 21, 0.9);
-    backdrop-filter: blur(4px);
+    background-color: rgba(18, 18, 18, 0.48);
     transition: opacity 180ms ease;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .mobile-you-surface.is-open .mobile-you-surface-backdrop { opacity: 1; }
@@ -587,11 +590,15 @@ body.account-surface-open {
     max-width: 560px;
     height: auto;
     max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     background-color: var(--color-paper);
-    border: var(--border-heavy);
-    border-radius: var(--radius-md);
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 5px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+    overflow-x: clip;
     overflow-y: auto;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
     opacity: 0;
     transform: translateY(8px) scale(0.99);
     transition: opacity 180ms ease, transform 180ms ease;
@@ -607,9 +614,9 @@ body.account-surface-open {
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
-    padding: var(--space-4);
-    background-color: var(--color-white);
-    border-bottom: var(--border-heavy);
+    padding: var(--space-3) var(--space-4);
+    background-color: var(--color-deep-green);
+    border-bottom: 3px solid var(--color-rust);
   }
 
   .mobile-you-header-leading {
@@ -626,7 +633,7 @@ body.account-surface-open {
     font-size: var(--font-size-lg);
     line-height: var(--line-height-tight);
     font-weight: 700;
-    color: var(--color-ink);
+    color: var(--color-white);
   }
 
   .mobile-you-about-back {
@@ -639,17 +646,17 @@ body.account-surface-open {
     height: 44px;
     min-height: 44px;
     padding: 0;
-    border: var(--border-thick);
-    border-radius: var(--radius-sm);
-    background: var(--color-paper);
-    color: var(--color-ink);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+    background: transparent;
+    color: var(--color-white);
     font-weight: 700;
     cursor: pointer;
-    box-shadow: var(--shadow-tactile);
+    box-shadow: none;
   }
 
   .mobile-you-about-back[hidden] { display: none !important; }
-  .mobile-you-about-back:hover { background: var(--color-surface-hover); }
+  .mobile-you-about-back:hover { background: rgba(255, 255, 255, 0.12); }
 
   .mobile-you-close-btn {
     display: inline-flex;
@@ -660,21 +667,23 @@ body.account-surface-open {
     min-width: 44px;
     height: 44px;
     min-height: 44px;
-    background-color: var(--color-paper);
-    border: var(--border-thick);
-    border-radius: var(--radius-sm);
-    color: var(--color-ink);
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+    color: var(--color-white);
     cursor: pointer;
-    box-shadow: var(--shadow-tactile);
+    box-shadow: none;
   }
 
-  .mobile-you-close-btn:hover { background-color: var(--color-surface-hover); }
+  .mobile-you-close-btn:hover { background-color: rgba(255, 255, 255, 0.12); }
 
   .mobile-you-views {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
+    width: 100%;
     min-width: 0;
+    overflow-x: clip;
   }
 
   .mobile-you-view {
@@ -683,7 +692,7 @@ body.account-surface-open {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transform: translateX(4px);
+    transform: translateY(4px);
     transition: opacity 160ms ease, transform 160ms ease, visibility 0s linear 160ms;
   }
 
@@ -691,15 +700,15 @@ body.account-surface-open {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transform: translateX(0);
+    transform: translateY(0);
     transition: opacity 160ms ease, transform 160ms ease, visibility 0s;
   }
 
   .mobile-you-body {
     display: flex;
     flex-direction: column;
-    padding: var(--space-6) var(--space-4);
-    gap: var(--space-6);
+    padding: var(--space-4);
+    gap: var(--space-4);
     justify-content: space-between;
   }
 
@@ -709,34 +718,50 @@ body.account-surface-open {
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-2);
   }
 
   .mobile-you-action-link {
     display: flex;
     align-items: center;
-    padding: var(--space-4);
+    gap: var(--space-3);
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    padding: var(--space-3) var(--space-4);
     background-color: var(--color-white);
-    border: var(--border-thick);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-tactile);
-    font-family: var(--font-display);
-    font-size: var(--font-size-md);
-    font-weight: 700;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 5px;
+    box-shadow: none;
+    font-family: var(--font-body);
+    font-size: var(--font-size-base);
+    font-weight: 600;
     color: var(--color-ink);
+    text-align: left;
     text-decoration: none;
-    min-height: 52px;
+  }
+
+  .mobile-you-action-icon {
+    display: block;
+    flex: 0 0 auto;
+  }
+
+  .mobile-you-action-label {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .mobile-you-action-link:hover {
     background-color: var(--color-surface-hover);
-    color: var(--color-rust);
+    border-color: var(--color-border);
+    color: var(--color-ink);
     text-decoration: none;
   }
 
   .mobile-you-about-entry {
-    padding-top: var(--space-4);
-    border-top: var(--border-heavy);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border-subtle);
   }
 
   .mobile-you-about-trigger {
@@ -770,27 +795,27 @@ body.account-surface-open {
   .mobile-you-info-links a {
     display: flex;
     align-items: center;
-    min-height: 52px;
-    padding: var(--space-4);
-    border: var(--border-thick);
-    border-radius: var(--radius-sm);
+    min-height: 48px;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 5px;
     background: var(--color-white);
     color: var(--color-ink);
-    font-family: var(--font-display);
-    font-size: var(--font-size-md);
-    font-weight: 700;
+    font-family: var(--font-body);
+    font-size: var(--font-size-base);
+    font-weight: 600;
     text-decoration: none;
-    box-shadow: var(--shadow-tactile);
   }
 
   .mobile-you-info-links a:hover {
     background: var(--color-surface-hover);
-    color: var(--color-rust-accessible);
+    border-color: var(--color-border);
+    color: var(--color-ink);
   }
 
   .mobile-you-footer {
-    padding: var(--space-4);
-    border-top: var(--border-heavy);
+    padding: var(--space-3) var(--space-4);
+    border-top: 3px solid var(--color-rust);
     background: var(--color-paper);
   }
 
@@ -800,14 +825,14 @@ body.account-surface-open {
     justify-content: center;
     gap: var(--space-2);
     width: 100%;
-    min-height: 52px;
+    min-height: 48px;
     padding: var(--space-3);
     background-color: var(--color-white);
-    border: var(--border-thick);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-tactile);
-    font-family: var(--font-display);
-    font-size: var(--font-size-md);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 5px;
+    box-shadow: none;
+    font-family: var(--font-body);
+    font-size: var(--font-size-base);
     font-weight: 700;
     letter-spacing: var(--letter-spacing-wide);
     color: var(--color-rust-accessible);
@@ -815,8 +840,9 @@ body.account-surface-open {
   }
 
   .mobile-you-logout-btn:hover {
-    background-color: var(--color-rust-accessible);
-    color: var(--color-white);
+    background-color: var(--color-error-bg);
+    border-color: var(--color-rust-accessible);
+    color: var(--color-rust-accessible);
   }
 
   .mobile-you-auth-actions {
@@ -4169,8 +4195,8 @@ select.form-control {
   }
 
   .mobile-you-about-entry {
-    padding-top: var(--space-4);
-    border-top: var(--border-heavy);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border-subtle);
   }
 
   .mobile-you-about-trigger {
