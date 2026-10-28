@@ -137,6 +137,13 @@ describe('Compact mobile back navigation', () => {
     expect(digView).toContain('href="<%= browseReturnUrl %>"');
     expect(listingDetailView).toContain('href="/dig"');
     expect(listingDetailView).toContain('aria-label="Back to Dig results"');
+    expect(listingDetailView).toContain('Condition</h3>');
+    expect(listingDetailView).toContain('Description</h3>');
+    expect(listingDetailView).not.toContain('Listing Price');
+    expect(listingDetailView).not.toContain('Condition Grading');
+    expect(listingDetailView).not.toContain('Seller Description');
+    expect(listingDetailView).not.toContain('You own this listing');
+    expect(listingDetailView).not.toContain('listing-comments-entry-help');
 
     expect(listingPreviewView).toContain('class="listing-preview-desktop-back"');
     expect(listingPreviewView).toContain('aria-label="Back to My Listings"');
