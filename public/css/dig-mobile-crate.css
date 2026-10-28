@@ -108,6 +108,11 @@
     filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));
   }
 
+  /* Let the crate show through empty space around the reverse-cover photo. */
+  .dig-responsive-mobile .dig-sleeve-face-back {
+    background: transparent;
+  }
+
   .dig-crate-filter-dialog {
     margin: auto;
   }
