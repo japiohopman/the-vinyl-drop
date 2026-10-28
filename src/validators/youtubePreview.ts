@@ -4,7 +4,8 @@ const ALLOWED_YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.yout
 /**
  * Convert a seller-supplied YouTube watch/share URL to one canonical video ID.
  * A blank string clears the optional preview; missing/non-string input is invalid.
- * Embed URLs, playlists, non-HTTPS URLs, markup, and non-YouTube hosts are rejected.
+ * Embed and playlist-only URLs, non-HTTPS URLs, markup, and non-YouTube hosts are rejected.
+ * A direct video URL may include playlist context; only its single video ID is stored.
  */
 export function normalizeYouTubeVideoId(input: unknown): string | null {
   if (typeof input !== 'string') {
@@ -38,10 +39,6 @@ export function normalizeYouTubeVideoId(input: unknown): string | null {
     throw new Error('Use a secure YouTube watch or share URL.');
   }
 
-  if (url.searchParams.has('list') || url.searchParams.has('listType')) {
-    throw new Error('Playlist URLs are not supported; enter a single-video YouTube link.');
-  }
-
   const host = url.hostname.toLowerCase();
   let videoId: string | null = null;
 
@@ -51,7 +48,7 @@ export function normalizeYouTubeVideoId(input: unknown): string | null {
   } else if (ALLOWED_YOUTUBE_HOSTS.has(host)) {
     if (url.pathname === '/watch') {
       const values = url.searchParams.getAll('v');
-      if (values.length === 1 && !url.searchParams.has('list') && !url.searchParams.has('listType')) {
+      if (values.length === 1) {
         videoId = values[0];
       }
     } else {
@@ -61,7 +58,7 @@ export function normalizeYouTubeVideoId(input: unknown): string | null {
   }
 
   if (!videoId || !VIDEO_ID_PATTERN.test(videoId)) {
-    throw new Error('Enter a single-video YouTube watch or share URL (not an embed or playlist URL).');
+    throw new Error('Enter a single-video YouTube watch or share URL; playlist-only and embed URLs are not supported.');
   }
 
   return videoId;

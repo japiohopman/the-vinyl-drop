@@ -67,6 +67,9 @@ describe('YouTube release preview (#226)', () => {
   describe('server-side URL normalization', () => {
     it('normalizes regular watch, short share, Shorts and live URLs to one video ID', () => {
       expect(normalizeYouTubeVideoId('https://www.youtube.com/watch?v=' + validId)).toBe(validId);
+      expect(normalizeYouTubeVideoId('https://www.youtube.com/watch?v=b4FxjBAjn_s&list=OLAK5uy_nBfwErsGbb7yzzdJhsBXX4qHHu2OHxzDs')).toBe('b4FxjBAjn_s');
+      expect(normalizeYouTubeVideoId('https://www.youtube.com/watch?v=' + validId + '&list=PL123')).toBe(validId);
+      expect(normalizeYouTubeVideoId('https://youtu.be/' + validId + '?si=share-token&list=PL123')).toBe(validId);
       expect(normalizeYouTubeVideoId('https://youtu.be/' + validId + '?si=share-token')).toBe(validId);
       expect(normalizeYouTubeVideoId('https://m.youtube.com/shorts/' + validId)).toBe(validId);
       expect(normalizeYouTubeVideoId('https://www.youtube.com/live/' + validId)).toBe(validId);
@@ -83,8 +86,8 @@ describe('YouTube release preview (#226)', () => {
       'http://youtu.be/' + validId,
       'https://youtube.com/embed/' + validId,
       'https://youtube.com/watch?v=bad',
-      'https://youtube.com/watch?v=' + validId + '&list=PL123',
-      'https://youtu.be/' + validId + '?si=share-token&list=PL123',
+      'https://www.youtube.com/playlist?list=PL123',
+      'https://www.youtube.com/watch?list=PL123',
       '<iframe src="https://youtube.com/embed/' + validId + '"></iframe>',
       'https://youtu.be/' + validId + '/extra',
       'https://youtube.com/watch?v=' + validId + '&v=' + validId,
