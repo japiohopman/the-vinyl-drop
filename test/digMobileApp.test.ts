@@ -418,7 +418,7 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await crateImage.getAttribute('alt')).toBe('');
 
     const crateGeometry = await page.evaluate(() => {
-      const source = document.querySelector('[data-dig-crate-source') as HTMLElement | null;
+      const source = document.querySelector('[data-dig-crate-source]') as HTMLElement | null;
       const image = source?.querySelector('img') as HTMLImageElement | null;
       const stack = document.querySelector('[data-dig-stack]') as HTMLElement | null;
       if (!source || !image || !stack) return null;
