@@ -206,7 +206,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(htmlEnabled).toContain('data-messaging-widget-trigger');
     expect(htmlEnabled).toContain('<button type="button" class="desktop-you-menu-item messaging-widget-trigger"');
     expect(htmlEnabled).toContain('<button type="button" class="mobile-you-action-link messaging-widget-trigger"');
-    expect(htmlEnabled).toContain('mobile-you-action-icon');
+    const mobileMessagingButton = htmlEnabled.match(/<button type="button" class="mobile-you-action-link messaging-widget-trigger"[\\s\\S]*?<\\/button>/);
+    expect(mobileMessagingButton?.[0]).toContain('mobile-you-action-icon');
     expect(htmlEnabled).toContain('Messages');
 
     const htmlDisabled = await renderNav({
@@ -931,19 +932,52 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
             backdropColor: browser.window.getComputedStyle(backdrop).backgroundColor,
             panelRadius: browser.window.getComputedStyle(panel).borderRadius,
             touchAction: browser.window.getComputedStyle(surface).touchAction,
+            panelTouchAction: browser.window.getComputedStyle(panel).touchAction,
             aboutTranslateX: matrixValues.length === 6 ? matrixValues[4] : 0,
           };
         });
 
         expect(presentation.backdropColor).toBe('rgba(18, 18, 18, 0.48)');
         expect(presentation.panelRadius).toBe('5px');
-        expect(presentation.touchAction).toBe('pan-y');
+        expect(presentation.touchAction).toBe('pan-y pinch-zoom');
+        expect(presentation.panelTouchAction).toBe('pan-y pinch-zoom');
         expect(presentation.aboutTranslateX).toBeCloseTo(0, 1);
         expect(presentation.documentWidth).toBeLessThanOrEqual(presentation.viewportWidth);
         expect(presentation.panelLeft).toBeGreaterThanOrEqual(0);
         expect(presentation.panelRight).toBeLessThanOrEqual(presentation.viewportWidth);
         expect(await page.locator('.mobile-you-action-icon').count()).toBe(3);
       }
+
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.setContent(html);
+      await page.click('#mobile-you-trigger');
+      await page.waitForTimeout(190);
+      await page.click('#mobile-you-about-trigger');
+      await page.waitForFunction(() => {
+        const aboutView = document.querySelector('#mobile-you-about-view');
+        if (!aboutView) return false;
+        const transform = window.getComputedStyle(aboutView).transform;
+        const matrix = transform.match(/^matrix\\(([^)]+)\\)$/);
+        if (!matrix) return transform === 'none';
+        const values = matrix[1].split(',').map(Number);
+        return values.length === 6 && Math.abs(values[4]) < 0.5 && Math.abs(values[5]) < 0.5;
+      });
+      const viewAxes = await page.evaluate(() => {
+        const mainView = document.querySelector('#mobile-you-main-view');
+        const aboutView = document.querySelector('#mobile-you-about-view');
+        if (!mainView || !aboutView) throw new Error('Me/About views missing');
+        const getAxes = (element: Element) => {
+          const transform = window.getComputedStyle(element).transform;
+          const matrix = transform.match(/^matrix\\(([^)]+)\\)$/);
+          if (!matrix) return { x: 0, y: 0 };
+          const values = matrix[1].split(',').map(Number);
+          return { x: values.length === 6 ? values[4] : 0, y: values.length === 6 ? values[5] : 0 };
+        };
+        return { main: getAxes(mainView), about: getAxes(aboutView) };
+      });
+      expect(viewAxes.main.x).toBeCloseTo(0, 1);
+      expect(viewAxes.about.x).toBeCloseTo(0, 1);
+      expect(viewAxes.about.y).toBeCloseTo(0, 1);
 
       await page.setViewportSize({ width: 768, height: 812 });
       await page.setContent(html);
