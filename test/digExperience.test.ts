@@ -472,10 +472,20 @@ describe('Dig photo-role contract', () => {
   it('keeps cast shadow on the frame and off both animated sleeve faces', () => {
     const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     const mobileCss = fs.readFileSync(path.join(process.cwd(), 'public/css/dig-mobile-crate.css'), 'utf8');
-    const faceRule = rawCss.match(/\\.dig-sleeve-face\\s*\\{([^}]*)\\}/)?.[1] ?? '';
-    const edgeRule = rawCss.match(/\\.dig-sleeve-edge\\s*\\{([^}]*)\\}/)?.[1] ?? '';
+    const faceRuleStart = rawCss.indexOf('.dig-sleeve-face {');
+    const faceRuleEnd = rawCss.indexOf('\n}', faceRuleStart);
+    const faceRule = faceRuleStart >= 0 && faceRuleEnd >= 0
+      ? rawCss.slice(faceRuleStart, faceRuleEnd)
+      : '';
+    const edgeRuleStart = rawCss.indexOf('.dig-sleeve-edge {');
+    const edgeRuleEnd = rawCss.indexOf('\n}', edgeRuleStart);
+    const edgeRule = edgeRuleStart >= 0 && edgeRuleEnd >= 0
+      ? rawCss.slice(edgeRuleStart, edgeRuleEnd)
+      : '';
 
-    expect(faceRule).not.toMatch(/box-shadow\\s*:/);
+    expect(faceRuleStart).toBeGreaterThanOrEqual(0);
+    expect(faceRule).not.toContain('box-shadow:');
+    expect(edgeRuleStart).toBeGreaterThanOrEqual(0);
     expect(edgeRule).toContain('pointer-events: none;');
     expect(mobileCss).toContain('filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));');
   });
