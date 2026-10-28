@@ -86,10 +86,12 @@
    * visible edges and leaving room for the cover's corners during 3D flips.
    */
   /*
-   * Only the interaction region must allow the rotating sleeve to move freely.
-   * Keep the app shell, viewer and explorer clipped so they cannot spill over
+   * Let the crate artwork reach the viewport edges and let the sleeve rotate.
+   * The outer responsive/page/main-content shells remain clipped, protecting
    * the fixed mobile navigation at the bottom of the screen.
    */
+  body.mobile-dig-session .dig-responsive-mobile .dig-explorer,
+  body.mobile-dig-session .dig-responsive-mobile .dig-viewer,
   body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-interaction {
     overflow: visible;
   }
