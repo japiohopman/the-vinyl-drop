@@ -2176,7 +2176,9 @@ select.form-control {
   pointer-events: none;
 }
 
+/* The cardboard core and four side walls provide thickness without a cast sleeve shadow. */
 .dig-sleeve-card {
+  --dig-sleeve-thickness: 4px;
   position: relative;
   z-index: 1;
   width: 100%;
@@ -2189,6 +2191,49 @@ select.form-control {
   transform: rotateY(180deg);
 }
 
+.dig-sleeve-edge {
+  position: absolute;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, #eee6d8 0%, #c8bdad 48%, #a69a89 100%);
+}
+
+.dig-sleeve-edge-top,
+.dig-sleeve-edge-bottom {
+  left: 0;
+  width: 100%;
+  height: var(--dig-sleeve-thickness);
+  background: linear-gradient(90deg, #eee6d8 0%, #c8bdad 48%, #a69a89 100%);
+}
+
+.dig-sleeve-edge-top {
+  top: calc(var(--dig-sleeve-thickness) / -2);
+  transform: rotateX(90deg);
+}
+
+.dig-sleeve-edge-bottom {
+  bottom: calc(var(--dig-sleeve-thickness) / -2);
+  transform: rotateX(90deg);
+}
+
+.dig-sleeve-edge-left,
+.dig-sleeve-edge-right {
+  top: 0;
+  width: var(--dig-sleeve-thickness);
+  height: 100%;
+}
+
+.dig-sleeve-edge-left {
+  left: calc(var(--dig-sleeve-thickness) / -2);
+  transform: rotateY(90deg);
+}
+
+.dig-sleeve-edge-right {
+  right: calc(var(--dig-sleeve-thickness) / -2);
+  transform: rotateY(90deg);
+}
+
 .dig-sleeve-face {
   position: absolute;
   inset: 0;
@@ -2199,18 +2244,17 @@ select.form-control {
   overflow: hidden;
   border: var(--border-thick);
   background: var(--color-white);
-  box-shadow: 6px 8px 0 rgba(26, 26, 26, .14);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
 .dig-sleeve-face-front {
   z-index: 2;
-  transform: rotateY(0deg);
+  transform: translateZ(calc(var(--dig-sleeve-thickness) / 2));
 }
 
 .dig-sleeve-face-back {
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(calc(var(--dig-sleeve-thickness) / 2));
 }
 
 .dig-sleeve-image {
