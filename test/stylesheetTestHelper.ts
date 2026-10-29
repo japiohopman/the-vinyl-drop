@@ -12,6 +12,7 @@ const orderedMainStylesheetSegments = [
   'listing-detail.css',
   'my-listings.css',
   'style-after-features.css',
+  'listing-interactions.css',
 ];
 
 export function readReconstructedMainStylesheet(): string {
