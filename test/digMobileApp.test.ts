@@ -256,7 +256,7 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
-  it('keeps the cardboard sleeve edges hinged to the cover during both horizontal flips', async () => {
+  it('keeps all four cardboard walls attached through horizontal flips and vertical deck tilt', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);
 
@@ -284,7 +284,9 @@ describe('Mobile Dig app-like viewport', () => {
         return new DOMMatrixReadOnly(getComputedStyle(face).transform).m43;
       };
       const stage = card.closest('.dig-sleeve-stage');
-      if (!stage) throw new Error('Sleeve has no stage');
+      const interaction = card.closest('.dig-sleeve-interaction');
+      const slide = card.closest('[data-dig-slide]');
+      if (!stage || !interaction || !slide) throw new Error('Sleeve is missing a 3D context ancestor');
       const stack = card.closest('.dig-crate-stack');
       if (!stack) throw new Error('Sleeve has no crate stack');
       const stackStyle = getComputedStyle(stack);
@@ -318,6 +320,12 @@ describe('Mobile Dig app-like viewport', () => {
         stageHeight: stage.clientHeight,
         transform: getComputedStyle(sleeveCard).transform,
         flipped: sleeveCard.classList.contains('is-flipped'),
+        threeDContext: {
+          slide: getComputedStyle(slide).transformStyle,
+          interaction: getComputedStyle(interaction).transformStyle,
+          stage: getComputedStyle(stage).transformStyle,
+          card: getComputedStyle(sleeveCard).transformStyle,
+        },
         faceDepths: {
           front: faceDepth('.dig-sleeve-face-front'),
           back: faceDepth('.dig-sleeve-face-back'),
@@ -358,39 +366,42 @@ describe('Mobile Dig app-like viewport', () => {
       expect(width).toBeCloseTo(geometry.stageWidth * 0.92, 0);
       expect(height).toBeCloseTo(geometry.stageHeight * 0.90, 0);
 
-      // Each wall stays 3px thick but its projected center sits 0.5px inside
-      // the cover perimeter, allowing the face plane to occlude it face-on.
+      // Each wall is hinged at the front-cover perimeter and spans the 3px
+      // depth toward the back; it is not moved inside the artwork silhouette.
       expect(edges.top.left).toBe(0);
-      expect(edges.top.top).toBeCloseTo(-1, 1);
+      expect(edges.top.top).toBeCloseTo(-3, 1);
       expect(edges.top.width).toBe(width);
       expect(edges.top.height).toBe(3);
-      expect(edges.top.top + edges.top.height / 2).toBeCloseTo(0.5, 1);
       expect(edges.top.originX).toBeCloseTo(width / 2, 0);
-      expect(edges.top.originY).toBeCloseTo(1.5, 1);
+      expect(edges.top.originY).toBeCloseTo(3, 1);
 
       expect(edges.bottom.left).toBe(0);
-      expect(edges.bottom.top).toBeCloseTo(height - 2, 1);
+      expect(edges.bottom.top).toBeCloseTo(height, 1);
       expect(edges.bottom.width).toBe(width);
       expect(edges.bottom.height).toBe(3);
-      expect(edges.bottom.top + edges.bottom.height / 2).toBeCloseTo(height - 0.5, 1);
       expect(edges.bottom.originX).toBeCloseTo(width / 2, 0);
-      expect(edges.bottom.originY).toBeCloseTo(1.5, 1);
+      expect(edges.bottom.originY).toBeCloseTo(0, 1);
 
-      expect(edges.left.left).toBeCloseTo(-1, 1);
+      expect(edges.left.left).toBeCloseTo(-3, 1);
       expect(edges.left.top).toBe(0);
       expect(edges.left.width).toBe(3);
-      expect(edges.left.left + edges.left.width / 2).toBeCloseTo(0.5, 1);
       expect(edges.left.height).toBe(height);
-      expect(edges.left.originX).toBeCloseTo(1.5, 1);
+      expect(edges.left.originX).toBeCloseTo(3, 1);
       expect(edges.left.originY).toBeCloseTo(height / 2, 0);
 
-      expect(edges.right.left).toBeCloseTo(width - 2, 1);
+      expect(edges.right.left).toBeCloseTo(width, 1);
       expect(edges.right.top).toBe(0);
       expect(edges.right.width).toBe(3);
-      expect(edges.right.left + edges.right.width / 2).toBeCloseTo(width - 0.5, 1);
       expect(edges.right.height).toBe(height);
-      expect(edges.right.originX).toBeCloseTo(1.5, 1);
+      expect(edges.right.originX).toBeCloseTo(0, 1);
       expect(edges.right.originY).toBeCloseTo(height / 2, 0);
+
+      expect(geometry.threeDContext).toEqual({
+        slide: 'preserve-3d',
+        interaction: 'preserve-3d',
+        stage: 'preserve-3d',
+        card: 'preserve-3d',
+      });
 
       for (const side of ['top', 'right', 'bottom', 'left'] as const) {
         expect(edges[side].transform).not.toBe('none');
@@ -471,6 +482,24 @@ describe('Mobile Dig app-like viewport', () => {
     geometry = await readGeometry();
     expectHinges(geometry, false);
     expect(geometry.flipped).toBe(false);
+
+    // The card also moves through the vertical deck arc as a 3D object. The
+    // stage must not flatten the top/bottom walls before the ancestor rotates.
+    const interaction = page.locator('[data-dig-slide].is-active .dig-sleeve-interaction');
+    await interaction.evaluate((element) => {
+      const node = element as HTMLElement;
+      node.style.transition = 'none';
+      node.style.transform = 'translate3d(0, 0, -60px) rotateX(38deg)';
+    });
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(geometry.threeDContext.stage).toBe('preserve-3d');
+    expect(await interaction.evaluate((element) => getComputedStyle(element).transform)).not.toBe('none');
+    await interaction.evaluate((element) => {
+      const node = element as HTMLElement;
+      node.style.transform = '';
+      node.style.transition = '';
+    });
   });
 
   it('cancels a pending flip-settle timer before a second horizontal drag', async () => {
