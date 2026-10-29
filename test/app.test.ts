@@ -103,7 +103,7 @@ describe('App Routes and Error Handling', () => {
       ];
 
       for (const assetUrl of routeStylesheets) {
-        const cssPath = path.join(process.cwd(), 'public', assetUrl.replace(/^\\/+/, ''));
+        const cssPath = path.join(process.cwd(), 'public', assetUrl.slice(1));
         const expectedVersion = createHash('sha256')
           .update(readFileSync(cssPath))
           .digest('hex')
@@ -111,11 +111,10 @@ describe('App Routes and Error Handling', () => {
         const response = await request(app).get(`${assetUrl}?v=${expectedVersion}`);
 
         expect(response.status).toBe(200);
-        expect(response.headers['content-type']).toMatch(/text\\/css/);
+        expect(response.headers['content-type']).toMatch(/text\/css/);
         expect(response.headers['cache-control']).toBe('public, max-age=31536000, immutable');
       }
     });
-  });
 
   describe('GET /privacy', () => {
     it('renders the current privacy notice and links to it from the footer', async () => {
