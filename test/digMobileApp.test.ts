@@ -1019,7 +1019,7 @@ describe('Mobile Dig app-like viewport', () => {
         pseudoShadow: getComputedStyle(stage, '::before').boxShadow,
         explorerBackground: getComputedStyle(document.querySelector('.dig-explorer')!).backgroundColor,
         metaBackground: getComputedStyle(meta).backgroundColor,
-        metaBackdropFilter: getComputedStyle(meta).backdropFilter,
+        metaBackdropFilter: getComputedStyle(meta).getPropertyValue('backdrop-filter'),
         metaBorderTopWidth: getComputedStyle(meta).borderTopWidth,
         metaBorderTopColor: getComputedStyle(meta).borderTopColor,
         priceBackgroundImage: getComputedStyle(price).backgroundImage,
@@ -1134,6 +1134,7 @@ describe('Mobile Dig app-like viewport', () => {
       const trigger = page.locator('[data-dig-filter-open]');
       const dialog = page.locator('[data-dig-filter-dialog]');
       await trigger.click();
+      await dialog.locator('.dig-crate-filter-actions').scrollIntoViewIfNeeded();
 
       const geometry = await page.evaluate(() => {
         const dialogElement = document.querySelector('[data-dig-filter-dialog]') as HTMLDialogElement | null;
