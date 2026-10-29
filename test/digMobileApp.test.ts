@@ -1019,6 +1019,9 @@ describe('Mobile Dig app-like viewport', () => {
         pseudoShadow: getComputedStyle(stage, '::before').boxShadow,
         explorerBackground: getComputedStyle(document.querySelector('.dig-explorer')!).backgroundColor,
         metaBackground: getComputedStyle(meta).backgroundColor,
+        metaBackdropFilter: getComputedStyle(meta).backdropFilter,
+        metaBorderTopWidth: getComputedStyle(meta).borderTopWidth,
+        metaBorderTopColor: getComputedStyle(meta).borderTopColor,
         priceBackgroundImage: getComputedStyle(price).backgroundImage,
         listingLabel: listingLink.getAttribute('aria-label'),
         listingText: listingLink.textContent?.trim(),
@@ -1031,7 +1034,10 @@ describe('Mobile Dig app-like viewport', () => {
     expect(visualTreatment!.pseudoDisplay).toBe('none');
     expect(visualTreatment!.pseudoShadow).toBe('none');
     expect(visualTreatment!.explorerBackground).toBe('rgb(232, 225, 213)');
-    expect(visualTreatment!.metaBackground).toBe('rgba(250, 248, 242, 0.98)');
+    expect(visualTreatment!.metaBackground).toBe('rgba(243, 239, 231, 0.82)');
+    expect(visualTreatment!.metaBackdropFilter).toContain('blur(12px)');
+    expect(visualTreatment!.metaBorderTopWidth).toBe('2px');
+    expect(visualTreatment!.metaBorderTopColor).toBe('rgba(246, 15, 75, 0.76)');
     expect(visualTreatment!.priceBackgroundImage).toContain('/assets/UI/price_tag.svg');
     expect(visualTreatment!.listingLabel).toContain('Open listing for');
     expect(visualTreatment!.listingText).toBe('');
@@ -1070,11 +1076,20 @@ describe('Mobile Dig app-like viewport', () => {
     const sheetGeometry = await dialog.evaluate((element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return { position: style.position, top: rect.top, bottom: rect.bottom, height: rect.height };
+      const navigation = document.querySelector('.mobile-bottom-nav');
+      if (!navigation) throw new Error('Mobile bottom navigation is missing from the test page');
+      const navigationRect = navigation.getBoundingClientRect();
+      return {
+        position: style.position,
+        top: rect.top,
+        bottom: rect.bottom,
+        height: rect.height,
+        navigationTop: navigationRect.top,
+      };
     });
     expect(sheetGeometry.position).toBe('fixed');
-    expect(Math.abs(sheetGeometry.bottom - 812)).toBeLessThanOrEqual(1);
     expect(sheetGeometry.height).toBeGreaterThan(0);
+    expect(sheetGeometry.bottom).toBeLessThanOrEqual(sheetGeometry.navigationTop - 7);
     expect(await dialog.locator('form').getAttribute('action')).toBe('/dig');
     expect(await dialog.locator('input[name="q"]').inputValue()).toBe('De La Soul');
     expect(await dialog.locator('select[name="genre"]').inputValue()).toBe('Hip Hop');
@@ -1106,6 +1121,53 @@ describe('Mobile Dig app-like viewport', () => {
     });
     expect(await dialog.isVisible()).toBe(false);
     expect(await trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('keeps the mobile filter sheet and actions above fixed navigation on short and standard phones', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+
+    for (const viewport of [
+      { width: 320, height: 640 },
+      { width: 375, height: 812 },
+    ]) {
+      await loadPage(viewport.width, viewport.height);
+      const trigger = page.locator('[data-dig-filter-open]');
+      const dialog = page.locator('[data-dig-filter-dialog]');
+      await trigger.click();
+
+      const geometry = await page.evaluate(() => {
+        const dialogElement = document.querySelector('[data-dig-filter-dialog]') as HTMLDialogElement | null;
+        const navigation = document.querySelector('.mobile-bottom-nav') as HTMLElement | null;
+        const actions = document.querySelector('.dig-crate-filter-actions') as HTMLElement | null;
+        if (!dialogElement || !navigation || !actions) throw new Error('Filter dialog, actions or navigation missing');
+        const dialogRect = dialogElement.getBoundingClientRect();
+        const navigationRect = navigation.getBoundingClientRect();
+        const actionsRect = actions.getBoundingClientRect();
+        return {
+          viewportHeight: window.innerHeight,
+          dialogTop: dialogRect.top,
+          dialogBottom: dialogRect.bottom,
+          navigationTop: navigationRect.top,
+          navigationHeight: navigationRect.height,
+          actionsBottom: actionsRect.bottom,
+          navigationZIndex: getComputedStyle(navigation).zIndex,
+        };
+      });
+
+      expect(geometry.dialogTop).toBeGreaterThanOrEqual(0);
+      expect(geometry.dialogBottom).toBeLessThanOrEqual(geometry.navigationTop - 7);
+      expect(geometry.actionsBottom).toBeLessThanOrEqual(geometry.navigationTop - 7);
+      expect(geometry.dialogBottom).toBeLessThan(geometry.viewportHeight);
+      expect(geometry.navigationHeight).toBeGreaterThanOrEqual(60);
+      expect(geometry.navigationZIndex).toBe('200');
+      expect(await page.locator('.mobile-bottom-nav').isVisible()).toBe(true);
+
+      await dialog.locator('[data-dig-filter-cancel]').click();
+      await page.waitForFunction(() => {
+        const currentDialog = document.querySelector('[data-dig-filter-dialog]');
+        return !(currentDialog instanceof HTMLDialogElement) || !currentDialog.open;
+      });
+    }
   });
 
   it('closes the mobile filter sheet immediately when reduced motion is requested', async () => {
