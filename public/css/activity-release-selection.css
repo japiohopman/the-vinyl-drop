@@ -1,0 +1,372 @@
+/* Activity */
+.activity-container {
+  width: 100%;
+  max-width: 900px;
+  margin: var(--space-6) auto;
+  padding: 0 var(--space-4);
+}
+.activity-header {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-thick);
+}
+.activity-header h1 {
+  font-size: var(--font-size-3xl);
+  margin-bottom: var(--space-2);
+}
+.activity-header p {
+  color: var(--color-ink-muted);
+}
+.activity-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.activity-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--color-white);
+  border: var(--border-thick);
+}
+.activity-artwork-link {
+  display: block;
+  width: 88px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--color-paper);
+  border: var(--border-thin);
+}
+.activity-record-artwork {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.activity-record-artwork[hidden] {
+  display: none !important;
+}
+.activity-artwork-terminal-fallback {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  height: 100%;
+  padding: var(--space-2);
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-2xs);
+  line-height: 1.2;
+  text-align: center;
+}
+.activity-artwork-terminal-fallback[hidden] {
+  display: none !important;
+}
+.activity-artwork-terminal-mark {
+  position: relative;
+  display: block;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+.activity-artwork-terminal-mark::after {
+  position: absolute;
+  inset: 5px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  content: "";
+}
+.activity-card-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.activity-card-body { min-width: 0; }
+.activity-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.activity-actor-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.activity-actor {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.activity-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  overflow: hidden;
+  border: var(--border-thin);
+  border-radius: 50%;
+  background: var(--color-paper);
+}
+.activity-avatar-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.activity-avatar-image[hidden],
+.activity-avatar-fallback[hidden] { display: none !important; }
+.activity-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+.activity-time {
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+.activity-release-info { margin-top: var(--space-2); }
+.activity-release-link { display: inline-block; color: inherit; text-decoration: none; }
+.activity-release-link h2 {
+  margin: 0 0 2px;
+  font-size: var(--font-size-lg);
+  overflow-wrap: anywhere;
+}
+.activity-release-artist {
+  color: var(--color-rust-accessible);
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+}
+.activity-comment {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-paper);
+  border-left: 3px solid var(--color-ink);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+.activity-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.activity-price,
+.private-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  padding: 2px 8px;
+  border: var(--border-thin);
+  background: var(--color-white);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+}
+.private-badge {
+  border-style: dashed;
+  color: var(--color-ink-muted);
+}
+.activity-icon-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: var(--border-thick);
+  background: var(--color-paper);
+}
+.activity-empty-state {
+  padding: var(--space-12) var(--space-6);
+  text-align: center;
+  border: var(--border-thick);
+  background: var(--color-white);
+}
+.activity-empty-icon { margin-bottom: var(--space-4); }
+.activity-empty-state h2 { margin-bottom: var(--space-2); font-size: var(--font-size-xl); }
+.activity-empty-state p {
+  max-width: 480px;
+  margin: 0 auto var(--space-6);
+  color: var(--color-ink-muted);
+}
+
+/* Release selection: keep the artwork and action controls usable on narrow screens. */
+.select-release-search-form { min-width: 0; }
+.select-release-result { min-width: 0; }
+.select-release-result-content { min-width: 0; }
+.select-release-artwork {
+  display: block;
+  width: 60px;
+  height: 60px;
+  flex: 0 0 60px;
+  object-fit: contain;
+  background: var(--color-white);
+  border: var(--border-thin);
+}
+.select-release-result h3,
+.select-release-result p { overflow-wrap: anywhere; }
+.select-release-result > form,
+.select-release-result > a { flex-shrink: 0; }
+
+@media (max-width: 767px) {
+  .activity-container {
+    margin-top: var(--space-4);
+    padding-right: var(--space-3);
+    padding-left: var(--space-3);
+  }
+  .activity-header h1 { font-size: var(--font-size-xl); }
+
+  /* Keep the Activity feed as one readable, full-width stream on mobile. */
+  .activity-feed-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .activity-card {
+    position: relative;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: var(--space-3);
+    padding: var(--space-3);
+  }
+
+  .activity-artwork-link {
+    grid-column: 1;
+    grid-row: 1;
+    width: 64px;
+    margin-bottom: 0;
+  }
+
+  /*
+   * Let the actor/time metadata share the artwork row, then let all release
+   * details span the card. This keeps the card compact without narrowing the
+   * title, artist, optional comment, or price/private state.
+   */
+  .activity-card-content,
+  .activity-card-body {
+    display: contents;
+  }
+
+  .activity-card-header {
+    grid-column: 2;
+    grid-row: 1;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+    margin-bottom: 0;
+    padding-right: 40px;
+  }
+
+  .activity-release-info,
+  .activity-comment,
+  .activity-card-footer {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .activity-release-info { margin-top: 0; }
+
+  /* The grid gap already separates these rows; avoid doubling their margins. */
+  .activity-comment,
+  .activity-card-footer {
+    margin: 0;
+  }
+
+  .activity-icon-badge {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    width: 30px;
+    height: 30px;
+  }
+
+  .activity-actor-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .activity-time { font-size: var(--font-size-3xs); }
+  .activity-actor { font-size: var(--font-size-xs); }
+  .activity-release-link h2 { font-size: var(--font-size-lg); }
+  .activity-release-artist { font-size: var(--font-size-md); }
+  .activity-empty-state { padding: var(--space-8) var(--space-3); }
+
+  .select-release-page {
+    width: 100%;
+    margin: var(--space-4) auto !important;
+    padding: 0 var(--space-3);
+  }
+  .select-release-search-form {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2) !important;
+  }
+  .select-release-search-form input,
+  .select-release-search-form button { width: 100%; min-width: 0; }
+  .select-release-custom-option {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: var(--space-3);
+  }
+  .select-release-custom-option > a { width: 100%; text-align: center; white-space: normal !important; }
+  .select-release-result {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: var(--space-3) !important;
+    padding: var(--space-3) !important;
+  }
+  .select-release-result-content {
+    display: flex !important;
+    align-items: flex-start !important;
+    width: 100%;
+    gap: var(--space-3) !important;
+  }
+  .select-release-result-content > div { min-width: 0; }
+  .select-release-result h3 { font-size: var(--font-size-sm) !important; }
+  .select-release-result p { font-size: var(--font-size-3xs) !important; }
+  .select-release-result > form,
+  .select-release-result > a,
+  .select-release-result > span {
+    display: block;
+    width: 100%;
+  }
+  .select-release-result > form button,
+  .select-release-result > a,
+  .select-release-result > span {
+    text-align: center;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+}
+
+
