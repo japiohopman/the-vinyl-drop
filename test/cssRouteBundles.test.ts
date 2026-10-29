@@ -131,6 +131,9 @@ describe('Route-specific CSS bundles (#252)', () => {
         .toBeLessThan(formRoute.indexOf('/css/style-after-listing-forms.css'));
     }
     expect(listingEdit).toContain('/css/listing-interactions.css');
+    expect(listingEdit.indexOf('/css/style-after-profile-editor.css'))
+      .toBeLessThan(listingEdit.indexOf('/css/listing-interactions.css'));
+    expect(listingEdit).toContain('/css/listing-interactions.css');
     expect(profile).toContain('/css/profile-pages.css');
     expect(publicProfile).toContain('/css/profile-pages.css');
     expect(profileEdit).toContain('/css/profile-editor.css');
@@ -207,7 +210,7 @@ describe('Route-specific CSS bundles (#252)', () => {
       listingComments: routeMetrics([...sharedBundles, 'listing-interactions.css']),
       activity: routeMetrics(['style.css', 'style-after-features.css', 'activity-release-selection.css', ...sharedBundles.slice(2)]),
       selectRelease: routeMetrics(['style.css', 'style-after-features.css', 'activity-release-selection.css', 'style-after-activity.css', 'release-selection-overrides.css', 'style-after-release-selection.css', ...sharedBundles.slice(4)]),
-      listingForms: routeMetrics(['style.css', ...sharedBundles.slice(1, 4), 'listing-forms.css', ...sharedBundles.slice(4)]),
+      listingForms: routeMetrics(['style.css', ...sharedBundles.slice(1, 4), 'listing-forms.css', ...sharedBundles.slice(4), 'listing-interactions.css']),
       profile: routeMetrics([...sharedBundles.slice(0, 5), 'profile-pages.css', ...sharedBundles.slice(5)]),
       profileEdit: routeMetrics([...sharedBundles.slice(0, 5), sharedBundles[5], 'profile-editor.css', sharedBundles[6]]),
     };
