@@ -30,6 +30,7 @@ const VERSIONED_CSS_ASSETS = [
   '/css/profile-editor.css',
   '/css/style-after-profile-editor.css',
   '/css/listing-interactions.css',
+  '/css/listing-detail-polish.css',
   '/css/dig-mobile-crate.css',
   '/fonts/fonts.css',
 ] as const;

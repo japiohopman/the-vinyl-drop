@@ -102,7 +102,7 @@ describe('Route-specific CSS bundles (#252)', () => {
       '/css/style-after-features.css', '/css/style-after-activity.css',
       '/css/style-after-release-selection.css', '/css/style-after-listing-forms.css',
       '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css',
-      '/css/listing-interactions.css',
+      '/css/listing-interactions.css', '/css/listing-detail-polish.css',
     ]);
     expect(listingComments).toEqual([
       ...sharedBundles.map((name) => `/css/${name}`),
@@ -131,6 +131,9 @@ describe('Route-specific CSS bundles (#252)', () => {
         .toBeLessThan(formRoute.indexOf('/css/style-after-listing-forms.css'));
     }
     expect(listingEdit).toContain('/css/listing-interactions.css');
+    expect(listingEdit.indexOf('/css/style-after-profile-editor.css'))
+      .toBeLessThan(listingEdit.indexOf('/css/listing-interactions.css'));
+    expect(listingEdit).toContain('/css/listing-interactions.css');
     expect(profile).toContain('/css/profile-pages.css');
     expect(publicProfile).toContain('/css/profile-pages.css');
     expect(profileEdit).toContain('/css/profile-editor.css');
@@ -147,6 +150,10 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(home).not.toContain('/css/my-listings.css');
     expect(home).not.toContain('/css/listing-detail.css');
     expect(home).not.toContain('/css/listing-interactions.css');
+    expect(home).not.toContain('/css/listing-detail-polish.css');
+    expect(listingComments).not.toContain('/css/listing-detail-polish.css');
+    expect(myListings).not.toContain('/css/listing-detail-polish.css');
+    expect(dig).not.toContain('/css/listing-detail-polish.css');
     expect(dig).not.toContain('/css/activity-release-selection.css');
     expect(dig).not.toContain('/css/profile-pages.css');
     expect(dig).not.toContain('/css/profile-editor.css');
@@ -203,11 +210,11 @@ describe('Route-specific CSS bundles (#252)', () => {
       dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'dig-mobile-session.css', 'dig-mobile-crate.css']),
       browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2)]),
       myListings: routeMetrics(['style.css', 'my-listings.css', ...sharedBundles.slice(1)]),
-      listingDetail: routeMetrics(['style.css', 'listing-detail.css', ...sharedBundles.slice(1), 'listing-interactions.css']),
+      listingDetail: routeMetrics(['style.css', 'listing-detail.css', ...sharedBundles.slice(1), 'listing-interactions.css', 'listing-detail-polish.css']),
       listingComments: routeMetrics([...sharedBundles, 'listing-interactions.css']),
       activity: routeMetrics(['style.css', 'style-after-features.css', 'activity-release-selection.css', ...sharedBundles.slice(2)]),
       selectRelease: routeMetrics(['style.css', 'style-after-features.css', 'activity-release-selection.css', 'style-after-activity.css', 'release-selection-overrides.css', 'style-after-release-selection.css', ...sharedBundles.slice(4)]),
-      listingForms: routeMetrics(['style.css', ...sharedBundles.slice(1, 4), 'listing-forms.css', ...sharedBundles.slice(4)]),
+      listingForms: routeMetrics(['style.css', ...sharedBundles.slice(1, 4), 'listing-forms.css', ...sharedBundles.slice(4), 'listing-interactions.css']),
       profile: routeMetrics([...sharedBundles.slice(0, 5), 'profile-pages.css', ...sharedBundles.slice(5)]),
       profileEdit: routeMetrics([...sharedBundles.slice(0, 5), sharedBundles[5], 'profile-editor.css', sharedBundles[6]]),
     };
