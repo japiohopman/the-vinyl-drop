@@ -19,7 +19,7 @@ const VERSIONED_CSS_ASSETS = [
 
 function getCssAssetVersions(publicDirectory: string): Map<string, string> {
   return new Map(
-    VERSIONED_CSS_ASSETS.map((assetUrl) => {
+    VERSIONED_CSS_ASSETS.map((assetUrl): [string, string] => {
       const assetPath = path.join(publicDirectory, assetUrl.replace(/^\/+/, ''));
       const digest = createHash('sha256')
         .update(readFileSync(assetPath))
