@@ -135,6 +135,7 @@ describe('Responsive disclosure browser behavior', () => {
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/style-after-features.css">
   <link rel="stylesheet" href="/css/activity-release-selection.css">
+  <link rel="stylesheet" href="/css/browse-dig-controls.css">
   <link rel="stylesheet" href="/css/style-after-activity.css">
   <link rel="stylesheet" href="/css/release-selection-overrides.css">
   <link rel="stylesheet" href="/css/style-after-release-selection.css">
