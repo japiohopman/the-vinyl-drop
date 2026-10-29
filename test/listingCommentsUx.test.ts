@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
@@ -90,7 +91,7 @@ const viewLocals = {
 describe('Listing comments UX (#220)', () => {
   jest.setTimeout(30000);
 
-  const stylesheet = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
+  const stylesheet = readFullStylesheetSource();
   const disclosureScript = fs.readFileSync(path.join(__dirname, '../public/js/listing-comments-disclosure.js'), 'utf8');
   const partialPath = path.join(__dirname, '../views/partials/comment-thread.ejs');
   const commentsViewPath = path.join(__dirname, '../views/listings/comments.ejs');
