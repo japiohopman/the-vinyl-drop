@@ -1012,7 +1012,8 @@ describe('Mobile Dig app-like viewport', () => {
       const price = document.querySelector('[data-dig-slide].is-active .dig-price') as HTMLElement | null;
       const listingLink = document.querySelector('[data-dig-slide].is-active .dig-listing-link') as HTMLAnchorElement | null;
       const filterIcon = document.querySelector('[data-dig-filter-open] img') as HTMLImageElement | null;
-      if (!stage || !meta || !price || !listingLink || !filterIcon) return null;
+      const siteHeader = document.querySelector('.site-header') as HTMLElement | null;
+      if (!stage || !meta || !price || !listingLink || !filterIcon || !siteHeader) return null;
       return {
         pseudoContent: getComputedStyle(stage, '::before').content,
         pseudoDisplay: getComputedStyle(stage, '::before').display,
@@ -1027,6 +1028,9 @@ describe('Mobile Dig app-like viewport', () => {
         listingText: listingLink.textContent?.trim(),
         listingIcon: listingLink.querySelector('img')?.getAttribute('src'),
         filterIcon: filterIcon.getAttribute('src'),
+        siteHeaderBackground: getComputedStyle(siteHeader).backgroundColor,
+        siteHeaderBorderBottomWidth: getComputedStyle(siteHeader).borderBottomWidth,
+        siteHeaderBorderBottomColor: getComputedStyle(siteHeader).borderBottomColor,
       };
     });
     expect(visualTreatment).not.toBeNull();
@@ -1038,6 +1042,9 @@ describe('Mobile Dig app-like viewport', () => {
     expect(visualTreatment!.metaBackdropFilter).toContain('blur(12px)');
     expect(visualTreatment!.metaBorderTopWidth).toBe('2px');
     expect(visualTreatment!.metaBorderTopColor).toBe('rgba(246, 15, 75, 0.76)');
+    expect(visualTreatment!.siteHeaderBackground).toBe('rgba(243, 239, 231, 0.92)');
+    expect(visualTreatment!.siteHeaderBorderBottomWidth).toBe('1px');
+    expect(visualTreatment!.siteHeaderBorderBottomColor).toBe('rgba(21, 21, 21, 0.14)');
     expect(visualTreatment!.priceBackgroundImage).toContain('/assets/UI/price_tag.svg');
     expect(visualTreatment!.listingLabel).toContain('Open listing for');
     expect(visualTreatment!.listingText).toBe('');
