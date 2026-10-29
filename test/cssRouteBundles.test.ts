@@ -60,6 +60,8 @@ describe('Route-specific CSS bundles (#252)', () => {
   it('loads only each route’s feature bundles and preserves original stylesheet order', async () => {
     const home = cssLinks(await renderLayout('/'));
     const dig = cssLinks(await renderLayout('/dig'));
+    const browse = cssLinks(await renderLayout('/browse'));
+    const browseDig = cssLinks(await renderLayout('/browse/dig'));
     const myListings = cssLinks(await renderLayout('/listings'));
     const listingDetail = cssLinks(await renderLayout('/listings/example-listing'));
     const listingComments = cssLinks(await renderLayout('/listings/example-listing/comments'));
@@ -75,11 +77,18 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(home).toEqual(sharedBundles.map((name) => `/css/${name}`));
     expect(dig).toEqual([
       '/css/style.css', '/css/dig-experience.css',
-      '/css/style-after-features.css', '/css/style-after-activity.css',
-      '/css/style-after-release-selection.css', '/css/style-after-listing-forms.css',
+      '/css/style-after-features.css', '/css/browse-dig-controls.css', '/css/style-after-activity.css',
+      '/css/style-after-release-selection.css', '/css/dig-mobile-session.css', '/css/style-after-listing-forms.css',
       '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css',
       '/css/dig-mobile-crate.css',
     ]);
+    expect(browse).toEqual([
+      '/css/style.css', '/css/style-after-features.css', '/css/browse-dig-controls.css',
+      '/css/style-after-activity.css', '/css/style-after-release-selection.css',
+      '/css/style-after-listing-forms.css', '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css',
+    ]);
+    expect(browseDig).toContain('/css/browse-dig-controls.css');
+    expect(browseDig).not.toContain('/css/dig-mobile-session.css');
     expect(myListings).toEqual([
       '/css/style.css', '/css/my-listings.css',
       '/css/style-after-features.css', '/css/style-after-activity.css',
@@ -111,6 +120,8 @@ describe('Route-specific CSS bundles (#252)', () => {
     ]);
     expect(selectRelease).not.toContain('/css/listing-detail.css');
     expect(selectRelease).not.toContain('/css/listing-interactions.css');
+    expect(selectRelease).not.toContain('/css/browse-dig-controls.css');
+    expect(selectRelease).not.toContain('/css/dig-mobile-session.css');
     for (const formRoute of [dropNew, listingCreate, listingEdit]) {
       expect(formRoute).toContain('/css/listing-forms.css');
       expect(formRoute.indexOf('/css/listing-forms.css'))
@@ -127,6 +138,8 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(home).not.toContain('/css/activity-release-selection.css');
     expect(home).not.toContain('/css/release-selection-overrides.css');
     expect(home).not.toContain('/css/dig-experience.css');
+    expect(home).not.toContain('/css/browse-dig-controls.css');
+    expect(home).not.toContain('/css/dig-mobile-session.css');
     expect(home).not.toContain('/css/my-listings.css');
     expect(home).not.toContain('/css/listing-detail.css');
     expect(home).not.toContain('/css/listing-interactions.css');
@@ -177,7 +190,8 @@ describe('Route-specific CSS bundles (#252)', () => {
     };
     const after = {
       general: routeMetrics(sharedBundles),
-      dig: routeMetrics(['style.css', 'dig-experience.css', ...sharedBundles.slice(1), 'dig-mobile-crate.css']),
+      dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'dig-mobile-session.css', 'dig-mobile-crate.css']),
+      browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2)]),
       myListings: routeMetrics(['style.css', 'my-listings.css', ...sharedBundles.slice(1)]),
       listingDetail: routeMetrics(['style.css', 'listing-detail.css', ...sharedBundles.slice(1), 'listing-interactions.css']),
       listingComments: routeMetrics([...sharedBundles, 'listing-interactions.css']),
