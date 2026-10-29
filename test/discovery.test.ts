@@ -1,3 +1,4 @@
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import request from 'supertest';
 import fs from 'fs';
@@ -409,7 +410,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('Sign in to post a comment');
       expect(res.text).toContain('id="main-photo-img"');
       expect(res.text).toContain('class="listing-main-photo"');
-      const stylesheet = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+      const stylesheet = readFullStylesheetSource();
       const mainPhotoRule = stylesheet.match(/\.listing-main-photo\s*\{([^}]*)\}/)?.[1] ?? '';
       expect(mainPhotoRule).toContain('object-fit: contain;');
     });
