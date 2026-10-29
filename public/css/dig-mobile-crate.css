@@ -295,8 +295,11 @@
    * The small side/bottom inset and translucent paper surface make it feel like
    * an app surface, without covering the navigation's hit area.
    */
-  .dig-crate-filter-dialog {
+  :root {
     --dig-filter-nav-clearance: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px) + 2px);
+  }
+
+  .dig-crate-filter-dialog {
     position: fixed;
     inset: auto 8px calc(var(--dig-filter-nav-clearance) + 8px);
     box-sizing: border-box;
