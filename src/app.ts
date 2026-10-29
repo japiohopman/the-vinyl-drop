@@ -92,7 +92,7 @@ export function createApp(): Express {
   // and is consumed at the first HTML response; it never grants access.
   app.use((req, res, next) => {
     res.locals.getIconSvg = getIconSvg;
-    res.locals.currentPath = req.path;
+    res.locals.currentPath = req.path === '/' ? '/' : req.path.replace(/\/+$/, '');
     res.locals.messagingEnabled = config.MESSAGING_ENABLED;
     res.locals.betaInviteOnly = isBetaInviteOnlyEnabled() && !req.user;
     res.locals.inviteOnlyAccessMessage = INVITE_ONLY_ACCESS_MESSAGE;

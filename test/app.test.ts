@@ -54,6 +54,24 @@ describe('App Routes and Error Handling', () => {
     });
   });
 
+  describe('GET /dig trailing slash', () => {
+    it('normalizes the route before selecting Dig stylesheets', async () => {
+      (listingService.hasExplicitWhiteLabelInventory as jest.Mock).mockResolvedValue(false);
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [], totalCount: 0, page: 1, limit: 12, totalPages: 1,
+      });
+      (listingService.searchDigListings as jest.Mock).mockResolvedValue({
+        items: [], totalCount: 0, hasMore: false,
+      });
+
+      const response = await request(app).get('/dig/').set('Accept', 'text/html');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toMatch(/href="\/css\/dig-experience\.css\?v=[a-f0-9]{12}"/);
+      expect(response.text).toMatch(/href="\/css\/dig-mobile-session\.css\?v=[a-f0-9]{12}"/);
+    });
+  });
+
   describe('CSS asset caching', () => {
     it('versions stylesheet URLs by content and only immutably caches the matching version', async () => {
       const cssPath = path.join(process.cwd(), 'public/css/style.css');

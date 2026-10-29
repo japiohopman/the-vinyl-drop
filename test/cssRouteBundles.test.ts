@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
@@ -87,6 +88,7 @@ describe('Route-specific CSS bundles (#252)', () => {
       '/css/style-after-activity.css', '/css/style-after-release-selection.css',
       '/css/style-after-listing-forms.css', '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css',
     ]);
+    expect(browseDig).toContain('/css/dig-experience.css');
     expect(browseDig).toContain('/css/browse-dig-controls.css');
     expect(browseDig).not.toContain('/css/dig-mobile-session.css');
     expect(myListings).toEqual([
@@ -128,6 +130,7 @@ describe('Route-specific CSS bundles (#252)', () => {
       expect(formRoute.indexOf('/css/listing-forms.css'))
         .toBeLessThan(formRoute.indexOf('/css/style-after-listing-forms.css'));
     }
+    expect(listingEdit).toContain('/css/listing-interactions.css');
     expect(profile).toContain('/css/profile-pages.css');
     expect(publicProfile).toContain('/css/profile-pages.css');
     expect(profileEdit).toContain('/css/profile-editor.css');
@@ -175,7 +178,13 @@ describe('Route-specific CSS bundles (#252)', () => {
 
     expect(sections.every((position) => position >= 0)).toBe(true);
     expect(sections).toEqual([...sections].sort((a, b) => a - b));
-    expect(Buffer.byteLength(reconstructed)).toBeGreaterThan(190000);
+    expect(Buffer.byteLength(reconstructed)).toBe(195920);
+    const gitBlobSha = createHash('sha1')
+      .update(`blob ${Buffer.byteLength(reconstructed)}\0`)
+      .update(reconstructed)
+      .digest('hex');
+    // Git blob SHA of public/css/style.css immediately before the split.
+    expect(gitBlobSha).toBe('1fc248f5f04462b0c558b78c679f3c6f545d0f31');
   });
 
   it('reports reproducible raw/gzip sizes and validates savings per route', () => {
