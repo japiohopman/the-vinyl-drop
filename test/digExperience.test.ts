@@ -471,7 +471,11 @@ describe('Dig photo-role contract', () => {
     expect(mobileCrateCss).toContain('body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage');
     expect(mobileCrateCss).toContain('inset: 5% 4%;');
     expect(mobileCrateCss).not.toContain('inset: -0.5px;');
-    expect(css).toContain('--dig-sleeve-face-overlap: 0.2px;');
+    expect(css).toContain('--dig-sleeve-cardboard-color: #c2b397;');
+    expect(css).toContain('--dig-sleeve-cardboard-light: #d0c0a2;');
+    expect(css).toContain('--dig-sleeve-cardboard-dark: #80694b;');
+    expect(css).toContain('--dig-sleeve-face-overlap: 0.3px;');
+    expect(css).toContain('background: var(--dig-sleeve-cardboard-color);');
     expect(css).toContain('transform: translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));');
     expect(css).toContain('-webkit-text-size-adjust: none;');
     expect(css).toContain('.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped .dig-sleeve-face-back');
@@ -547,10 +551,11 @@ describe('Dig photo-role contract', () => {
     expect(rawCss).toContain('transform: rotateX(-90deg);');
     expect(rawCss).toContain('transform: rotateY(-90deg);');
     expect(rawCss).toContain('transform: rotateY(90deg);');
-    expect(rawCss).toContain('background: linear-gradient(180deg, #e6d8be 0%, #bba27b 100%);');
-    expect(rawCss).toContain('background: linear-gradient(180deg, #826746 0%, #c5ad88 100%);');
-    expect(rawCss).toContain('background: linear-gradient(90deg, #6b5436 0%, #b79b70 48%, #826746 100%);');
-    expect(rawCss).toContain('background: linear-gradient(90deg, #f1e5cf 0%, #c5ad88 100%);');
+    expect(rawCss).toContain('background: linear-gradient(180deg, var(--dig-sleeve-cardboard-light) 0%, #a99370 100%);');
+    expect(rawCss).toContain('background: linear-gradient(180deg, var(--dig-sleeve-cardboard-dark) 0%, #a18a65 100%);');
+    expect(rawCss).toContain('background: linear-gradient(90deg, #6e593e 0%, #9b8463 48%, var(--dig-sleeve-cardboard-dark) 100%);');
+    expect(rawCss).toContain('background: linear-gradient(90deg, #b6a487 0%, #907956 100%);');
+    expect(mobileCss).toContain('background: var(--dig-sleeve-cardboard-color, #c2b397);');
     expect(mobileCss).toContain('inset: 5% 4%;');
     expect(mobileCss).toContain('width: auto;');
     expect(mobileCss).toContain('height: auto;');
