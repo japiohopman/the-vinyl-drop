@@ -1,3 +1,4 @@
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
@@ -131,7 +132,7 @@ describe('Compact mobile back navigation', () => {
     const listingDetailView = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
     const listingPreviewView = fs.readFileSync(path.join(process.cwd(), 'views/listings/preview.ejs'), 'utf8');
     const releaseSelectView = fs.readFileSync(path.join(process.cwd(), 'views/listings/select-release.ejs'), 'utf8');
-    const mobileStyles = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const mobileStyles = readFullStylesheetSource();
 
     expect(digView).toContain('aria-label="Back to Dig results"');
     expect(digView).toContain('href="<%= browseReturnUrl %>"');
@@ -436,7 +437,7 @@ describe('Dig photo-role contract', () => {
     expect(script).toContain("slide.inert = true");
 
     const view = fs.readFileSync(path.join(process.cwd(), 'views/browse/dig.ejs'), 'utf8');
-    const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const rawCss = readFullStylesheetSource();
     const css = rawCss.replace(/\r\n/g, '\n');
     expect(css).toContain('.dig-sleeve-image');
     expect(css).toContain('.dig-sleeve-edge-top');
@@ -507,7 +508,7 @@ describe('Dig photo-role contract', () => {
   });
 
   it('keeps cast shadow on the frame and off both animated sleeve faces', () => {
-    const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const rawCss = readFullStylesheetSource();
     const mobileCss = fs.readFileSync(path.join(process.cwd(), 'public/css/dig-mobile-crate.css'), 'utf8');
     const faceRuleStart = rawCss.indexOf('.dig-sleeve-face {');
     const faceRuleEnd = rawCss.indexOf('\n}', faceRuleStart);
@@ -811,7 +812,7 @@ describe('GET /dig responsive presentation', () => {
 describe('Responsive release-select surface', () => {
   it('uses the shared artwork fallback and mobile layout hooks for Discogs and local releases', () => {
     const view = fs.readFileSync(path.join(process.cwd(), 'views/listings/select-release.ejs'), 'utf8');
-    const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const css = readFullStylesheetSource();
 
     expect(view).toContain('class="select-release-search-form"');
     expect(view).toContain('class="card select-release-result"');
@@ -827,7 +828,7 @@ describe('Responsive release-select surface', () => {
 describe('Responsive listing page', () => {
   it('keeps the focused listing detail grid within narrow mobile viewports', () => {
     const view = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
-    const rawCss = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+    const rawCss = readFullStylesheetSource();
     const css = rawCss.replace(/\r\n/g, '\n');
 
     expect(view).not.toContain('minmax(320px, 1fr)');
