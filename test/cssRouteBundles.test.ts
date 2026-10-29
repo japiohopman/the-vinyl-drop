@@ -52,6 +52,7 @@ describe('Route-specific CSS bundles (#252)', () => {
     const dig = cssLinks(await renderLayout('/dig'));
     const myListings = cssLinks(await renderLayout('/listings'));
     const listingDetail = cssLinks(await renderLayout('/listings/example-listing'));
+    const listingComments = cssLinks(await renderLayout('/listings/example-listing/comments'));
 
     expect(home).toEqual([
       '/css/style.css',
@@ -72,16 +73,28 @@ describe('Route-specific CSS bundles (#252)', () => {
       '/css/style.css',
       '/css/listing-detail.css',
       '/css/style-after-features.css',
+      '/css/listing-interactions.css',
+    ]);
+    expect(listingComments).toEqual([
+      '/css/style.css',
+      '/css/style-after-features.css',
+      '/css/listing-interactions.css',
     ]);
     expect(home).not.toContain('/css/dig-experience.css');
     expect(home).not.toContain('/css/my-listings.css');
     expect(home).not.toContain('/css/listing-detail.css');
+    expect(home).not.toContain('/css/listing-interactions.css');
     expect(dig).not.toContain('/css/my-listings.css');
     expect(dig).not.toContain('/css/listing-detail.css');
+    expect(dig).not.toContain('/css/listing-interactions.css');
     expect(myListings).not.toContain('/css/dig-experience.css');
     expect(myListings).not.toContain('/css/listing-detail.css');
+    expect(myListings).not.toContain('/css/listing-interactions.css');
     expect(listingDetail).not.toContain('/css/my-listings.css');
-    expect(listingDetail).not.toContain('/css/dig-experience.css');  });
+    expect(listingDetail).not.toContain('/css/dig-experience.css');
+    expect(listingComments).not.toContain('/css/dig-experience.css');
+    expect(listingComments).not.toContain('/css/my-listings.css');
+    expect(listingComments).not.toContain('/css/listing-detail.css');  });
 
   it('retains the original CSS region order when reconstructed for source-level tests', () => {
     const reconstructed = readReconstructedMainStylesheet();
@@ -113,23 +126,24 @@ describe('Route-specific CSS bundles (#252)', () => {
       general: routeMetrics(['style.css', 'style-after-features.css']),
       dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'dig-mobile-crate.css']),
       myListings: routeMetrics(['style.css', 'my-listings.css', 'style-after-features.css']),
-      listingDetail: routeMetrics(['style.css', 'listing-detail.css', 'style-after-features.css']),
+      listingDetail: routeMetrics(['style.css', 'listing-detail.css', 'style-after-features.css', 'listing-interactions.css']),
+      listingComments: routeMetrics(['style.css', 'style-after-features.css', 'listing-interactions.css']),
     };
 
     console.info('[CSS bundle size report #252]', JSON.stringify({
-      before: { shared: baselineShared, dig: baselineDig, myListings: baselineShared, listingDetail: baselineShared },
+      before: { shared: baselineShared, dig: baselineDig, myListings: baselineShared, listingDetail: baselineShared, listingComments: baselineShared },
       after,
       rawBytesSaved: {
         shared: baselineShared.rawBytes - after.general.rawBytes,
         dig: baselineDig.rawBytes - after.dig.rawBytes,
         myListings: baselineShared.rawBytes - after.myListings.rawBytes,
-        listingDetail: baselineShared.rawBytes - after.listingDetail.rawBytes,
+        listingDetail: baselineShared.rawBytes - after.listingDetail.rawBytes,\n        listingComments: baselineShared.rawBytes - after.listingComments.rawBytes,
       },
       gzipBytesSaved: {
         shared: baselineShared.gzipBytes - after.general.gzipBytes,
         dig: baselineDig.gzipBytes - after.dig.gzipBytes,
         myListings: baselineShared.gzipBytes - after.myListings.gzipBytes,
-        listingDetail: baselineShared.gzipBytes - after.listingDetail.gzipBytes,
+        listingDetail: baselineShared.gzipBytes - after.listingDetail.gzipBytes,\n        listingComments: baselineShared.gzipBytes - after.listingComments.gzipBytes,
       },
     }));
 
@@ -138,6 +152,6 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(after.dig.rawBytes).toBeLessThan(baselineDig.rawBytes);
     expect(after.myListings.rawBytes).toBeLessThan(baselineShared.rawBytes);
     expect(after.listingDetail.rawBytes).toBeLessThan(baselineShared.rawBytes);
-    expect(after.listingDetail.gzipBytes).toBeLessThan(baselineShared.gzipBytes);
+    expect(after.listingDetail.gzipBytes).toBeLessThan(baselineShared.gzipBytes);\n    expect(after.listingComments.rawBytes).toBeLessThan(baselineShared.rawBytes);\n    expect(after.listingComments.gzipBytes).toBeLessThan(baselineShared.gzipBytes);
   });
 });
