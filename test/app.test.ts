@@ -94,6 +94,29 @@ describe('App Routes and Error Handling', () => {
     });
   });
 
+    it('versions each extracted route-specific CSS bundle by its own content hash', async () => {
+      const routeStylesheets = [
+        '/css/dig-experience.css',
+        '/css/style-between-features.css',
+        '/css/my-listings.css',
+        '/css/style-after-features.css',
+      ];
+
+      for (const assetUrl of routeStylesheets) {
+        const cssPath = path.join(process.cwd(), 'public', assetUrl.replace(/^\\/+/, ''));
+        const expectedVersion = createHash('sha256')
+          .update(readFileSync(cssPath))
+          .digest('hex')
+          .slice(0, 12);
+        const response = await request(app).get(`${assetUrl}?v=${expectedVersion}`);
+
+        expect(response.status).toBe(200);
+        expect(response.headers['content-type']).toMatch(/text\\/css/);
+        expect(response.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+      }
+    });
+  });
+
   describe('GET /privacy', () => {
     it('renders the current privacy notice and links to it from the footer', async () => {
       const response = await request(app)
