@@ -2,9 +2,9 @@ import fs from 'fs';
 import path from 'path';
 
 /**
- * Reconstruct the original style.css source order for source-level and isolated
- * browser tests. Production HTML loads only the shared segments and the bundle
- * that belongs to its current route.
+ * Reconstruct the original main stylesheet source order for isolated browser
+ * and source-level tests. Production HTML loads route-specific segments only
+ * for their owner routes; concatenation here restores the original cascade.
  */
 const orderedMainStylesheetSegments = [
   'style.css',
@@ -12,6 +12,16 @@ const orderedMainStylesheetSegments = [
   'listing-detail.css',
   'my-listings.css',
   'style-after-features.css',
+  'activity-release-selection.css',
+  'style-after-activity.css',
+  'release-selection-overrides.css',
+  'style-after-release-selection.css',
+  'listing-forms.css',
+  'style-after-listing-forms.css',
+  'profile-pages.css',
+  'style-after-profile-pages.css',
+  'profile-editor.css',
+  'style-after-profile-editor.css',
   'listing-interactions.css',
 ];
 
