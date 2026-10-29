@@ -9,7 +9,7 @@ import path from 'path';
 const orderedMainStylesheetSegments = [
   'style.css',
   'dig-experience.css',
-  'style-between-features.css',
+  'listing-detail.css',
   'my-listings.css',
   'style-after-features.css',
 ];
