@@ -174,7 +174,7 @@
    * not visible as a gap between the photo and the cardboard perimeter.
    */
   .dig-responsive-mobile .dig-sleeve-face-back {
-    background: var(--color-paper);
+    background: var(--dig-sleeve-cardboard-color, #c2b397);
   }
 
   /*
