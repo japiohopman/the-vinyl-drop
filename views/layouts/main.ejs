@@ -30,11 +30,17 @@
   <% if (typeof currentPath !== 'undefined' && (currentPath === '/activity' || currentPath === '/listings/new')) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/activity-release-selection.css') : '/css/activity-release-selection.css' %>">
   <% } %>
+  <% if (typeof currentPath !== 'undefined' && (currentPath === '/dig' || currentPath === '/browse' || currentPath === '/search' || currentPath === '/browse/dig')) { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/browse-dig-controls.css') : '/css/browse-dig-controls.css' %>">
+  <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-activity.css') : '/css/style-after-activity.css' %>">
   <% if (typeof currentPath !== 'undefined' && currentPath === '/listings/new') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/release-selection-overrides.css') : '/css/release-selection-overrides.css' %>">
   <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-release-selection.css') : '/css/style-after-release-selection.css' %>">
+  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-session.css') : '/css/dig-mobile-session.css' %>">
+  <% } %>
   <% if (typeof currentPath !== 'undefined' && (currentPath === '/drop/new' || currentPath === '/listings/create' || new RegExp('^/listings/[^/]+/edit$').test(currentPath))) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-forms.css') : '/css/listing-forms.css' %>">
   <% } %>
