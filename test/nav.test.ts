@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
 import path from 'path';
 import fs from 'fs';
@@ -10,8 +11,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
   jest.setTimeout(30000);
 
   const navTemplatePath = path.join(__dirname, '../views/partials/nav.ejs');
-  const cssPath = path.join(__dirname, '../public/css/style.css');
-  const stylesheetContent = fs.readFileSync(cssPath, 'utf8');
+  const stylesheetContent = readFullStylesheetSource();
   const messagingWidgetScriptContent = fs.readFileSync(path.join(__dirname, '../public/js/messaging-widget.js'), 'utf8');
 
   let browser: Browser;

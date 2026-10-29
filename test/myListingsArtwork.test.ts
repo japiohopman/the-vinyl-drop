@@ -232,6 +232,13 @@ describe('My Listings Artwork Thumbnails (#146)', () => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/my-listings.css">
+  <link rel="stylesheet" href="/css/style-after-features.css">
+  <link rel="stylesheet" href="/css/style-after-activity.css">
+  <link rel="stylesheet" href="/css/style-after-release-selection.css">
+  <link rel="stylesheet" href="/css/style-after-listing-forms.css">
+  <link rel="stylesheet" href="/css/style-after-profile-pages.css">
+  <link rel="stylesheet" href="/css/style-after-profile-editor.css">
 </head>
 <body>
   <main class="main-content container">${bodyHtml}</main>

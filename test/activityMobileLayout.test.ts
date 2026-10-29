@@ -1,5 +1,5 @@
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
-import fs from 'fs';
 import path from 'path';
 import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
@@ -8,7 +8,7 @@ describe('Mobile Activity single-column layout', () => {
   jest.setTimeout(30000);
 
   const viewPath = path.join(__dirname, '../views/activity/index.ejs');
-  const stylesheet = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
+  const stylesheet = readFullStylesheetSource();
 
   let browser: Browser;
   let page: Page;

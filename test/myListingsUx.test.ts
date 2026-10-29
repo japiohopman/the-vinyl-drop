@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
-import fs from 'fs';
 import path from 'path';
 import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
@@ -11,7 +11,7 @@ describe('My Listings UX (#219)', () => {
 
   const headerPath = path.join(__dirname, '../views/partials/header.ejs');
   const listingPath = path.join(__dirname, '../views/listings/index.ejs');
-  const stylesheet = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
+  const stylesheet = readFullStylesheetSource();
   let browser: Browser;
 
   const makeListing = (id: string, status: string) => ({

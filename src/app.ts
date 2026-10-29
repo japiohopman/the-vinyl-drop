@@ -13,6 +13,23 @@ import { getIconSvg } from './app/utils/iconRegistry';
 
 const VERSIONED_CSS_ASSETS = [
   '/css/style.css',
+  '/css/dig-experience.css',
+  '/css/listing-detail.css',
+  '/css/my-listings.css',
+  '/css/style-after-features.css',
+  '/css/activity-release-selection.css',
+  '/css/browse-dig-controls.css',
+  '/css/style-after-activity.css',
+  '/css/release-selection-overrides.css',
+  '/css/style-after-release-selection.css',
+  '/css/dig-mobile-session.css',
+  '/css/listing-forms.css',
+  '/css/style-after-listing-forms.css',
+  '/css/profile-pages.css',
+  '/css/style-after-profile-pages.css',
+  '/css/profile-editor.css',
+  '/css/style-after-profile-editor.css',
+  '/css/listing-interactions.css',
   '/css/dig-mobile-crate.css',
   '/fonts/fonts.css',
 ] as const;
@@ -75,7 +92,7 @@ export function createApp(): Express {
   // and is consumed at the first HTML response; it never grants access.
   app.use((req, res, next) => {
     res.locals.getIconSvg = getIconSvg;
-    res.locals.currentPath = req.path;
+    res.locals.currentPath = req.path === '/' ? '/' : req.path.replace(/\/+$/, '');
     res.locals.messagingEnabled = config.MESSAGING_ENABLED;
     res.locals.betaInviteOnly = isBetaInviteOnlyEnabled() && !req.user;
     res.locals.inviteOnlyAccessMessage = INVITE_ONLY_ACCESS_MESSAGE;

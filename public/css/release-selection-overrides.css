@@ -1,0 +1,135 @@
+/* Compact release selection rows on mobile: metadata and action share one row. */
+@media (max-width: 767px) {
+  .select-release-page {
+    margin-top: var(--space-3) !important;
+  }
+
+  .select-release-search-form {
+    display: flex !important;
+    align-items: stretch;
+    gap: var(--space-1) !important;
+    margin-bottom: var(--space-3) !important;
+  }
+
+  .select-release-search-form input {
+    width: auto !important;
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--space-2) !important;
+    font-size: var(--font-size-sm) !important;
+  }
+
+  .select-release-search-form button {
+    width: auto !important;
+    min-height: 44px;
+    flex: 0 0 auto;
+    padding: 0 var(--space-2) !important;
+    font-size: var(--font-size-xs) !important;
+    white-space: nowrap;
+  }
+
+  .select-release-custom-option {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center !important;
+    gap: var(--space-2) !important;
+    margin-bottom: var(--space-4) !important;
+    padding: var(--space-2) !important;
+  }
+
+  .select-release-custom-option > div {
+    min-width: 0;
+  }
+
+  .select-release-custom-option > div span:first-child {
+    font-size: var(--font-size-xs) !important;
+    line-height: var(--line-height-snug);
+  }
+
+  .select-release-custom-option > div span:last-child {
+    margin-top: var(--space-1);
+    font-size: var(--font-size-3xs) !important;
+    line-height: var(--line-height-snug);
+  }
+
+  .select-release-custom-option > a {
+    width: auto !important;
+    min-height: 44px;
+    max-width: 116px;
+    justify-self: end;
+    padding: var(--space-2) !important;
+    font-size: var(--font-size-3xs) !important;
+    line-height: var(--line-height-snug);
+  }
+
+  .select-release-result {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center !important;
+    gap: var(--space-2) !important;
+    padding: var(--space-2) !important;
+  }
+
+  .select-release-result-content {
+    display: flex !important;
+    align-items: center !important;
+    min-width: 0;
+    width: 100%;
+    gap: var(--space-2) !important;
+  }
+
+  .select-release-artwork {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+  }
+
+  .select-release-result-content > div {
+    min-width: 0;
+  }
+
+  .select-release-result h3 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    margin-bottom: var(--space-1) !important;
+    font-size: var(--font-size-xs) !important;
+    line-height: var(--line-height-snug);
+  }
+
+  .select-release-result p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-size: var(--font-size-3xs) !important;
+    line-height: var(--line-height-snug);
+  }
+
+  .select-release-result > form,
+  .select-release-result > a,
+  .select-release-result > span {
+    display: flex !important;
+    grid-column: 2;
+    align-items: center;
+    justify-self: end;
+    width: auto !important;
+    max-width: 108px;
+    margin: 0;
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  .select-release-result > form button,
+  .select-release-result > a,
+  .select-release-result > span {
+    min-height: 44px;
+    padding: var(--space-2) !important;
+    font-size: var(--font-size-3xs) !important;
+    line-height: var(--line-height-snug);
+    white-space: normal !important;
+    overflow-wrap: normal !important;
+  }
+}
+

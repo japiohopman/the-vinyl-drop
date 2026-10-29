@@ -1,4 +1,5 @@
 /// <reference lib="dom" />
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
@@ -10,8 +11,7 @@ describe('Mobile Dig app-like viewport', () => {
 
   const headerPath = path.join(__dirname, '../views/partials/header.ejs');
   const digPath = path.join(__dirname, '../views/browse/responsive-dig.ejs');
-  const css = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8') +
-    '\n' + fs.readFileSync(path.join(__dirname, '../public/css/dig-mobile-crate.css'), 'utf8');
+  const css = readFullStylesheetSource();
   const digState = fs.readFileSync(path.join(__dirname, '../public/js/dig-state.js'), 'utf8');
   const digMode = fs.readFileSync(path.join(__dirname, '../public/js/dig-mode.js'), 'utf8');
   const digCrateFilter = fs.readFileSync(path.join(__dirname, '../public/js/dig-crate-filter.js'), 'utf8');

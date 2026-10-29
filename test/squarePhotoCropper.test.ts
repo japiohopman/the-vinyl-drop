@@ -1,5 +1,5 @@
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
-import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { chromium, Browser, Page } from 'playwright';
@@ -14,7 +14,7 @@ describe('Square cover photo cropper', () => {
   jest.setTimeout(30000);
 
   const viewPath = path.join(__dirname, '../views/listings/edit.ejs');
-  const stylesheet = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
+  const stylesheet = readFullStylesheetSource();
   const cropperPath = path.join(__dirname, '../public/js/square-photo-cropper.js');
   let browser: Browser;
   let page: Page;

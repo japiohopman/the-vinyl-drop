@@ -56,7 +56,7 @@ Avoid:
 - oversized SaaS hero banners;
 - unnecessary pill-shaped controls.
 
-Borders, structured typography, record photography, and precise spacing establish visual hierarchy. Design tokens and custom CSS live centrally in `public/css/style.css`.
+Borders, structured typography, record photography, and precise spacing establish visual hierarchy. Design tokens and the shared shell begin in `public/css/style.css`; larger route-specific sections are conditionally loaded from adjacent CSS bundles in `views/layouts/main.ejs`, preserving their original cascade order.
 
 ## Color palette tokens
 

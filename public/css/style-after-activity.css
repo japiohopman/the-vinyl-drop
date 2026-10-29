@@ -1,0 +1,188 @@
+/* Compact, disclosure-based mobile shell and browse controls */
+@media (max-width: 767px) {
+  .main-content {
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-4);
+  }
+
+  .site-footer {
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+
+  .footer-container {
+    gap: var(--space-1);
+    align-items: stretch;
+    text-align: left;
+    font-size: var(--font-size-3xs);
+    line-height: var(--line-height-snug);
+  }
+
+  .footer-description {
+    display: none;
+  }
+
+  .footer-links-menu > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 var(--space-1);
+    border-top: 1px solid var(--color-border-subtle);
+    border-bottom: 1px solid var(--color-border-subtle);
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .footer-links-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .footer-links-menu > summary::after {
+    content: "+";
+    font-family: var(--font-mono);
+    font-size: var(--font-size-md);
+  }
+
+  .footer-links-menu[open] > summary::after {
+    content: "−";
+  }
+
+  .footer-links-menu > .footer-links {
+    display: none;
+    flex-direction: column;
+    gap: 0;
+    margin-top: var(--space-1);
+    font-size: var(--font-size-xs);
+  }
+
+  .footer-links-menu[open] > .footer-links {
+    display: flex;
+  }
+
+  .footer-links a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-1);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .footer-copyright {
+    padding-top: var(--space-1);
+    font-size: var(--font-size-3xs);
+  }
+
+  .browse-filter-form {
+    gap: 0;
+    margin-bottom: var(--space-4);
+    padding: var(--space-2);
+  }
+
+  .browse-mobile-filter-panel {
+    gap: 0;
+  }
+
+  .browse-mobile-filter-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-height: 44px;
+    padding: 0 var(--space-2);
+    border: var(--border-thick);
+    border-radius: var(--radius-sm);
+    background: var(--color-white);
+    color: var(--color-ink);
+    font-family: var(--font-display);
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .browse-mobile-filter-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .browse-mobile-filter-summary::after {
+    content: "+";
+    margin-left: 0;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-lg);
+  }
+
+  .browse-mobile-filter-panel[open] > .browse-mobile-filter-summary::after {
+    content: "−";
+  }
+
+  .browse-mobile-filter-status {
+    margin-left: auto;
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-3xs);
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .browse-mobile-filter-content {
+    gap: var(--space-3);
+  }
+
+  .browse-mobile-filter-panel:not([open]) > .browse-mobile-filter-content {
+    display: none;
+  }
+
+  .browse-mobile-filter-panel[open] > .browse-mobile-filter-content {
+    display: flex;
+    padding-top: var(--space-3);
+  }
+
+  .browse-format-chip-row {
+    gap: var(--space-1);
+  }
+
+  .browse-format-chip {
+    min-width: 56px;
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .browse-format-help {
+    font-size: var(--font-size-3xs);
+  }
+
+  .browse-primary-filters {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .browse-secondary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .browse-filter-actions {
+    gap: var(--space-2);
+  }
+
+  .browse-filter-actions .btn {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+
+  .dig-responsive-mobile-header {
+    margin-top: var(--space-2);
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+
+  .dig-responsive-mobile-header h1 {
+    font-size: var(--font-size-xl);
+  }
+}
+
+

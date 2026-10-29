@@ -1,3 +1,4 @@
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import request from 'supertest';
@@ -758,7 +759,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
 
     test('uses one responsive messaging widget for desktop and mobile', async () => {
       const widgetSource = fs.readFileSync(path.join(process.cwd(), 'public/js/messaging-widget.js'), 'utf8');
-      const cssSource = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+      const cssSource = readFullStylesheetSource();
       const navSource = fs.readFileSync(path.join(process.cwd(), 'views/partials/nav.ejs'), 'utf8');
       expect(widgetSource).not.toContain("if (!desktopMedia.matches) return;");
       expect(widgetSource).toContain('window.visualViewport');

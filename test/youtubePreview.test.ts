@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
@@ -36,7 +37,7 @@ describe('YouTube release preview (#226)', () => {
   const headerTemplate = fs.readFileSync(headerPath, 'utf8');
   const navTemplate = fs.readFileSync(navPath, 'utf8');
   const mainLayoutTemplate = fs.readFileSync(mainLayoutPath, 'utf8');
-  const stylesheet = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+  const stylesheet = readFullStylesheetSource();
   const playerScriptPath = path.join(process.cwd(), 'public/js/youtube-preview.js');
   const routeSource = fs.readFileSync(path.join(process.cwd(), 'src/app/routes/listingRoutes.ts'), 'utf8');
   const editTemplate = fs.readFileSync(path.join(process.cwd(), 'views/listings/edit.ejs'), 'utf8');

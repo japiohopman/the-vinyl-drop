@@ -54,6 +54,24 @@ describe('App Routes and Error Handling', () => {
     });
   });
 
+  describe('GET /dig trailing slash', () => {
+    it('normalizes the route before selecting Dig stylesheets', async () => {
+      (listingService.hasExplicitWhiteLabelInventory as jest.Mock).mockResolvedValue(false);
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [], totalCount: 0, page: 1, limit: 12, totalPages: 1,
+      });
+      (listingService.searchDigListings as jest.Mock).mockResolvedValue({
+        items: [], totalCount: 0, hasMore: false,
+      });
+
+      const response = await request(app).get('/dig/').set('Accept', 'text/html');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toMatch(/href="\/css\/dig-experience\.css\?v=[a-f0-9]{12}"/);
+      expect(response.text).toMatch(/href="\/css\/dig-mobile-session\.css\?v=[a-f0-9]{12}"/);
+    });
+  });
+
   describe('CSS asset caching', () => {
     it('versions stylesheet URLs by content and only immutably caches the matching version', async () => {
       const cssPath = path.join(process.cwd(), 'public/css/style.css');
@@ -93,6 +111,41 @@ describe('App Routes and Error Handling', () => {
       expect(unrelatedAssetResponse.headers['cache-control']).not.toContain('max-age=31536000');
     });
   });
+
+    it('versions each extracted route-specific CSS bundle by its own content hash', async () => {
+      const routeStylesheets = [
+        '/css/dig-experience.css',
+        '/css/listing-detail.css',
+        '/css/my-listings.css',
+        '/css/style-after-features.css',
+        '/css/activity-release-selection.css',
+        '/css/browse-dig-controls.css',
+        '/css/style-after-activity.css',
+        '/css/release-selection-overrides.css',
+        '/css/style-after-release-selection.css',
+        '/css/dig-mobile-session.css',
+        '/css/listing-forms.css',
+        '/css/style-after-listing-forms.css',
+        '/css/profile-pages.css',
+        '/css/style-after-profile-pages.css',
+        '/css/profile-editor.css',
+        '/css/style-after-profile-editor.css',
+        '/css/listing-interactions.css',
+      ];
+
+      for (const assetUrl of routeStylesheets) {
+        const cssPath = path.join(process.cwd(), 'public', assetUrl.slice(1));
+        const expectedVersion = createHash('sha256')
+          .update(readFileSync(cssPath))
+          .digest('hex')
+          .slice(0, 12);
+        const response = await request(app).get(`${assetUrl}?v=${expectedVersion}`);
+
+        expect(response.status).toBe(200);
+        expect(response.headers['content-type']).toMatch(/text\/css/);
+        expect(response.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+      }
+    });
 
   describe('GET /privacy', () => {
     it('renders the current privacy notice and links to it from the footer', async () => {
