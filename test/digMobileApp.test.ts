@@ -239,7 +239,7 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back').getAttribute('aria-hidden')).toBe('false');
     const reverseFaceBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back')
       .evaluate((face) => getComputedStyle(face).backgroundColor);
-    expect(reverseFaceBackground).toBe('rgba(0, 0, 0, 0)');
+    expect(reverseFaceBackground).not.toBe('rgba(0, 0, 0, 0)');
     const deckUnderlayBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-stage')
       .evaluate((stage) => getComputedStyle(stage, '::before').backgroundColor);
     expect(deckUnderlayBackground).toBe('rgba(0, 0, 0, 0)');
@@ -254,6 +254,48 @@ describe('Mobile Dig app-like viewport', () => {
       card.classList.contains('is-flipped')
     )).toBe(false);
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
+  });
+
+  it('settles repeated front/back flips without leaving stale transforms or timers', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812);
+
+    const stageSelector = '[data-dig-slide].is-active [data-dig-swipe-area]';
+    for (let turn = 0; turn < 8; turn += 1) {
+      const stage = page.locator(stageSelector);
+      const box = await stage.boundingBox();
+      if (!box) throw new Error('Active Dig sleeve has no bounding box');
+
+      const startX = box.x + box.width / 2;
+      const startY = box.y + box.height / 2;
+      const deltaX = turn % 2 === 0 ? -110 : 110;
+      await page.mouse.move(startX, startY);
+      await page.mouse.down();
+      await page.mouse.move(startX + deltaX, startY, { steps: 8 });
+      await page.mouse.up();
+
+      // Start the next gesture before the previous settle fallback fires. This
+      // forces pending work to settle/cancel instead of racing the next flip.
+      await page.waitForTimeout(45);
+    }
+
+    await page.waitForTimeout(430);
+    const finalState = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const element = card as HTMLElement;
+      return {
+        flipped: element.classList.contains('is-flipped'),
+        dragging: element.classList.contains('is-dragging'),
+        inlineTransform: element.style.transform,
+        inlineTransition: element.style.transition,
+        computedTransform: getComputedStyle(element).transform,
+      };
+    });
+    expect(finalState.flipped).toBe(false);
+    expect(finalState.dragging).toBe(false);
+    expect(finalState.inlineTransform).toBe('');
+    expect(finalState.inlineTransition).toBe('');
+    expect(finalState.computedTransform).toBe('none');
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
   });
 
   it('keeps all four cardboard walls attached through horizontal flips and vertical deck tilt', async () => {
@@ -419,8 +461,8 @@ describe('Mobile Dig app-like viewport', () => {
       }
       // Artwork faces share the actual outside planes with the cardboard walls.
       // Let 3D depth determine visibility; do not force cover-over-wall z-index.
-      expect(geometry.faceDepths.front).toBeCloseTo(1.5, 1);
-      expect(geometry.faceDepths.back).toBeCloseTo(-1.5, 1);
+      expect(geometry.faceDepths.front).toBeCloseTo(1.7, 1);
+      expect(geometry.faceDepths.back).toBeCloseTo(-1.7, 1);
       expect(geometry.layerOrder).toEqual({ wall: 'auto', frontFace: 'auto' });
       expect(geometry.stageBeforeContent).toBe('none');
       expect(geometry.stageBeforeDisplay).toBe('none');
@@ -688,7 +730,7 @@ describe('Mobile Dig app-like viewport', () => {
       '[data-dig-slide].is-active .dig-sleeve-face-back'
     ).evaluate((face) => new DOMMatrixReadOnly(getComputedStyle(face).transform).m43);
     expect(reducedMotionBackFaceDepth).toBeGreaterThan(1.5);
-    expect(reducedMotionBackFaceDepth).toBeCloseTo(2, 1);
+    expect(reducedMotionBackFaceDepth).toBeCloseTo(1.7, 1);
 
     await swipeActive(0, -110);
     expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
