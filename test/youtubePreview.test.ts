@@ -169,7 +169,7 @@ describe('YouTube release preview (#226)', () => {
     expect(editTemplate).toContain('YouTube preview for this release — shared by all listings of this release');
     expect(editTemplate).toContain('name="youtubePreviewUrl"');
     expect(privacyTemplate).toContain('youtube-nocookie.com');
-    expect(privacyTemplate).toContain('loads only after the visitor presses the preview\\'s Play button');
+    expect(privacyTemplate).toContain("loads only after the visitor presses the preview's Play button");
     expect(privacyTemplate).toContain('scrolling past the listing does not contact YouTube');
     expect(privacyTemplate).toContain('requests playback');
   });
