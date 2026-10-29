@@ -1,3 +1,6 @@
+import { createHash } from 'crypto';
+import { readFileSync } from 'fs';
+import path from 'path';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import * as listingService from '../src/app/services/listingService';
@@ -39,7 +42,7 @@ describe('App Routes and Error Handling', () => {
         .set('Accept', 'text/html');
 
       expect(response.status).toBe(200);
-      expect(response.text).toContain('href="/fonts/fonts.css"');
+      expect(response.text).toMatch(/href="\/fonts\/fonts\.css\?v=[a-f0-9]{12}"/);
       expect(response.text).not.toContain('fonts.googleapis.com');
       expect(response.text).not.toContain('fonts.gstatic.com');
       expect(response.text).toContain('src="/assets/brand/vinyl-drop-cartridge.svg"');
@@ -48,6 +51,41 @@ describe('App Routes and Error Handling', () => {
       expect(response.text).toContain('href="/drop/new" class="nav-link nav-link-action">+ DROP</a>');
       expect(response.text).toContain('href="/activity" class="nav-link">ACTIVITY</a>');
       expect(response.text).toContain('SIGN IN');
+    });
+  });
+
+  describe('CSS asset caching', () => {
+    it('versions stylesheet URLs by content and only immutably caches the matching version', async () => {
+      const cssPath = path.join(process.cwd(), 'public/css/style.css');
+      const expectedVersion = createHash('sha256')
+        .update(readFileSync(cssPath))
+        .digest('hex')
+        .slice(0, 12);
+
+      const page = await request(app).get('/').set('Accept', 'text/html');
+      expect(page.status).toBe(200);
+      expect(page.text).toContain(`href="/css/style.css?v=${expectedVersion}"`);
+
+      const versionedResponse = await request(app).get(`/css/style.css?v=${expectedVersion}`);
+      expect(versionedResponse.status).toBe(200);
+      expect(versionedResponse.headers['content-type']).toMatch(/text\/css/);
+      expect(versionedResponse.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+
+      const staleVersion = `${expectedVersion[0] === '0' ? '1' : '0'}${expectedVersion.slice(1)}`;
+      const staleResponse = await request(app).get(`/css/style.css?v=${staleVersion}`);
+      expect(staleResponse.status).toBe(200);
+      expect(staleResponse.headers['cache-control']).not.toContain('immutable');
+      expect(staleResponse.headers['cache-control']).not.toContain('max-age=31536000');
+
+      const unversionedResponse = await request(app).get('/css/style.css');
+      expect(unversionedResponse.status).toBe(200);
+      expect(unversionedResponse.headers['cache-control']).not.toContain('immutable');
+      expect(unversionedResponse.headers['cache-control']).not.toContain('max-age=31536000');
+
+      const unrelatedAssetResponse = await request(app).get('/favicon.ico');
+      expect(unrelatedAssetResponse.status).toBe(200);
+      expect(unrelatedAssetResponse.headers['cache-control']).not.toContain('immutable');
+      expect(unrelatedAssetResponse.headers['cache-control']).not.toContain('max-age=31536000');
     });
   });
 
