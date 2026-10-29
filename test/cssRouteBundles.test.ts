@@ -179,10 +179,10 @@ describe('Route-specific CSS bundles (#252)', () => {
       listingDetail: routeMetrics(['style.css', 'listing-detail.css', ...sharedBundles.slice(1), 'listing-interactions.css']),
       listingComments: routeMetrics([...sharedBundles, 'listing-interactions.css']),
       activity: routeMetrics(['style.css', 'style-after-features.css', 'activity-release-selection.css', ...sharedBundles.slice(2)]),
-      selectRelease: routeMetrics(['style.css', 'style-after-features.css', 'activity-release-selection.css', 'style-after-activity.css', 'release-selection-overrides.css', ...sharedBundles.slice(4)]),
+      selectRelease: routeMetrics(['style.css', 'style-after-features.css', 'activity-release-selection.css', 'style-after-activity.css', 'release-selection-overrides.css', 'style-after-release-selection.css', ...sharedBundles.slice(4)]),
       listingForms: routeMetrics(['style.css', ...sharedBundles.slice(1, 4), 'listing-forms.css', ...sharedBundles.slice(4)]),
-      profile: routeMetrics([...sharedBundles.slice(0, 4), 'profile-pages.css', ...sharedBundles.slice(4)]),
-      profileEdit: routeMetrics([...sharedBundles.slice(0, 5), 'profile-editor.css', sharedBundles[6]]),
+      profile: routeMetrics([...sharedBundles.slice(0, 5), 'profile-pages.css', ...sharedBundles.slice(5)]),
+      profileEdit: routeMetrics([...sharedBundles.slice(0, 5), sharedBundles[5], 'profile-editor.css', sharedBundles[6]]),
     };
 
     const before = {
