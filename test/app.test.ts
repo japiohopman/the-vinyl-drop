@@ -97,7 +97,7 @@ describe('App Routes and Error Handling', () => {
     it('versions each extracted route-specific CSS bundle by its own content hash', async () => {
       const routeStylesheets = [
         '/css/dig-experience.css',
-        '/css/style-between-features.css',
+        '/css/listing-detail.css',
         '/css/my-listings.css',
         '/css/style-after-features.css',
       ];
