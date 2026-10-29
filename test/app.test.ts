@@ -77,6 +77,11 @@ describe('App Routes and Error Handling', () => {
       expect(staleResponse.headers['cache-control']).not.toContain('immutable');
       expect(staleResponse.headers['cache-control']).not.toContain('max-age=31536000');
 
+      const malformedResponse = await request(app).get('/css/style.css?v=not-a-valid-hash');
+      expect(malformedResponse.status).toBe(200);
+      expect(malformedResponse.headers['cache-control']).not.toContain('immutable');
+      expect(malformedResponse.headers['cache-control']).not.toContain('max-age=31536000');
+
       const unversionedResponse = await request(app).get('/css/style.css');
       expect(unversionedResponse.status).toBe(200);
       expect(unversionedResponse.headers['cache-control']).not.toContain('immutable');
