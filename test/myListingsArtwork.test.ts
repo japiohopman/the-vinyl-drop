@@ -232,6 +232,9 @@ describe('My Listings Artwork Thumbnails (#146)', () => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style-between-features.css">
+  <link rel="stylesheet" href="/css/my-listings.css">
+  <link rel="stylesheet" href="/css/style-after-features.css">
 </head>
 <body>
   <main class="main-content container">${bodyHtml}</main>
