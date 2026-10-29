@@ -168,9 +168,13 @@
     filter: drop-shadow(0 5px 7px rgba(21, 21, 21, 0.16));
   }
 
-  /* Let the crate show through empty space around the reverse-cover photo. */
+  /*
+   * Keep the reverse face physically continuous beneath a back photo that does
+   * not fill the full square image box. The crate remains behind the sleeve,
+   * not visible as a gap between the photo and the cardboard perimeter.
+   */
   .dig-responsive-mobile .dig-sleeve-face-back {
-    background: transparent;
+    background: var(--color-paper);
   }
 
   /*
