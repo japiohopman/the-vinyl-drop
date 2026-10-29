@@ -1029,6 +1029,7 @@ describe('Mobile Dig app-like viewport', () => {
         listingIcon: listingLink.querySelector('img')?.getAttribute('src'),
         filterIcon: filterIcon.getAttribute('src'),
         siteHeaderBackground: getComputedStyle(siteHeader).backgroundColor,
+        siteHeaderBackdropFilter: getComputedStyle(siteHeader).getPropertyValue('backdrop-filter'),
         siteHeaderBorderBottomWidth: getComputedStyle(siteHeader).borderBottomWidth,
         siteHeaderBorderBottomColor: getComputedStyle(siteHeader).borderBottomColor,
       };
@@ -1043,6 +1044,7 @@ describe('Mobile Dig app-like viewport', () => {
     expect(visualTreatment!.metaBorderTopWidth).toBe('2px');
     expect(visualTreatment!.metaBorderTopColor).toBe('rgba(246, 15, 75, 0.76)');
     expect(visualTreatment!.siteHeaderBackground).toBe('rgba(243, 239, 231, 0.92)');
+    expect(visualTreatment!.siteHeaderBackdropFilter).toBe('none');
     expect(visualTreatment!.siteHeaderBorderBottomWidth).toBe('1px');
     expect(visualTreatment!.siteHeaderBorderBottomColor).toBe('rgba(21, 21, 21, 0.14)');
     expect(visualTreatment!.priceBackgroundImage).toContain('/assets/UI/price_tag.svg');
