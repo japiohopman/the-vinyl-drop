@@ -416,6 +416,50 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
   });
 
+  it('renders the mobile sleeve frame, jacket, and front image as exact squares at every supported width', async () => {
+    for (const viewport of [
+      { width: 320, height: 640 },
+      { width: 360, height: 740 },
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 430, height: 896 },
+    ]) {
+      await loadPage(viewport.width, viewport.height);
+      const geometry = await page.evaluate(() => {
+        const stage = document.querySelector<HTMLElement>('[data-dig-slide].is-active .dig-sleeve-stage');
+        const card = document.querySelector<HTMLElement>('[data-dig-slide].is-active [data-dig-sleeve-card]');
+        const front = card?.querySelector<HTMLElement>('.dig-sleeve-face-front');
+        const image = front?.querySelector<HTMLImageElement>('.dig-sleeve-image');
+        if (!stage || !card || !front || !image) return null;
+        const stageRect = stage.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        const frontRect = front.getBoundingClientRect();
+        const imageRect = image.getBoundingClientRect();
+        return {
+          stageRatio: stageRect.width / stageRect.height,
+          cardRatio: cardRect.width / cardRect.height,
+          frontRatio: frontRect.width / frontRect.height,
+          imageBoxRatio: imageRect.width / imageRect.height,
+          cardInsetLeft: cardRect.left - stageRect.left,
+          cardInsetRight: stageRect.right - cardRect.right,
+          cardInsetTop: cardRect.top - stageRect.top,
+          cardInsetBottom: stageRect.bottom - cardRect.bottom,
+          cardWidth: cardRect.width,
+          cardHeight: cardRect.height,
+        };
+      });
+
+      expect(geometry).not.toBeNull();
+      expect(geometry!.stageRatio).toBeCloseTo(1, 2);
+      expect(geometry!.cardRatio).toBeCloseTo(1, 2);
+      expect(geometry!.frontRatio).toBeCloseTo(1, 2);
+      expect(geometry!.imageBoxRatio).toBeCloseTo(1, 2);
+      expect(Math.abs(geometry!.cardInsetLeft - geometry!.cardInsetRight)).toBeLessThanOrEqual(1);
+      expect(Math.abs(geometry!.cardInsetTop - geometry!.cardInsetBottom)).toBeLessThanOrEqual(1);
+      expect(geometry!.cardWidth).toBeCloseTo(geometry!.cardHeight, 0);
+    }
+  });
+
   it('keeps all four cardboard walls attached through horizontal flips and vertical deck tilt', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);
@@ -530,11 +574,14 @@ describe('Mobile Dig app-like viewport', () => {
     const expectHinges = (geometry: Awaited<ReturnType<typeof readGeometry>>, rotating: boolean) => {
       const { width, height, edges } = geometry;
 
-      // The cover has a larger safety margin above/below and stays inset from both sides.
-      expect(geometry.cardLeft).toBeCloseTo(geometry.stageWidth * 0.04, 0);
+      // The parent stage and the physical jacket must both remain square.
+      // Equal 5% insets keep equal dimensions on all four sides.
+      expect(geometry.stageWidth).toBeCloseTo(geometry.stageHeight, 0);
+      expect(geometry.cardLeft).toBeCloseTo(geometry.stageWidth * 0.05, 0);
       expect(Math.abs(geometry.cardTop - geometry.stageHeight * 0.05)).toBeLessThanOrEqual(1);
-      expect(width).toBeCloseTo(geometry.stageWidth * 0.92, 0);
+      expect(width).toBeCloseTo(geometry.stageWidth * 0.90, 0);
       expect(height).toBeCloseTo(geometry.stageHeight * 0.90, 0);
+      expect(width / height).toBeCloseTo(1, 2);
 
       // The four 3px walls are centered on the cover perimeter, following the
       // CodePen box geometry. They must meet the front/back faces at +/-1.5px.
