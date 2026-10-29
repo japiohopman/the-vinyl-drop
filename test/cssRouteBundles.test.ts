@@ -94,7 +94,8 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(listingDetail).not.toContain('/css/dig-experience.css');
     expect(listingComments).not.toContain('/css/dig-experience.css');
     expect(listingComments).not.toContain('/css/my-listings.css');
-    expect(listingComments).not.toContain('/css/listing-detail.css');  });
+    expect(listingComments).not.toContain('/css/listing-detail.css');
+  });
 
   it('retains the original CSS region order when reconstructed for source-level tests', () => {
     const reconstructed = readReconstructedMainStylesheet();
