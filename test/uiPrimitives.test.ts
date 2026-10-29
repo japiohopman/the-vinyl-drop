@@ -1,3 +1,4 @@
+import { readReconstructedMainStylesheet } from './stylesheetTestHelper';
 import path from 'path';
 import { readFileSync } from 'fs';
 import ejs from 'ejs';
@@ -207,7 +208,7 @@ describe('Mobile information actions and compact form controls', () => {
       'terms.ejs',
       'community-rules.ejs',
     ].map((name) => readFileSync(path.resolve(__dirname, '../views/info', name), 'utf8'));
-    const stylesheet = readFileSync(path.resolve(__dirname, '../public/css/style.css'), 'utf8');
+    const stylesheet = readReconstructedMainStylesheet();
 
     expect(infoTemplates.every((template) => template.includes('class="info-page-actions"'))).toBe(true);
     expect(stylesheet).toContain('.info-page-actions {');
@@ -230,7 +231,6 @@ describe('Mobile information actions and compact form controls', () => {
 
 describe('Compact release selection on mobile', () => {
   const templatePath = path.resolve(__dirname, '../views/listings/select-release.ejs');
-  const stylesheetPath = path.resolve(__dirname, '../public/css/style.css');
 
   it('keeps release artwork, metadata, and the selection action in the result template', async () => {
     const html = await ejs.renderFile(templatePath, {
@@ -254,7 +254,7 @@ describe('Compact release selection on mobile', () => {
   });
 
   it('uses a compact two-column action layout and clamps long release metadata on mobile', () => {
-    const stylesheet = readFileSync(stylesheetPath, 'utf8');
+    const stylesheet = readReconstructedMainStylesheet();
     const mobileReleaseStyles = stylesheet.slice(
       stylesheet.lastIndexOf('/* Compact release selection rows on mobile:'),
     );
