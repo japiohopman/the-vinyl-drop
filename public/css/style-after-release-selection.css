@@ -1,0 +1,895 @@
+/* Visually hidden labels remain available to assistive technology. */
+.dig-search-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Mobile You information links and Dig search-first layout */
+.dig-responsive-page {
+  margin-top: calc(-1 * var(--space-4));
+}
+
+.dig-search-control-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto var(--space-4);
+  min-width: 0;
+}
+
+.dig-primary-search-form {
+  display: flex;
+  align-items: stretch;
+  flex: 1 1 auto;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+}
+
+.dig-primary-search-form input[type="search"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  color: var(--color-ink);
+  font: inherit;
+}
+
+.dig-primary-search-form button {
+  flex: 0 0 auto;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.dig-search-control-bar .view-mode-toggle {
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  gap: var(--space-1);
+  padding: 2px;
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+}
+
+.mobile-you-info-section {
+  padding-top: var(--space-4);
+  border-top: var(--border-thick);
+}
+
+.mobile-you-info-heading {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-tight);
+}
+
+.mobile-you-info-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mobile-you-info-links a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.mobile-you-info-links a:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-rust-accessible);
+}
+
+.back-control-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-control-label {
+  display: inline;
+}
+
+@media (max-width: 767px) {
+  .dig-responsive-page {
+    margin-top: 0;
+  }
+
+  /* The same four links live in You; the site footer must not add page height. */
+  .site-footer {
+    display: none !important;
+  }
+
+  .dig-search-control-bar {
+    align-items: stretch;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .dig-primary-search-form {
+    gap: var(--space-1);
+  }
+
+  .dig-primary-search-form input[type="search"] {
+    padding: var(--space-2);
+    font-size: var(--font-size-sm);
+  }
+
+  .dig-primary-search-form button {
+    padding: 0 var(--space-2);
+    font-size: var(--font-size-xs);
+  }
+
+  .dig-search-control-bar .view-mode-toggle {
+    display: none !important;
+  }
+
+  .dig-responsive-mobile-header {
+    display: none !important;
+  }
+
+  .mobile-back-control {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 !important;
+    border: var(--border-thick);
+    border-radius: var(--radius-sm);
+    background: var(--color-white);
+    color: var(--color-ink);
+    font-size: 0 !important;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: var(--shadow-tactile);
+  }
+
+  .mobile-back-control .back-control-label {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  .mobile-back-control .back-control-icon {
+    font-size: var(--font-size-lg);
+    line-height: 1;
+  }
+
+  .edit-listing-page {
+    position: relative;
+    padding-top: 48px;
+    margin-top: var(--space-3) !important;
+  }
+
+  .edit-listing-page > .mobile-back-control {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .listing-preview-page {
+    position: relative;
+    margin-top: var(--space-3) !important;
+  }
+
+  .listing-preview-header {
+    position: relative;
+    justify-content: flex-start !important;
+    padding-right: 52px;
+    min-height: 44px;
+  }
+
+  .listing-preview-header .mobile-back-control {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .select-release-header {
+    position: relative;
+    padding-top: 48px;
+  }
+
+  .select-release-header > .mobile-back-control {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .breadcrumb-nav {
+    display: flex;
+    justify-content: flex-end;
+    min-height: 44px;
+    margin-bottom: var(--space-2);
+  }
+
+  .dig-page-header {
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .dig-page-header .dig-back-to-browse {
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0 !important;
+    font-size: 0 !important;
+    box-shadow: var(--shadow-tactile);
+  }
+
+  .dig-page-header .dig-back-to-browse .back-control-label {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+  }
+
+  .dig-page-header .dig-back-to-browse .back-control-icon {
+    font-size: var(--font-size-lg);
+  }
+}
+
+@media (min-width: 768px) {
+  .mobile-you-info-section {
+    display: none;
+  }
+}
+
+
+
+/* Issue #182: nested Me/About navigation and compact, overflow-safe mobile actions. */
+.profile-edit-actions .mobile-action-icon {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-you-view[hidden] {
+    display: none !important;
+  }
+
+  .mobile-you-about-entry {
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .mobile-you-about-trigger {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    justify-content: space-between;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .mobile-you-about-trigger > span:last-child {
+    font-size: var(--font-size-lg);
+    line-height: 1;
+  }
+
+  .mobile-you-about-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  .mobile-you-about-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--font-size-lg);
+  }
+
+  .mobile-you-about-back {
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 5px;
+    background: transparent;
+    color: var(--color-white);
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: none;
+  }
+
+  .mobile-you-about-trigger:focus-visible,
+  .mobile-you-about-back:focus-visible,
+  .profile-edit-actions .mobile-compact-action:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .info-page {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding-left: var(--space-3) !important;
+    padding-right: var(--space-3) !important;
+  }
+
+  .info-page > .card,
+  .info-page > article.card {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    padding: var(--space-4) !important;
+  }
+
+  .info-page a {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .info-page input,
+  .info-page textarea,
+  .info-page select {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .info-page-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2) !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .info-page-actions .btn {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .profile-edit-page {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 0 var(--space-3);
+  }
+
+  .profile-edit-page > .card {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    padding: var(--space-4) !important;
+  }
+
+  .profile-edit-form input,
+  .profile-edit-form textarea,
+  .profile-edit-form select {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+
+  .profile-edit-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2) !important;
+    min-width: 0;
+  }
+
+  .profile-edit-actions .mobile-compact-action {
+    display: inline-flex;
+    flex: 0 0 44px;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .profile-edit-actions .mobile-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .profile-edit-actions .mobile-action-label {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .info-page > .card,
+  .info-page > article.card,
+  .profile-edit-page > .card {
+    padding: var(--space-3) !important;
+  }
+}
+
+
+/* Issue #184: contextual mobile header and compact custom-release artwork picker. */
+.mobile-context-header {
+  display: none;
+}
+
+.custom-release-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 600px;
+  min-width: 0;
+  margin: var(--space-4) auto !important;
+}
+
+.custom-release-page .card,
+.custom-release-page input,
+.custom-release-page select {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.custom-release-page input:not([type="file"]),
+.custom-release-page select {
+  width: 100%;
+}
+
+.custom-release-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.custom-release-file-description {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+}
+
+.custom-release-file-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.custom-release-file-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.custom-release-file-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 44px;
+  max-width: 100%;
+  cursor: pointer;
+  white-space: normal;
+}
+
+.custom-release-file-input:focus-visible + .custom-release-file-trigger {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.custom-release-file-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.custom-release-file-mobile-label {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .header-container {
+    gap: var(--space-3);
+  }
+
+  .brand-logo {
+    display: none;
+  }
+
+  .mobile-context-header {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mobile-context-heading {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-family: var(--font-display);
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    letter-spacing: var(--letter-spacing-wide);
+    color: var(--color-ink);
+  }
+
+  .mobile-context-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    min-width: 0;
+    min-height: 44px;
+    padding: var(--space-2);
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .mobile-context-back:hover {
+    color: var(--color-rust-accessible);
+    text-decoration: underline;
+  }
+
+  .mobile-context-back:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  .mobile-context-back-icon {
+    font-size: var(--font-size-lg);
+    line-height: 1;
+  }
+
+  .mobile-context-back-icon-only {
+    box-sizing: border-box;
+    flex: 0 0 44px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: var(--border-thick);
+    background: var(--color-white);
+    box-shadow: var(--shadow-tactile);
+  }
+
+  .mobile-context-back-icon-only .mobile-context-back-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+
+  .custom-release-page {
+    padding: 0;
+    margin-top: var(--space-3) !important;
+    margin-bottom: var(--space-4) !important;
+  }
+
+  .custom-release-page > form.card {
+    width: 100%;
+    min-width: 0;
+    padding: var(--space-4) !important;
+  }
+
+  .custom-release-page .custom-release-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  .custom-release-page .custom-release-file-mobile-label {
+    display: inline;
+  }
+
+  .custom-release-page .custom-release-file-desktop-label {
+    display: none;
+  }
+
+  .custom-release-page .custom-release-back-link {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .custom-release-page .custom-release-file-mobile-label {
+    display: none;
+  }
+
+  .custom-release-page .custom-release-file-desktop-label {
+    display: inline;
+  }
+}
+
+
+/* Issue #185: keep active mobile Crate Dig within the screen, like an app view. */
+.mobile-dig-position {
+  flex: 0 0 auto;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mobile-dig-back {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 767px) {
+  body.mobile-dig-session {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: 0 !important;
+  }
+
+  body.mobile-dig-session .site-footer {
+    display: none !important;
+  }
+
+  body.mobile-dig-session .main-content {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: var(--space-1) 0 calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-responsive-page {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    max-width: none;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-search-control-bar,
+  body.mobile-dig-session .dig-responsive-desktop {
+    display: none !important;
+  }
+
+  body.mobile-dig-session .dig-responsive-mobile {
+    display: flex !important;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-page {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 var(--space-2);
+    overflow: hidden;
+  }
+
+  /* Keep one semantic H1 for assistive technology without repeating "Dig" visually. */
+  body.mobile-dig-session .dig-page-header {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  body.mobile-dig-session .dig-page-header .dig-back-to-browse {
+    display: none !important;
+  }
+
+  body.mobile-dig-session .dig-context-row,
+  body.mobile-dig-session .dig-filter-summary,
+  body.mobile-dig-session .dig-keyboard-note,
+  body.mobile-dig-session .dig-navigation {
+    display: none !important;
+  }
+
+  body.mobile-dig-session .dig-explorer {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    margin: 0;
+    padding: var(--space-1);
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-viewer {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-crate-stack {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+  }
+
+  body.mobile-dig-session .dig-slide.is-active {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 0;
+  }
+
+  body.mobile-dig-session .dig-listing-meta {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin: 0 auto var(--space-1);
+    padding: 0;
+  }
+
+  body.mobile-dig-session .dig-listing-meta h2 {
+    font-size: clamp(1.05rem, 4vw, 1.4rem);
+    line-height: 1.05;
+  }
+
+  body.mobile-dig-session .dig-artist {
+    margin-top: 2px;
+    font-size: var(--font-size-sm);
+    line-height: 1.15;
+  }
+
+  body.mobile-dig-session .dig-sleeve-interaction {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.mobile-dig-session .dig-sleeve-stage {
+    flex: 0 1 auto;
+    width: min(100%, calc(100vw - 24px), calc(100dvh - 320px));
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+  }
+
+  body.mobile-dig-session .dig-card-actions {
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-1) 0 0;
+    padding: 0;
+  }
+
+  body.mobile-dig-session .dig-price {
+    gap: var(--space-1);
+  }
+
+  body.mobile-dig-session .dig-price-label,
+  body.mobile-dig-session .dig-trade-note {
+    display: none;
+  }
+
+  body.mobile-dig-session .dig-price strong {
+    font-size: clamp(1.2rem, 4.5vw, 1.5rem);
+  }
+
+  body.mobile-dig-session .dig-listing-link {
+    min-height: 40px;
+    padding: 2px var(--space-1);
+    font-size: var(--font-size-sm);
+  }
+
+  body.mobile-dig-session .dig-missing-front,
+  body.mobile-dig-session .dig-missing-back {
+    gap: var(--space-1);
+    padding: var(--space-3);
+  }
+
+  body.mobile-dig-session .dig-missing-front p,
+  body.mobile-dig-session .dig-missing-back p {
+    display: none;
+  }
+}
+
