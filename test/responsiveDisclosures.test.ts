@@ -134,7 +134,9 @@ describe('Responsive disclosure browser behavior', () => {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/style-after-features.css">
+  <link rel="stylesheet" href="/css/activity-release-selection.css">
   <link rel="stylesheet" href="/css/style-after-activity.css">
+  <link rel="stylesheet" href="/css/release-selection-overrides.css">
   <link rel="stylesheet" href="/css/style-after-release-selection.css">
   <link rel="stylesheet" href="/css/style-after-listing-forms.css">
   <link rel="stylesheet" href="/css/style-after-profile-pages.css">
