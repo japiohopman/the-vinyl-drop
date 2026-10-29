@@ -116,9 +116,9 @@
   }
 
   /*
-   * The stage is the swipe/clip-safe area; inset the actual rotating jacket
-   * inside it so perspective cannot send a corner into the crate-stack clip.
-   * Keep the margin inside the stage rather than adding a frame around the art.
+   * The stage is a square swipe/clip-safe area. Use the same inset on all four
+   * sides so the actual jacket remains square too; differing horizontal and
+   * vertical insets made the image frame wider than it was tall.
    */
   body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage {
     overflow: visible;
@@ -126,7 +126,7 @@
 
   body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-card {
     position: absolute;
-    inset: 5% 4%;
+    inset: 5%;
     width: auto;
     height: auto;
   }

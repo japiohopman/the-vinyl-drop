@@ -469,7 +469,7 @@ describe('Dig photo-role contract', () => {
     expect(mobileCrateCss).toContain('overflow: clip;');
     expect(mobileCrateCss).toContain('overflow-clip-margin: 12px;');
     expect(mobileCrateCss).toContain('body.mobile-dig-session .dig-responsive-mobile .dig-sleeve-stage');
-    expect(mobileCrateCss).toContain('inset: 5% 4%;');
+    expect(mobileCrateCss).toContain('inset: 5%;');
     expect(mobileCrateCss).not.toContain('inset: -0.5px;');
     expect(css).toContain('--dig-sleeve-cardboard-color: #c2b397;');
     expect(css).toContain('--dig-sleeve-cardboard-light: #d0c0a2;');
@@ -556,7 +556,7 @@ describe('Dig photo-role contract', () => {
     expect(rawCss).toContain('background: linear-gradient(90deg, #6e593e 0%, #9b8463 48%, var(--dig-sleeve-cardboard-dark) 100%);');
     expect(rawCss).toContain('background: linear-gradient(90deg, #b6a487 0%, #907956 100%);');
     expect(mobileCss).toContain('background: var(--dig-sleeve-cardboard-color, #c2b397);');
-    expect(mobileCss).toContain('inset: 5% 4%;');
+    expect(mobileCss).toContain('inset: 5%;');
     expect(mobileCss).toContain('width: auto;');
     expect(mobileCss).toContain('height: auto;');
     expect(mobileCss).toContain('content: none !important;');
