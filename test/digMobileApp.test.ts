@@ -579,8 +579,8 @@ describe('Mobile Dig app-like viewport', () => {
       }
       // Artwork faces share the actual outside planes with the cardboard walls.
       // Let 3D depth determine visibility; do not force cover-over-wall z-index.
-      expect(geometry.faceDepths.front).toBeCloseTo(1.7, 1);
-      expect(geometry.faceDepths.back).toBeCloseTo(-1.7, 1);
+      expect(geometry.faceDepths.front).toBeCloseTo(1.8, 1);
+      expect(geometry.faceDepths.back).toBeCloseTo(-1.8, 1);
       expect(geometry.layerOrder).toEqual({ wall: 'auto', frontFace: 'auto' });
       expect(geometry.stageBeforeContent).toBe('none');
       expect(geometry.stageBeforeDisplay).toBe('none');
@@ -848,7 +848,7 @@ describe('Mobile Dig app-like viewport', () => {
       '[data-dig-slide].is-active .dig-sleeve-face-back'
     ).evaluate((face) => new DOMMatrixReadOnly(getComputedStyle(face).transform).m43);
     expect(reducedMotionBackFaceDepth).toBeGreaterThan(1.5);
-    expect(reducedMotionBackFaceDepth).toBeCloseTo(1.7, 1);
+    expect(reducedMotionBackFaceDepth).toBeCloseTo(1.8, 1);
 
     await swipeActive(0, -110);
     expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');
