@@ -55,6 +55,9 @@
   <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/new' && currentPath !== '/listings/create' && (new RegExp('^/listings/[^/]+(/comments)?$').test(currentPath) || new RegExp('^/listings/[^/]+/edit$').test(currentPath))) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-interactions.css') : '/css/listing-interactions.css' %>">
   <% } %>
+  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/new' && currentPath !== '/listings/create' && new RegExp('^/listings/[^/]+$').test(currentPath)) { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-detail-polish.css') : '/css/listing-detail-polish.css' %>">
+  <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-crate.css') : '/css/dig-mobile-crate.css' %>">
   <% } %>

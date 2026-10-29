@@ -131,6 +131,7 @@ describe('App Routes and Error Handling', () => {
         '/css/profile-editor.css',
         '/css/style-after-profile-editor.css',
         '/css/listing-interactions.css',
+        '/css/listing-detail-polish.css',
       ];
 
       for (const assetUrl of routeStylesheets) {

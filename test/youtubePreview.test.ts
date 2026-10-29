@@ -38,6 +38,10 @@ describe('YouTube release preview (#226)', () => {
   const navTemplate = fs.readFileSync(navPath, 'utf8');
   const mainLayoutTemplate = fs.readFileSync(mainLayoutPath, 'utf8');
   const stylesheet = readFullStylesheetSource();
+  const listingDetailPolishCss = fs.readFileSync(
+    path.join(process.cwd(), 'public/css/listing-detail-polish.css'),
+    'utf8'
+  );
   const playerScriptPath = path.join(process.cwd(), 'public/js/youtube-preview.js');
   const routeSource = fs.readFileSync(path.join(process.cwd(), 'src/app/routes/listingRoutes.ts'), 'utf8');
   const editTemplate = fs.readFileSync(path.join(process.cwd(), 'views/listings/edit.ejs'), 'utf8');
@@ -179,11 +183,9 @@ describe('YouTube release preview (#226)', () => {
     try {
       const start = stylesheet.indexOf('/* Issue #226 — optional release-level YouTube preview');
       const end = stylesheet.indexOf('/* Issue #220 — one shared comment thread', start);
-      const polishStart = stylesheet.indexOf('/* Issue #255 — compact listing detail');
       expect(start).toBeGreaterThanOrEqual(0);
       expect(end).toBeGreaterThan(start);
-      expect(polishStart).toBeGreaterThan(end);
-      const playerCss = stylesheet.slice(start, end) + stylesheet.slice(polishStart);
+      const playerCss = stylesheet.slice(start, end) + listingDetailPolishCss;
       const renderedPartial = ejs.render(partial, {
         release: { id: releaseId, title: 'Sample Release', youtubeVideoId: validId },
       }).replace('<script src="/js/youtube-preview.js" defer></script>', '');
@@ -281,7 +283,7 @@ describe('YouTube release preview (#226)', () => {
       for (const width of [320, 360, 390, 430, 768, 1280]) {
         const page = await browser.newPage({ viewport: { width, height: 900 } });
         await page.setContent(
-          '<!doctype html><html lang="en"><head><style>' + stylesheet
+          '<!doctype html><html lang="en"><head><style>' + stylesheet + listingDetailPolishCss
           + '</style></head><body class="listing-detail-page"><main class="main-content container">'
           + body + '</main></body></html>'
         );
