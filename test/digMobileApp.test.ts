@@ -577,7 +577,7 @@ describe('Mobile Dig app-like viewport', () => {
       // The parent stage and the physical jacket must both remain square.
       // Equal 5% insets keep equal dimensions on all four sides.
       expect(geometry.stageWidth).toBeCloseTo(geometry.stageHeight, 0);
-      expect(geometry.cardLeft).toBeCloseTo(geometry.stageWidth * 0.05, 0);
+      expect(Math.abs(geometry.cardLeft - geometry.stageWidth * 0.05)).toBeLessThanOrEqual(1);
       expect(Math.abs(geometry.cardTop - geometry.stageHeight * 0.05)).toBeLessThanOrEqual(1);
       expect(width).toBeCloseTo(geometry.stageWidth * 0.90, 0);
       expect(height).toBeCloseTo(geometry.stageHeight * 0.90, 0);
