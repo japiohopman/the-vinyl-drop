@@ -25,7 +25,28 @@
   <% if (typeof currentPath !== 'undefined' && currentPath === '/listings') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/my-listings.css') : '/css/my-listings.css' %>">
   <% } %>
+  <!-- Keep these render-blocking stylesheets in the original source order. -->
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-features.css') : '/css/style-after-features.css' %>">
+  <% if (typeof currentPath !== 'undefined' && (currentPath === '/activity' || currentPath === '/listings/new')) { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/activity-release-selection.css') : '/css/activity-release-selection.css' %>">
+  <% } %>
+  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-activity.css') : '/css/style-after-activity.css' %>">
+  <% if (typeof currentPath !== 'undefined' && currentPath === '/listings/new') { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/release-selection-overrides.css') : '/css/release-selection-overrides.css' %>">
+  <% } %>
+  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-release-selection.css') : '/css/style-after-release-selection.css' %>">
+  <% if (typeof currentPath !== 'undefined' && (currentPath === '/drop/new' || currentPath === '/listings/create' || new RegExp('^/listings/[^/]+/edit$').test(currentPath))) { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-forms.css') : '/css/listing-forms.css' %>">
+  <% } %>
+  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-listing-forms.css') : '/css/style-after-listing-forms.css' %>">
+  <% if (typeof currentPath !== 'undefined' && (currentPath === '/profile' || (currentPath !== '/profile/edit' && (new RegExp('^/profiles/[^/]+(?:/crate)?$').test(currentPath) || new RegExp('^/profile/[^/]+(?:/crate)?$').test(currentPath))))) { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/profile-pages.css') : '/css/profile-pages.css' %>">
+  <% } %>
+  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-profile-pages.css') : '/css/style-after-profile-pages.css' %>">
+  <% if (typeof currentPath !== 'undefined' && currentPath === '/profile/edit') { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/profile-editor.css') : '/css/profile-editor.css' %>">
+  <% } %>
+  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-profile-editor.css') : '/css/style-after-profile-editor.css' %>">
   <% if (typeof currentPath !== 'undefined' && new RegExp('^/listings/[^/]+(/comments)?$').test(currentPath)) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-interactions.css') : '/css/listing-interactions.css' %>">
   <% } %>
