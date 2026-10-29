@@ -14,7 +14,16 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
 
+  <!-- Keep these render-blocking stylesheets in the original source order. -->
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style.css') : '/css/style.css' %>">
+  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-experience.css') : '/css/dig-experience.css' %>">
+  <% } %>
+  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-between-features.css') : '/css/style-between-features.css' %>">
+  <% if (typeof currentPath !== 'undefined' && currentPath === '/listings') { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/my-listings.css') : '/css/my-listings.css' %>">
+  <% } %>
+  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-features.css') : '/css/style-after-features.css' %>">
   <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-crate.css') : '/css/dig-mobile-crate.css' %>">
   <% } %>
