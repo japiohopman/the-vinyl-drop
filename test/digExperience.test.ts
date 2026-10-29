@@ -556,7 +556,7 @@ describe('Dig photo-role contract', () => {
     expect(rawCss).toContain('background: linear-gradient(90deg, #6e593e 0%, #9b8463 48%, var(--dig-sleeve-cardboard-dark) 100%);');
     expect(rawCss).toContain('background: linear-gradient(90deg, #b6a487 0%, #907956 100%);');
     expect(mobileCss).toContain('background: var(--dig-sleeve-cardboard-color, #c2b397);');
-    expect(mobileCss).toContain('inset: 5% 4%;');
+    expect(mobileCss).toContain('inset: 5%;');
     expect(mobileCss).toContain('width: auto;');
     expect(mobileCss).toContain('height: auto;');
     expect(mobileCss).toContain('content: none !important;');
