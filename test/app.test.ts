@@ -100,6 +100,16 @@ describe('App Routes and Error Handling', () => {
         '/css/listing-detail.css',
         '/css/my-listings.css',
         '/css/style-after-features.css',
+        '/css/activity-release-selection.css',
+        '/css/style-after-activity.css',
+        '/css/release-selection-overrides.css',
+        '/css/style-after-release-selection.css',
+        '/css/listing-forms.css',
+        '/css/style-after-listing-forms.css',
+        '/css/profile-pages.css',
+        '/css/style-after-profile-pages.css',
+        '/css/profile-editor.css',
+        '/css/style-after-profile-editor.css',
         '/css/listing-interactions.css',
       ];
 
