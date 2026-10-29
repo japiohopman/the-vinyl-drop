@@ -2238,6 +2238,13 @@ select.form-control {
   background: linear-gradient(180deg, #826746 0%, #c5ad88 100%);
 }
 
+.dig-sleeve-edge-left,
+.dig-sleeve-edge-right {
+  top: 0;
+  width: var(--dig-sleeve-thickness);
+  height: 100%;
+}
+
 .dig-sleeve-edge-left {
   left: calc(0px - var(--dig-sleeve-thickness));
   transform-origin: right;
