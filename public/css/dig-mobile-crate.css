@@ -204,10 +204,14 @@
 
   /* Soften the Dig/session header without changing the shared header on other pages. */
   body.mobile-dig-session .site-header {
+    /*
+     * Keep backdrop-filter off this sticky ancestor: the mobile nav is nested
+     * inside it, and a filtered ancestor creates a containing block for fixed
+     * descendants. The translucent color and fine divider provide the softer
+     * treatment without changing the fixed navigation's viewport positioning.
+     */
     background-color: rgba(243, 239, 231, 0.92);
     border-bottom: 1px solid rgba(21, 21, 21, 0.14);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
   }
 
   /* A translucent paper strip keeps the title legible while letting the crate read through. */
