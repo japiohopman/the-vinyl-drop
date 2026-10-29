@@ -6,7 +6,7 @@
   <title><%= typeof title !== 'undefined' ? title : 'The Vinyl Drop' %> | The Vinyl Drop</title>
 
   <!-- Self-hosted Open Font License families; no third-party font requests. -->
-  <link rel="stylesheet" href="/fonts/fonts.css">
+  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/fonts/fonts.css') : '/fonts/fonts.css' %>">
 
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -14,9 +14,9 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
 
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style.css') : '/css/style.css' %>">
   <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
-    <link rel="stylesheet" href="/css/dig-mobile-crate.css">
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-crate.css') : '/css/dig-mobile-crate.css' %>">
   <% } %>
   <script src="/js/toast.js" defer></script>
   <script src="/js/artwork-fallback.js" defer></script>
