@@ -14,18 +14,17 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
 
-  <!-- Keep these render-blocking stylesheets in the original source order. -->
+  <!-- Keep all render-critical CSS in the head and preserve the original source order. -->
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style.css') : '/css/style.css' %>">
   <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-experience.css') : '/css/dig-experience.css' %>">
   <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && currentPath !== '/listings/new' && new RegExp('^/listings/[^/]+$').test(currentPath)) { %>
+  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/new' && currentPath !== '/listings/create' && new RegExp('^/listings/[^/]+$').test(currentPath)) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-detail.css') : '/css/listing-detail.css' %>">
   <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/listings') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/my-listings.css') : '/css/my-listings.css' %>">
   <% } %>
-  <!-- Keep these render-blocking stylesheets in the original source order. -->
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-features.css') : '/css/style-after-features.css' %>">
   <% if (typeof currentPath !== 'undefined' && (currentPath === '/activity' || currentPath === '/listings/new')) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/activity-release-selection.css') : '/css/activity-release-selection.css' %>">
@@ -53,82 +52,6 @@
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/profile-editor.css') : '/css/profile-editor.css' %>">
   <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-profile-editor.css') : '/css/style-after-profile-editor.css' %>">
-  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/new' && currentPath !== '/listings/create' && new RegExp('^/listings/[^/]+(/comments)?$').test(currentPath)) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-interactions.css') : '/css/listing-interactions.css' %>">
-  <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-crate.css') : '/css/dig-mobile-crate.css' %>">
-  <% } %>
-  <script src="/js/toast.js" defer></script>
-  <script src="/js/artwork-fallback.js" defer></script>
-  <script src="/js/responsive-disclosures.js" defer></script>
-  <script src="/js/listing-comments-disclosure.js" defer></script>
-  <script src="/js/messaging-widget.js" defer></script>
-</head>
-<body>
-  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && /^\/listings\/[^/]+$/.test(currentPath)) { %>
-    <script>document.body.classList.add('listing-detail-page');</script>
-  <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig' && typeof items !== 'undefined' && Array.isArray(items) && items.length > 0) { %>
-    <script>document.body.classList.add('mobile-dig-session');</script>
-  <% } %>
-  <%- include('../partials/header') %>
-  <%- include('../partials/flash') %>
-
-  <% if (typeof betaInviteOnly !== 'undefined' && betaInviteOnly) { %>
-    <div class="container" style="margin-top: var(--space-3);">
-      <aside role="status" aria-label="Private beta access" style="border: var(--border-thick); border-color: var(--color-rust); padding: var(--space-3) var(--space-4); background: var(--color-surface-card);">
-        <strong>Private beta — invitation required</strong>
-        <p style="margin: var(--space-2) 0 0;"><%= inviteOnlyAccessMessage %> <a href="/contact" style="color: var(--color-rust); text-decoration: underline;">Contact us if you expected an invitation.</a></p>
-      </aside>
-    </div>
-  <% } %>
-
-  <% if (typeof showBetaWelcome !== 'undefined' && showBetaWelcome) { %>
-    <div class="container" style="margin-top: var(--space-3);">
-      <section role="status" aria-live="polite" aria-label="Beta welcome" style="border: var(--border-thick); border-color: var(--color-deep-green); padding: var(--space-4); background: var(--color-surface-card);">
-        <h2 style="font-family: var(--font-display); margin: 0 0 var(--space-2);">You’re in — welcome to The Vinyl Drop beta!</h2>
-        <p style="margin: 0 0 var(--space-2);">Thanks for helping test an early version of the app. Some things may break or change while we work on it.</p>
-        <p style="margin: 0;">Found a bug or have feedback? Please <a href="/contact" style="color: var(--color-rust); text-decoration: underline;">send us a note</a>. Your feedback helps shape the next version.</p>
-      </section>
-    </div>
-  <% } %>
-
-  <main class="main-content container">
-    <%- body %>
-  </main>
-
-  <%- include('../partials/footer') %>
-</body>
-</html>
-).test(currentPath)) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-detail.css') : '/css/listing-detail.css' %>">
-  <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/listings') { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/my-listings.css') : '/css/my-listings.css' %>">
-  <% } %>
-  <!-- Keep these render-blocking stylesheets in the original source order. -->
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-features.css') : '/css/style-after-features.css' %>">
-  <% if (typeof currentPath !== 'undefined' && (currentPath === '/activity' || currentPath === '/listings/new')) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/activity-release-selection.css') : '/css/activity-release-selection.css' %>">
-  <% } %>
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-activity.css') : '/css/style-after-activity.css' %>">
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/listings/new') { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/release-selection-overrides.css') : '/css/release-selection-overrides.css' %>">
-  <% } %>
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-release-selection.css') : '/css/style-after-release-selection.css' %>">
-  <% if (typeof currentPath !== 'undefined' && (currentPath === '/drop/new' || currentPath === '/listings/create' || new RegExp('^/listings/[^/]+/edit$').test(currentPath))) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-forms.css') : '/css/listing-forms.css' %>">
-  <% } %>
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-listing-forms.css') : '/css/style-after-listing-forms.css' %>">
-  <% if (typeof currentPath !== 'undefined' && (currentPath === '/profile' || (currentPath !== '/profile/edit' && (new RegExp('^/profiles/[^/]+(?:/crate)?$').test(currentPath) || new RegExp('^/profile/[^/]+(?:/crate)?$').test(currentPath))))) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/profile-pages.css') : '/css/profile-pages.css' %>">
-  <% } %>
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-profile-pages.css') : '/css/style-after-profile-pages.css' %>">
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/profile/edit') { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/profile-editor.css') : '/css/profile-editor.css' %>">
-  <% } %>
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-profile-editor.css') : '/css/style-after-profile-editor.css' %>">
   <% if (typeof currentPath !== 'undefined' && new RegExp('^/listings/[^/]+(/comments)?$').test(currentPath)) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-interactions.css') : '/css/listing-interactions.css' %>">
   <% } %>
@@ -142,131 +65,7 @@
   <script src="/js/messaging-widget.js" defer></script>
 </head>
 <body>
-  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && /^\/listings\/[^/]+$/.test(currentPath)) { %>
-    <script>document.body.classList.add('listing-detail-page');</script>
-  <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig' && typeof items !== 'undefined' && Array.isArray(items) && items.length > 0) { %>
-    <script>document.body.classList.add('mobile-dig-session');</script>
-  <% } %>
-  <%- include('../partials/header') %>
-  <%- include('../partials/flash') %>
-
-  <% if (typeof betaInviteOnly !== 'undefined' && betaInviteOnly) { %>
-    <div class="container" style="margin-top: var(--space-3);">
-      <aside role="status" aria-label="Private beta access" style="border: var(--border-thick); border-color: var(--color-rust); padding: var(--space-3) var(--space-4); background: var(--color-surface-card);">
-        <strong>Private beta — invitation required</strong>
-        <p style="margin: var(--space-2) 0 0;"><%= inviteOnlyAccessMessage %> <a href="/contact" style="color: var(--color-rust); text-decoration: underline;">Contact us if you expected an invitation.</a></p>
-      </aside>
-    </div>
-  <% } %>
-
-  <% if (typeof showBetaWelcome !== 'undefined' && showBetaWelcome) { %>
-    <div class="container" style="margin-top: var(--space-3);">
-      <section role="status" aria-live="polite" aria-label="Beta welcome" style="border: var(--border-thick); border-color: var(--color-deep-green); padding: var(--space-4); background: var(--color-surface-card);">
-        <h2 style="font-family: var(--font-display); margin: 0 0 var(--space-2);">You’re in — welcome to The Vinyl Drop beta!</h2>
-        <p style="margin: 0 0 var(--space-2);">Thanks for helping test an early version of the app. Some things may break or change while we work on it.</p>
-        <p style="margin: 0;">Found a bug or have feedback? Please <a href="/contact" style="color: var(--color-rust); text-decoration: underline;">send us a note</a>. Your feedback helps shape the next version.</p>
-      </section>
-    </div>
-  <% } %>
-
-  <main class="main-content container">
-    <%- body %>
-  </main>
-
-  <%- include('../partials/footer') %>
-</body>
-</html>
-).test(currentPath)) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-interactions.css') : '/css/listing-interactions.css' %>">
-  <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-crate.css') : '/css/dig-mobile-crate.css' %>">
-  <% } %>
-  <script src="/js/toast.js" defer></script>
-  <script src="/js/artwork-fallback.js" defer></script>
-  <script src="/js/responsive-disclosures.js" defer></script>
-  <script src="/js/listing-comments-disclosure.js" defer></script>
-  <script src="/js/messaging-widget.js" defer></script>
-</head>
-<body>
-  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && /^\/listings\/[^/]+$/.test(currentPath)) { %>
-    <script>document.body.classList.add('listing-detail-page');</script>
-  <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig' && typeof items !== 'undefined' && Array.isArray(items) && items.length > 0) { %>
-    <script>document.body.classList.add('mobile-dig-session');</script>
-  <% } %>
-  <%- include('../partials/header') %>
-  <%- include('../partials/flash') %>
-
-  <% if (typeof betaInviteOnly !== 'undefined' && betaInviteOnly) { %>
-    <div class="container" style="margin-top: var(--space-3);">
-      <aside role="status" aria-label="Private beta access" style="border: var(--border-thick); border-color: var(--color-rust); padding: var(--space-3) var(--space-4); background: var(--color-surface-card);">
-        <strong>Private beta — invitation required</strong>
-        <p style="margin: var(--space-2) 0 0;"><%= inviteOnlyAccessMessage %> <a href="/contact" style="color: var(--color-rust); text-decoration: underline;">Contact us if you expected an invitation.</a></p>
-      </aside>
-    </div>
-  <% } %>
-
-  <% if (typeof showBetaWelcome !== 'undefined' && showBetaWelcome) { %>
-    <div class="container" style="margin-top: var(--space-3);">
-      <section role="status" aria-live="polite" aria-label="Beta welcome" style="border: var(--border-thick); border-color: var(--color-deep-green); padding: var(--space-4); background: var(--color-surface-card);">
-        <h2 style="font-family: var(--font-display); margin: 0 0 var(--space-2);">You’re in — welcome to The Vinyl Drop beta!</h2>
-        <p style="margin: 0 0 var(--space-2);">Thanks for helping test an early version of the app. Some things may break or change while we work on it.</p>
-        <p style="margin: 0;">Found a bug or have feedback? Please <a href="/contact" style="color: var(--color-rust); text-decoration: underline;">send us a note</a>. Your feedback helps shape the next version.</p>
-      </section>
-    </div>
-  <% } %>
-
-  <main class="main-content container">
-    <%- body %>
-  </main>
-
-  <%- include('../partials/footer') %>
-</body>
-</html>
-).test(currentPath)) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-detail.css') : '/css/listing-detail.css' %>">
-  <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/listings') { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/my-listings.css') : '/css/my-listings.css' %>">
-  <% } %>
-  <!-- Keep these render-blocking stylesheets in the original source order. -->
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-features.css') : '/css/style-after-features.css' %>">
-  <% if (typeof currentPath !== 'undefined' && (currentPath === '/activity' || currentPath === '/listings/new')) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/activity-release-selection.css') : '/css/activity-release-selection.css' %>">
-  <% } %>
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-activity.css') : '/css/style-after-activity.css' %>">
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/listings/new') { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/release-selection-overrides.css') : '/css/release-selection-overrides.css' %>">
-  <% } %>
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-release-selection.css') : '/css/style-after-release-selection.css' %>">
-  <% if (typeof currentPath !== 'undefined' && (currentPath === '/drop/new' || currentPath === '/listings/create' || new RegExp('^/listings/[^/]+/edit$').test(currentPath))) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-forms.css') : '/css/listing-forms.css' %>">
-  <% } %>
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-listing-forms.css') : '/css/style-after-listing-forms.css' %>">
-  <% if (typeof currentPath !== 'undefined' && (currentPath === '/profile' || (currentPath !== '/profile/edit' && (new RegExp('^/profiles/[^/]+(?:/crate)?$').test(currentPath) || new RegExp('^/profile/[^/]+(?:/crate)?$').test(currentPath))))) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/profile-pages.css') : '/css/profile-pages.css' %>">
-  <% } %>
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-profile-pages.css') : '/css/style-after-profile-pages.css' %>">
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/profile/edit') { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/profile-editor.css') : '/css/profile-editor.css' %>">
-  <% } %>
-  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-profile-editor.css') : '/css/style-after-profile-editor.css' %>">
-  <% if (typeof currentPath !== 'undefined' && new RegExp('^/listings/[^/]+(/comments)?$').test(currentPath)) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-interactions.css') : '/css/listing-interactions.css' %>">
-  <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-crate.css') : '/css/dig-mobile-crate.css' %>">
-  <% } %>
-  <script src="/js/toast.js" defer></script>
-  <script src="/js/artwork-fallback.js" defer></script>
-  <script src="/js/responsive-disclosures.js" defer></script>
-  <script src="/js/listing-comments-disclosure.js" defer></script>
-  <script src="/js/messaging-widget.js" defer></script>
-</head>
-<body>
-  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && /^\/listings\/[^/]+$/.test(currentPath)) { %>
+  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && currentPath !== '/listings/new' && /^\/listings\/[^/]+$/.test(currentPath)) { %>
     <script>document.body.classList.add('listing-detail-page');</script>
   <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/dig' && typeof items !== 'undefined' && Array.isArray(items) && items.length > 0) { %>
