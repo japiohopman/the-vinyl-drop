@@ -55,34 +55,33 @@ describe('Route-specific CSS bundles (#252)', () => {
 
     expect(home).toEqual([
       '/css/style.css',
-      '/css/style-between-features.css',
       '/css/style-after-features.css',
     ]);
     expect(dig).toEqual([
       '/css/style.css',
       '/css/dig-experience.css',
-      '/css/style-between-features.css',
       '/css/style-after-features.css',
       '/css/dig-mobile-crate.css',
     ]);
     expect(myListings).toEqual([
       '/css/style.css',
-      '/css/style-between-features.css',
       '/css/my-listings.css',
       '/css/style-after-features.css',
     ]);
     expect(listingDetail).toEqual([
       '/css/style.css',
-      '/css/style-between-features.css',
+      '/css/listing-detail.css',
       '/css/style-after-features.css',
     ]);
     expect(home).not.toContain('/css/dig-experience.css');
     expect(home).not.toContain('/css/my-listings.css');
+    expect(home).not.toContain('/css/listing-detail.css');
     expect(dig).not.toContain('/css/my-listings.css');
+    expect(dig).not.toContain('/css/listing-detail.css');
     expect(myListings).not.toContain('/css/dig-experience.css');
+    expect(myListings).not.toContain('/css/listing-detail.css');
     expect(listingDetail).not.toContain('/css/my-listings.css');
-    expect(listingDetail).not.toContain('/css/dig-experience.css');
-  });
+    expect(listingDetail).not.toContain('/css/dig-experience.css');  });
 
   it('retains the original CSS region order when reconstructed for source-level tests', () => {
     const reconstructed = readReconstructedMainStylesheet();
@@ -111,23 +110,26 @@ describe('Route-specific CSS bundles (#252)', () => {
       gzipBytes: gzipSync(baselineBuffer).byteLength + gzipSync(digMobile).byteLength,
     };
     const after = {
-      general: routeMetrics(['style.css', 'style-between-features.css', 'style-after-features.css']),
-      dig: routeMetrics(['style.css', 'dig-experience.css', 'style-between-features.css', 'style-after-features.css', 'dig-mobile-crate.css']),
-      myListings: routeMetrics(['style.css', 'style-between-features.css', 'my-listings.css', 'style-after-features.css']),
+      general: routeMetrics(['style.css', 'style-after-features.css']),
+      dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'dig-mobile-crate.css']),
+      myListings: routeMetrics(['style.css', 'my-listings.css', 'style-after-features.css']),
+      listingDetail: routeMetrics(['style.css', 'listing-detail.css', 'style-after-features.css']),
     };
 
     console.info('[CSS bundle size report #252]', JSON.stringify({
-      before: { shared: baselineShared, dig: baselineDig, myListings: baselineShared },
+      before: { shared: baselineShared, dig: baselineDig, myListings: baselineShared, listingDetail: baselineShared },
       after,
       rawBytesSaved: {
         shared: baselineShared.rawBytes - after.general.rawBytes,
         dig: baselineDig.rawBytes - after.dig.rawBytes,
         myListings: baselineShared.rawBytes - after.myListings.rawBytes,
+        listingDetail: baselineShared.rawBytes - after.listingDetail.rawBytes,
       },
       gzipBytesSaved: {
         shared: baselineShared.gzipBytes - after.general.gzipBytes,
         dig: baselineDig.gzipBytes - after.dig.gzipBytes,
         myListings: baselineShared.gzipBytes - after.myListings.gzipBytes,
+        listingDetail: baselineShared.gzipBytes - after.listingDetail.gzipBytes,
       },
     }));
 
@@ -135,5 +137,7 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(after.general.gzipBytes).toBeLessThan(baselineShared.gzipBytes);
     expect(after.dig.rawBytes).toBeLessThan(baselineDig.rawBytes);
     expect(after.myListings.rawBytes).toBeLessThan(baselineShared.rawBytes);
+    expect(after.listingDetail.rawBytes).toBeLessThan(baselineShared.rawBytes);
+    expect(after.listingDetail.gzipBytes).toBeLessThan(baselineShared.gzipBytes);
   });
 });
