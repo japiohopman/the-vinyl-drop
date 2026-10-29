@@ -138,13 +138,15 @@ describe('Route-specific CSS bundles (#252)', () => {
         shared: baselineShared.rawBytes - after.general.rawBytes,
         dig: baselineDig.rawBytes - after.dig.rawBytes,
         myListings: baselineShared.rawBytes - after.myListings.rawBytes,
-        listingDetail: baselineShared.rawBytes - after.listingDetail.rawBytes,\n        listingComments: baselineShared.rawBytes - after.listingComments.rawBytes,
+        listingDetail: baselineShared.rawBytes - after.listingDetail.rawBytes,
+        listingComments: baselineShared.rawBytes - after.listingComments.rawBytes,
       },
       gzipBytesSaved: {
         shared: baselineShared.gzipBytes - after.general.gzipBytes,
         dig: baselineDig.gzipBytes - after.dig.gzipBytes,
         myListings: baselineShared.gzipBytes - after.myListings.gzipBytes,
-        listingDetail: baselineShared.gzipBytes - after.listingDetail.gzipBytes,\n        listingComments: baselineShared.gzipBytes - after.listingComments.gzipBytes,
+        listingDetail: baselineShared.gzipBytes - after.listingDetail.gzipBytes,
+        listingComments: baselineShared.gzipBytes - after.listingComments.gzipBytes,
       },
     }));
 
@@ -153,6 +155,8 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(after.dig.rawBytes).toBeLessThan(baselineDig.rawBytes);
     expect(after.myListings.rawBytes).toBeLessThan(baselineShared.rawBytes);
     expect(after.listingDetail.rawBytes).toBeLessThan(baselineShared.rawBytes);
-    expect(after.listingDetail.gzipBytes).toBeLessThan(baselineShared.gzipBytes);\n    expect(after.listingComments.rawBytes).toBeLessThan(baselineShared.rawBytes);\n    expect(after.listingComments.gzipBytes).toBeLessThan(baselineShared.gzipBytes);
+    expect(after.listingDetail.gzipBytes).toBeLessThan(baselineShared.gzipBytes);
+    expect(after.listingComments.rawBytes).toBeLessThan(baselineShared.rawBytes);
+    expect(after.listingComments.gzipBytes).toBeLessThan(baselineShared.gzipBytes);
   });
 });
