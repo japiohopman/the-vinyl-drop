@@ -1,8 +1,6 @@
 import { readFullStylesheetSource } from './stylesheetTestHelper';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import request from 'supertest';
-import fs from 'fs';
-import path from 'path';
 import { createApp } from '../src/app';
 import { setSupabaseClient } from '../src/lib/supabase';
 import { execSync } from 'child_process';
