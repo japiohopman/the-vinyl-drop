@@ -112,14 +112,15 @@ describe('Route-specific CSS bundles (#252)', () => {
       '/css/style-after-listing-forms.css', '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css',
     ]);
     expect(selectRelease).toEqual([
-      '/css/style.css', '/css/activity-release-selection.css',
-      '/css/style-after-features.css', '/css/style-after-activity.css',
+      '/css/style.css', '/css/style-after-features.css',
+      '/css/activity-release-selection.css', '/css/style-after-activity.css',
       '/css/release-selection-overrides.css', '/css/style-after-release-selection.css',
       '/css/style-after-listing-forms.css', '/css/style-after-profile-pages.css',
       '/css/style-after-profile-editor.css',
     ]);
     expect(selectRelease).not.toContain('/css/listing-detail.css');
     expect(selectRelease).not.toContain('/css/listing-interactions.css');
+    expect(listingCreate).not.toContain('/css/listing-interactions.css');
     expect(selectRelease).not.toContain('/css/browse-dig-controls.css');
     expect(selectRelease).not.toContain('/css/dig-mobile-session.css');
     for (const formRoute of [dropNew, listingCreate, listingEdit]) {
