@@ -17,6 +17,7 @@ const VERSIONED_CSS_ASSETS = [
   '/css/listing-detail.css',
   '/css/my-listings.css',
   '/css/style-after-features.css',
+  '/css/listing-interactions.css',
   '/css/dig-mobile-crate.css',
   '/fonts/fonts.css',
 ] as const;
