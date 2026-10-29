@@ -2,7 +2,6 @@
 
 import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
-import fs from 'fs';
 import path from 'path';
 import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
