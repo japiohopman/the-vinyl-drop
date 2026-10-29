@@ -52,10 +52,44 @@ describe('Mobile Dig app-like viewport', () => {
     backArtwork: null,
     conditionSummary: 'Media VG+ · sleeve VG',
   });
-  const items = [
+  type TestDigItem = Omit<ReturnType<typeof makeItem>, 'backArtwork'> & {
+    backArtwork: { src: string; altText: string } | null;
+  };
+
+  const items: TestDigItem[] = [
     makeItem('listing-1', '3 Feet High and Rising', 1989, '€20.00'),
     makeItem('listing-2', 'Buhloone Mindstate', 1993, '€18.00'),
   ];
+
+  const svgDataUri = (svg: string) => 'data:image/svg+xml,' + encodeURIComponent(svg);
+  const littleFishBase = makeItem('listing-little-fish', 'Little Fish', 1996, '€8.00');
+  const littleFishItem: TestDigItem = {
+    ...littleFishBase,
+    frontArtwork: {
+      ...littleFishBase.frontArtwork,
+      src: svgDataUri(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">' +
+        '<rect width="300" height="300" fill="#273b42"/>' +
+        '<rect x="18" y="18" width="264" height="264" fill="none" stroke="#c2b397" stroke-width="4"/>' +
+        '<path d="M44 150 Q85 105 126 150 T208 150 L246 126 L246 174 L208 150 Q167 195 126 150 T44 150Z" fill="#d0c0a2"/>' +
+        '<text x="150" y="54" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#f0e6d3">LITTLE FISH</text>' +
+        '</svg>'
+      ),
+      altText: 'Test front artwork for Little Fish',
+    },
+    backArtwork: {
+      src: svgDataUri(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="180" viewBox="0 0 300 180">' +
+        '<rect width="300" height="180" fill="#2d343b"/>' +
+        '<rect x="8" y="8" width="284" height="164" fill="none" stroke="#b8a17e" stroke-width="3"/>' +
+        '<text x="150" y="55" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#d5c5a8">LITTLE FISH</text>' +
+        '<path d="M50 95 Q85 65 120 95 T190 95 L230 75 L230 115 L190 95 Q155 125 120 95 T50 95Z" fill="#b8a17e"/>' +
+        '<text x="150" y="150" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#d5c5a8">REVERSE COVER · TEST ARTWORK</text>' +
+        '</svg>'
+      ),
+      altText: 'Landscape-format reverse cover test artwork for Little Fish',
+    },
+  };
 
   beforeAll(async () => {
     browser = await chromium.launch({ headless: true });
@@ -74,7 +108,7 @@ describe('Mobile Dig app-like viewport', () => {
     if (page) await page.close();
   });
 
-  async function renderPage(pageItems = items): Promise<string> {
+  async function renderPage(pageItems: TestDigItem[] = items): Promise<string> {
     const locals = {
       getIconSvg,
       currentPath: '/dig',
@@ -111,7 +145,7 @@ describe('Mobile Dig app-like viewport', () => {
       '<main class="main-content container">' + bodyContent + '</main></body></html>';
   }
 
-  async function loadPage(width: number, height: number, pageItems = items): Promise<void> {
+  async function loadPage(width: number, height: number, pageItems: TestDigItem[] = items): Promise<void> {
     await page.setViewportSize({ width, height });
     await page.setContent(await renderPage(pageItems));
     await page.addScriptTag({ content: digState });
@@ -239,7 +273,7 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back').getAttribute('aria-hidden')).toBe('false');
     const reverseFaceBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-face-back')
       .evaluate((face) => getComputedStyle(face).backgroundColor);
-    expect(reverseFaceBackground).toBe('rgba(0, 0, 0, 0)');
+    expect(reverseFaceBackground).not.toBe('rgba(0, 0, 0, 0)');
     const deckUnderlayBackground = await page.locator('[data-dig-slide].is-active .dig-sleeve-stage')
       .evaluate((stage) => getComputedStyle(stage, '::before').backgroundColor);
     expect(deckUnderlayBackground).toBe('rgba(0, 0, 0, 0)');
@@ -256,7 +290,133 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
   });
 
-  it('keeps the cardboard sleeve edges hinged to the cover during both horizontal flips', async () => {
+  it('uses matte cardboard around Little Fish and keeps the reverse-photo seam joined during flips', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812, [littleFishItem]);
+
+    expect(await page.locator('.dig-listing-meta h2').textContent()).toBe('Little Fish');
+    await page.waitForFunction(() => {
+      const image = document.querySelector<HTMLImageElement>(
+        '[data-dig-slide].is-active .dig-sleeve-face-back img'
+      );
+      return Boolean(image && image.complete && image.naturalWidth === 300 && image.naturalHeight === 180);
+    });
+
+    const restingStyle = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const back = card.querySelector<HTMLElement>('.dig-sleeve-face-back');
+      const front = card.querySelector<HTMLElement>('.dig-sleeve-face-front');
+      const top = card.querySelector<HTMLElement>('.dig-sleeve-edge-top');
+      const right = card.querySelector<HTMLElement>('.dig-sleeve-edge-right');
+      if (!back || !front || !top || !right) throw new Error('Little Fish sleeve is missing a 3D face');
+      return {
+        cardboardColor: getComputedStyle(card).getPropertyValue('--dig-sleeve-cardboard-color').trim(),
+        backFaceColor: getComputedStyle(back).backgroundColor,
+        frontFaceColor: getComputedStyle(front).backgroundColor,
+        topEdgeColor: getComputedStyle(top).backgroundImage,
+        rightEdgeColor: getComputedStyle(right).backgroundImage,
+        backImageFit: getComputedStyle(back.querySelector('img')!).objectFit,
+      };
+    });
+    expect(restingStyle.cardboardColor).toBe('#c2b397');
+    expect(restingStyle.backFaceColor).toBe('rgb(194, 179, 151)');
+    expect(restingStyle.frontFaceColor).toBe('rgb(194, 179, 151)');
+    expect(restingStyle.topEdgeColor).toContain('rgb(208, 192, 162)');
+    expect(restingStyle.rightEdgeColor).not.toContain('rgb(241, 229, 207)');
+    expect(restingStyle.backImageFit).toBe('contain');
+
+    // Stop at a partial front-edge rotation and check that the face and side
+    // walls remain in one transform stack rather than showing a white frame.
+    const stage = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const box = await stage.boundingBox();
+    if (!box) throw new Error('Little Fish sleeve has no bounding box');
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX - 48, startY, { steps: 4 });
+    const partialPose = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]')
+      .evaluate((card) => ({
+        transform: (card as HTMLElement).style.transform,
+        edgeColor: getComputedStyle(card.querySelector('.dig-sleeve-edge-left')!).backgroundImage,
+        faceDepth: new DOMMatrixReadOnly(
+          getComputedStyle(card.querySelector('.dig-sleeve-face-front')!).transform
+        ).m43,
+      }));
+    expect(partialPose.transform).toContain('rotateY(');
+    expect(partialPose.edgeColor).toContain('rgb(110, 89, 62)');
+    expect(partialPose.faceDepth).toBeCloseTo(1.8, 1);
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+
+    await swipeActive(-110, 0);
+    const flippedStyle = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const back = card.querySelector<HTMLElement>('.dig-sleeve-face-back')!;
+      const image = back.querySelector<HTMLImageElement>('img')!;
+      return {
+        flipped: card.classList.contains('is-flipped'),
+        backFaceColor: getComputedStyle(back).backgroundColor,
+        imageNaturalWidth: image.naturalWidth,
+        imageNaturalHeight: image.naturalHeight,
+        dragging: card.classList.contains('is-dragging'),
+      };
+    });
+    expect(flippedStyle.flipped).toBe(true);
+    expect(flippedStyle.backFaceColor).toBe('rgb(194, 179, 151)');
+    expect(flippedStyle.imageNaturalWidth).toBe(300);
+    expect(flippedStyle.imageNaturalHeight).toBe(180);
+    expect(flippedStyle.dragging).toBe(false);
+
+    await swipeActive(110, 0);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => ({
+      flipped: card.classList.contains('is-flipped'),
+      dragging: card.classList.contains('is-dragging'),
+      transform: (card as HTMLElement).style.transform,
+    }))).toEqual({ flipped: false, dragging: false, transform: '' });
+  });
+
+  it('settles repeated front/back flips without leaving stale transforms or timers', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812);
+
+    const stageSelector = '[data-dig-slide].is-active [data-dig-swipe-area]';
+    for (let turn = 0; turn < 8; turn += 1) {
+      const stage = page.locator(stageSelector);
+      const box = await stage.boundingBox();
+      if (!box) throw new Error('Active Dig sleeve has no bounding box');
+
+      const startX = box.x + box.width / 2;
+      const startY = box.y + box.height / 2;
+      const deltaX = turn % 2 === 0 ? -110 : 110;
+      await page.mouse.move(startX, startY);
+      await page.mouse.down();
+      await page.mouse.move(startX + deltaX, startY, { steps: 8 });
+      await page.mouse.up();
+
+      // Start the next gesture before the previous settle fallback fires. This
+      // forces pending work to settle/cancel instead of racing the next flip.
+      await page.waitForTimeout(45);
+    }
+
+    await page.waitForTimeout(430);
+    const finalState = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const element = card as HTMLElement;
+      return {
+        flipped: element.classList.contains('is-flipped'),
+        dragging: element.classList.contains('is-dragging'),
+        inlineTransform: element.style.transform,
+        inlineTransition: element.style.transition,
+        computedTransform: getComputedStyle(element).transform,
+      };
+    });
+    expect(finalState.flipped).toBe(false);
+    expect(finalState.dragging).toBe(false);
+    expect(finalState.inlineTransform).toBe('');
+    expect(finalState.inlineTransition).toBe('');
+    expect(finalState.computedTransform).toBe('none');
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('1 of 2');
+  });
+
+  it('keeps all four cardboard walls attached through horizontal flips and vertical deck tilt', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);
 
@@ -267,6 +427,7 @@ describe('Mobile Dig app-like viewport', () => {
         if (!element) throw new Error('Missing sleeve edge: ' + side);
         const style = getComputedStyle(element);
         const origin = style.transformOrigin.split(/\s+/).map((value) => Number.parseFloat(value));
+        const rect = element.getBoundingClientRect();
         return {
           left: Number.parseFloat(style.left),
           top: Number.parseFloat(style.top),
@@ -276,6 +437,8 @@ describe('Mobile Dig app-like viewport', () => {
           originY: origin[1],
           transform: style.transform,
           shadow: style.boxShadow,
+          projectedWidth: rect.width,
+          projectedHeight: rect.height,
         };
       };
       const faceDepth = (selector: string) => {
@@ -283,8 +446,13 @@ describe('Mobile Dig app-like viewport', () => {
         if (!face) throw new Error('Missing sleeve face: ' + selector);
         return new DOMMatrixReadOnly(getComputedStyle(face).transform).m43;
       };
+      const frontFace = card.querySelector<HTMLElement>('.dig-sleeve-face-front');
+      const topEdge = card.querySelector<HTMLElement>('.dig-sleeve-edge-top');
+      if (!frontFace || !topEdge) throw new Error('Sleeve is missing its front face or top wall');
       const stage = card.closest('.dig-sleeve-stage');
-      if (!stage) throw new Error('Sleeve has no stage');
+      const interaction = card.closest('.dig-sleeve-interaction');
+      const slide = card.closest('[data-dig-slide]');
+      if (!stage || !interaction || !slide) throw new Error('Sleeve is missing a 3D context ancestor');
       const stack = card.closest('.dig-crate-stack');
       if (!stack) throw new Error('Sleeve has no crate stack');
       const stackStyle = getComputedStyle(stack);
@@ -318,9 +486,19 @@ describe('Mobile Dig app-like viewport', () => {
         stageHeight: stage.clientHeight,
         transform: getComputedStyle(sleeveCard).transform,
         flipped: sleeveCard.classList.contains('is-flipped'),
+        threeDContext: {
+          slide: getComputedStyle(slide).transformStyle,
+          interaction: getComputedStyle(interaction).transformStyle,
+          stage: getComputedStyle(stage).transformStyle,
+          card: getComputedStyle(sleeveCard).transformStyle,
+        },
         faceDepths: {
           front: faceDepth('.dig-sleeve-face-front'),
           back: faceDepth('.dig-sleeve-face-back'),
+        },
+        layerOrder: {
+          wall: getComputedStyle(topEdge).zIndex,
+          frontFace: getComputedStyle(frontFace).zIndex,
         },
         stageBeforeContent: stageBefore.content,
         stageBeforeDisplay: stageBefore.display,
@@ -358,51 +536,52 @@ describe('Mobile Dig app-like viewport', () => {
       expect(width).toBeCloseTo(geometry.stageWidth * 0.92, 0);
       expect(height).toBeCloseTo(geometry.stageHeight * 0.90, 0);
 
-      // Each wall stays 3px thick but its projected center sits 0.5px inside
-      // the cover perimeter, allowing the face plane to occlude it face-on.
+      // The four 3px walls are centered on the cover perimeter, following the
+      // CodePen box geometry. They must meet the front/back faces at +/-1.5px.
       expect(edges.top.left).toBe(0);
-      expect(edges.top.top).toBeCloseTo(-1, 1);
+      expect(edges.top.top).toBeCloseTo(-1.5, 1);
       expect(edges.top.width).toBe(width);
       expect(edges.top.height).toBe(3);
-      expect(edges.top.top + edges.top.height / 2).toBeCloseTo(0.5, 1);
       expect(edges.top.originX).toBeCloseTo(width / 2, 0);
       expect(edges.top.originY).toBeCloseTo(1.5, 1);
 
       expect(edges.bottom.left).toBe(0);
-      expect(edges.bottom.top).toBeCloseTo(height - 2, 1);
+      expect(edges.bottom.top).toBeCloseTo(height - 1.5, 1);
       expect(edges.bottom.width).toBe(width);
       expect(edges.bottom.height).toBe(3);
-      expect(edges.bottom.top + edges.bottom.height / 2).toBeCloseTo(height - 0.5, 1);
       expect(edges.bottom.originX).toBeCloseTo(width / 2, 0);
       expect(edges.bottom.originY).toBeCloseTo(1.5, 1);
 
-      expect(edges.left.left).toBeCloseTo(-1, 1);
+      expect(edges.left.left).toBeCloseTo(-1.5, 1);
       expect(edges.left.top).toBe(0);
       expect(edges.left.width).toBe(3);
-      expect(edges.left.left + edges.left.width / 2).toBeCloseTo(0.5, 1);
       expect(edges.left.height).toBe(height);
       expect(edges.left.originX).toBeCloseTo(1.5, 1);
       expect(edges.left.originY).toBeCloseTo(height / 2, 0);
 
-      expect(edges.right.left).toBeCloseTo(width - 2, 1);
+      expect(edges.right.left).toBeCloseTo(width - 1.5, 1);
       expect(edges.right.top).toBe(0);
       expect(edges.right.width).toBe(3);
-      expect(edges.right.left + edges.right.width / 2).toBeCloseTo(width - 0.5, 1);
       expect(edges.right.height).toBe(height);
       expect(edges.right.originX).toBeCloseTo(1.5, 1);
       expect(edges.right.originY).toBeCloseTo(height / 2, 0);
+
+      expect(geometry.threeDContext).toEqual({
+        slide: 'preserve-3d',
+        interaction: 'preserve-3d',
+        stage: 'preserve-3d',
+        card: 'preserve-3d',
+      });
 
       for (const side of ['top', 'right', 'bottom', 'left'] as const) {
         expect(edges[side].transform).not.toBe('none');
         expect(edges[side].shadow).toBe('none');
       }
-      // The cover faces must sit just outside the side walls in Z. If they share
-      // the exact edge depth, browsers may rasterize the cardboard bevel on the
-      // front-on view due to equal-depth fragments.
-      expect(geometry.faceDepths.front).toBeGreaterThan(1.5);
-      expect(geometry.faceDepths.front).toBeCloseTo(2, 1);
-      expect(geometry.faceDepths.back).toBeLessThan(-1.5);
-      expect(geometry.faceDepths.back).toBeCloseTo(-2, 1);
+      // Artwork faces share the actual outside planes with the cardboard walls.
+      // Let 3D depth determine visibility; do not force cover-over-wall z-index.
+      expect(geometry.faceDepths.front).toBeCloseTo(1.8, 1);
+      expect(geometry.faceDepths.back).toBeCloseTo(-1.8, 1);
+      expect(geometry.layerOrder).toEqual({ wall: 'auto', frontFace: 'auto' });
       expect(geometry.stageBeforeContent).toBe('none');
       expect(geometry.stageBeforeDisplay).toBe('none');
       expect(geometry.stageBeforeShadow).toBe('none');
@@ -471,6 +650,43 @@ describe('Mobile Dig app-like viewport', () => {
     geometry = await readGeometry();
     expectHinges(geometry, false);
     expect(geometry.flipped).toBe(false);
+
+    // A deterministic partial Y rotation must project visible width from the
+    // left/right walls rather than leaving permanent white lines at rest.
+    const sleeveCard = page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]');
+    await sleeveCard.evaluate((element) => {
+      const node = element as HTMLElement;
+      node.style.transition = 'none';
+      node.style.transform = 'rotateY(35deg)';
+    });
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(Math.max(geometry.edges.left.projectedWidth, geometry.edges.right.projectedWidth)).toBeGreaterThan(0.5);
+    await sleeveCard.evaluate((element) => {
+      const node = element as HTMLElement;
+      node.style.transform = '';
+      node.style.transition = '';
+    });
+
+    // The card also moves through the vertical deck arc as a 3D object. The
+    // stage must not flatten the top/bottom walls before the ancestor rotates.
+    const interaction = page.locator('[data-dig-slide].is-active .dig-sleeve-interaction');
+    await interaction.evaluate((element) => {
+      const node = element as HTMLElement;
+      node.style.transition = 'none';
+      node.style.transform = 'translate3d(0, 0, -60px) rotateX(38deg)';
+    });
+    geometry = await readGeometry();
+    expectHinges(geometry, false);
+    expect(geometry.threeDContext.stage).toBe('preserve-3d');
+    expect(geometry.edges.top.projectedHeight).toBeGreaterThan(0.5);
+    expect(geometry.edges.bottom.projectedHeight).toBeGreaterThan(0.5);
+    expect(await interaction.evaluate((element) => getComputedStyle(element).transform)).not.toBe('none');
+    await interaction.evaluate((element) => {
+      const node = element as HTMLElement;
+      node.style.transform = '';
+      node.style.transition = '';
+    });
   });
 
   it('cancels a pending flip-settle timer before a second horizontal drag', async () => {
@@ -632,7 +848,7 @@ describe('Mobile Dig app-like viewport', () => {
       '[data-dig-slide].is-active .dig-sleeve-face-back'
     ).evaluate((face) => new DOMMatrixReadOnly(getComputedStyle(face).transform).m43);
     expect(reducedMotionBackFaceDepth).toBeGreaterThan(1.5);
-    expect(reducedMotionBackFaceDepth).toBeCloseTo(2, 1);
+    expect(reducedMotionBackFaceDepth).toBeCloseTo(1.8, 1);
 
     await swipeActive(0, -110);
     expect(await page.locator('[data-dig-slide].is-active').getAttribute('aria-label')).toContain('Buhloone Mindstate');

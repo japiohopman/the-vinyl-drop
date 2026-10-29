@@ -71,13 +71,18 @@
     card.classList.remove('is-dragging');
   }
 
-  function flushPendingFlipSettle() {
-    if (!flipSettleTimer) return;
-    window.clearTimeout(flipSettleTimer);
+  function finishPendingFlipSettle(expectedPending) {
+    const pending = expectedPending || pendingFlipSettle;
+    if (!pending || pendingFlipSettle !== pending) return;
+
+    if (flipSettleTimer) window.clearTimeout(flipSettleTimer);
     flipSettleTimer = 0;
-    const pending = pendingFlipSettle;
     pendingFlipSettle = null;
-    if (pending) settleFlipCard(pending.card, pending.restingAngle);
+    settleFlipCard(pending.card, pending.restingAngle);
+  }
+
+  function flushPendingFlipSettle() {
+    finishPendingFlipSettle(pendingFlipSettle);
   }
 
   function toggleFlip(slide) {
@@ -442,13 +447,14 @@
         if (shouldFlip) setFlipState(slide, !wasFlipped);
         card.style.transform = 'rotateY(' + angles.animationAngle + 'deg)';
 
-        window.clearTimeout(flipSettleTimer);
-        pendingFlipSettle = { card, restingAngle: angles.restingAngle };
+        if (flipSettleTimer) window.clearTimeout(flipSettleTimer);
+        const pending = { card, restingAngle: angles.restingAngle };
+        pendingFlipSettle = pending;
+        // The fallback is deliberately longer than the 260ms transition. A
+        // stale callback must not clear or settle a newer flip's pending pose.
         flipSettleTimer = window.setTimeout(() => {
-          flipSettleTimer = 0;
-          pendingFlipSettle = null;
-          settleFlipCard(card, angles.restingAngle);
-        }, 280);
+          finishPendingFlipSettle(pending);
+        }, 360);
       }
       return;
     }

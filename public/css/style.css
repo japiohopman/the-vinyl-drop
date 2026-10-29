@@ -104,7 +104,7 @@
 html {
   font-size: 100%;
   scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
+  -webkit-text-size-adjust: none;
 }
 
 body {
@@ -2152,6 +2152,11 @@ select.form-control {
   aspect-ratio: 1 / 1;
   margin: 0 auto;
   perspective: 1100px;
+  /*
+   * Keep the inner six-face sleeve in the same 3D scene as the outer
+   * rotateX deck motion. The stage must not flatten the cardboard walls.
+   */
+  transform-style: preserve-3d;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -2180,12 +2185,14 @@ select.form-control {
 .dig-sleeve-card {
   --dig-sleeve-thickness: 3px;
   --dig-sleeve-half-thickness: 1.5px;
+  --dig-sleeve-cardboard-color: #c2b397;
+  --dig-sleeve-cardboard-light: #d0c0a2;
+  --dig-sleeve-cardboard-dark: #80694b;
   /*
-   * Keep the printed faces clearly ahead of the cardboard walls. The earlier
-   * 0.2px clearance still left a visible fringe in the face-on view; half a
-   * CSS pixel gives the artwork a more reliable frontmost surface.
+   * A small front/back overlap closes rasterized hairlines at the cardboard
+   * seam while the sleeve rotates. Keep it subtle so the art doesn't look raised.
    */
-  --dig-sleeve-face-overlap: 0.5px;
+  --dig-sleeve-face-overlap: 0.3px;
   position: relative;
   z-index: 1;
   width: 100%;
@@ -2201,7 +2208,11 @@ select.form-control {
 .dig-sleeve-edge {
   position: absolute;
   display: block;
-  z-index: 0;
+  /*
+   * Leave these faces in the same 3D depth-sorting context as the artwork.
+   * A lower z-index would paint the walls behind the front/back faces even
+   * when a top/bottom wall should project toward the viewer during a tilt.
+   */
   pointer-events: none;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -2215,22 +2226,23 @@ select.form-control {
 }
 
 /*
- * Tuck the side walls half a pixel inside the cover silhouette. When their
- * center sits exactly on the cover boundary, the edge-on plane can rasterize
- * as a visible hairline even though the cover face is in front in Z.
+ * Six siblings form one physical rectangular prism, following the CodePen
+ * reference: side walls are centered on each perimeter and rotated 90 degrees
+ * into the shared depth plane. Their depth exactly matches the two cover faces.
+ * Do not offset these walls inward or force them behind the cover with z-index.
  */
 .dig-sleeve-edge-top {
-  top: -1px;
+  top: calc(0px - var(--dig-sleeve-half-thickness));
   transform-origin: center;
   transform: rotateX(90deg);
-  background: linear-gradient(180deg, #e6d8be 0%, #bba27b 100%);
+  background: linear-gradient(180deg, var(--dig-sleeve-cardboard-light) 0%, #a99370 100%);
 }
 
 .dig-sleeve-edge-bottom {
-  bottom: -1px;
+  bottom: calc(0px - var(--dig-sleeve-half-thickness));
   transform-origin: center;
   transform: rotateX(-90deg);
-  background: linear-gradient(180deg, #826746 0%, #c5ad88 100%);
+  background: linear-gradient(180deg, var(--dig-sleeve-cardboard-dark) 0%, #a18a65 100%);
 }
 
 .dig-sleeve-edge-left,
@@ -2241,17 +2253,17 @@ select.form-control {
 }
 
 .dig-sleeve-edge-left {
-  left: -1px;
+  left: calc(0px - var(--dig-sleeve-half-thickness));
   transform-origin: center;
   transform: rotateY(-90deg);
-  background: linear-gradient(90deg, #6b5436 0%, #b79b70 48%, #826746 100%);
+  background: linear-gradient(90deg, #6e593e 0%, #9b8463 48%, var(--dig-sleeve-cardboard-dark) 100%);
 }
 
 .dig-sleeve-edge-right {
-  right: -1px;
+  right: calc(0px - var(--dig-sleeve-half-thickness));
   transform-origin: center;
   transform: rotateY(90deg);
-  background: linear-gradient(90deg, #f1e5cf 0%, #c5ad88 100%);
+  background: linear-gradient(90deg, #b6a487 0%, #907956 100%);
 }
 
 .dig-sleeve-face {
@@ -2263,13 +2275,12 @@ select.form-control {
   justify-content: stretch;
   overflow: hidden;
   border: 0;
-  background: var(--color-white);
+  background: var(--dig-sleeve-cardboard-color);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 }
 
 .dig-sleeve-face-front {
-  z-index: 2;
   transform: translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));
 }
 
