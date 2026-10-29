@@ -19,7 +19,7 @@
   <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-experience.css') : '/css/dig-experience.css' %>">
   <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && currentPath !== '/listings/new' && new RegExp('^/listings/[^/]+) { %>
+  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && currentPath !== '/listings/new' && new RegExp('^/listings/[^/]+$').test(currentPath)) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-detail.css') : '/css/listing-detail.css' %>">
   <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/listings') { %>
@@ -53,7 +53,7 @@
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/profile-editor.css') : '/css/profile-editor.css' %>">
   <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-profile-editor.css') : '/css/style-after-profile-editor.css' %>">
-  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/new' && currentPath !== '/listings/create' && new RegExp('^/listings/[^/]+(/comments)?) { %>
+  <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/new' && currentPath !== '/listings/create' && new RegExp('^/listings/[^/]+(/comments)?$').test(currentPath)) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-interactions.css') : '/css/listing-interactions.css' %>">
   <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
