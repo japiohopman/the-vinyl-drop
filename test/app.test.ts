@@ -100,6 +100,7 @@ describe('App Routes and Error Handling', () => {
         '/css/listing-detail.css',
         '/css/my-listings.css',
         '/css/style-after-features.css',
+        '/css/listing-interactions.css',
       ];
 
       for (const assetUrl of routeStylesheets) {
