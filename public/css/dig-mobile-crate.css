@@ -492,7 +492,7 @@
 
   .dig-crate-filter-actions {
     position: sticky;
-    bottom: calc(-1 * var(--space-4));
+    bottom: 0;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
