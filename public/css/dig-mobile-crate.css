@@ -296,7 +296,7 @@
    * an app surface, without covering the navigation's hit area.
    */
   .dig-crate-filter-dialog {
-    --dig-filter-nav-clearance: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px));
+    --dig-filter-nav-clearance: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px) + 2px);
     position: fixed;
     inset: auto 8px calc(var(--dig-filter-nav-clearance) + 8px);
     box-sizing: border-box;
