@@ -1,0 +1,728 @@
+/* Crate Dig — physical sleeve stack and accessible vertical navigation */
+.dig-page {
+  max-width: 1040px;
+  min-width: 0;
+  margin: var(--space-6) auto var(--space-12);
+  padding: 0 var(--space-4);
+}
+
+.dig-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.dig-eyebrow,
+.dig-listing-kicker {
+  margin: 0 0 var(--space-2);
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.dig-page-header h1 {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  line-height: 1.05;
+}
+
+.dig-intro {
+  max-width: 620px;
+  margin: 0;
+  color: var(--color-ink-muted);
+  line-height: var(--line-height-base);
+}
+
+.dig-back-to-browse {
+  flex: 0 0 auto;
+  min-height: 44px;
+}
+
+.dig-context-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.dig-result-summary,
+.dig-result-limit {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-sm);
+}
+
+.dig-result-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+  font-family: var(--font-mono);
+}
+
+.dig-result-summary strong {
+  color: var(--color-ink);
+  font-size: var(--font-size-md);
+}
+
+.dig-result-limit {
+  max-width: 470px;
+  text-align: right;
+}
+
+.dig-filter-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+  margin: 0 0 var(--space-4);
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+}
+
+.dig-filter-summary span {
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-paper);
+}
+
+.dig-explorer {
+  min-width: 0;
+  padding: var(--space-4);
+  border: var(--border-thick);
+  background: var(--color-paper);
+  box-shadow: var(--shadow-tactile);
+}
+
+.dig-viewer {
+  min-width: 0;
+  outline-offset: 4px;
+}
+
+.dig-viewer:focus-visible {
+  outline: 3px solid var(--color-focus);
+}
+
+.dig-crate-stack {
+  position: relative;
+  min-width: 0;
+  min-height: 720px;
+  perspective: 1100px;
+  transform-style: preserve-3d;
+  isolation: isolate;
+  /*
+   * overflow: clip clips the moving sleeve without flattening the 3D scene.
+   * "hidden" here would collapse preserve-3d and make the carousel look flat.
+   */
+  overflow: clip;
+}
+
+.dig-slide {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  min-width: 0;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: none;
+  transform-style: preserve-3d;
+  transition: visibility 0s linear 520ms;
+}
+
+.dig-slide.is-active {
+  z-index: 3;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  /* The record article stays still; only its sleeve moves through 3D space. */
+  transform: none;
+  transition-delay: 0s;
+}
+
+.dig-slide.is-next,
+.dig-slide.is-previous {
+  z-index: 0;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: none;
+  transition-delay: 0s;
+}
+
+.dig-slide .dig-listing-meta,
+.dig-slide .dig-card-actions {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 220ms ease, transform 260ms ease;
+  transition-delay: 0s;
+}
+
+.dig-slide.is-active .dig-listing-meta,
+.dig-slide.is-active .dig-card-actions {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 110ms;
+}
+
+.dig-slide.is-leaving-up,
+.dig-slide.is-leaving-down {
+  z-index: 4;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: none;
+  transition-delay: 0s;
+}
+
+/* Rotate the album sleeve itself through the deck arc, not the whole listing UI. */
+.dig-slide.is-leaving-up .dig-sleeve-interaction {
+  transform: translate3d(0, -112%, -175px) rotateX(82deg);
+  transform-origin: 50% 0%;
+}
+
+.dig-slide.is-leaving-down .dig-sleeve-interaction {
+  transform: translate3d(0, 112%, -175px) rotateX(-82deg);
+  transform-origin: 50% 100%;
+}
+
+.dig-slide.is-leaving-up .dig-listing-meta,
+.dig-slide.is-leaving-up .dig-card-actions,
+.dig-slide.is-leaving-down .dig-listing-meta,
+.dig-slide.is-leaving-down .dig-card-actions {
+  opacity: 0;
+  transform: translateY(-5px);
+  transition-delay: 0s;
+}
+
+.dig-slide.is-dragging {
+  transition: none !important;
+}
+
+.dig-slide.is-dragging .dig-sleeve-interaction {
+  transition: none !important;
+  will-change: transform;
+}
+
+.dig-slide.is-dragging .dig-listing-meta,
+.dig-slide.is-dragging .dig-card-actions {
+  transition: none !important;
+}
+
+.dig-listing-meta {
+  min-width: 0;
+  max-width: 730px;
+  margin: 0 auto var(--space-3);
+  text-align: center;
+}
+
+.dig-listing-meta h2 {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  line-height: 1.15;
+}
+
+.dig-artist {
+  margin: var(--space-1) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-md);
+}
+
+.dig-sleeve-interaction {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  transform: translate3d(0, 0, 0);
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+  transition: transform 520ms cubic-bezier(.2, .75, .25, 1), transform-origin 520ms ease;
+}
+
+.dig-sleeve-stage {
+  position: relative;
+  width: min(100%, 510px);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  perspective: 1100px;
+  /*
+   * Keep the inner six-face sleeve in the same 3D scene as the outer
+   * rotateX deck motion. The stage must not flatten the cardboard walls.
+   */
+  transform-style: preserve-3d;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dig-sleeve-stage:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 4px;
+}
+
+/* A neutral deck edge gives the card-stack cue without showing another record. */
+.dig-sleeve-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  transform: translate(4px, 4px);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-paper);
+  box-shadow: 3px 3px 0 var(--color-border-subtle);
+  pointer-events: none;
+}
+
+/* Thin cardboard thickness, using the same edge-hinge geometry as the book reader. */
+.dig-sleeve-card {
+  --dig-sleeve-thickness: 3px;
+  --dig-sleeve-half-thickness: 1.5px;
+  --dig-sleeve-cardboard-color: #c2b397;
+  --dig-sleeve-cardboard-light: #d0c0a2;
+  --dig-sleeve-cardboard-dark: #80694b;
+  /*
+   * A small front/back overlap closes rasterized hairlines at the cardboard
+   * seam while the sleeve rotates. Keep it subtle so the art doesn't look raised.
+   */
+  --dig-sleeve-face-overlap: 0.3px;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 420ms cubic-bezier(.2, .75, .25, 1);
+}
+
+.dig-sleeve-card.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.dig-sleeve-edge {
+  position: absolute;
+  display: block;
+  /*
+   * Leave these faces in the same 3D depth-sorting context as the artwork.
+   * A lower z-index would paint the walls behind the front/back faces even
+   * when a top/bottom wall should project toward the viewer during a tilt.
+   */
+  pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.dig-sleeve-edge-top,
+.dig-sleeve-edge-bottom {
+  left: 0;
+  width: 100%;
+  height: var(--dig-sleeve-thickness);
+}
+
+/*
+ * Six siblings form one physical rectangular prism, following the CodePen
+ * reference: side walls are centered on each perimeter and rotated 90 degrees
+ * into the shared depth plane. Their depth exactly matches the two cover faces.
+ * Do not offset these walls inward or force them behind the cover with z-index.
+ */
+.dig-sleeve-edge-top {
+  top: calc(0px - var(--dig-sleeve-half-thickness));
+  transform-origin: center;
+  transform: rotateX(90deg);
+  background: linear-gradient(180deg, var(--dig-sleeve-cardboard-light) 0%, #a99370 100%);
+}
+
+.dig-sleeve-edge-bottom {
+  bottom: calc(0px - var(--dig-sleeve-half-thickness));
+  transform-origin: center;
+  transform: rotateX(-90deg);
+  background: linear-gradient(180deg, var(--dig-sleeve-cardboard-dark) 0%, #a18a65 100%);
+}
+
+.dig-sleeve-edge-left,
+.dig-sleeve-edge-right {
+  top: 0;
+  width: var(--dig-sleeve-thickness);
+  height: 100%;
+}
+
+.dig-sleeve-edge-left {
+  left: calc(0px - var(--dig-sleeve-half-thickness));
+  transform-origin: center;
+  transform: rotateY(-90deg);
+  background: linear-gradient(90deg, #6e593e 0%, #9b8463 48%, var(--dig-sleeve-cardboard-dark) 100%);
+}
+
+.dig-sleeve-edge-right {
+  right: calc(0px - var(--dig-sleeve-half-thickness));
+  transform-origin: center;
+  transform: rotateY(90deg);
+  background: linear-gradient(90deg, #b6a487 0%, #907956 100%);
+}
+
+.dig-sleeve-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: stretch;
+  overflow: hidden;
+  border: 0;
+  background: var(--dig-sleeve-cardboard-color);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.dig-sleeve-face-front {
+  transform: translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));
+}
+
+.dig-sleeve-face-back {
+  transform: rotateY(180deg) translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));
+}
+
+.dig-sleeve-image {
+  display: block;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  object-fit: contain;
+  object-position: center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.dig-sleeve-card.is-dragging {
+  will-change: transform;
+}
+
+.dig-missing-front,
+.dig-missing-back {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 0;
+  padding: 3.5rem var(--space-5) var(--space-4);
+  color: var(--color-ink);
+  text-align: center;
+}
+
+.dig-missing-front strong,
+.dig-missing-back strong {
+  max-width: 24rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.1rem, 2.4vw, 1.5rem);
+}
+
+.dig-missing-front p,
+.dig-missing-back p {
+  max-width: 24rem;
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-base);
+}
+
+.dig-missing-front-mark,
+.dig-missing-back-mark {
+  color: var(--color-ink-muted);
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.dig-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+}
+
+.dig-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+}
+
+.dig-price-label {
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+}
+
+.dig-price strong {
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 4vw, 1.8rem);
+  line-height: 1.1;
+}
+
+.dig-listing-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-1);
+  color: var(--color-rust-accessible);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  touch-action: manipulation;
+}
+
+.dig-flip-control {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dig-flip-control:focus-visible {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  border: var(--border-thick);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-tactile);
+}
+
+.dig-trade-note {
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+}
+
+.dig-navigation {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(140px, 1.3fr) minmax(130px, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.dig-nav-button {
+  min-height: 44px;
+}
+
+.dig-nav-button:last-child {
+  justify-self: end;
+}
+
+.dig-nav-button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.dig-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
+.dig-progress-wrap progress {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--color-ink);
+}
+
+.dig-keyboard-note {
+  margin: var(--space-4) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
+.dig-empty-state {
+  margin: var(--space-6) 0;
+  padding: var(--space-8) var(--space-4);
+  border: 2px dashed var(--color-border-subtle);
+  text-align: center;
+}
+
+.dig-empty-state h2 {
+  margin-top: 0;
+  font-family: var(--font-display);
+}
+
+.dig-empty-state p {
+  max-width: 34rem;
+  margin: 0 auto var(--space-4);
+  color: var(--color-ink-muted);
+  line-height: var(--line-height-base);
+}
+
+.dig-page[data-reduced-motion="true"] .dig-slide,
+.dig-page[data-reduced-motion="true"] .dig-sleeve-interaction,
+.dig-page[data-reduced-motion="true"] .dig-sleeve-card,
+.dig-page[data-reduced-motion="true"] .dig-listing-meta,
+.dig-page[data-reduced-motion="true"] .dig-card-actions {
+  transition: none !important;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-slide:not(.is-active) {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  transform: none !important;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-slide.is-active,
+.dig-page[data-reduced-motion="true"] .dig-sleeve-interaction,
+.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped {
+  transform: none !important;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-slide .dig-listing-meta,
+.dig-page[data-reduced-motion="true"] .dig-slide .dig-card-actions {
+  opacity: 0;
+  transform: none !important;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-slide.is-active .dig-listing-meta,
+.dig-page[data-reduced-motion="true"] .dig-slide.is-active .dig-card-actions {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped .dig-sleeve-face-front {
+  display: none;
+}
+
+.dig-page[data-reduced-motion="true"] .dig-sleeve-card.is-flipped .dig-sleeve-face-back {
+  /* A reduced-motion flip shows the back face-on, but keeps it ahead of edges. */
+  transform: translateZ(calc(var(--dig-sleeve-half-thickness) + var(--dig-sleeve-face-overlap)));
+}
+
+@media (max-width: 680px) {
+  .dig-page {
+    margin-top: var(--space-4);
+    padding: 0 var(--space-3);
+  }
+
+  .dig-page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dig-back-to-browse {
+    align-self: flex-start;
+  }
+
+  .dig-context-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dig-result-limit {
+    text-align: left;
+  }
+
+  .dig-explorer {
+    padding: var(--space-3);
+  }
+
+  .dig-crate-stack {
+    min-height: 480px;
+  }
+
+  .dig-sleeve-stage {
+    width: 100%;
+  }
+
+  .dig-listing-meta {
+    margin-bottom: var(--space-2);
+  }
+
+  .dig-listing-meta h2 {
+    font-size: clamp(1.2rem, 5vw, 1.65rem);
+  }
+
+  .dig-card-actions {
+    gap: var(--space-2);
+  }
+
+  .dig-navigation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The swipe surface is the primary mobile browsing control; buttons remain accessible elsewhere. */
+  .dig-nav-button {
+    display: none;
+  }
+
+  .dig-progress-wrap {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .dig-keyboard-note {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .dig-crate-stack {
+    min-height: 450px;
+  }
+
+  .dig-navigation {
+    gap: var(--space-2);
+  }
+
+  .dig-card-actions {
+    align-items: baseline;
+  }
+
+  .dig-listing-link {
+    flex: 0 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dig-slide,
+  .dig-sleeve-interaction,
+  .dig-sleeve-card,
+  .dig-listing-meta,
+  .dig-card-actions {
+    transition: none !important;
+  }
+}
+
+
