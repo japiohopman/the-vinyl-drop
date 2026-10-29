@@ -1,3 +1,4 @@
+import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
@@ -25,7 +26,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
   const headerPath = path.join(__dirname, '../views/partials/header.ejs');
   const releasePath = path.join(__dirname, '../views/releases/new.ejs');
   const createListingPath = path.join(__dirname, '../views/listings/create.ejs');
-  const stylesheetContent = fs.readFileSync(path.join(__dirname, '../public/css/style.css'), 'utf8');
+  const stylesheetContent = readFullStylesheetSource();
   const pickerScript = fs.readFileSync(path.join(__dirname, '../public/js/release-file-picker.js'), 'utf8');
   const discogsLookupScript = fs.readFileSync(path.join(__dirname, '../public/js/discogs-release-lookup.js'), 'utf8');
 
