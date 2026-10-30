@@ -1969,19 +1969,16 @@ describe('Mobile Dig app-like viewport', () => {
     expect(desktopWidths.documentWidth).toBeLessThanOrEqual(1280);
     expect(desktopWidths.bodyWidth).toBeLessThanOrEqual(1280);
   });
-});
-
-
   it('defaults Dig sounds on, lets the user turn them off, and plays only for committed actions', async () => {
     await loadPage(375, 812);
 
     const soundToggle = page.locator('[data-dig-sound-toggle]');
-    await expect(soundToggle).toHaveAttribute('aria-pressed', 'true');
-    await expect(soundToggle).toContainText('Sound on');
+    expect(await soundToggle.getAttribute('aria-pressed')).toBe('true');
+    expect(await soundToggle.textContent()).toContain('Sound on');
 
     await soundToggle.click();
-    await expect(soundToggle).toHaveAttribute('aria-pressed', 'false');
-    await expect(soundToggle).toContainText('Sound off');
+    expect(await soundToggle.getAttribute('aria-pressed')).toBe('false');
+    expect(await soundToggle.textContent()).toContain('Sound off');
     await page.locator('[data-dig-flip]').first().click();
     expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds?.length || 0)).toBe(0);
 
@@ -2008,6 +2005,7 @@ describe('Mobile Dig app-like viewport', () => {
     await page.mouse.down();
     await page.mouse.up();
     expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds?.length || 0)).toBe(0);
-    await expect(page.locator('[data-dig-prev]')).toBeDisabled();
+    expect(await page.locator('[data-dig-prev]').isDisabled()).toBe(true);
   });
 \n
+});
