@@ -1103,6 +1103,14 @@ describe('Mobile Dig app-like viewport', () => {
     await trigger.click();
     expect(await dialog.isVisible()).toBe(true);
     expect(await trigger.getAttribute('aria-expanded')).toBe('true');
+    await page.waitForFunction(() => {
+      const dialogElement = document.querySelector('[data-dig-filter-dialog]');
+      const navigation = document.querySelector('.mobile-bottom-nav');
+      if (!(dialogElement instanceof HTMLElement) || !(navigation instanceof HTMLElement)) return false;
+      return Math.abs(
+        dialogElement.getBoundingClientRect().bottom - navigation.getBoundingClientRect().top
+      ) <= 1;
+    });
     const sheetGeometry = await dialog.evaluate((element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
@@ -1152,9 +1160,16 @@ describe('Mobile Dig app-like viewport', () => {
       iconWidths: Array.from(element.querySelectorAll('.dig-format-icon')).map((icon) =>
         Math.round(icon.getBoundingClientRect().width)
       ),
+      labelsBelowIcons: Array.from(element.querySelectorAll('label[data-format]')).every((tile) => {
+        const icon = tile.querySelector('.dig-format-icon');
+        const label = tile.querySelector('span');
+        if (!icon || !label) return false;
+        return icon.getBoundingClientRect().bottom <= label.getBoundingClientRect().top;
+      }),
     }));
     expect(formatLayout.columns).toBe(3);
     expect(formatLayout.iconWidths).toEqual([52, 52, 52]);
+    expect(formatLayout.labelsBelowIcons).toBe(true);
     expect(await dialog.locator('.dig-crate-white-label-option').count()).toBe(1);
     expect(await dialog.locator('.dig-crate-white-label-option img').count()).toBe(0);
 
@@ -1203,6 +1218,14 @@ describe('Mobile Dig app-like viewport', () => {
       const trigger = page.locator('[data-dig-filter-open]');
       const dialog = page.locator('[data-dig-filter-dialog]');
       await trigger.click();
+      await page.waitForFunction(() => {
+        const dialogElement = document.querySelector('[data-dig-filter-dialog]');
+        const navigation = document.querySelector('.mobile-bottom-nav');
+        if (!(dialogElement instanceof HTMLElement) || !(navigation instanceof HTMLElement)) return false;
+        return Math.abs(
+          dialogElement.getBoundingClientRect().bottom - navigation.getBoundingClientRect().top
+        ) <= 1;
+      });
       await dialog.locator('.dig-crate-filter-actions').scrollIntoViewIfNeeded();
 
       const geometry = await page.evaluate(() => {
@@ -1253,6 +1276,14 @@ describe('Mobile Dig app-like viewport', () => {
       const trigger = page.locator('[data-dig-filter-open]');
       const dialog = page.locator('[data-dig-filter-dialog]');
       await trigger.click();
+      await page.waitForFunction(() => {
+        const dialogElement = document.querySelector('[data-dig-filter-dialog]');
+        const navigation = document.querySelector('.mobile-bottom-nav');
+        if (!(dialogElement instanceof HTMLElement) || !(navigation instanceof HTMLElement)) return false;
+        return Math.abs(
+          dialogElement.getBoundingClientRect().bottom - navigation.getBoundingClientRect().top
+        ) <= 1;
+      });
 
       const keyboardHeight = Math.round(viewport.height * 0.48);
       const keyboardOffsetTop = viewport.width === 390 ? 18 : 0;
@@ -1322,9 +1353,15 @@ describe('Mobile Dig app-like viewport', () => {
         visualViewport.dispatchEvent(new Event('resize'));
       }, viewport.height);
 
-      await page.waitForFunction(() =>
-        !document.querySelector('[data-dig-filter-dialog]')?.classList.contains('is-keyboard-open')
-      );
+      await page.waitForFunction(() => {
+        const dialogElement = document.querySelector('[data-dig-filter-dialog]');
+        const navigation = document.querySelector('.mobile-bottom-nav');
+        if (!(dialogElement instanceof HTMLElement) || !(navigation instanceof HTMLElement)) return false;
+        return !dialogElement.classList.contains('is-keyboard-open') &&
+          Math.abs(
+            dialogElement.getBoundingClientRect().bottom - navigation.getBoundingClientRect().top
+          ) <= 1;
+      });
       const restored = await dialog.evaluate((element) => {
         const navigation = document.querySelector('.mobile-bottom-nav');
         if (!navigation) throw new Error('Mobile bottom navigation missing');
