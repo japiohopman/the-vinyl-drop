@@ -1009,6 +1009,11 @@
 
   if (soundToggleButton) {
     updateSoundToggle();
+    if (preferences && typeof preferences.subscribe === 'function') {
+      preferences.subscribe((_values, key) => {
+        if (key === 'soundEffectsEnabled') updateSoundToggle();
+      });
+    }
     soundToggleButton.addEventListener('click', () => {
       if (preferences && typeof preferences.set === 'function') {
         preferences.set('soundEffectsEnabled', !isSoundEffectsEnabled());
