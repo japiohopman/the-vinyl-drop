@@ -279,6 +279,7 @@
     zoomIdleAfterTouchSlide = null;
     card.classList.remove('is-zoom-resetting');
     card.classList.add('is-zooming');
+    setZoomState(slide, renderedZoomState.scale, renderedZoomState.panX, renderedZoomState.panY);
     stage.classList.add('is-gesture-active');
 
     const bounds = stage.getBoundingClientRect();
