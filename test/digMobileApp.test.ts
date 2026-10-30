@@ -195,6 +195,72 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-header-position]').textContent()).toBe('2 of 2');
   });
 
+  it('supports keyboard zoom and pan for sleeve inspection', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812, [littleFishItem]);
+    const viewer = page.locator('[data-dig-viewer]');
+    expect(await viewer.getAttribute('aria-label')).toContain('Press plus or equals to zoom in');
+    await viewer.focus();
+
+    await page.keyboard.press('=');
+    const zoomed = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const element = card as HTMLElement;
+      return {
+        scale: Number.parseFloat(element.style.getPropertyValue('--dig-zoom-scale')),
+        zoomed: card.classList.contains('is-zoomed'),
+      };
+    });
+    expect(zoomed.zoomed).toBe(true);
+    expect(zoomed.scale).toBeCloseTo(1.25, 2);
+
+    await page.keyboard.press('ArrowRight');
+    const panned = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      Number.parseFloat((card as HTMLElement).style.getPropertyValue('--dig-zoom-pan-x'))
+    );
+    expect(panned).toBeGreaterThan(0);
+
+    await page.keyboard.press('-');
+    const reset = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => ({
+      zoomed: card.classList.contains('is-zoomed'),
+      scale: (card as HTMLElement).style.getPropertyValue('--dig-zoom-scale'),
+      panX: (card as HTMLElement).style.getPropertyValue('--dig-zoom-pan-x'),
+      panY: (card as HTMLElement).style.getPropertyValue('--dig-zoom-pan-y'),
+    }));
+    expect(reset).toEqual({ zoomed: false, scale: '', panX: '', panY: '' });
+  });
+
+  it('keeps zoom transitions disabled when reduced motion is requested', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await loadPage(375, 812, [littleFishItem]);
+    const duration = await page.locator('[data-dig-slide].is-active .dig-sleeve-face-front .dig-sleeve-image')
+      .evaluate((image) => getComputedStyle(image).transitionDuration);
+    expect(duration).toBe('0s');
+  });
+
+  it('supports two non-primary touch contacts starting a pinch without a one-finger gesture', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812, [littleFishItem]);
+    const box = await page.locator('[data-dig-slide].is-active [data-dig-swipe-area]').boundingBox();
+    if (!box) throw new Error('Active sleeve has no bounding box');
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+
+    await dispatchTouchPointer('pointerdown', 51, x - 40, y, false);
+    await dispatchTouchPointer('pointerdown', 52, x + 40, y, false);
+    await dispatchTouchPointer('pointermove', 51, x - 70, y, false);
+    await dispatchTouchPointer('pointermove', 52, x + 70, y, false);
+
+    const zoomed = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => ({
+      zoomed: card.classList.contains('is-zoomed'),
+      scale: Number.parseFloat((card as HTMLElement).style.getPropertyValue('--dig-zoom-scale')),
+    }));
+    expect(zoomed.zoomed).toBe(true);
+    expect(zoomed.scale).toBeGreaterThan(1);
+
+    await dispatchTouchPointer('pointerup', 51, x - 70, y, false);
+    await dispatchTouchPointer('pointerup', 52, x + 70, y, false);
+  });
+
   it('fits the active sleeve in the mobile viewport without page-level scrolling', async () => {
     for (const viewport of [
       { width: 320, height: 640 },
@@ -408,6 +474,8 @@ describe('Mobile Dig app-like viewport', () => {
     expect(panned.scale).toBeCloseTo(zoomed.scale, 1);
     expect(Math.abs(panned.panX)).toBeLessThanOrEqual((panned.scale - 1) * panned.width / 2 + 1);
     expect(Math.abs(panned.panY)).toBeLessThanOrEqual((panned.scale - 1) * panned.height / 2 + 1);
+    expect(panned.panX - zoomed.panX).toBeGreaterThan(0);
+    expect(panned.panY - zoomed.panY).toBeGreaterThan(0);
 
     // Releasing the pinch must retain the zoom, then a normal one-finger
     // horizontal touch swipe must still flip this same physical record.
@@ -459,6 +527,7 @@ describe('Mobile Dig app-like viewport', () => {
     // the sleeve. It starts only after the pinch interaction ends.
     await dispatchTouchPointer('pointerdown', 31, currentX - 40, currentY, true);
     await dispatchTouchPointer('pointerdown', 32, currentX + 40, currentY, false);
+    await dispatchTouchPointer('pointerdown', 33, currentX, currentY + 40, false);
     await dispatchTouchPointer('pointermove', 31, currentX - 90, currentY, true);
     await dispatchTouchPointer('pointermove', 32, currentX + 90, currentY, false);
     await page.clock.fastForward(5100);
@@ -474,6 +543,13 @@ describe('Mobile Dig app-like viewport', () => {
 
     // The last finger leaving the sleeve starts the five-second idle window.
     await dispatchTouchPointer('pointerup', 32, currentX + 90, currentY, false);
+    await page.clock.fastForward(5100);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-zoomed')
+    )).toBe(true);
+
+    // The third contact also keeps the zoom alive until it leaves the sleeve.
+    await dispatchTouchPointer('pointerup', 33, currentX, currentY + 40, false);
     await page.clock.fastForward(5001);
     const idleReset = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => ({
       zoomed: card.classList.contains('is-zoomed'),
@@ -498,8 +574,20 @@ describe('Mobile Dig app-like viewport', () => {
     await dispatchTouchPointer('pointermove', 41, x - 80, y - 20, true);
     await dispatchTouchPointer('pointermove', 42, x + 80, y + 20, false);
     await dispatchTouchPointer('pointerup', 41, x - 80, y - 20, true);
+    const outgoingCard = page.locator('[data-dig-slide]').first().locator('[data-dig-sleeve-card]');
+    expect(await outgoingCard.evaluate((card) => card.classList.contains('is-zoomed'))).toBe(true);
 
     await swipeActive(0, -120);
+    const outgoingZoomState = await outgoingCard.evaluate((card) => {
+      const element = card as HTMLElement;
+      return {
+        zoomed: card.classList.contains('is-zoomed'),
+        scale: element.style.getPropertyValue('--dig-zoom-scale'),
+        panX: element.style.getPropertyValue('--dig-zoom-pan-x'),
+        panY: element.style.getPropertyValue('--dig-zoom-pan-y'),
+      };
+    });
+    expect(outgoingZoomState).toEqual({ zoomed: false, scale: '', panX: '', panY: '' });
     const state = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
       const element = card as HTMLElement;
       return {
