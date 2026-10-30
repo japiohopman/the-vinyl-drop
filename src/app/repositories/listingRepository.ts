@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lte, or, SQL, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, lte, notInArray, or, SQL, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { ConditionGrade, ListingStatus } from '../../db/schema/enums';
 import { Listing, NewListing, listings } from '../../db/schema/listings';
@@ -40,6 +40,38 @@ export interface SearchListingsResult {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+type JoinedListingRow = Omit<JoinedListingRecord, 'primaryPhotoPath'>;
+
+/** Attach the preferred front-cover path with one bounded bulk photo lookup. */
+async function attachPrimaryPhotoPaths(
+  rows: JoinedListingRow[],
+  db: DbInstance
+): Promise<JoinedListingRecord[]> {
+  if (rows.length === 0) return [];
+
+  const listingIds = rows.map((row) => row.listing.id);
+  const photoRecords = await db
+    .select()
+    .from(listingPhotos)
+    .where(inArray(listingPhotos.listingId, listingIds))
+    .orderBy(
+      sql`case when ${listingPhotos.role} = 'front_cover' then 0 else 1 end`,
+      asc(listingPhotos.displayOrder)
+    );
+
+  const primaryPhotoMap = new Map<string, string>();
+  for (const photo of photoRecords) {
+    if (!primaryPhotoMap.has(photo.listingId)) {
+      primaryPhotoMap.set(photo.listingId, photo.storagePath);
+    }
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    primaryPhotoPath: primaryPhotoMap.get(row.listing.id) || null,
+  }));
 }
 
 export async function findListingById(id: string, dbOverride?: DbInstance): Promise<Listing | null> {
@@ -105,6 +137,53 @@ export async function findRecentPublishedListings(
     .where(eq(listings.status, 'published'))
     .orderBy(desc(listings.createdAt))
     .limit(limit);
+}
+
+/**
+ * Select a rotating, bounded window of public listings without a table-wide random sort.
+ *
+ * Listing IDs are random UUIDs. Starting an ordered primary-key range scan at a fresh
+ * random UUID gives each request a different catalogue slice; a second lower-ID range
+ * wraps around when the first segment contains fewer than the requested number.
+ * The ranges are disjoint, status is always restricted to published, and recent-feed
+ * IDs can be excluded so the two Home sections stay distinct.
+ */
+export async function findHomeDiscoveryListingsByCursor(
+  cursorId: string,
+  limit = 6,
+  excludedListingIds: string[] = [],
+  dbOverride?: DbInstance
+): Promise<JoinedListingRecord[]> {
+  const db = dbOverride || getDb();
+  const safeLimit = Number.isFinite(limit) ? Math.min(6, Math.max(1, Math.floor(limit))) : 6;
+  const exclusion = excludedListingIds.length > 0
+    ? [notInArray(listings.id, excludedListingIds)]
+    : [];
+
+  const selectRange = (afterCursor: boolean, rangeLimit: number) => db
+    .select({
+      listing: listings,
+      physicalCopy: physicalCopies,
+      release: releases,
+      seller: profiles,
+    })
+    .from(listings)
+    .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
+    .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
+    .innerJoin(profiles, eq(listings.sellerId, profiles.id))
+    .where(and(
+      eq(listings.status, 'published'),
+      ...exclusion,
+      afterCursor ? gte(listings.id, cursorId) : lt(listings.id, cursorId)
+    ))
+    .orderBy(asc(listings.id))
+    .limit(rangeLimit);
+
+  const firstRange = await selectRange(true, safeLimit);
+  const remaining = safeLimit - firstRange.length;
+  const wrappedRange = remaining > 0 ? await selectRange(false, remaining) : [];
+
+  return attachPrimaryPhotoPaths([...firstRange, ...wrappedRange], db);
 }
 
 export async function createListing(data: NewListing, dbOverride?: DbInstance): Promise<Listing> {
@@ -289,28 +368,7 @@ export async function searchListings(
     .limit(limit)
     .offset(offset);
 
-  // Bulk query primary photos for returned listing IDs
-  const listingIds = rows.map((r) => r.listing.id);
-  const photoRecords =
-    listingIds.length > 0
-      ? await db
-          .select()
-          .from(listingPhotos)
-          .where(inArray(listingPhotos.listingId, listingIds))
-          .orderBy(sql`case when ${listingPhotos.role} = 'front_cover' then 0 else 1 end`, asc(listingPhotos.displayOrder))
-      : [];
-
-  const primaryPhotoMap = new Map<string, string>();
-  for (const photo of photoRecords) {
-    if (!primaryPhotoMap.has(photo.listingId)) {
-      primaryPhotoMap.set(photo.listingId, photo.storagePath);
-    }
-  }
-
-  const records: JoinedListingRecord[] = rows.map((row) => ({
-    ...row,
-    primaryPhotoPath: primaryPhotoMap.get(row.listing.id) || null,
-  }));
+  const records = await attachPrimaryPhotoPaths(rows, db);
 
   return {
     records,
