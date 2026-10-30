@@ -1255,15 +1255,16 @@ describe('Mobile Dig app-like viewport', () => {
       await trigger.click();
 
       const keyboardHeight = Math.round(viewport.height * 0.48);
-      await page.evaluate((visibleHeight) => {
+      const keyboardOffsetTop = viewport.width === 390 ? 18 : 0;
+      await page.evaluate(({ visibleHeight, offsetTop }) => {
         const visualViewport = (window as Window & {
           __digTestVisualViewport?: EventTarget & { height: number; offsetTop: number };
         }).__digTestVisualViewport;
         if (!visualViewport) throw new Error('Test visual viewport was not installed');
         visualViewport.height = visibleHeight;
-        visualViewport.offsetTop = 0;
+        visualViewport.offsetTop = offsetTop;
         visualViewport.dispatchEvent(new Event('resize'));
-      }, keyboardHeight);
+      }, { visibleHeight: keyboardHeight, offsetTop: keyboardOffsetTop });
 
       await page.waitForFunction(() =>
         document.querySelector('[data-dig-filter-dialog]')?.classList.contains('is-keyboard-open')
@@ -1283,11 +1284,26 @@ describe('Mobile Dig app-like viewport', () => {
           maxHeight: getComputedStyle(dialogElement).maxHeight,
         };
       });
-      expect(keyboardGeometry.dialogTop).toBeGreaterThanOrEqual(7);
-      expect(keyboardGeometry.dialogBottom).toBeLessThanOrEqual(keyboardHeight - 7);
+      expect(keyboardGeometry.dialogTop).toBeGreaterThanOrEqual(keyboardOffsetTop + 7);
+      expect(keyboardGeometry.dialogBottom).toBeLessThanOrEqual(keyboardOffsetTop + keyboardHeight - 7);
       expect(keyboardGeometry.searchTop).toBeGreaterThanOrEqual(keyboardGeometry.dialogTop);
       expect(keyboardGeometry.searchBottom).toBeLessThanOrEqual(keyboardGeometry.dialogBottom);
       expect(keyboardGeometry.maxHeight).not.toBe(String(viewport.height) + 'px');
+
+      await page.evaluate(() => {
+        const dialogElement = document.querySelector('[data-dig-filter-dialog]');
+        const lowerControl = dialogElement?.querySelector('input[name="maxPrice"]');
+        if (!(lowerControl instanceof HTMLInputElement)) throw new Error('Lower price filter is missing');
+        lowerControl.focus({ preventScroll: true });
+      });
+      await page.waitForFunction(() => {
+        const dialogElement = document.querySelector('[data-dig-filter-dialog]');
+        const lowerControl = dialogElement?.querySelector('input[name="maxPrice"]');
+        if (!(dialogElement instanceof HTMLElement) || !(lowerControl instanceof HTMLElement)) return false;
+        const dialogRect = dialogElement.getBoundingClientRect();
+        const controlRect = lowerControl.getBoundingClientRect();
+        return controlRect.top >= dialogRect.top + 8 && controlRect.bottom <= dialogRect.bottom - 8;
+      });
 
       await dialog.locator('.dig-crate-filter-actions').scrollIntoViewIfNeeded();
       const actionBottom = await dialog.locator('.dig-crate-filter-actions').evaluate((element) =>
