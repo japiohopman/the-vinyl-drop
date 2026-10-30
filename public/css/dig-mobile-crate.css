@@ -369,10 +369,8 @@
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     color: var(--color-white);
-    background: rgba(48, 70, 61, 0.94);
+    background: #30463d;
     border-bottom: 1px solid rgba(255, 255, 255, 0.22);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
   }
 
   .dig-crate-filter-eyebrow {
@@ -553,9 +551,7 @@
     margin: var(--space-1) calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
     padding: var(--space-3) var(--space-4);
     border-top: 1px solid rgba(21, 21, 21, 0.12);
-    background: rgba(243, 239, 231, 0.98);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: #f3efe7;
   }
 
   .dig-crate-filter-actions button,
