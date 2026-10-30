@@ -403,6 +403,40 @@
   -webkit-user-drag: none;
 }
 
+/*
+ * Zoom only the visible face content. The six cardboard walls, sleeve faces,
+ * square stage and the parent 3D flip/deck transforms remain untouched.
+ */
+.dig-sleeve-image,
+.dig-missing-front,
+.dig-missing-back {
+  transform: translate3d(
+    var(--dig-zoom-pan-x, 0px),
+    var(--dig-zoom-pan-y, 0px),
+    0
+  ) scale(var(--dig-zoom-scale, 1));
+  transform-origin: center center;
+  transition: transform 260ms ease-out;
+}
+
+.dig-sleeve-card.is-zoomed .dig-sleeve-image,
+.dig-sleeve-card.is-zoomed .dig-missing-front,
+.dig-sleeve-card.is-zoomed .dig-missing-back {
+  will-change: transform;
+}
+
+.dig-sleeve-card.is-zooming .dig-sleeve-image,
+.dig-sleeve-card.is-zooming .dig-missing-front,
+.dig-sleeve-card.is-zooming .dig-missing-back {
+  transition: none;
+}
+
+.dig-sleeve-card.is-zoom-resetting .dig-sleeve-image,
+.dig-sleeve-card.is-zoom-resetting .dig-missing-front,
+.dig-sleeve-card.is-zoom-resetting .dig-missing-back {
+  transition: transform 320ms cubic-bezier(.2, .75, .25, 1);
+}
+
 .dig-sleeve-card.is-dragging {
   will-change: transform;
 }
@@ -720,7 +754,10 @@
   .dig-sleeve-interaction,
   .dig-sleeve-card,
   .dig-listing-meta,
-  .dig-card-actions {
+  .dig-card-actions,
+  .dig-sleeve-image,
+  .dig-missing-front,
+  .dig-missing-back {
     transition: none !important;
   }
 }

@@ -27,13 +27,18 @@ const orderedMainStylesheetSegments = [
   'listing-interactions.css',
 ];
 
+function readCssFile(name: string): string {
+  return fs
+    .readFileSync(path.join(process.cwd(), 'public/css', name), 'utf8')
+    .replace(/\r\n|\r/g, '\n');
+}
+
 export function readReconstructedMainStylesheet(): string {
   return orderedMainStylesheetSegments
-    .map((name) => fs.readFileSync(path.join(process.cwd(), 'public/css', name), 'utf8'))
+    .map((name) => readCssFile(name))
     .join('');
 }
 
 export function readFullStylesheetSource(): string {
-  return readReconstructedMainStylesheet() +
-    fs.readFileSync(path.join(process.cwd(), 'public/css/dig-mobile-crate.css'), 'utf8');
+  return readReconstructedMainStylesheet() + readCssFile('dig-mobile-crate.css');
 }

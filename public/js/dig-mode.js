@@ -19,10 +19,16 @@
   let activeIndex = Math.max(0, slides.findIndex((slide) => slide.classList.contains('is-active')));
   let isTransitioning = false;
   let gesture = null;
+  let pinchGesture = null;
+  const touchPointers = new Map();
   let transitionTimer = 0;
   let cancelGestureTimer = 0;
   let flipSettleTimer = 0;
   let pendingFlipSettle = null;
+  let zoomIdleTimer = 0;
+  let zoomIdleSlide = null;
+  let zoomIdleAfterTouchSlide = null;
+  let zoomResetTimer = 0;
 
   function setReducedMotion() {
     root.dataset.reducedMotion = motionPreference.matches ? 'true' : 'false';
@@ -85,11 +91,328 @@
     finishPendingFlipSettle(pendingFlipSettle);
   }
 
+  function getZoomState(slide) {
+    const card = slide.querySelector('[data-dig-sleeve-card]');
+    if (!card) return { scale: 1, panX: 0, panY: 0 };
+    return {
+      scale: Number.parseFloat(card.style.getPropertyValue('--dig-zoom-scale')) || 1,
+      panX: Number.parseFloat(card.style.getPropertyValue('--dig-zoom-pan-x')) || 0,
+      panY: Number.parseFloat(card.style.getPropertyValue('--dig-zoom-pan-y')) || 0,
+    };
+  }
+
+  function getRenderedZoomState(slide) {
+    const card = slide.querySelector('[data-dig-sleeve-card]');
+    const state = getZoomState(slide);
+    if (!card || !card.classList.contains('is-zoom-resetting')) return state;
+
+    const visibleFace = card.classList.contains('is-flipped') ? '.dig-sleeve-face-back' : '.dig-sleeve-face-front';
+    const artwork = card.querySelector(
+      visibleFace + ' .dig-sleeve-image, ' +
+      visibleFace + ' .dig-missing-front, ' +
+      visibleFace + ' .dig-missing-back'
+    );
+    if (!artwork) return state;
+
+    const transform = window.getComputedStyle(artwork).transform;
+    const Matrix = window.DOMMatrixReadOnly || window.DOMMatrix;
+    if (!transform || transform === 'none' || !Matrix) return state;
+
+    try {
+      const matrix = new Matrix(transform);
+      const scale = Math.sqrt(matrix.m11 * matrix.m11 + matrix.m12 * matrix.m12);
+      return {
+        scale: scale || state.scale,
+        panX: matrix.m41,
+        panY: matrix.m42,
+      };
+    } catch {
+      return state;
+    }
+  }
+
+  function clearZoomIdleTimer() {
+    if (zoomIdleTimer) window.clearTimeout(zoomIdleTimer);
+    zoomIdleTimer = 0;
+    zoomIdleSlide = null;
+  }
+
+  function clearZoomResetTimer() {
+    if (zoomResetTimer) window.clearTimeout(zoomResetTimer);
+    zoomResetTimer = 0;
+  }
+
+  function setZoomState(slide, scale, panX, panY) {
+    const card = slide.querySelector('[data-dig-sleeve-card]');
+    if (!card) return;
+    clearZoomResetTimer();
+
+    if (scale <= 1.01) {
+      card.style.removeProperty('--dig-zoom-scale');
+      card.style.removeProperty('--dig-zoom-pan-x');
+      card.style.removeProperty('--dig-zoom-pan-y');
+      card.classList.remove('is-zoomed');
+      return;
+    }
+
+    card.style.setProperty('--dig-zoom-scale', String(Math.min(2.5, Math.max(1, scale))));
+    card.style.setProperty('--dig-zoom-pan-x', panX.toFixed(2) + 'px');
+    card.style.setProperty('--dig-zoom-pan-y', panY.toFixed(2) + 'px');
+    card.classList.add('is-zoomed');
+  }
+
+  function resetZoom(slide, animate) {
+    clearZoomIdleTimer();
+    const card = slide && slide.querySelector('[data-dig-sleeve-card]');
+    if (!card) return;
+    const wasZoomed = card.classList.contains('is-zoomed');
+    card.classList.remove('is-zooming');
+
+    if (animate && wasZoomed && !motionPreference.matches) {
+      card.classList.add('is-zoom-resetting');
+      card.style.removeProperty('--dig-zoom-scale');
+      card.style.removeProperty('--dig-zoom-pan-x');
+      card.style.removeProperty('--dig-zoom-pan-y');
+      card.classList.remove('is-zoomed');
+      clearZoomResetTimer();
+      zoomResetTimer = window.setTimeout(() => {
+        card.classList.remove('is-zoom-resetting');
+        zoomResetTimer = 0;
+      }, 360);
+      return;
+    }
+
+    clearZoomResetTimer();
+    card.classList.remove('is-zoomed', 'is-zoom-resetting');
+    card.style.removeProperty('--dig-zoom-scale');
+    card.style.removeProperty('--dig-zoom-pan-x');
+    card.style.removeProperty('--dig-zoom-pan-y');
+  }
+
+  function scheduleZoomReset(slide) {
+    clearZoomIdleTimer();
+    const { scale } = getZoomState(slide);
+    if (scale <= 1.01) return;
+
+    zoomIdleSlide = slide;
+    zoomIdleTimer = window.setTimeout(() => {
+      const target = zoomIdleSlide;
+      zoomIdleTimer = 0;
+      zoomIdleSlide = null;
+      if (!target || !target.isConnected) return;
+      if (pinchGesture && pinchGesture.slide === target) {
+        scheduleZoomReset(target);
+        return;
+      }
+      resetZoom(target, true);
+    }, 5000);
+  }
+
+  function clampZoomPan(value, scale, dimension) {
+    const limit = Math.max(0, (scale - 1) * dimension / 2);
+    return Math.max(-limit, Math.min(limit, value));
+  }
+
+  function finishTrackedTouchPointer(pointerId) {
+    touchPointers.delete(pointerId);
+    if (!zoomIdleAfterTouchSlide) return;
+
+    const pendingSlide = zoomIdleAfterTouchSlide;
+    const pendingStage = pendingSlide.querySelector('[data-dig-swipe-area]');
+    const stillTouching = Array.from(touchPointers.values()).some((pointer) => pointer.stage === pendingStage);
+    if (!stillTouching) {
+      zoomIdleAfterTouchSlide = null;
+      scheduleZoomReset(pendingSlide);
+    }
+  }
+
+  function startPinch(slide, stage, firstPointer, secondPointer, firstPointerId, secondPointerId) {
+    const card = slide.querySelector('[data-dig-sleeve-card]');
+    if (!card) return;
+    const renderedZoomState = getRenderedZoomState(slide);
+
+    // A first touch may already have begun a one-finger flip/deck drag. Cancel
+    // that provisional gesture without releasing its pointer capture so the
+    // same two contacts can transition cleanly into pinch mode.
+    if (gesture) {
+      const interrupted = gesture;
+      gesture = null;
+      interrupted.stage.classList.remove('is-gesture-active');
+      interrupted.slide.classList.remove('is-dragging');
+      clearMetadataOverrides(interrupted.slide);
+      const interruptedCard = interrupted.slide.querySelector('[data-dig-sleeve-card]');
+      const movingStage = interrupted.slide.querySelector('.dig-sleeve-interaction');
+      if (interruptedCard) {
+        interruptedCard.classList.remove('is-dragging');
+        interruptedCard.style.transition = '';
+        interruptedCard.style.transform = '';
+      }
+      if (movingStage) {
+        movingStage.style.transition = '';
+        movingStage.style.transform = '';
+        movingStage.style.visibility = '';
+      }
+      if (interrupted.neighbor) {
+        interrupted.neighbor.classList.remove('is-dragging');
+        clearMetadataOverrides(interrupted.neighbor);
+        const interruptedNeighborStage = interrupted.neighbor.querySelector('.dig-sleeve-interaction');
+        if (interruptedNeighborStage) {
+          interruptedNeighborStage.style.transition = '';
+          interruptedNeighborStage.style.transform = '';
+          interruptedNeighborStage.style.visibility = '';
+        }
+        interrupted.neighbor.style.transition = '';
+        interrupted.neighbor.style.transform = '';
+        interrupted.neighbor.style.visibility = '';
+        interrupted.neighbor.style.opacity = '';
+      }
+      interrupted.slide.style.transition = '';
+      interrupted.slide.style.transform = '';
+      interrupted.slide.style.opacity = '';
+      interrupted.slide.style.visibility = '';
+    }
+
+    window.clearTimeout(cancelGestureTimer);
+    cancelGestureTimer = 0;
+    clearZoomIdleTimer();
+    clearZoomResetTimer();
+    zoomIdleAfterTouchSlide = null;
+    card.classList.remove('is-zoom-resetting');
+    card.classList.add('is-zooming');
+    setZoomState(slide, renderedZoomState.scale, renderedZoomState.panX, renderedZoomState.panY);
+    stage.classList.add('is-gesture-active');
+
+    const bounds = stage.getBoundingClientRect();
+    const midpointX = (firstPointer.x + secondPointer.x) / 2 - bounds.left;
+    const midpointY = (firstPointer.y + secondPointer.y) / 2 - bounds.top;
+    const { scale, panX, panY } = renderedZoomState;
+    const centerX = bounds.width / 2;
+    const centerY = bounds.height / 2;
+    const startDistance = Math.max(1, Math.hypot(
+      secondPointer.x - firstPointer.x,
+      secondPointer.y - firstPointer.y
+    ));
+
+    pinchGesture = {
+      slide,
+      stage,
+      card,
+      pointerIds: [firstPointerId, secondPointerId],
+      startDistance,
+      startScale: scale,
+      startPanX: panX,
+      startPanY: panY,
+      startContentX: (midpointX - centerX - panX) / scale,
+      startContentY: (midpointY - centerY - panY) / scale,
+    };
+
+    try {
+      stage.setPointerCapture(firstPointerId);
+      stage.setPointerCapture(secondPointerId);
+    } catch {
+      // Pointer capture is progressive enhancement; the stage still owns the events.
+    }
+  }
+
+  function updatePinch(event) {
+    if (!pinchGesture || !pinchGesture.pointerIds.includes(event.pointerId)) return;
+    event.preventDefault();
+    const current = touchPointers.get(event.pointerId);
+    if (!current) return;
+    touchPointers.set(event.pointerId, { ...current, x: event.clientX, y: event.clientY });
+
+    const first = touchPointers.get(pinchGesture.pointerIds[0]);
+    const second = touchPointers.get(pinchGesture.pointerIds[1]);
+    if (!first || !second) return;
+
+    const midpointX = (first.x + second.x) / 2 - pinchGesture.stage.getBoundingClientRect().left;
+    const midpointY = (first.y + second.y) / 2 - pinchGesture.stage.getBoundingClientRect().top;
+    const distance = Math.max(1, Math.hypot(second.x - first.x, second.y - first.y));
+    const scale = Math.min(2.5, Math.max(1, pinchGesture.startScale * distance / pinchGesture.startDistance));
+
+    if (scale <= 1.01) {
+      setZoomState(pinchGesture.slide, 1, 0, 0);
+      pinchGesture.card.classList.add('is-zooming');
+      return;
+    }
+
+    // Keep the sleeve artwork point that began beneath the fingers beneath
+    // their moving midpoint, then clamp the pan to the enlarged square face.
+    const bounds = pinchGesture.stage.getBoundingClientRect();
+    const panX = clampZoomPan(
+      midpointX - bounds.width / 2 - scale * pinchGesture.startContentX,
+      scale,
+      Math.max(1, pinchGesture.card.clientWidth)
+    );
+    const panY = clampZoomPan(
+      midpointY - bounds.height / 2 - scale * pinchGesture.startContentY,
+      scale,
+      Math.max(1, pinchGesture.card.clientHeight)
+    );
+    setZoomState(pinchGesture.slide, scale, panX, panY);
+    pinchGesture.card.classList.add('is-zooming');
+  }
+
+  function finishPinch(event) {
+    if (!pinchGesture || !pinchGesture.pointerIds.includes(event.pointerId)) return false;
+    const completed = pinchGesture;
+    pinchGesture = null;
+    completed.stage.classList.remove('is-gesture-active');
+    completed.card.classList.remove('is-zooming');
+
+    // The other finger may still be resting on the sleeve after the first
+    // finger lifts. Keep tracking it and do not start the idle timer yet.
+    const otherPointersStillDown = completed.pointerIds.some((pointerId) =>
+      pointerId !== event.pointerId && touchPointers.get(pointerId)?.stage === completed.stage
+    );
+    finishTrackedTouchPointer(event.pointerId);
+    try {
+      if (completed.stage.hasPointerCapture(event.pointerId)) {
+        completed.stage.releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // The browser may already have released this pointer.
+    }
+
+    if (otherPointersStillDown) {
+      zoomIdleAfterTouchSlide = completed.slide;
+      clearZoomIdleTimer();
+    } else {
+      zoomIdleAfterTouchSlide = null;
+      scheduleZoomReset(completed.slide);
+    }
+    return true;
+  }
+
+  function resetAllZoom() {
+    clearZoomIdleTimer();
+    clearZoomResetTimer();
+    zoomIdleAfterTouchSlide = null;
+    if (pinchGesture) {
+      const activePinch = pinchGesture;
+      pinchGesture = null;
+      activePinch.card.classList.remove('is-zooming', 'is-zoom-resetting');
+      activePinch.stage.classList.remove('is-gesture-active');
+    }
+    touchPointers.forEach((pointer, pointerId) => {
+      try {
+        if (pointer.stage.hasPointerCapture(pointerId)) {
+          pointer.stage.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // The page may already have released this pointer during lifecycle cleanup.
+      }
+    });
+    touchPointers.clear();
+    slides.forEach((slide) => resetZoom(slide, false));
+  }
+
   function toggleFlip(slide) {
     flushPendingFlipSettle();
     const card = slide.querySelector('[data-dig-sleeve-card]');
     if (!card) return;
     setFlipState(slide, digState.nextFlipState(card.classList.contains('is-flipped')));
+    scheduleZoomReset(slide);
   }
 
   function updateNavigation() {
@@ -129,6 +452,7 @@
   function navigateTo(targetIndex, direction) {
     if (isTransitioning || !digState.isValidIndex(targetIndex, slides.length) || targetIndex === activeIndex) return;
     flushPendingFlipSettle();
+    resetAllZoom();
 
     const previous = slides[activeIndex];
     const next = slides[targetIndex];
@@ -276,7 +600,57 @@
   }
 
   function handlePointerDown(event) {
-    if (isTransitioning || gesture || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    const stage = event.currentTarget;
+    if (isTransitioning) return;
+    const pointer = { stage, x: event.clientX, y: event.clientY };
+
+    if (pinchGesture) {
+      if (event.pointerType === 'touch') touchPointers.set(event.pointerId, pointer);
+      return;
+    }
+
+    if (event.pointerType === 'touch') {
+      const firstTouch = Array.from(touchPointers.entries()).find(([pointerId, value]) =>
+        pointerId !== event.pointerId && value.stage === stage
+      );
+
+      const activeSlide = slides[activeIndex];
+      const stageBelongsToActiveSlide = Boolean(
+        activeSlide && activeSlide.querySelector('[data-dig-swipe-area]') === stage
+      );
+      const canResumePinch = Boolean(
+        firstTouch &&
+        activeSlide &&
+        zoomIdleAfterTouchSlide === activeSlide &&
+        firstTouch[1].stage === stage
+      );
+      const canStartPinch = Boolean(
+        firstTouch &&
+        stageBelongsToActiveSlide &&
+        (!gesture || gesture.stage === stage) &&
+        ((gesture && gesture.stage === stage) || canResumePinch || !gesture)
+      );
+
+      if (canStartPinch) {
+        touchPointers.set(event.pointerId, pointer);
+        startPinch(
+          activeSlide,
+          stage,
+          firstTouch[1],
+          pointer,
+          firstTouch[0],
+          event.pointerId
+        );
+        event.preventDefault();
+        return;
+      }
+
+      touchPointers.set(event.pointerId, pointer);
+    }
+
+    // Keep non-primary contacts scoped to their stage. They may be the first
+    // of two touches that can form a pinch even without a one-finger gesture.
+    if (gesture || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) return;
     flushPendingFlipSettle();
 
     // A previous cancelled gesture may still have a delayed paintSlides reset queued.
@@ -286,10 +660,10 @@
       cancelGestureTimer = 0;
     }
 
-    const stage = event.currentTarget;
     const slide = slides[activeIndex];
     if (!slide || !stage.closest('[data-dig-slide]')?.classList.contains('is-active')) return;
 
+    clearZoomIdleTimer();
     gesture = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -313,9 +687,16 @@
       // Pointer capture is a progressive enhancement; the buttons remain available.
     }
   }
-
   function handlePointerMove(event) {
-    if (!gesture || event.pointerId !== gesture.pointerId || isTransitioning) return;
+    if (pinchGesture && pinchGesture.pointerIds.includes(event.pointerId)) {
+      updatePinch(event);
+      return;
+    }
+    if (event.pointerType === 'touch' && touchPointers.has(event.pointerId)) {
+      const pointer = touchPointers.get(event.pointerId);
+      touchPointers.set(event.pointerId, { ...pointer, x: event.clientX, y: event.clientY });
+    }
+    if (!gesture || gesture.pointerId !== event.pointerId || isTransitioning) return;
     const deltaX = event.clientX - gesture.startX;
     const deltaY = event.clientY - gesture.startY;
 
@@ -411,6 +792,8 @@
   }
 
   function handlePointerUp(event) {
+    if (finishPinch(event)) return;
+    finishTrackedTouchPointer(event.pointerId);
     if (!gesture || event.pointerId !== gesture.pointerId) return;
     const { deltaX, deltaY, neighborIndex, slide, stage, horizontal } = gesture;
 
@@ -437,6 +820,7 @@
           if (shouldFlip) setFlipState(slide, !wasFlipped);
           card.style.transform = '';
           card.style.transition = '';
+          scheduleZoomReset(slide);
           return;
         }
 
@@ -446,6 +830,7 @@
         const angles = digState.flipSwipeAngles(wasFlipped, deltaX, shouldFlip);
         if (shouldFlip) setFlipState(slide, !wasFlipped);
         card.style.transform = 'rotateY(' + angles.animationAngle + 'deg)';
+        scheduleZoomReset(slide);
 
         if (flipSettleTimer) window.clearTimeout(flipSettleTimer);
         const pending = { card, restingAngle: angles.restingAngle };
@@ -485,6 +870,49 @@
     }
 
     clearDragStyles();
+    scheduleZoomReset(slide);
+  }
+
+  function handleKeyboardZoom(event) {
+    const slide = slides[activeIndex];
+    if (!slide) return false;
+
+    const { scale, panX, panY } = getZoomState(slide);
+    let nextScale = scale;
+    let nextPanX = panX;
+    let nextPanY = panY;
+    const panStep = 32;
+
+    if (event.key === '+' || event.key === '=') {
+      nextScale = Math.min(2.5, scale + 0.25);
+    } else if (event.key === '-') {
+      if (scale <= 1.01) return false;
+      nextScale = Math.max(1, scale - 0.25);
+    } else if (event.key === '0') {
+      if (scale <= 1.01) return false;
+      event.preventDefault();
+      resetZoom(slide, true);
+      return true;
+    } else if (scale > 1.01 && event.key.startsWith('Arrow')) {
+      const card = slide.querySelector('[data-dig-sleeve-card]');
+      if (!card) return false;
+      if (event.key === 'ArrowLeft') nextPanX -= panStep;
+      else if (event.key === 'ArrowRight') nextPanX += panStep;
+      else if (event.key === 'ArrowUp') nextPanY -= panStep;
+      else if (event.key === 'ArrowDown') nextPanY += panStep;
+      else return false;
+
+      nextPanX = clampZoomPan(nextPanX, scale, Math.max(1, card.clientWidth));
+      nextPanY = clampZoomPan(nextPanY, scale, Math.max(1, card.clientHeight));
+      nextScale = scale;
+    } else {
+      return false;
+    }
+
+    event.preventDefault();
+    setZoomState(slide, nextScale, nextPanX, nextPanY);
+    scheduleZoomReset(slide);
+    return true;
   }
 
   slides.forEach((slide) => {
@@ -502,12 +930,22 @@
       stage.addEventListener('pointermove', handlePointerMove);
       stage.addEventListener('pointerup', handlePointerUp);
       stage.addEventListener('pointercancel', (event) => {
+        if (finishPinch(event)) return;
+        finishTrackedTouchPointer(event.pointerId);
         if (!gesture || event.pointerId !== gesture.pointerId) return;
+        const cancelledSlide = gesture.slide;
         stage.classList.remove('is-gesture-active');
         clearDragStyles();
+        scheduleZoomReset(cancelledSlide);
       });
       stage.addEventListener('lostpointercapture', (event) => {
-        if (gesture && event.pointerId === gesture.pointerId) clearDragStyles();
+        if (pinchGesture && finishPinch(event)) return;
+        finishTrackedTouchPointer(event.pointerId);
+        if (gesture && event.pointerId === gesture.pointerId) {
+          const cancelledSlide = gesture.slide;
+          clearDragStyles();
+          scheduleZoomReset(cancelledSlide);
+        }
       });
     }
   });
@@ -519,6 +957,7 @@
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const target = event.target;
     if (target instanceof Element && target.closest('button, a, input, select, textarea, summary')) return;
+    if (handleKeyboardZoom(event)) return;
 
     if (event.key === 'ArrowUp' || event.key === 'PageUp') {
       event.preventDefault();
@@ -544,6 +983,14 @@
   } else if (typeof motionPreference.addListener === 'function') {
     motionPreference.addListener(setReducedMotion);
   }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') resetAllZoom();
+  });
+  window.addEventListener('pagehide', () => {
+    resetAllZoom();
+    touchPointers.clear();
+  });
 
   setReducedMotion();
   paintSlides();
