@@ -1998,15 +1998,44 @@ describe('Mobile Dig app-like viewport', () => {
     ]);
   });
 
-  it('does not play a sound for a short or cancelled sleeve gesture or an unavailable boundary', async () => {
+  it('does not play a sound for short, cancelled or invalid-boundary sleeve gestures', async () => {
     await loadPage(375, 812);
     const stage = page.locator('[data-dig-swipe-area]').first();
     const bounds = await stage.boundingBox();
     if (!bounds) throw new Error('Dig sleeve stage was not laid out');
 
-    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
+
+    // A pointer press/release without crossing the swipe threshold is silent.
+    await page.mouse.move(centerX, centerY);
     await page.mouse.down();
     await page.mouse.up();
+
+    // A cancelled horizontal gesture must not be mistaken for a committed flip.
+    const pointerIdPromise = page.evaluate(() => new Promise<number>((resolve) => {
+      const activeStage = document.querySelector('[data-dig-swipe-area]');
+      if (!activeStage) throw new Error('Dig sleeve stage was not found');
+      activeStage.addEventListener('pointerdown', (event) => resolve(event.pointerId), { once: true });
+    }));
+    await page.mouse.move(centerX, centerY);
+    await page.mouse.down();
+    const pointerId = await pointerIdPromise;
+    await page.mouse.move(centerX + 36, centerY + 4, { steps: 3 });
+    await stage.dispatchEvent('pointercancel', {
+      bubbles: true,
+      pointerId,
+      pointerType: 'mouse',
+      isPrimary: true,
+    });
+    await page.mouse.up();
+
+    // Swiping down from the first record has no previous record to restore.
+    await page.mouse.move(centerX, centerY);
+    await page.mouse.down();
+    await page.mouse.move(centerX, centerY + 90, { steps: 5 });
+    await page.mouse.up();
+
     expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds?.length || 0)).toBe(0);
     expect(await page.locator('[data-dig-prev]').isDisabled()).toBe(true);
   });
