@@ -33,7 +33,7 @@ function loadPreferences(): PreferenceApi {
 function restoreGlobal(name: 'localStorage' | 'Audio' | 'VinylDropPreferences') {
   const descriptor = originalDescriptors[name];
   if (descriptor) Object.defineProperty(globalThis, name, descriptor);
-  else delete (globalThis as Record<string, unknown>)[name];
+  else delete (globalThis as unknown as Record<string, unknown>)[name];
 }
 
 describe('shared browser preferences', () => {
@@ -118,7 +118,7 @@ describe('Dig sound playback', () => {
     return require('../public/js/dig-sounds') as { play(name: string): boolean };
   }
 
-  it('does not construct or play sounds when the shared preference is disabled', () => {
+  it('does not play sounds when the shared preference is disabled', () => {
     const preferences = (globalThis as typeof globalThis & { VinylDropPreferences: PreferenceApi }).VinylDropPreferences;
     preferences.set('soundEffectsEnabled', false);
     const sounds = loadSounds();
