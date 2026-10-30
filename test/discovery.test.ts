@@ -170,21 +170,46 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
   });
 
   describe('Homepage Feed (GET /)', () => {
-    it('should render homepage feed with published listing cards when drops exist', async () => {
-      (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([mockListingCard]);
+    it('keeps Recent Drops chronological and renders a separate Random Albums selection', async () => {
+      const recentFirst = { ...mockListingCard, id: 'recent-newest', title: 'Newest Recent Drop', url: '/listings/recent-newest' };
+      const recentSecond = { ...mockListingCard, id: 'recent-older', title: 'Older Recent Drop', url: '/listings/recent-older' };
+      const discoveryFirst = { ...mockListingCard, id: 'discovery-one', title: 'Random Crate Pick One', url: '/listings/discovery-one' };
+      const discoverySecond = { ...mockListingCard, id: 'discovery-two', title: 'Random Crate Pick Two', url: '/listings/discovery-two' };
+      (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([recentFirst, recentSecond]);
+      (listingService.getHomeDiscoveryListings as jest.Mock).mockResolvedValue([discoveryFirst, discoverySecond]);
 
       const app = createApp();
       const res = await request(app).get('/');
 
       expect(res.status).toBe(200);
-      expect(res.text).toContain('Blue Train');
-      expect(res.text).toContain('John Coltrane');
-      expect(res.text).toContain('€35.00');
       expect(res.text).toContain('Recent Drops');
+      expect(res.text).toContain('Random Albums');
+      expect(res.text).toContain('Newest Recent Drop');
+      expect(res.text).toContain('Older Recent Drop');
+      expect(res.text).toContain('Random Crate Pick One');
+      expect(res.text).toContain('Random Crate Pick Two');
+      expect(res.text).toContain('href="/listings/discovery-one"');
+      expect(res.text).toContain('href="/listings/discovery-two"');
+
+      const recentHeading = res.text.indexOf('Recent Drops');
+      const newest = res.text.indexOf('Newest Recent Drop');
+      const older = res.text.indexOf('Older Recent Drop');
+      const discoveryHeading = res.text.indexOf('Random Albums');
+      const discoveryOne = res.text.indexOf('Random Crate Pick One');
+      expect(recentHeading).toBeLessThan(newest);
+      expect(newest).toBeLessThan(older);
+      expect(older).toBeLessThan(discoveryHeading);
+      expect(discoveryHeading).toBeLessThan(discoveryOne);
+      expect(listingService.getHomeFeedListings).toHaveBeenCalledWith(6);
+      expect(listingService.getHomeDiscoveryListings).toHaveBeenCalledWith(
+        6,
+        ['recent-newest', 'recent-older']
+      );
     });
 
-    it('should render accessible empty state on homepage when no published drops exist', async () => {
+    it('should render accessible empty states for an empty catalogue', async () => {
       (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([]);
+      (listingService.getHomeDiscoveryListings as jest.Mock).mockResolvedValue([]);
 
       const app = createApp();
       const res = await request(app).get('/');
@@ -192,6 +217,22 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.status).toBe(200);
       expect(res.text).toContain('No recent drops yet');
       expect(res.text).toContain('Be the first to list a vinyl record');
+      expect(res.text).toContain('Random Albums');
+      expect(res.text).toContain('No records to discover yet');
+      expect(listingService.getHomeDiscoveryListings).toHaveBeenCalledWith(6, []);
+    });
+
+    it('should show a truthful small-catalogue discovery state instead of placeholder records', async () => {
+      (listingService.getHomeFeedListings as jest.Mock).mockResolvedValue([mockListingCard]);
+      (listingService.getHomeDiscoveryListings as jest.Mock).mockResolvedValue([]);
+
+      const app = createApp();
+      const res = await request(app).get('/');
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('Blue Train');
+      expect(res.text).toContain("That's the crate for now");
+      expect(res.text).not.toContain('Untitled Release');
     });
   });
 
