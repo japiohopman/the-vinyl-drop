@@ -338,8 +338,8 @@
   /* The visual viewport shrinks when the software keyboard is shown. */
   .dig-crate-filter-dialog.is-keyboard-open {
     top: calc(var(--dig-visible-viewport-top, 0px) + 8px);
-    bottom: auto;
-    max-height: calc(var(--dig-visible-viewport-height, 100dvh) - 16px);
+    bottom: calc(var(--dig-visible-viewport-bottom-inset, 0px) + 8px);
+    max-height: none;
   }
 
   .dig-crate-filter-dialog.is-closing {
@@ -455,15 +455,16 @@
     margin-top: var(--space-2);
   }
 
-  .dig-crate-filter-checkbox {
+  .dig-crate-filter-dialog .dig-crate-format-options > label.dig-crate-filter-checkbox {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 52px auto;
+    align-content: center;
+    justify-items: center;
     gap: 4px;
     min-width: 0;
-    min-height: 92px;
+    min-height: 96px;
     padding: 8px 4px 7px;
     border: 1px solid rgba(21, 21, 21, 0.16);
     border-radius: 5px;
@@ -495,22 +496,26 @@
     accent-color: var(--color-rust);
   }
 
-  .dig-crate-filter-checkbox .dig-format-icon {
+  .dig-crate-filter-dialog .dig-crate-format-options > label .dig-format-icon {
     display: block;
-    flex: 0 0 52px;
+    grid-column: 1;
+    grid-row: 1;
     width: 52px;
     height: 52px;
     object-fit: contain;
-    margin: 3px auto 0;
+    margin: 0;
   }
 
-  .dig-crate-filter-checkbox span {
+  .dig-crate-filter-dialog .dig-crate-format-options > label > span {
     display: block;
+    grid-column: 1;
+    grid-row: 2;
     max-width: 100%;
     overflow-wrap: anywhere;
     font-size: var(--font-size-sm);
     font-weight: 700;
     line-height: 1.15;
+    text-align: center;
   }
 
   .dig-crate-white-label-option {
