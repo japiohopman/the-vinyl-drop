@@ -18,11 +18,18 @@
   const visualViewport = window.visualViewport || null;
   let closeTimer = 0;
   let viewportSyncFrame = 0;
+  // Keep the last non-keyboard layout height so Android browsers that resize
+  // both the layout and visual viewports still expose the keyboard obstruction.
+  let stableLayoutHeight = Math.max(
+    document.documentElement.clientHeight || 0,
+    window.innerHeight || 0
+  );
 
   const clearKeyboardViewport = () => {
     dialog.classList.remove('is-keyboard-open');
     dialog.style.removeProperty('--dig-visible-viewport-top');
     dialog.style.removeProperty('--dig-visible-viewport-height');
+    dialog.style.removeProperty('--dig-visible-viewport-bottom-inset');
   };
 
   const keepFocusedControlVisible = () => {
@@ -47,20 +54,25 @@
       return;
     }
 
-    const visibleHeight = Math.max(0, (visualViewport && visualViewport.height) || window.innerHeight);
-    const layoutHeight = Math.max(
+    const currentLayoutHeight = Math.max(
       document.documentElement.clientHeight || 0,
       window.innerHeight || 0
     );
-    const keyboardIsOpen = layoutHeight - visibleHeight > 120;
+    const layoutHeight = Math.max(stableLayoutHeight, currentLayoutHeight);
+    const visibleHeight = Math.max(0, visualViewport ? visualViewport.height : currentLayoutHeight);
+    const viewportTop = Math.max(0, visualViewport ? visualViewport.offsetTop : 0);
+    const bottomInset = Math.max(0, layoutHeight - viewportTop - visibleHeight);
+    const keyboardIsOpen = bottomInset > 120;
 
     if (!keyboardIsOpen) {
+      stableLayoutHeight = currentLayoutHeight;
       clearKeyboardViewport();
       return;
     }
 
-    dialog.style.setProperty('--dig-visible-viewport-top', Math.max(0, (visualViewport && visualViewport.offsetTop) || 0) + 'px');
+    dialog.style.setProperty('--dig-visible-viewport-top', viewportTop + 'px');
     dialog.style.setProperty('--dig-visible-viewport-height', visibleHeight + 'px');
+    dialog.style.setProperty('--dig-visible-viewport-bottom-inset', bottomInset + 'px');
     dialog.classList.add('is-keyboard-open');
     keepFocusedControlVisible();
   };
@@ -78,6 +90,13 @@
     visualViewport.addEventListener('scroll', queueKeyboardViewportSync);
   }
   window.addEventListener('resize', queueKeyboardViewportSync);
+  window.addEventListener('orientationchange', () => {
+    stableLayoutHeight = Math.max(
+      document.documentElement.clientHeight || 0,
+      window.innerHeight || 0
+    );
+    queueKeyboardViewportSync();
+  });
   dialog.addEventListener('focusin', queueKeyboardViewportSync);
 
   const finishClose = () => {
