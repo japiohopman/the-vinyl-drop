@@ -13,6 +13,11 @@
   const browseReturnUrl = '/browse?' + baseQueryParams + '&view=grid';
   const visibleItems = Array.isArray(items) ? items : [];
   const digFilterFormats = typeof formatOptions !== 'undefined' && Array.isArray(formatOptions) ? formatOptions : [];
+  const digFormatIconPaths = {
+    lp: '/assets/UI/LP.svg',
+    '12-inch': '/assets/UI/12-ince.svg',
+    '7-inch': '/assets/UI/7-ince.svg',
+  };
   const digWhiteLabelAvailable = typeof whiteLabelAvailable !== 'undefined' && whiteLabelAvailable === true;
   const digActiveFilterCount = [
     filters.q,
@@ -205,9 +210,10 @@
       <fieldset class="dig-crate-filter-fieldset">
         <legend>Format</legend>
         <div class="dig-crate-format-options">
-          <% digFilterFormats.forEach(function(option) { %>
-            <label class="dig-crate-filter-checkbox">
+          <% digFilterFormats.forEach(function(option) { const iconPath = digFormatIconPaths[String(option.value).toLowerCase()]; %>
+            <label class="dig-crate-filter-checkbox" data-format="<%= String(option.value).toLowerCase() %>">
               <input type="checkbox" name="format" value="<%= option.value %>" <%= selectedFormats.includes(option.value) ? 'checked' : '' %>>
+              <% if (iconPath) { %><img class="dig-format-icon" src="<%= iconPath %>" width="28" height="28" alt="" aria-hidden="true" loading="lazy"><% } %>
               <span><%= option.label %></span>
             </label>
           <% }); %>
