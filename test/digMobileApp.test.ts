@@ -487,7 +487,9 @@ describe('Mobile Dig app-like viewport', () => {
 
     // Mouse and button-driven flips remain silent.
     await swipeActive(-110, 0);
-    await page.locator('[data-dig-slide].is-active [data-dig-flip]').click();
+    await page.locator('[data-dig-slide].is-active [data-dig-flip]').evaluate((button) => {
+      (button as HTMLButtonElement).click();
+    });
 
     expect(await readDigVibrationCalls()).toEqual([]);
   });
