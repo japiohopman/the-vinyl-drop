@@ -12,7 +12,7 @@
 }
 
 .browse-format-chip.is-selected .browse-format-icon {
-  filter: brightness(0) invert(1);
+  filter: invert(1);
 }
 
 /* Compact, disclosure-based mobile shell and browse controls */
