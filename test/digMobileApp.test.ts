@@ -398,8 +398,8 @@ describe('Mobile Dig app-like viewport', () => {
         scale,
         panX: Number.parseFloat(element.style.getPropertyValue('--dig-zoom-pan-x')),
         panY: Number.parseFloat(element.style.getPropertyValue('--dig-zoom-pan-y')),
-        width: card.querySelector('.dig-sleeve-stage')?.getBoundingClientRect().width ?? 0,
-        height: card.querySelector('.dig-sleeve-stage')?.getBoundingClientRect().height ?? 0,
+        width: card.closest('.dig-sleeve-stage')?.getBoundingClientRect().width ?? 0,
+        height: card.closest('.dig-sleeve-stage')?.getBoundingClientRect().height ?? 0,
       };
     });
     expect(panned.scale).toBeCloseTo(zoomed.scale, 1);
