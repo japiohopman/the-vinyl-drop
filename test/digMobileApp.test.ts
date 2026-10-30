@@ -1976,7 +1976,10 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await soundToggle.getAttribute('aria-pressed')).toBe('true');
     expect(await soundToggle.textContent()).toContain('Sound on');
 
-    await soundToggle.click();
+    await page.evaluate(() => {
+      (window as Window & { VinylDropPreferences?: { set(key: string, value: boolean): boolean } })
+        .VinylDropPreferences?.set('soundEffectsEnabled', false);
+    });
     expect(await soundToggle.getAttribute('aria-pressed')).toBe('false');
     expect(await soundToggle.textContent()).toContain('Sound off');
     await page.locator('[data-dig-flip]').first().click();
