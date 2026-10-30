@@ -16,6 +16,43 @@
   const transitionMs = 520;
   const swipeThreshold = 64;
 
+  function isSoundEffectsEnabled() {
+    return !preferences || typeof preferences.get !== 'function'
+      ? true
+      : preferences.get('soundEffectsEnabled') !== false;
+  }
+
+  function updateSoundToggle() {
+    if (!soundToggleButton) return;
+    const enabled = isSoundEffectsEnabled();
+    soundToggleButton.setAttribute('aria-pressed', String(enabled));
+    soundToggleButton.setAttribute('aria-label', enabled ? 'Turn sound effects off' : 'Turn sound effects on');
+    const label = soundToggleButton.querySelector('[data-dig-sound-label]');
+    if (label) label.textContent = enabled ? 'Sound on' : 'Sound off';
+    const waves = soundToggleButton.querySelector('[data-dig-sound-waves]');
+    const muted = soundToggleButton.querySelector('[data-dig-sound-muted]');
+    if (waves) waves.hidden = !enabled;
+    if (muted) muted.hidden = enabled;
+  }
+
+  function initializeSoundToggle() {
+    if (!soundToggleButton) return;
+    updateSoundToggle();
+    if (preferences && typeof preferences.subscribe === 'function') {
+      preferences.subscribe((_values, key) => {
+        if (key === 'soundEffectsEnabled') updateSoundToggle();
+      });
+    }
+    soundToggleButton.addEventListener('click', () => {
+      if (preferences && typeof preferences.set === 'function') {
+        preferences.set('soundEffectsEnabled', !isSoundEffectsEnabled());
+      }
+      updateSoundToggle();
+    });
+  }
+
+  initializeSoundToggle();
+
   if (!viewer || slides.length === 0) return;
 
   let activeIndex = Math.max(0, slides.findIndex((slide) => slide.classList.contains('is-active')));
@@ -34,25 +71,6 @@
 
   function setReducedMotion() {
     root.dataset.reducedMotion = motionPreference.matches ? 'true' : 'false';
-  }
-
-  function isSoundEffectsEnabled() {
-    return !preferences || typeof preferences.get !== 'function'
-      ? true
-      : preferences.get('soundEffectsEnabled') !== false;
-  }
-
-  function updateSoundToggle() {
-    if (!soundToggleButton) return;
-    const enabled = isSoundEffectsEnabled();
-    soundToggleButton.setAttribute('aria-pressed', String(enabled));
-    soundToggleButton.setAttribute('aria-label', enabled ? 'Turn sound effects off' : 'Turn sound effects on');
-    const label = soundToggleButton.querySelector('[data-dig-sound-label]');
-    if (label) label.textContent = enabled ? 'Sound on' : 'Sound off';
-    const waves = soundToggleButton.querySelector('[data-dig-sound-waves]');
-    const muted = soundToggleButton.querySelector('[data-dig-sound-muted]');
-    if (waves) waves.hidden = !enabled;
-    if (muted) muted.hidden = enabled;
   }
 
   function playDigSound(name) {
@@ -1006,21 +1024,6 @@
 
   if (previousButton) previousButton.addEventListener('click', () => navigateTo(activeIndex - 1, -1));
   if (nextButton) nextButton.addEventListener('click', () => navigateTo(activeIndex + 1, 1));
-
-  if (soundToggleButton) {
-    updateSoundToggle();
-    if (preferences && typeof preferences.subscribe === 'function') {
-      preferences.subscribe((_values, key) => {
-        if (key === 'soundEffectsEnabled') updateSoundToggle();
-      });
-    }
-    soundToggleButton.addEventListener('click', () => {
-      if (preferences && typeof preferences.set === 'function') {
-        preferences.set('soundEffectsEnabled', !isSoundEffectsEnabled());
-      }
-      updateSoundToggle();
-    });
-  }
 
   viewer.addEventListener('keydown', (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;

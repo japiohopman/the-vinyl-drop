@@ -38,17 +38,6 @@
       <h1>Dig</h1>
     </div>
     <div class="dig-page-actions">
-      <button type="button" class="btn btn-outline dig-sound-toggle" data-dig-sound-toggle aria-label="Turn sound effects off" aria-pressed="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M11 5 6 9H3v6h3l8 4V5Z"></path>
-          <g data-dig-sound-waves>
-            <path d="M16 9a5 5 0 0 1 0 6"></path>
-            <path d="M18.5 6.5a9 9 0 0 1 0 11"></path>
-          </g>
-          <path data-dig-sound-muted d="m16 9 5 6m0-6-5 6" hidden></path>
-        </svg>
-        <span data-dig-sound-label>Sound on</span>
-      </button>
       <a class="btn btn-outline dig-back-to-browse" href="<%= browseReturnUrl %>" aria-label="Back to Dig results"><span class="back-control-icon" aria-hidden="true">←</span><span class="back-control-label">Back to Dig results</span></a>
     </div>
   </header>
@@ -175,7 +164,21 @@
       <p class="dig-keyboard-note">Keyboard: ↑ next / discard · ↓ previous / restore · Home first · End last · F flips the cover.</p>
     </section>
 
-    <div class="dig-crate-toolbar" data-dig-crate-toolbar>
+  <% } %>
+
+  <div class="dig-crate-toolbar" data-dig-crate-toolbar>
+    <button type="button" class="btn btn-outline dig-sound-toggle" data-dig-sound-toggle aria-label="Turn sound effects off" aria-pressed="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M11 5 6 9H3v6h3l8 4V5Z"></path>
+        <g data-dig-sound-waves>
+          <path d="M16 9a5 5 0 0 1 0 6"></path>
+          <path d="M18.5 6.5a9 9 0 0 1 0 11"></path>
+        </g>
+        <path data-dig-sound-muted d="m16 9 5 6m0-6-5 6" hidden></path>
+      </svg>
+      <span data-dig-sound-label>Sound on</span>
+    </button>
+    <% if (visibleItems.length > 0) { %>
       <button
         type="button"
         class="dig-crate-filter-trigger"
@@ -189,8 +192,8 @@
         <span>Filters</span>
         <% if (digActiveFilterCount) { %><span class="dig-crate-filter-count"><%= digActiveFilterCount %></span><% } %>
       </button>
-    </div>
-  <% } %>
+    <% } %>
+  </div>
 
   <% if (visibleItems.length > 0) { %>
   <dialog class="dig-crate-filter-dialog" id="dig-crate-filter-dialog" data-dig-filter-dialog aria-labelledby="dig-crate-filter-title">
