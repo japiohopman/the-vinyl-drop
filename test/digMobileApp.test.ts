@@ -237,6 +237,44 @@ describe('Mobile Dig app-like viewport', () => {
     expect(duration).toBe('0s');
   });
 
+  it('continues from the visible zoom level when a pinch starts during the idle reset animation', async () => {
+    await page.clock.install();
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812, [littleFishItem]);
+    const stage = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const box = await stage.boundingBox();
+    if (!box) throw new Error('Active sleeve has no bounding box');
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+
+    await dispatchTouchPointer('pointerdown', 61, x - 40, y, true);
+    await dispatchTouchPointer('pointerdown', 62, x + 40, y, false);
+    await dispatchTouchPointer('pointermove', 61, x - 60, y, true);
+    await dispatchTouchPointer('pointermove', 62, x + 60, y, false);
+    await dispatchTouchPointer('pointerup', 61, x - 60, y, true);
+    await dispatchTouchPointer('pointerup', 62, x + 60, y, false);
+
+    await page.clock.fastForward(5000);
+    await page.clock.fastForward(120);
+    const visibleScale = await page.locator('[data-dig-slide].is-active .dig-sleeve-face-front .dig-sleeve-image')
+      .evaluate((image) => {
+        const matrix = new DOMMatrixReadOnly(getComputedStyle(image).transform);
+        return Math.sqrt(matrix.m11 * matrix.m11 + matrix.m12 * matrix.m12);
+      });
+    expect(visibleScale).toBeGreaterThan(1);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]')
+      .evaluate((card) => card.classList.contains('is-zoom-resetting'))).toBe(true);
+
+    await dispatchTouchPointer('pointerdown', 63, x - 45, y, true);
+    await dispatchTouchPointer('pointerdown', 64, x + 45, y, false);
+    const resumedScale = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]')
+      .evaluate((card) => Number.parseFloat((card as HTMLElement).style.getPropertyValue('--dig-zoom-scale')));
+    expect(resumedScale).toBeCloseTo(visibleScale, 1);
+
+    await dispatchTouchPointer('pointerup', 63, x - 45, y, true);
+    await dispatchTouchPointer('pointerup', 64, x + 45, y, false);
+  });
+
   it('supports two non-primary touch contacts starting a pinch without a one-finger gesture', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812, [littleFishItem]);
