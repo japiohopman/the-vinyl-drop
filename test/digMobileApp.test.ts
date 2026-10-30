@@ -147,10 +147,7 @@ describe('Mobile Dig app-like viewport', () => {
       '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<style>' + css + '</style></head>' +
       '<body' + (pageItems.length > 0 ? ' class="mobile-dig-session"' : '') + '>' + headerHtml +
-      '<main class="main-content container"><div class="dig-responsive-page">' +
-      '<section class="dig-responsive-mobile" aria-label="Dig crate exploration">' +
-      bodyContent +
-      '</section></div></main></body></html>';
+      '<main class="main-content container">' + bodyContent + '</main></body></html>';
   }
 
   async function loadPage(
