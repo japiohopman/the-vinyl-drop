@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { runInNewContext } from 'vm';
 
 type PreferenceApi = {
   get(key: string): unknown;
@@ -8,57 +9,47 @@ type PreferenceApi = {
   subscribe(listener: (values: Record<string, unknown>, key: string) => void): () => void;
 };
 
-const originalDescriptors = {
-  localStorage: Object.getOwnPropertyDescriptor(globalThis, 'localStorage'),
-  Audio: Object.getOwnPropertyDescriptor(globalThis, 'Audio'),
-  VinylDropPreferences: Object.getOwnPropertyDescriptor(globalThis, 'VinylDropPreferences'),
+type SoundApi = {
+  play(name: string): boolean;
 };
 
-function installStorage(initial: Record<string, string> = {}) {
+const preferencesSource = fs.readFileSync(
+  path.join(process.cwd(), 'public/js/user-preferences.js'),
+  'utf8'
+);
+const soundsSource = fs.readFileSync(
+  path.join(process.cwd(), 'public/js/dig-sounds.js'),
+  'utf8'
+);
+
+function createStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
   const storage = {
     getItem: jest.fn((key: string) => values.get(key) ?? null),
     setItem: jest.fn((key: string, value: string) => { values.set(key, value); }),
   };
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
   return { storage, values };
 }
 
-function loadPreferences(): PreferenceApi {
-  const modulePath = require.resolve('../public/js/user-preferences');
-  delete require.cache[modulePath];
-  return require('../public/js/user-preferences') as PreferenceApi;
-}
-
-function restoreGlobal(name: 'localStorage' | 'Audio' | 'VinylDropPreferences') {
-  const descriptor = originalDescriptors[name];
-  if (descriptor) Object.defineProperty(globalThis, name, descriptor);
-  else delete (globalThis as unknown as Record<string, unknown>)[name];
+function loadPreferences(localStorage: Storage | ReturnType<typeof createStorage>['storage']): PreferenceApi {
+  const sandbox = { localStorage };
+  runInNewContext(preferencesSource, sandbox);
+  return (sandbox as typeof sandbox & { VinylDropPreferences: PreferenceApi }).VinylDropPreferences;
 }
 
 describe('shared browser preferences', () => {
-  beforeEach(() => {
-    jest.resetModules();
-    installStorage();
-  });
-
-  afterEach(() => {
-    restoreGlobal('localStorage');
-    restoreGlobal('VinylDropPreferences');
-    restoreGlobal('Audio');
-  });
-
   it('defaults sound effects to on and exposes a reusable preference snapshot', () => {
-    const preferences = loadPreferences();
+    const { storage } = createStorage();
+    const preferences = loadPreferences(storage);
     expect(preferences.get('soundEffectsEnabled')).toBe(true);
     expect(preferences.getAll()).toEqual({ soundEffectsEnabled: true });
   });
 
   it('reads and persists the disabled choice for later pages and settings surfaces', () => {
-    const { storage, values } = installStorage({
+    const { storage, values } = createStorage({
       'tvd:preferences:v1': JSON.stringify({ soundEffectsEnabled: false }),
     });
-    const preferences = loadPreferences();
+    const preferences = loadPreferences(storage);
     expect(preferences.get('soundEffectsEnabled')).toBe(false);
 
     const notifications: string[] = [];
@@ -73,11 +64,11 @@ describe('shared browser preferences', () => {
   });
 
   it('keeps a working in-memory preference when browser storage throws', () => {
-    Object.defineProperty(globalThis, 'localStorage', {
-      configurable: true,
-      get() { throw new Error('Storage unavailable'); },
-    });
-    const preferences = loadPreferences();
+    const unavailableStorage = {
+      getItem: jest.fn(() => { throw new Error('Storage unavailable'); }),
+      setItem: jest.fn(() => { throw new Error('Storage unavailable'); }),
+    };
+    const preferences = loadPreferences(unavailableStorage);
     expect(preferences.get('soundEffectsEnabled')).toBe(true);
     expect(preferences.set('soundEffectsEnabled', false)).toBe(true);
     expect(preferences.get('soundEffectsEnabled')).toBe(false);
@@ -97,31 +88,22 @@ describe('Dig sound playback', () => {
     }
   }
 
-  beforeEach(() => {
-    jest.resetModules();
+  function createSoundSandbox(withAudio = true) {
+    const { storage } = createStorage();
+    const preferences = loadPreferences(storage);
+    const sandbox: Record<string, unknown> = { VinylDropPreferences: preferences };
+    if (withAudio) sandbox.Audio = MockAudio;
     MockAudio.instances = [];
-    installStorage();
-    const preferences = loadPreferences();
-    Object.defineProperty(globalThis, 'VinylDropPreferences', { configurable: true, value: preferences });
-    Object.defineProperty(globalThis, 'Audio', { configurable: true, value: MockAudio });
-  });
-
-  afterEach(() => {
-    restoreGlobal('localStorage');
-    restoreGlobal('VinylDropPreferences');
-    restoreGlobal('Audio');
-  });
-
-  function loadSounds() {
-    const modulePath = require.resolve('../public/js/dig-sounds');
-    delete require.cache[modulePath];
-    return require('../public/js/dig-sounds') as { play(name: string): boolean };
+    runInNewContext(soundsSource, sandbox);
+    return {
+      sounds: (sandbox as typeof sandbox & { DigSounds: SoundApi }).DigSounds,
+      preferences,
+    };
   }
 
   it('does not play sounds when the shared preference is disabled', () => {
-    const preferences = (globalThis as typeof globalThis & { VinylDropPreferences: PreferenceApi }).VinylDropPreferences;
+    const { sounds, preferences } = createSoundSandbox();
     preferences.set('soundEffectsEnabled', false);
-    const sounds = loadSounds();
 
     expect(MockAudio.instances).toHaveLength(2);
     expect(sounds.play('flip')).toBe(false);
@@ -129,7 +111,7 @@ describe('Dig sound playback', () => {
   });
 
   it('uses quiet project-owned assets and safely absorbs a blocked playback promise', async () => {
-    const sounds = loadSounds();
+    const { sounds } = createSoundSandbox();
     expect(sounds.play('flip')).toBe(true);
     expect(sounds.play('recordChange')).toBe(true);
     expect(MockAudio.instances.map((audio) => audio.src)).toEqual([
@@ -144,8 +126,7 @@ describe('Dig sound playback', () => {
   });
 
   it('returns safely when the browser has no Audio constructor', () => {
-    restoreGlobal('Audio');
-    const sounds = loadSounds();
+    const { sounds } = createSoundSandbox(false);
     expect(sounds.play('flip')).toBe(false);
   });
 
