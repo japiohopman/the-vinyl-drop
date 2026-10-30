@@ -42,12 +42,12 @@
   };
 
   const syncKeyboardViewport = () => {
-    if (!dialog.open || !window.matchMedia('(max-width: 767px)').matches || !visualViewport) {
+    if (!dialog.open || !window.matchMedia('(max-width: 767px)').matches) {
       clearKeyboardViewport();
       return;
     }
 
-    const visibleHeight = Math.max(0, visualViewport.height || window.innerHeight);
+    const visibleHeight = Math.max(0, (visualViewport && visualViewport.height) || window.innerHeight);
     const layoutHeight = Math.max(
       document.documentElement.clientHeight || 0,
       window.innerHeight || 0
@@ -59,7 +59,7 @@
       return;
     }
 
-    dialog.style.setProperty('--dig-visible-viewport-top', Math.max(0, visualViewport.offsetTop || 0) + 'px');
+    dialog.style.setProperty('--dig-visible-viewport-top', Math.max(0, (visualViewport && visualViewport.offsetTop) || 0) + 'px');
     dialog.style.setProperty('--dig-visible-viewport-height', visibleHeight + 'px');
     dialog.classList.add('is-keyboard-open');
     keepFocusedControlVisible();
