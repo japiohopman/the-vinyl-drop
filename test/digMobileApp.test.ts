@@ -465,6 +465,13 @@ describe('Mobile Dig app-like viewport', () => {
     )).toBe(true);
 
     await dispatchTouchPointer('pointerup', 31, currentX - 90, currentY, true);
+    await page.clock.fastForward(5100);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-zoomed')
+    )).toBe(true);
+
+    // The last finger leaving the sleeve starts the five-second idle window.
+    await dispatchTouchPointer('pointerup', 32, currentX + 90, currentY, false);
     await page.clock.fastForward(5001);
     const idleReset = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => ({
       zoomed: card.classList.contains('is-zoomed'),
