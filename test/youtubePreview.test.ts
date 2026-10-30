@@ -281,7 +281,8 @@ describe('YouTube release preview (#226)', () => {
     const browser: Browser = await chromium.launch({ headless: true });
     try {
       for (const width of [320, 360, 390, 430, 768, 1280]) {
-        const page = await browser.newPage({ viewport: { width, height: 900 } });
+        const viewportHeight = width < 768 ? 812 : 900;
+        const page = await browser.newPage({ viewport: { width, height: viewportHeight } });
         await page.setContent(
           '<!doctype html><html lang="en"><head><style>' + stylesheet + listingDetailPolishCss
           + '</style></head><body class="listing-detail-page"><main class="main-content container">'
@@ -293,8 +294,10 @@ describe('YouTube release preview (#226)', () => {
           const image = document.querySelector('.listing-main-photo');
           const box = cover?.getBoundingClientRect();
           const title = document.querySelector('.listing-title')?.getBoundingClientRect();
+          const artist = document.querySelector('.listing-artist')?.getBoundingClientRect();
           const price = document.querySelector('.listing-price-amount')?.getBoundingClientRect();
           const condition = document.querySelector('.condition-section')?.getBoundingClientRect();
+          const primaryAction = document.querySelector('.listing-favorite-form .btn, .message-seller-card .btn')?.getBoundingClientRect();
           const commentsLink = window.innerWidth < 768
             ? document.querySelector('.listing-comments-entry-link')?.getBoundingClientRect()
             : document.querySelector('.listing-comments-disclosure > summary')?.getBoundingClientRect();
@@ -303,10 +306,15 @@ describe('YouTube release preview (#226)', () => {
             documentWidth: document.documentElement.scrollWidth,
             coverWidth: box?.width ?? 0,
             coverHeight: box?.height ?? 0,
+            coverTransform: cover ? getComputedStyle(cover).transform : 'missing',
+            bevelBorderTop: cover ? getComputedStyle(cover, '::after').borderTopWidth : 'missing',
             imageObjectFit: image ? getComputedStyle(image).objectFit : '',
             titleTop: title?.top ?? Number.POSITIVE_INFINITY,
+            artistTop: artist?.top ?? Number.POSITIVE_INFINITY,
             priceTop: price?.top ?? Number.POSITIVE_INFINITY,
             conditionTop: condition?.top ?? Number.POSITIVE_INFINITY,
+            primaryActionBottom: primaryAction?.bottom ?? Number.POSITIVE_INFINITY,
+            decisionContentBottom: Math.max(title?.bottom ?? 0, artist?.bottom ?? 0, price?.bottom ?? 0, condition?.bottom ?? 0, primaryAction?.bottom ?? 0),
             favoriteButtonVisible: Boolean(document.querySelector('.listing-favorite-form .btn')?.getBoundingClientRect().height),
             sellerLinkVisible: Boolean(document.querySelector('.seller-card-action .btn')?.getBoundingClientRect().height),
             commentsEntryVisible: Boolean(commentsLink?.height),
@@ -316,10 +324,17 @@ describe('YouTube release preview (#226)', () => {
         expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.viewportWidth);
         expect(measurements.coverWidth).toBeGreaterThan(0);
         expect(Math.abs(measurements.coverWidth - measurements.coverHeight)).toBeLessThanOrEqual(1.5);
+        expect(measurements.coverTransform).not.toBe('none');
+        expect(measurements.bevelBorderTop).toBe('1px');
         expect(measurements.imageObjectFit).toBe('contain');
-        expect(measurements.titleTop).toBeLessThan(900);
-        expect(measurements.priceTop).toBeLessThan(1050);
-        expect(measurements.conditionTop).toBeLessThan(1200);
+        expect(measurements.titleTop).toBeLessThan(viewportHeight);
+        expect(measurements.artistTop).toBeLessThan(viewportHeight);
+        expect(measurements.priceTop).toBeLessThan(viewportHeight);
+        expect(measurements.conditionTop).toBeLessThan(viewportHeight);
+        if (width < 768) {
+          expect(measurements.primaryActionBottom).toBeLessThanOrEqual(viewportHeight);
+          expect(measurements.decisionContentBottom).toBeLessThanOrEqual(viewportHeight);
+        }
         expect(measurements.favoriteButtonVisible).toBe(true);
         expect(measurements.sellerLinkVisible).toBe(true);
         expect(measurements.commentsEntryVisible).toBe(true);
