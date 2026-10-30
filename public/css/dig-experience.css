@@ -754,7 +754,10 @@
   .dig-sleeve-interaction,
   .dig-sleeve-card,
   .dig-listing-meta,
-  .dig-card-actions {
+  .dig-card-actions,
+  .dig-sleeve-image,
+  .dig-missing-front,
+  .dig-missing-back {
     transition: none !important;
   }
 }
