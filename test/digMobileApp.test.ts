@@ -103,31 +103,6 @@ describe('Mobile Dig app-like viewport', () => {
 
   beforeEach(async () => {
     page = await browser.newPage();
-    await page.addInitScript(() => {
-      const playedSounds: string[] = [];
-      Object.defineProperty(window, '__digPlayedSounds', {
-        configurable: true,
-        value: playedSounds,
-      });
-      Object.defineProperty(window, 'Audio', {
-        configurable: true,
-        value: class TestAudio {
-          src: string;
-          currentTime = 0;
-          volume = 1;
-          preload = 'auto';
-
-          constructor(src: string) {
-            this.src = src;
-          }
-
-          play() {
-            playedSounds.push(this.src);
-            return Promise.resolve();
-          }
-        },
-      });
-    });
     await page.emulateMedia({ reducedMotion: 'reduce' });
   });
 
@@ -198,6 +173,31 @@ describe('Mobile Dig app-like viewport', () => {
         }).__digTestVisualViewport = viewport;
       }, height);
     }
+    await page.evaluate(() => {
+      const playedSounds: string[] = [];
+      Object.defineProperty(window, '__digPlayedSounds', {
+        configurable: true,
+        value: playedSounds,
+      });
+      Object.defineProperty(window, 'Audio', {
+        configurable: true,
+        value: class TestAudio {
+          src: string;
+          currentTime = 0;
+          volume = 1;
+          preload = 'auto';
+
+          constructor(src: string) {
+            this.src = src;
+          }
+
+          play() {
+            playedSounds.push(this.src);
+            return Promise.resolve();
+          }
+        },
+      });
+    });
     await page.addScriptTag({ content: digPreferences });
     await page.addScriptTag({ content: digSounds });
     await page.addScriptTag({ content: digState });
