@@ -346,8 +346,9 @@ describe('Mobile Dig app-like viewport', () => {
     const startMidpoint = { x: centerX + 20, y: centerY - 10 };
     const firstStart = { x: startMidpoint.x - 45, y: startMidpoint.y - 30 };
     const secondStart = { x: startMidpoint.x + 45, y: startMidpoint.y + 30 };
-    const firstZoom = { x: startMidpoint.x - 100, y: startMidpoint.y - 66.7 };
-    const secondZoom = { x: startMidpoint.x + 100, y: startMidpoint.y + 66.7 };
+    // This separation would exceed the maximum without the 2.5× clamp.
+    const firstZoom = { x: startMidpoint.x - 115, y: startMidpoint.y - 77 };
+    const secondZoom = { x: startMidpoint.x + 115, y: startMidpoint.y + 77 };
 
     const edgeBefore = await page.locator('[data-dig-slide].is-active .dig-sleeve-edge-top')
       .evaluate((edge) => getComputedStyle(edge).transform);
@@ -378,8 +379,7 @@ describe('Mobile Dig app-like viewport', () => {
 
     expect(zoomed.zoomed).toBe(true);
     expect(zoomed.zooming).toBe(true);
-    expect(zoomed.scale).toBeGreaterThan(2);
-    expect(zoomed.scale).toBeLessThanOrEqual(2.5);
+    expect(zoomed.scale).toBeCloseTo(2.5, 2);
     expect(Math.abs(zoomed.panX)).toBeGreaterThan(0);
     expect(Math.abs(zoomed.panY)).toBeGreaterThan(0);
     expect(zoomed.frontTransform).not.toBe('none');
