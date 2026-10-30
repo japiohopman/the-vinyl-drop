@@ -191,8 +191,7 @@ describe('YouTube release preview (#226)', () => {
       }).replace('<script src="/js/youtube-preview.js" defer></script>', '');
 
       for (const width of [320, 360, 390, 430, 768, 1280]) {
-        const viewportHeight = width < 768 ? 812 : 900;
-        const page = await browser.newPage({ viewport: { width, height: viewportHeight } });
+        const page = await browser.newPage({ viewport: { width, height: 900 } });
         const externalRequests: string[] = [];
         page.on('request', (request) => {
           if (request.url().startsWith('https://www.youtube-nocookie.com/')) externalRequests.push(request.url());
@@ -282,7 +281,8 @@ describe('YouTube release preview (#226)', () => {
     const browser: Browser = await chromium.launch({ headless: true });
     try {
       for (const width of [320, 360, 390, 430, 768, 1280]) {
-        const page = await browser.newPage({ viewport: { width, height: 900 } });
+        const viewportHeight = width < 768 ? 812 : 900;
+        const page = await browser.newPage({ viewport: { width, height: viewportHeight } });
         await page.setContent(
           '<!doctype html><html lang="en"><head><style>' + stylesheet + listingDetailPolishCss
           + '</style></head><body class="listing-detail-page"><main class="main-content container">'
