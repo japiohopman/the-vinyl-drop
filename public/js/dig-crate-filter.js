@@ -106,7 +106,7 @@
     }
     if (!dialog.open) return;
     clearKeyboardViewport();
-    dialog.classList.remove('is-closing');
+    dialog.classList.remove('is-open', 'is-closing');
     dialog.close('cancel');
   };
 
@@ -141,8 +141,14 @@
     // The mobile filter is an in-context app panel, not a modal overlay:
     // show() deliberately avoids the browser-managed ::backdrop/top layer.
     // Desktop retains showModal() and its existing focus/inert behavior.
-    if (mobilePanel) dialog.show();
-    else dialog.showModal();
+    if (mobilePanel) {
+      dialog.show();
+      // Commit the translated starting position before applying .is-open.
+      // This makes the vertical slide deterministic without @starting-style.
+      dialog.getBoundingClientRect();
+    } else {
+      dialog.showModal();
+    }
 
     trigger.setAttribute('aria-expanded', 'true');
     const firstControl = dialog.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled])');
