@@ -123,6 +123,7 @@ describe('Mobile Dig app-like viewport', () => {
       listings: [],
       formatOptions: [
         { value: 'LP', label: 'LP', description: 'Long-play records' },
+        { value: '12-inch', label: '12-inch', description: '12-inch records' },
         { value: '7-inch', label: '7-inch', description: '7-inch records' },
       ],
       whiteLabelAvailable: true,
@@ -145,9 +146,29 @@ describe('Mobile Dig app-like viewport', () => {
       '<main class="main-content container">' + bodyContent + '</main></body></html>';
   }
 
-  async function loadPage(width: number, height: number, pageItems: TestDigItem[] = items): Promise<void> {
+  async function loadPage(
+    width: number,
+    height: number,
+    pageItems: TestDigItem[] = items,
+    mockVisualViewport = false
+  ): Promise<void> {
     await page.setViewportSize({ width, height });
     await page.setContent(await renderPage(pageItems));
+    if (mockVisualViewport) {
+      await page.evaluate((initialHeight) => {
+        const viewport = Object.assign(new EventTarget(), {
+          height: initialHeight,
+          offsetTop: 0,
+        });
+        Object.defineProperty(window, 'visualViewport', {
+          configurable: true,
+          value: viewport,
+        });
+        (window as Window & {
+          __digTestVisualViewport?: EventTarget & { height: number; offsetTop: number };
+        }).__digTestVisualViewport = viewport;
+      }, height);
+    }
     await page.addScriptTag({ content: digState });
     await page.addScriptTag({ content: digMode });
     await page.addScriptTag({ content: digCrateFilter });
@@ -1110,6 +1131,18 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await dialog.locator('input[name="format"]:checked').evaluateAll((elements) =>
       elements.map((element) => (element as HTMLInputElement).value)
     )).toEqual(['LP', '7-inch']);
+    expect(await dialog.locator('label[data-format] img').evaluateAll((images) =>
+      images.map((image) => ({
+        format: image.closest('label')?.getAttribute('data-format'),
+        source: (image as HTMLImageElement).getAttribute('src'),
+        decorative: (image as HTMLImageElement).getAttribute('aria-hidden'),
+      }))
+    )).toEqual([
+      { format: 'lp', source: '/assets/UI/LP.svg', decorative: 'true' },
+      { format: '12-inch', source: '/assets/UI/12-ince.svg', decorative: 'true' },
+      { format: '7-inch', source: '/assets/UI/7-ince.svg', decorative: 'true' },
+    ]);
+    expect(await dialog.locator('label:has(input[name="whiteLabel"]) img').count()).toBe(0);
 
     await dialog.locator('input[name="q"]').fill('cancelled query');
     await dialog.locator('[data-dig-filter-cancel]').click();
@@ -1177,6 +1210,90 @@ describe('Mobile Dig app-like viewport', () => {
         const currentDialog = document.querySelector('[data-dig-filter-dialog]');
         return !(currentDialog instanceof HTMLDialogElement) || !currentDialog.open;
       });
+    }
+  });
+
+  it('fits the mobile filter sheet into the visible viewport while the software keyboard is open', async () => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+
+    for (const viewport of [
+      { width: 320, height: 640 },
+      { width: 360, height: 800 },
+      { width: 390, height: 844 },
+      { width: 430, height: 932 },
+    ]) {
+      await loadPage(viewport.width, viewport.height, items, true);
+      const trigger = page.locator('[data-dig-filter-open]');
+      const dialog = page.locator('[data-dig-filter-dialog]');
+      await trigger.click();
+
+      const keyboardHeight = Math.round(viewport.height * 0.48);
+      await page.evaluate((visibleHeight) => {
+        const visualViewport = (window as Window & {
+          __digTestVisualViewport?: EventTarget & { height: number; offsetTop: number };
+        }).__digTestVisualViewport;
+        if (!visualViewport) throw new Error('Test visual viewport was not installed');
+        visualViewport.height = visibleHeight;
+        visualViewport.offsetTop = 0;
+        visualViewport.dispatchEvent(new Event('resize'));
+      }, keyboardHeight);
+
+      await page.waitForFunction(() =>
+        document.querySelector('[data-dig-filter-dialog]')?.classList.contains('is-keyboard-open')
+      );
+
+      const keyboardGeometry = await page.evaluate(() => {
+        const dialogElement = document.querySelector('[data-dig-filter-dialog]') as HTMLElement | null;
+        const search = dialogElement?.querySelector('input[name="q"]') as HTMLElement | null;
+        if (!dialogElement || !search) throw new Error('Filter dialog or search input missing');
+        const dialogRect = dialogElement.getBoundingClientRect();
+        const searchRect = search.getBoundingClientRect();
+        return {
+          dialogTop: dialogRect.top,
+          dialogBottom: dialogRect.bottom,
+          searchTop: searchRect.top,
+          searchBottom: searchRect.bottom,
+          maxHeight: getComputedStyle(dialogElement).maxHeight,
+        };
+      });
+      expect(keyboardGeometry.dialogTop).toBeGreaterThanOrEqual(7);
+      expect(keyboardGeometry.dialogBottom).toBeLessThanOrEqual(keyboardHeight - 7);
+      expect(keyboardGeometry.searchTop).toBeGreaterThanOrEqual(keyboardGeometry.dialogTop);
+      expect(keyboardGeometry.searchBottom).toBeLessThanOrEqual(keyboardGeometry.dialogBottom);
+      expect(keyboardGeometry.maxHeight).not.toBe(String(viewport.height) + 'px');
+
+      await dialog.locator('.dig-crate-filter-actions').scrollIntoViewIfNeeded();
+      const actionBottom = await dialog.locator('.dig-crate-filter-actions').evaluate((element) =>
+        element.getBoundingClientRect().bottom
+      );
+      const dialogBottom = await dialog.evaluate((element) => element.getBoundingClientRect().bottom);
+      expect(actionBottom).toBeLessThanOrEqual(dialogBottom + 1);
+
+      await page.evaluate((layoutHeight) => {
+        const visualViewport = (window as Window & {
+          __digTestVisualViewport?: EventTarget & { height: number; offsetTop: number };
+        }).__digTestVisualViewport;
+        if (!visualViewport) throw new Error('Test visual viewport was not installed');
+        visualViewport.height = layoutHeight;
+        visualViewport.offsetTop = 0;
+        visualViewport.dispatchEvent(new Event('resize'));
+      }, viewport.height);
+
+      await page.waitForFunction(() =>
+        !document.querySelector('[data-dig-filter-dialog]')?.classList.contains('is-keyboard-open')
+      );
+      const restored = await dialog.evaluate((element) => {
+        const navigation = document.querySelector('.mobile-bottom-nav');
+        if (!navigation) throw new Error('Mobile bottom navigation missing');
+        return {
+          bottom: element.getBoundingClientRect().bottom,
+          navigationTop: navigation.getBoundingClientRect().top,
+        };
+      });
+      expect(restored.bottom).toBeLessThanOrEqual(restored.navigationTop - 7);
+
+      await dialog.locator('[data-dig-filter-cancel]').click();
+      expect(await dialog.isVisible()).toBe(false);
     }
   });
 
