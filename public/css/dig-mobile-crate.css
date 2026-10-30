@@ -23,6 +23,8 @@
 
 @media (max-width: 767px) {
   .dig-responsive-mobile .dig-crate-toolbar {
+    position: relative;
+    z-index: 20;
     display: flex;
     flex: 0 0 auto;
     align-items: center;

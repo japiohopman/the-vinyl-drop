@@ -1599,14 +1599,21 @@ describe('Mobile Dig app-like viewport', () => {
     }, await explorer.elementHandle())).toBe(true);
     const buttonWidths = await page.evaluate(() => {
       const toolbarElement = document.querySelector('[data-dig-crate-toolbar]') as HTMLElement | null;
-      const buttonElement = document.querySelector('[data-dig-filter-open]') as HTMLElement | null;
+      const filterButton = document.querySelector('[data-dig-filter-open]') as HTMLElement | null;
+      const soundButton = document.querySelector('[data-dig-sound-toggle]') as HTMLElement | null;
+      const toolbarStyle = toolbarElement ? getComputedStyle(toolbarElement) : null;
       return {
         toolbarWidth: toolbarElement?.getBoundingClientRect().width ?? 0,
-        buttonWidth: buttonElement?.getBoundingClientRect().width ?? 0,
+        filterWidth: filterButton?.getBoundingClientRect().width ?? 0,
+        soundWidth: soundButton?.getBoundingClientRect().width ?? 0,
+        gap: toolbarStyle ? parseFloat(toolbarStyle.columnGap) || 0 : 0,
       };
     });
     expect(buttonWidths.toolbarWidth).toBeGreaterThan(0);
-    expect(Math.abs(buttonWidths.toolbarWidth - buttonWidths.buttonWidth)).toBeLessThanOrEqual(1);
+    expect(buttonWidths.soundWidth).toBeGreaterThanOrEqual(112);
+    expect(Math.abs(
+      buttonWidths.toolbarWidth - buttonWidths.filterWidth - buttonWidths.soundWidth - buttonWidths.gap
+    )).toBeLessThanOrEqual(1);
 
     const trigger = page.locator('[data-dig-filter-open]');
     const dialog = page.locator('[data-dig-filter-dialog]');
@@ -1932,7 +1939,9 @@ describe('Mobile Dig app-like viewport', () => {
   it('leaves the existing filters available when no mobile Dig records match', async () => {
     await loadPage(375, 812, []);
 
-    expect(await page.locator('[data-dig-crate-toolbar]').count()).toBe(0);
+    expect(await page.locator('[data-dig-crate-toolbar]').count()).toBe(1);
+    expect(await page.locator('[data-dig-sound-toggle]').isVisible()).toBe(true);
+    expect(await page.locator('[data-dig-filter-open]').count()).toBe(0);
     expect(await page.locator('[data-dig-crate-source]').count()).toBe(0);
     expect(await page.locator('[data-dig-filter-dialog]').count()).toBe(0);
     expect(await page.locator('.browse-filter-form').isVisible()).toBe(true);
@@ -1978,6 +1987,15 @@ describe('Mobile Dig app-like viewport', () => {
     expect(toggleBounds).not.toBeNull();
     expect(toggleBounds!.width).toBeGreaterThan(0);
     expect(toggleBounds!.height).toBeGreaterThan(0);
+    const toggleReceivesPointer = await soundToggle.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        bounds.left + bounds.width / 2,
+        bounds.top + bounds.height / 2
+      );
+      return hit === element || Boolean(hit && element.contains(hit));
+    });
+    expect(toggleReceivesPointer).toBe(true);
     expect(await soundToggle.getAttribute('aria-pressed')).toBe('true');
     expect(await soundToggle.textContent()).toContain('Sound on');
     expect(await page.evaluate(() => (
