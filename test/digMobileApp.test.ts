@@ -429,14 +429,7 @@ describe('Mobile Dig app-like viewport', () => {
     expect(reverseZoom.scale).toBeCloseTo(panned.scale, 2);
     expect(reverseZoom.backTransform).toBe(zoomed.backTransform);
 
-    // The 5-second idle timer does not reset while a two-finger gesture is held.
-    await page.clock.fastForward(5100);
-    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
-      card.classList.contains('is-zoomed')
-    )).toBe(true);
-
-    // A fresh pinch starts on the flipped face, and zooming back to 1× removes
-    // the temporary zoom state immediately.
+    // Pinching back to 1× immediately removes the temporary zoom state.
     const currentBox = await stage.boundingBox();
     if (!currentBox) throw new Error('Flipped sleeve has no bounding box');
     const currentX = currentBox.x + currentBox.width / 2;
@@ -451,15 +444,18 @@ describe('Mobile Dig app-like viewport', () => {
     }))).toEqual({ zoomed: false, scale: '' });
     await dispatchTouchPointer('pointerup', 22, currentX + 5, currentY, false);
 
-    // Re-zoom, release and let the idle timer return the sleeve to neutral.
+    // An idle timeout must never fire while both fingers are still touching
+    // the sleeve. It starts only after the pinch interaction ends.
     await dispatchTouchPointer('pointerdown', 31, currentX - 40, currentY, true);
     await dispatchTouchPointer('pointerdown', 32, currentX + 40, currentY, false);
     await dispatchTouchPointer('pointermove', 31, currentX - 90, currentY, true);
     await dispatchTouchPointer('pointermove', 32, currentX + 90, currentY, false);
-    await dispatchTouchPointer('pointerup', 31, currentX - 90, currentY, true);
+    await page.clock.fastForward(5100);
     expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
       card.classList.contains('is-zoomed')
     )).toBe(true);
+
+    await dispatchTouchPointer('pointerup', 31, currentX - 90, currentY, true);
     await page.clock.fastForward(5001);
     const idleReset = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => ({
       zoomed: card.classList.contains('is-zoomed'),
