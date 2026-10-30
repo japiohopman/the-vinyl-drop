@@ -2007,5 +2007,5 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds?.length || 0)).toBe(0);
     expect(await page.locator('[data-dig-prev]').isDisabled()).toBe(true);
   });
-\n
+
 });
