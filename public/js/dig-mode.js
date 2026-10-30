@@ -27,6 +27,7 @@
   let pendingFlipSettle = null;
   let zoomIdleTimer = 0;
   let zoomIdleSlide = null;
+  let zoomIdleAfterTouchSlide = null;
   let zoomResetTimer = 0;
 
   function setReducedMotion() {
@@ -182,6 +183,19 @@
     return Math.max(-limit, Math.min(limit, value));
   }
 
+  function finishTrackedTouchPointer(pointerId) {
+    touchPointers.delete(pointerId);
+    if (!zoomIdleAfterTouchSlide) return;
+
+    const pendingSlide = zoomIdleAfterTouchSlide;
+    const pendingStage = pendingSlide.querySelector('[data-dig-swipe-area]');
+    const stillTouching = Array.from(touchPointers.values()).some((pointer) => pointer.stage === pendingStage);
+    if (!stillTouching) {
+      zoomIdleAfterTouchSlide = null;
+      scheduleZoomReset(pendingSlide);
+    }
+  }
+
   function startPinch(slide, stage, firstPointer, secondPointer, firstPointerId, secondPointerId) {
     const card = slide.querySelector('[data-dig-sleeve-card]');
     if (!card) return;
@@ -225,6 +239,7 @@
     cancelGestureTimer = 0;
     clearZoomIdleTimer();
     clearZoomResetTimer();
+    zoomIdleAfterTouchSlide = null;
     card.classList.remove('is-zoom-resetting');
     card.classList.add('is-zooming');
     stage.classList.add('is-gesture-active');
@@ -307,38 +322,49 @@
     completed.stage.classList.remove('is-gesture-active');
     completed.card.classList.remove('is-zooming');
 
-    completed.pointerIds.forEach((pointerId) => {
-      touchPointers.delete(pointerId);
-      try {
-        if (completed.stage.hasPointerCapture(pointerId)) completed.stage.releasePointerCapture(pointerId);
-      } catch {
-        // The browser may already have released this pointer.
+    // The other finger may still be resting on the sleeve after the first
+    // finger lifts. Keep tracking it and do not start the idle timer yet.
+    const otherPointersStillDown = completed.pointerIds.some((pointerId) =>
+      pointerId !== event.pointerId && touchPointers.get(pointerId)?.stage === completed.stage
+    );
+    finishTrackedTouchPointer(event.pointerId);
+    try {
+      if (completed.stage.hasPointerCapture(event.pointerId)) {
+        completed.stage.releasePointerCapture(event.pointerId);
       }
-    });
+    } catch {
+      // The browser may already have released this pointer.
+    }
 
-    scheduleZoomReset(completed.slide);
+    if (otherPointersStillDown) {
+      zoomIdleAfterTouchSlide = completed.slide;
+      clearZoomIdleTimer();
+    } else {
+      zoomIdleAfterTouchSlide = null;
+      scheduleZoomReset(completed.slide);
+    }
     return true;
   }
 
   function resetAllZoom() {
     clearZoomIdleTimer();
     clearZoomResetTimer();
+    zoomIdleAfterTouchSlide = null;
     if (pinchGesture) {
       const activePinch = pinchGesture;
       pinchGesture = null;
       activePinch.card.classList.remove('is-zooming', 'is-zoom-resetting');
       activePinch.stage.classList.remove('is-gesture-active');
-      activePinch.pointerIds.forEach((pointerId) => {
-        touchPointers.delete(pointerId);
-        try {
-          if (activePinch.stage.hasPointerCapture(pointerId)) {
-            activePinch.stage.releasePointerCapture(pointerId);
-          }
-        } catch {
-          // The page may already have released this pointer during lifecycle cleanup.
-        }
-      });
     }
+    touchPointers.forEach((pointer, pointerId) => {
+      try {
+        if (pointer.stage.hasPointerCapture(pointerId)) {
+          pointer.stage.releasePointerCapture(pointerId);
+        }
+      } catch {
+        // The page may already have released this pointer during lifecycle cleanup.
+      }
+    });
     touchPointers.clear();
     slides.forEach((slide) => resetZoom(slide, false));
   }
@@ -545,10 +571,17 @@
         pointerId !== event.pointerId && value.stage === stage
       );
 
-      if (firstTouch && gesture && gesture.stage === stage && !pinchGesture) {
+      const activeSlide = slides[activeIndex];
+      const canResumePinch = Boolean(
+        firstTouch &&
+        activeSlide &&
+        zoomIdleAfterTouchSlide === activeSlide &&
+        firstTouch[1].stage === stage
+      );
+      if (firstTouch && ((gesture && gesture.stage === stage) || canResumePinch) && !pinchGesture) {
         touchPointers.set(event.pointerId, pointer);
         startPinch(
-          gesture.slide,
+          activeSlide,
           stage,
           firstTouch[1],
           pointer,
@@ -708,7 +741,7 @@
 
   function handlePointerUp(event) {
     if (finishPinch(event)) return;
-    touchPointers.delete(event.pointerId);
+    finishTrackedTouchPointer(event.pointerId);
     if (!gesture || event.pointerId !== gesture.pointerId) return;
     const { deltaX, deltaY, neighborIndex, slide, stage, horizontal } = gesture;
 
@@ -804,7 +837,7 @@
       stage.addEventListener('pointerup', handlePointerUp);
       stage.addEventListener('pointercancel', (event) => {
         if (finishPinch(event)) return;
-        touchPointers.delete(event.pointerId);
+        finishTrackedTouchPointer(event.pointerId);
         if (!gesture || event.pointerId !== gesture.pointerId) return;
         const cancelledSlide = gesture.slide;
         stage.classList.remove('is-gesture-active');
@@ -813,9 +846,9 @@
       });
       stage.addEventListener('lostpointercapture', (event) => {
         if (pinchGesture && finishPinch(event)) return;
+        finishTrackedTouchPointer(event.pointerId);
         if (gesture && event.pointerId === gesture.pointerId) {
           const cancelledSlide = gesture.slide;
-          touchPointers.delete(event.pointerId);
           clearDragStyles();
           scheduleZoomReset(cancelledSlide);
         }
