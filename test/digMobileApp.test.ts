@@ -401,8 +401,8 @@ describe('Mobile Dig app-like viewport', () => {
         backTransform: getComputedStyle(
           card.querySelector<HTMLElement>('.dig-sleeve-face-back .dig-sleeve-image')!
         ).transform,
-        width: card.closest('.dig-sleeve-stage')?.getBoundingClientRect().width ?? 0,
-        height: card.closest('.dig-sleeve-stage')?.getBoundingClientRect().height ?? 0,
+        width: element.clientWidth,
+        height: element.clientHeight,
       };
     });
     expect(panned.scale).toBeCloseTo(zoomed.scale, 1);
