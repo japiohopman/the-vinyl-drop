@@ -251,8 +251,6 @@
       startPanY: panY,
       startContentX: (midpointX - centerX - panX) / scale,
       startContentY: (midpointY - centerY - panY) / scale,
-      boundsWidth: Math.max(1, bounds.width),
-      boundsHeight: Math.max(1, bounds.height),
     };
 
     try {
@@ -265,6 +263,7 @@
 
   function updatePinch(event) {
     if (!pinchGesture || !pinchGesture.pointerIds.includes(event.pointerId)) return;
+    event.preventDefault();
     const current = touchPointers.get(event.pointerId);
     if (!current) return;
     touchPointers.set(event.pointerId, { ...current, x: event.clientX, y: event.clientY });
@@ -299,7 +298,6 @@
     );
     setZoomState(pinchGesture.slide, scale, panX, panY);
     pinchGesture.card.classList.add('is-zooming');
-    event.preventDefault();
   }
 
   function finishPinch(event) {
@@ -529,6 +527,7 @@
 
   function handlePointerDown(event) {
     const stage = event.currentTarget;
+    if (isTransitioning || pinchGesture) return;
     const pointer = { stage, x: event.clientX, y: event.clientY };
 
     if (event.pointerType === 'touch') {
@@ -553,8 +552,10 @@
       touchPointers.set(event.pointerId, pointer);
     }
 
-    if (isTransitioning || gesture || pinchGesture || !event.isPrimary ||
-        (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (gesture || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) {
+      if (event.pointerType === 'touch') touchPointers.delete(event.pointerId);
+      return;
+    }
     flushPendingFlipSettle();
 
     // A previous cancelled gesture may still have a delayed paintSlides reset queued.
@@ -774,6 +775,7 @@
     }
 
     clearDragStyles();
+    scheduleZoomReset(slide);
   }
 
   slides.forEach((slide) => {
@@ -794,16 +796,18 @@
         if (finishPinch(event)) return;
         touchPointers.delete(event.pointerId);
         if (!gesture || event.pointerId !== gesture.pointerId) return;
+        const cancelledSlide = gesture.slide;
         stage.classList.remove('is-gesture-active');
         clearDragStyles();
-        scheduleZoomReset(gesture ? gesture.slide : slides[activeIndex]);
+        scheduleZoomReset(cancelledSlide);
       });
       stage.addEventListener('lostpointercapture', (event) => {
         if (pinchGesture && finishPinch(event)) return;
         if (gesture && event.pointerId === gesture.pointerId) {
+          const cancelledSlide = gesture.slide;
           touchPointers.delete(event.pointerId);
           clearDragStyles();
-          scheduleZoomReset(slides[activeIndex]);
+          scheduleZoomReset(cancelledSlide);
         }
       });
     }
