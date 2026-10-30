@@ -88,7 +88,11 @@ describe('Dig search-first responsive shell', () => {
     const html = await ejs.renderFile(viewPath, {
       title: 'Dig Vinyl Records',
       listings: [],
-      formatOptions: [{ value: 'lp', label: 'LP', description: 'Long-play records' }],
+      formatOptions: [
+        { value: 'lp', label: 'LP', description: 'Long-play records' },
+        { value: '12-inch', label: '12-inch', description: '12-inch records' },
+        { value: '7-inch', label: '7-inch', description: '7-inch records' },
+      ],
       whiteLabelAvailable: true,
       filters: {
         q: 'De La Soul',
@@ -122,6 +126,12 @@ describe('Dig search-first responsive shell', () => {
     expect(html).not.toContain('Find your next record. Swipe up through the crate, or flip a sleeve to see the back.');
     expect(html).toContain('class="btn btn-outline dig-back-to-browse"');
     expect(html).toContain('aria-label="Back to Dig results"');
+    expect(html).toContain('src="/assets/UI/LP.svg"');
+    expect(html).toContain('src="/assets/UI/12-ince.svg"');
+    expect(html).toContain('src="/assets/UI/7-ince.svg"');
+    expect((html.match(/class="browse-format-icon"/g) || [])).toHaveLength(3);
+    expect(html).toContain('name="formatToggle" value="12-inch"');
+    expect(html).toContain('class="browse-white-label-chip');
   });
 });
 
