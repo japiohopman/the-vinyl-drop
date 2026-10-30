@@ -1,11 +1,12 @@
-<section class="hero-section" style="margin-bottom: var(--space-8); text-align: center; padding: var(--space-8) var(--space-4); background: var(--color-paper-muted); border: var(--border-thick); border-radius: var(--radius-md);">
-  <h1 style="font-family: var(--font-display); font-size: var(--font-size-3xl); margin-bottom: var(--space-2);"><%= message %></h1>
-  <p class="tagline" style="font-size: var(--font-size-lg); color: var(--color-ink-muted); max-width: 600px; margin: 0 auto var(--space-6);">
-    Local community marketplace for buying, selling, and trading physical vinyl records.
-  </p>
-  <div style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap;">
-    <a href="/browse" class="btn btn-primary btn-lg">Browse Record Drops</a>
-    <a href="/drop/new" class="btn btn-outline btn-lg">+ Drop a Record</a>
+<section class="home-intro" aria-labelledby="home-intro-title">
+  <div class="home-intro-copy">
+    <p class="home-intro-kicker">BUY · TRADE · DIG</p>
+    <h1 id="home-intro-title"><%= message %></h1>
+    <p>Discover records from local collectors. Find your next favourite, or add a copy to the crate.</p>
+  </div>
+  <div class="home-intro-actions">
+    <a href="/browse" class="btn btn-primary">Browse records</a>
+    <a href="/drop/new" class="btn btn-outline">+ Drop a record</a>
   </div>
 </section>
 
@@ -34,5 +35,29 @@
       <p style="color: var(--color-ink-muted); margin-bottom: var(--space-6);">Be the first to list a vinyl record in our community crate!</p>
       <a href="/drop/new" class="btn btn-primary">+ Drop a Record</a>
     </div>
+  <% } %>
+</section>
+
+<section class="home-discovery" aria-labelledby="random-albums-title">
+  <div class="home-section-heading">
+    <div>
+      <p class="home-intro-kicker">PICK FROM THE CRATE</p>
+      <h2 id="random-albums-title">Random Albums</h2>
+      <p class="home-section-description">A rotating handful of records from the community, beyond the newest drops.</p>
+    </div>
+    <a href="/browse" class="home-section-link">Explore the catalogue <span aria-hidden="true">→</span></a>
+  </div>
+
+  <% const discoveryList = (typeof discoveryListings !== 'undefined' && Array.isArray(discoveryListings)) ? discoveryListings : []; %>
+  <% if (discoveryList.length > 0) { %>
+    <div class="listing-grid home-listing-grid">
+      <% discoveryList.forEach(function(item) { %>
+        <%- include('../partials/listing-card', { listing: item }) %>
+      <% }); %>
+    </div>
+  <% } else if (dropsList && dropsList.length > 0) { %>
+    <p class="home-discovery-empty">That's the crate for now. More records will appear here as the community adds them.</p>
+  <% } else { %>
+    <p class="home-discovery-empty">No records to discover yet. Be the first to drop one into the crate.</p>
   <% } %>
 </section>
