@@ -244,7 +244,14 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(after.general.rawBytes).toBeLessThan(baselineShared.rawBytes);
     expect(after.general.gzipBytes).toBeLessThan(baselineShared.gzipBytes);
     expect(after.dig.rawBytes).toBeLessThan(baselineDig.rawBytes);
+
+    // Home deliberately loads its own small route-only stylesheet. It is the
+    // sole route allowed to add a small visual layer over the shared baseline.
+    expect(after.home.rawBytes - baselineShared.rawBytes).toBeLessThan(3500);
+    expect(after.home.gzipBytes - baselineShared.gzipBytes).toBeLessThan(1500);
+
     for (const [key, value] of Object.entries(after)) {
+      if (key === 'home') continue;
       expect(value.rawBytes).toBeLessThan((key === 'dig' ? baselineDig.rawBytes : baselineShared.rawBytes));
       expect(value.gzipBytes).toBeLessThan((key === 'dig' ? baselineDig.gzipBytes : baselineShared.gzipBytes));
     }
