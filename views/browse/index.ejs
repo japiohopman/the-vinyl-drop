@@ -8,6 +8,7 @@
   <% const currentView = (filters && filters.view === 'list') ? 'list' : 'grid'; %>
   <% const routeBase = (typeof responsiveDig !== 'undefined' && responsiveDig) ? '/dig' : '/browse'; %>
   <% const selectedFormats = Array.isArray(filters.formats) ? filters.formats : []; %>
+  <% const browseFormatIconPaths = { lp: '/assets/UI/LP.svg', '12-inch': '/assets/UI/12-ince.svg', '7-inch': '/assets/UI/7-ince.svg' }; %>
   <% const formatParams = selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }).join('&'); %>
   <% const baseQueryParams = 'q=' + encodeURIComponent(filters.q || '') + '&genre=' + encodeURIComponent(filters.genre || '') + '&condition=' + encodeURIComponent(filters.condition || '') + '&minPrice=' + encodeURIComponent(filters.minPrice || '') + '&maxPrice=' + encodeURIComponent(filters.maxPrice || '') + '&sort=' + encodeURIComponent(filters.sort || 'newest'); %>
   <% const queryBaseParams = [baseQueryParams, formatParams, filters.whiteLabel ? 'whiteLabel=1' : ''].filter(Boolean).join('&'); %>
@@ -55,8 +56,11 @@
     <fieldset class="browse-format-quick-filters">
       <legend>Dig by format</legend>
       <div class="browse-format-chip-row">
-        <% (formatOptions || []).forEach(function(option) { const selected = selectedFormats.includes(option.value); %>
-          <button type="submit" name="formatToggle" value="<%= option.value %>" class="browse-format-chip <%= selected ? 'is-selected' : '' %>" aria-pressed="<%= selected ? 'true' : 'false' %>" title="<%= option.description %>"><%= option.label %></button>
+        <% (formatOptions || []).forEach(function(option) { const selected = selectedFormats.includes(option.value); const iconPath = browseFormatIconPaths[String(option.value).toLowerCase()]; %>
+          <button type="submit" name="formatToggle" value="<%= option.value %>" class="browse-format-chip <%= selected ? 'is-selected' : '' %>" aria-pressed="<%= selected ? 'true' : 'false' %>" title="<%= option.description %>">
+            <% if (iconPath) { %><img class="browse-format-icon" src="<%= iconPath %>" width="26" height="26" alt="" aria-hidden="true" loading="lazy"><% } %>
+            <span><%= option.label %></span>
+          </button>
         <% }); %>
         <% if (whiteLabelAvailable) { %>
           <button type="submit" name="whiteLabelToggle" value="1" class="browse-format-chip browse-white-label-chip <%= filters.whiteLabel ? 'is-selected' : '' %>" aria-pressed="<%= filters.whiteLabel ? 'true' : 'false' %>">White label</button>
