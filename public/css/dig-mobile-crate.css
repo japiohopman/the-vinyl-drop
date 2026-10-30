@@ -303,14 +303,14 @@
   }
 
   /*
-   * Keep the filter sheet in the space above the fixed mobile navigation.
-   * The small side/bottom inset and translucent paper surface make it feel like
-   * an app surface, without covering the navigation's hit area.
+   * App-like Dig panel: start directly below the compact mobile context header
+   * and finish at the fixed navigation's top border. The dialog is moved to
+   * document.body by the controller so explorer clipping cannot constrain it.
    */
   .dig-crate-filter-dialog {
     position: fixed;
     z-index: 199;
-    inset: calc(env(safe-area-inset-top, 0px) + 72px) 0
+    inset: calc(env(safe-area-inset-top, 0px) + 76px) 0
       calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px) + 2px);
     box-sizing: border-box;
     width: auto;
