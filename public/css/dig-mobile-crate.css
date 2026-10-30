@@ -310,7 +310,7 @@
   .dig-crate-filter-dialog {
     position: fixed;
     inset: calc(env(safe-area-inset-top, 0px) + 72px) 0
-      calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px));
+      calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px) + 2px);
     box-sizing: border-box;
     width: auto;
     max-width: none;
