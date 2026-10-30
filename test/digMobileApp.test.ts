@@ -2016,7 +2016,7 @@ describe('Mobile Dig app-like viewport', () => {
     const pointerIdPromise = page.evaluate(() => new Promise<number>((resolve) => {
       const activeStage = document.querySelector('[data-dig-swipe-area]');
       if (!activeStage) throw new Error('Dig sleeve stage was not found');
-      activeStage.addEventListener('pointerdown', (event) => resolve(event.pointerId), { once: true });
+      activeStage.addEventListener('pointerdown', (event) => resolve((event as PointerEvent).pointerId), { once: true });
     }));
     await page.mouse.move(centerX, centerY);
     await page.mouse.down();
