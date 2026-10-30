@@ -300,7 +300,11 @@ describe('Mobile Dig app-like viewport', () => {
       };
     }, { x, y });
     expect(resumed.expectedScale).toBeGreaterThan(1);
+<<<<<<< HEAD
     expect(resumed.resumedScale).toBeCloseTo(resumed.expectedScale, 1);
+=======
+    expect(resumed.resumedScale).toBeCloseTo(resumed.expectedScale, 2);
+>>>>>>> b884af691551cfb3ee3de0c79e84e1ec4381c239
     expect(resumed.zooming).toBe(true);
 
     await dispatchTouchPointer('pointerup', 63, x - 45, y, true);
