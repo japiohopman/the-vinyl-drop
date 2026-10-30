@@ -3,6 +3,10 @@
   const dialog = document.querySelector('[data-dig-filter-dialog]');
   if (!(trigger instanceof HTMLButtonElement) || !(dialog instanceof HTMLDialogElement)) return;
 
+  // Keep the fixed app panel outside the clipped Dig explorer/main-content
+  // containers. It is positioned against the viewport and the fixed bottom nav.
+  if (dialog.parentElement !== document.body) document.body.appendChild(dialog);
+
   const form = dialog.querySelector('[data-dig-filter-form]');
   const closeButton = dialog.querySelector('[data-dig-filter-close]');
   const cancelButton = dialog.querySelector('[data-dig-filter-cancel]');
