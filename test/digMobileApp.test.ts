@@ -1103,6 +1103,17 @@ describe('Mobile Dig app-like viewport', () => {
     await trigger.click();
     expect(await dialog.isVisible()).toBe(true);
     expect(await trigger.getAttribute('aria-expanded')).toBe('true');
+    await page.waitForFunction(() =>
+      document.querySelector('[data-dig-filter-dialog]')?.classList.contains('is-open')
+    );
+    const mobilePanelState = await dialog.evaluate((element) => ({
+      isModal: element.matches(':modal'),
+      transitionProperty: getComputedStyle(element).transitionProperty,
+      transitionDuration: getComputedStyle(element).transitionDuration,
+    }));
+    expect(mobilePanelState.isModal).toBe(false);
+    expect(mobilePanelState.transitionProperty).toContain('transform');
+    expect(parseFloat(mobilePanelState.transitionDuration)).toBeGreaterThanOrEqual(0.3);
     await page.waitForFunction(() => {
       const dialogElement = document.querySelector('[data-dig-filter-dialog]');
       const navigation = document.querySelector('.mobile-bottom-nav');
@@ -1157,6 +1168,12 @@ describe('Mobile Dig app-like viewport', () => {
     ]);
     const formatLayout = await dialog.locator('.dig-crate-format-options').evaluate((element) => ({
       columns: getComputedStyle(element).gridTemplateColumns.trim().split(' ').filter(Boolean).length,
+      tileDisplays: Array.from(element.querySelectorAll('label[data-format]')).map((tile) =>
+        getComputedStyle(tile).display
+      ),
+      tileDirections: Array.from(element.querySelectorAll('label[data-format]')).map((tile) =>
+        getComputedStyle(tile).flexDirection
+      ),
       iconWidths: Array.from(element.querySelectorAll('.dig-format-icon')).map((icon) =>
         Math.round(icon.getBoundingClientRect().width)
       ),
@@ -1168,6 +1185,8 @@ describe('Mobile Dig app-like viewport', () => {
       }),
     }));
     expect(formatLayout.columns).toBe(3);
+    expect(formatLayout.tileDisplays).toEqual(['flex', 'flex', 'flex']);
+    expect(formatLayout.tileDirections).toEqual(['column', 'column', 'column']);
     expect(formatLayout.iconWidths).toEqual([52, 52, 52]);
     expect(formatLayout.labelsBelowIcons).toBe(true);
     expect(await dialog.locator('.dig-crate-white-label-option').count()).toBe(1);
@@ -1181,6 +1200,9 @@ describe('Mobile Dig app-like viewport', () => {
     });
     expect(fieldOrder).toBe(true);
 
+    // Mobile uses dialog.show(), not showModal(), so the browser creates no
+    // modal backdrop and leaves the Dig screen itself undimmed.
+    expect(await dialog.evaluate((element) => element.matches(':modal'))).toBe(false);
     const backdropColor = await dialog.evaluate((element) =>
       getComputedStyle(element, '::backdrop').backgroundColor
     );
