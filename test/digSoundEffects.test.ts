@@ -31,7 +31,12 @@ function createStorage(initial: Record<string, string> = {}) {
   return { storage, values };
 }
 
-function loadPreferences(localStorage: Storage | ReturnType<typeof createStorage>['storage']): PreferenceApi {
+type StorageLike = {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+};
+
+function loadPreferences(localStorage: StorageLike): PreferenceApi {
   const sandbox = { localStorage };
   runInNewContext(preferencesSource, sandbox);
   return (sandbox as typeof sandbox & { VinylDropPreferences: PreferenceApi }).VinylDropPreferences;
