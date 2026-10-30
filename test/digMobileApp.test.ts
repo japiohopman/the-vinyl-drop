@@ -379,13 +379,14 @@ describe('Mobile Dig app-like viewport', () => {
   }
 
   async function dispatchTouchPointer(
-    type: 'pointerdown' | 'pointermove' | 'pointerup',
+    type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel',
     pointerId: number,
     x: number,
     y: number,
     isPrimary: boolean
   ): Promise<void> {
     await page.locator('[data-dig-slide].is-active [data-dig-swipe-area]').evaluate((element, input) => {
+      const isEnd = input.type === 'pointerup' || input.type === 'pointercancel';
       element.dispatchEvent(new PointerEvent(input.type, {
         bubbles: true,
         cancelable: true,
@@ -394,11 +395,129 @@ describe('Mobile Dig app-like viewport', () => {
         isPrimary: input.isPrimary,
         clientX: input.x,
         clientY: input.y,
-        button: input.type === 'pointerup' ? -1 : 0,
-        buttons: input.type === 'pointerup' ? 0 : 1,
+        button: isEnd ? -1 : 0,
+        buttons: isEnd ? 0 : 1,
       }));
     }, { type, pointerId, x, y, isPrimary });
   }
+
+  async function mockDigVibration(mode: 'success' | 'blocked' | 'throw' | 'missing' = 'success'): Promise<void> {
+    await page.evaluate((configuredMode) => {
+      const calls: Array<number | number[]> = [];
+      Object.defineProperty(window, '__digHapticCalls', {
+        configurable: true,
+        value: calls,
+      });
+      Object.defineProperty(navigator, 'vibrate', {
+        configurable: true,
+        value: configuredMode === 'missing'
+          ? undefined
+          : (pattern: number | number[]) => {
+            calls.push(pattern);
+            if (configuredMode === 'throw') throw new Error('Vibration is unavailable');
+            return configuredMode !== 'blocked';
+          },
+      });
+    }, mode);
+  }
+
+  async function readDigVibrationCalls(): Promise<Array<number | number[]>> {
+    return page.evaluate(() => (
+      (window as Window & { __digHapticCalls?: Array<number | number[]> }).__digHapticCalls || []
+    ));
+  }
+
+  async function swipeActiveByTouch(deltaX: number, deltaY: number, pointerId = 100): Promise<void> {
+    const stage = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const box = await stage.boundingBox();
+    if (!box) throw new Error('Active Dig sleeve has no bounding box');
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+    await dispatchTouchPointer('pointerdown', pointerId, startX, startY, true);
+    await dispatchTouchPointer('pointermove', pointerId, startX + deltaX, startY + deltaY, true);
+    await dispatchTouchPointer('pointerup', pointerId, startX + deltaX, startY + deltaY, true);
+  }
+
+  it('requests one subtle haptic pulse for a committed touch flip and record change', async () => {
+    await loadPage(375, 812);
+    await mockDigVibration();
+
+    await swipeActiveByTouch(-110, 0, 101);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(true);
+    expect(await readDigVibrationCalls()).toEqual([10]);
+
+    await swipeActiveByTouch(0, -110, 102);
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('2 of 2');
+    expect(await readDigVibrationCalls()).toEqual([10, 10]);
+
+    // A record-boundary attempt does not commit a navigation or emit feedback.
+    await swipeActiveByTouch(0, -110, 103);
+    expect(await page.locator('[data-dig-header-position]').textContent()).toBe('2 of 2');
+    expect(await readDigVibrationCalls()).toEqual([10, 10]);
+  });
+
+  it('does not request haptics for cancelled, short, pinch, mouse or button interactions', async () => {
+    await loadPage(375, 812);
+    await mockDigVibration();
+
+    const stage = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const box = await stage.boundingBox();
+    if (!box) throw new Error('Active Dig sleeve has no bounding box');
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+
+    // A short touch is not a committed flip.
+    await dispatchTouchPointer('pointerdown', 111, x, y, true);
+    await dispatchTouchPointer('pointerup', 111, x + 20, y, true);
+
+    // A cancelled gesture must never produce feedback.
+    await dispatchTouchPointer('pointerdown', 112, x, y, true);
+    await dispatchTouchPointer('pointermove', 112, x - 110, y, true);
+    await dispatchTouchPointer('pointercancel', 112, x - 110, y, true);
+
+    // Pinch completion is a separate gesture path, not a sleeve flip.
+    await dispatchTouchPointer('pointerdown', 113, x - 35, y, true);
+    await dispatchTouchPointer('pointerdown', 114, x + 35, y, false);
+    await dispatchTouchPointer('pointermove', 113, x - 70, y, true);
+    await dispatchTouchPointer('pointermove', 114, x + 70, y, false);
+    await dispatchTouchPointer('pointerup', 113, x - 70, y, true);
+    await dispatchTouchPointer('pointerup', 114, x + 70, y, false);
+
+    // Mouse and button-driven flips remain silent.
+    await swipeActive(-110, 0);
+    await page.locator('[data-dig-slide].is-active [data-dig-flip]').evaluate((button) => {
+      (button as HTMLButtonElement).click();
+    });
+
+    expect(await readDigVibrationCalls()).toEqual([]);
+  });
+
+  it('fails silently when vibration is unavailable, blocked or throws', async () => {
+    await loadPage(375, 812);
+
+    await mockDigVibration('missing');
+    await swipeActiveByTouch(-110, 0, 121);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(true);
+    expect(await readDigVibrationCalls()).toEqual([]);
+
+    await mockDigVibration('throw');
+    await swipeActiveByTouch(110, 0, 122);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(false);
+    expect(await readDigVibrationCalls()).toEqual([10]);
+
+    await mockDigVibration('blocked');
+    await swipeActiveByTouch(-110, 0, 123);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(true);
+    expect(await readDigVibrationCalls()).toEqual([10]);
+  });
 
   it('shows one square face-on sleeve with no tilted plane or other album cover at rest', async () => {
     await loadPage(375, 812);

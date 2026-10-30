@@ -34,6 +34,17 @@
     root.dataset.reducedMotion = motionPreference.matches ? 'true' : 'false';
   }
 
+  function requestDigHapticPulse() {
+    const vibration = navigator.vibrate;
+    if (typeof vibration !== 'function') return;
+
+    try {
+      vibration.call(navigator, 10);
+    } catch {
+      // Haptics are optional progressive enhancement; never block Dig.
+    }
+  }
+
   function setFlipState(slide, flipped) {
     const card = slide.querySelector('[data-dig-sleeve-card]');
     const button = slide.querySelector('[data-dig-flip]');
@@ -821,6 +832,7 @@
           card.style.transform = '';
           card.style.transition = '';
           scheduleZoomReset(slide);
+          if (shouldFlip && event.pointerType === 'touch') requestDigHapticPulse();
           return;
         }
 
@@ -831,6 +843,7 @@
         if (shouldFlip) setFlipState(slide, !wasFlipped);
         card.style.transform = 'rotateY(' + angles.animationAngle + 'deg)';
         scheduleZoomReset(slide);
+        if (shouldFlip && event.pointerType === 'touch') requestDigHapticPulse();
 
         if (flipSettleTimer) window.clearTimeout(flipSettleTimer);
         const pending = { card, restingAngle: angles.restingAngle };
@@ -865,7 +878,9 @@
       } catch {
         // Already released by the browser.
       }
+      const previousIndex = activeIndex;
       navigateTo(targetIndex, direction);
+      if (event.pointerType === 'touch' && activeIndex !== previousIndex) requestDigHapticPulse();
       return;
     }
 
