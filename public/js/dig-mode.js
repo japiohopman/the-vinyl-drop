@@ -304,12 +304,12 @@
     const panX = clampZoomPan(
       midpointX - bounds.width / 2 - scale * pinchGesture.startContentX,
       scale,
-      bounds.width
+      Math.max(1, pinchGesture.card.clientWidth)
     );
     const panY = clampZoomPan(
       midpointY - bounds.height / 2 - scale * pinchGesture.startContentY,
       scale,
-      bounds.height
+      Math.max(1, pinchGesture.card.clientHeight)
     );
     setZoomState(pinchGesture.slide, scale, panX, panY);
     pinchGesture.card.classList.add('is-zooming');
