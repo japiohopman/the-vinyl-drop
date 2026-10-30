@@ -398,6 +398,9 @@ describe('Mobile Dig app-like viewport', () => {
         scale,
         panX: Number.parseFloat(element.style.getPropertyValue('--dig-zoom-pan-x')),
         panY: Number.parseFloat(element.style.getPropertyValue('--dig-zoom-pan-y')),
+        backTransform: getComputedStyle(
+          card.querySelector<HTMLElement>('.dig-sleeve-face-back .dig-sleeve-image')!
+        ).transform,
         width: card.closest('.dig-sleeve-stage')?.getBoundingClientRect().width ?? 0,
         height: card.closest('.dig-sleeve-stage')?.getBoundingClientRect().height ?? 0,
       };
@@ -427,7 +430,7 @@ describe('Mobile Dig app-like viewport', () => {
     });
     expect(reverseZoom.flipped).toBe(true);
     expect(reverseZoom.scale).toBeCloseTo(panned.scale, 2);
-    expect(reverseZoom.backTransform).toBe(zoomed.backTransform);
+    expect(reverseZoom.backTransform).toBe(panned.backTransform);
 
     // Pinching back to 1× immediately removes the temporary zoom state.
     const currentBox = await stage.boundingBox();
