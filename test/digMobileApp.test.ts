@@ -242,6 +242,28 @@ describe('Mobile Dig app-like viewport', () => {
     await page.waitForTimeout(620);
   }
 
+  async function dispatchTouchPointer(
+    type: 'pointerdown' | 'pointermove' | 'pointerup',
+    pointerId: number,
+    x: number,
+    y: number,
+    isPrimary: boolean
+  ): Promise<void> {
+    await page.locator('[data-dig-slide].is-active [data-dig-swipe-area]').evaluate((element, input) => {
+      element.dispatchEvent(new PointerEvent(input.type, {
+        bubbles: true,
+        cancelable: true,
+        pointerId: input.pointerId,
+        pointerType: 'touch',
+        isPrimary: input.isPrimary,
+        clientX: input.x,
+        clientY: input.y,
+        button: input.type === 'pointerup' ? -1 : 0,
+        buttons: input.type === 'pointerup' ? 0 : 1,
+      }));
+    }, { type, pointerId, x, y, isPrimary });
+  }
+
   it('shows one square face-on sleeve with no tilted plane or other album cover at rest', async () => {
     await loadPage(375, 812);
     const state = await page.evaluate(() => {
@@ -309,6 +331,176 @@ describe('Mobile Dig app-like viewport', () => {
       card.classList.contains('is-flipped')
     )).toBe(false);
     expect(await page.locator('[data-dig-slide]:visible').count()).toBe(1);
+  });
+
+  it('pinches and pans the sleeve artwork without scaling the cardboard, keeps zoom on flip, and resets after inactivity', async () => {
+    await page.clock.install();
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812, [littleFishItem]);
+
+    const stage = page.locator('[data-dig-slide].is-active [data-dig-swipe-area]');
+    const box = await stage.boundingBox();
+    if (!box) throw new Error('Little Fish sleeve has no bounding box');
+    const centerX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+    const startMidpoint = { x: centerX + 20, y: centerY - 10 };
+    const firstStart = { x: startMidpoint.x - 45, y: startMidpoint.y - 30 };
+    const secondStart = { x: startMidpoint.x + 45, y: startMidpoint.y + 30 };
+    const firstZoom = { x: startMidpoint.x - 100, y: startMidpoint.y - 66.7 };
+    const secondZoom = { x: startMidpoint.x + 100, y: startMidpoint.y + 66.7 };
+
+    const edgeBefore = await page.locator('[data-dig-slide].is-active .dig-sleeve-edge-top')
+      .evaluate((edge) => getComputedStyle(edge).transform);
+
+    await dispatchTouchPointer('pointerdown', 11, firstStart.x, firstStart.y, true);
+    await dispatchTouchPointer('pointerdown', 12, secondStart.x, secondStart.y, false);
+    await dispatchTouchPointer('pointermove', 11, firstZoom.x, firstZoom.y, true);
+    await dispatchTouchPointer('pointermove', 12, secondZoom.x, secondZoom.y, false);
+
+    const zoomed = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const element = card as HTMLElement;
+      const frontImage = card.querySelector<HTMLElement>('.dig-sleeve-face-front .dig-sleeve-image');
+      const backImage = card.querySelector<HTMLElement>('.dig-sleeve-face-back .dig-sleeve-image');
+      const edge = card.querySelector<HTMLElement>('.dig-sleeve-edge-top');
+      if (!frontImage || !backImage || !edge) throw new Error('The physical sleeve is missing a face image or cardboard edge');
+      return {
+        scale: Number.parseFloat(element.style.getPropertyValue('--dig-zoom-scale')),
+        panX: Number.parseFloat(element.style.getPropertyValue('--dig-zoom-pan-x')),
+        panY: Number.parseFloat(element.style.getPropertyValue('--dig-zoom-pan-y')),
+        frontTransform: getComputedStyle(frontImage).transform,
+        backTransform: getComputedStyle(backImage).transform,
+        edgeTransform: getComputedStyle(edge).transform,
+        cardTransform: getComputedStyle(element).transform,
+        zoomed: element.classList.contains('is-zoomed'),
+        zooming: element.classList.contains('is-zooming'),
+      };
+    });
+
+    expect(zoomed.zoomed).toBe(true);
+    expect(zoomed.zooming).toBe(true);
+    expect(zoomed.scale).toBeGreaterThan(2);
+    expect(zoomed.scale).toBeLessThanOrEqual(2.5);
+    expect(Math.abs(zoomed.panX)).toBeGreaterThan(0);
+    expect(Math.abs(zoomed.panY)).toBeGreaterThan(0);
+    expect(zoomed.frontTransform).not.toBe('none');
+    expect(zoomed.backTransform).toBe(zoomed.frontTransform);
+    expect(zoomed.cardTransform).toBe('none');
+    expect(zoomed.edgeTransform).toBe(edgeBefore);
+
+    // Two fingers moving together pan the same focal artwork point. The pan
+    // remains bounded by the extra area created by the current zoom factor.
+    await dispatchTouchPointer('pointermove', 11, firstZoom.x + 20, firstZoom.y + 14, true);
+    await dispatchTouchPointer('pointermove', 12, secondZoom.x + 20, secondZoom.y + 14, false);
+    const panned = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const element = card as HTMLElement;
+      const scale = Number.parseFloat(element.style.getPropertyValue('--dig-zoom-scale'));
+      return {
+        scale,
+        panX: Number.parseFloat(element.style.getPropertyValue('--dig-zoom-pan-x')),
+        panY: Number.parseFloat(element.style.getPropertyValue('--dig-zoom-pan-y')),
+        width: card.querySelector('.dig-sleeve-stage')?.getBoundingClientRect().width ?? 0,
+        height: card.querySelector('.dig-sleeve-stage')?.getBoundingClientRect().height ?? 0,
+      };
+    });
+    expect(panned.scale).toBeCloseTo(zoomed.scale, 1);
+    expect(Math.abs(panned.panX)).toBeLessThanOrEqual((panned.scale - 1) * panned.width / 2 + 1);
+    expect(Math.abs(panned.panY)).toBeLessThanOrEqual((panned.scale - 1) * panned.height / 2 + 1);
+
+    // If one finger is lifted, pinch capture ends but the zoom is retained.
+    await dispatchTouchPointer('pointerup', 11, firstZoom.x + 20, firstZoom.y + 14, true);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-zoomed') && !card.classList.contains('is-zooming')
+    )).toBe(true);
+
+    // Flipping the same record must reveal its reverse face at the same zoom.
+    await page.locator('[data-dig-slide].is-active [data-dig-flip]').evaluate((button) => {
+      (button as HTMLButtonElement).click();
+    });
+    const reverseZoom = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const backImage = card.querySelector<HTMLElement>('.dig-sleeve-face-back .dig-sleeve-image');
+      if (!backImage) throw new Error('Back-face artwork is missing');
+      return {
+        flipped: card.classList.contains('is-flipped'),
+        scale: Number.parseFloat((card as HTMLElement).style.getPropertyValue('--dig-zoom-scale')),
+        backTransform: getComputedStyle(backImage).transform,
+      };
+    });
+    expect(reverseZoom.flipped).toBe(true);
+    expect(reverseZoom.scale).toBeCloseTo(panned.scale, 2);
+    expect(reverseZoom.backTransform).toBe(zoomed.backTransform);
+
+    // The 5-second idle timer does not reset while a two-finger gesture is held.
+    await page.clock.fastForward(5100);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-zoomed')
+    )).toBe(true);
+
+    // A fresh pinch starts on the flipped face, and zooming back to 1× removes
+    // the temporary zoom state immediately.
+    const currentBox = await stage.boundingBox();
+    if (!currentBox) throw new Error('Flipped sleeve has no bounding box');
+    const currentX = currentBox.x + currentBox.width / 2;
+    const currentY = currentBox.y + currentBox.height / 2;
+    await dispatchTouchPointer('pointerdown', 21, currentX - 40, currentY, true);
+    await dispatchTouchPointer('pointerdown', 22, currentX + 40, currentY, false);
+    await dispatchTouchPointer('pointermove', 21, currentX - 5, currentY, true);
+    await dispatchTouchPointer('pointermove', 22, currentX + 5, currentY, false);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => ({
+      zoomed: card.classList.contains('is-zoomed'),
+      scale: (card as HTMLElement).style.getPropertyValue('--dig-zoom-scale'),
+    }))).toEqual({ zoomed: false, scale: '' });
+    await dispatchTouchPointer('pointerup', 22, currentX + 5, currentY, false);
+
+    // Re-zoom, release and let the idle timer return the sleeve to neutral.
+    await dispatchTouchPointer('pointerdown', 31, currentX - 40, currentY, true);
+    await dispatchTouchPointer('pointerdown', 32, currentX + 40, currentY, false);
+    await dispatchTouchPointer('pointermove', 31, currentX - 90, currentY, true);
+    await dispatchTouchPointer('pointermove', 32, currentX + 90, currentY, false);
+    await dispatchTouchPointer('pointerup', 31, currentX - 90, currentY, true);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-zoomed')
+    )).toBe(true);
+    await page.clock.fastForward(5001);
+    const idleReset = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => ({
+      zoomed: card.classList.contains('is-zoomed'),
+      scale: (card as HTMLElement).style.getPropertyValue('--dig-zoom-scale'),
+      panX: (card as HTMLElement).style.getPropertyValue('--dig-zoom-pan-x'),
+      panY: (card as HTMLElement).style.getPropertyValue('--dig-zoom-pan-y'),
+    }));
+    expect(idleReset).toEqual({ zoomed: false, scale: '', panX: '', panY: '' });
+  });
+
+  it('resets temporary zoom and pan when Dig navigates to a different record', async () => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await loadPage(375, 812, [littleFishItem, items[1]]);
+
+    const box = await page.locator('[data-dig-slide].is-active [data-dig-swipe-area]').boundingBox();
+    if (!box) throw new Error('Active sleeve has no bounding box');
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+
+    await dispatchTouchPointer('pointerdown', 41, x - 40, y, true);
+    await dispatchTouchPointer('pointerdown', 42, x + 40, y, false);
+    await dispatchTouchPointer('pointermove', 41, x - 80, y - 20, true);
+    await dispatchTouchPointer('pointermove', 42, x + 80, y + 20, false);
+    await dispatchTouchPointer('pointerup', 41, x - 80, y - 20, true);
+
+    await swipeActive(0, -120);
+    const state = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
+      const element = card as HTMLElement;
+      return {
+        activeTitle: card.closest('[data-dig-slide]')?.getAttribute('aria-label'),
+        zoomed: card.classList.contains('is-zoomed'),
+        scale: element.style.getPropertyValue('--dig-zoom-scale'),
+        panX: element.style.getPropertyValue('--dig-zoom-pan-x'),
+        panY: element.style.getPropertyValue('--dig-zoom-pan-y'),
+      };
+    });
+    expect(state.activeTitle).toContain('Buhloone Mindstate');
+    expect(state.zoomed).toBe(false);
+    expect(state.scale).toBe('');
+    expect(state.panX).toBe('');
+    expect(state.panY).toBe('');
   });
 
   it('uses matte cardboard around Little Fish and keeps the reverse-photo seam joined during flips', async () => {
