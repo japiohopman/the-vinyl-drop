@@ -9,7 +9,7 @@
   if (!(form instanceof HTMLFormElement) ||
       !(closeButton instanceof HTMLButtonElement) ||
       !(cancelButton instanceof HTMLButtonElement) ||
-      typeof dialog.showModal !== 'function') {
+      typeof dialog.show !== 'function' || typeof dialog.showModal !== 'function') {
     trigger.hidden = true;
     return;
   }
@@ -114,15 +114,16 @@
     if (!dialog.open || dialog.classList.contains('is-closing')) return;
     trigger.setAttribute('aria-expanded', 'false');
 
-    // The mobile panel slides down before leaving the top layer. Desktop and
-    // reduced-motion users keep an immediate close.
+    // The mobile panel slides down in the page layer; desktop keeps its
+    // existing modal behavior and reduced-motion users close immediately.
     if (!window.matchMedia('(max-width: 767px)').matches || reducedMotion.matches) {
       finishClose();
       return;
     }
 
+    dialog.classList.remove('is-open');
     dialog.classList.add('is-closing');
-    closeTimer = window.setTimeout(finishClose, 440);
+    closeTimer = window.setTimeout(finishClose, 420);
   };
 
   dialog.addEventListener('transitionend', (event) => {
@@ -134,13 +135,29 @@
 
   trigger.addEventListener('click', () => {
     if (dialog.open) return;
-    dialog.classList.remove('is-closing');
-    dialog.showModal();
+    const mobilePanel = window.matchMedia('(max-width: 767px)').matches;
+    dialog.classList.remove('is-open', 'is-closing');
+
+    // The mobile filter is an in-context app panel, not a modal overlay:
+    // show() deliberately avoids the browser-managed ::backdrop/top layer.
+    // Desktop retains showModal() and its existing focus/inert behavior.
+    if (mobilePanel) dialog.show();
+    else dialog.showModal();
+
     trigger.setAttribute('aria-expanded', 'true');
     const firstControl = dialog.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled])');
     if (firstControl instanceof HTMLElement) firstControl.focus();
     else closeButton.focus();
-    queueKeyboardViewportSync();
+
+    if (mobilePanel) {
+      window.requestAnimationFrame(() => {
+        if (!dialog.open) return;
+        dialog.classList.add('is-open');
+        queueKeyboardViewportSync();
+      });
+    } else {
+      queueKeyboardViewportSync();
+    }
   });
 
   closeButton.addEventListener('click', closeDialog);
