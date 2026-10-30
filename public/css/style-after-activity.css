@@ -1,3 +1,20 @@
+/* Shared format artwork for Browse and desktop Dig quick-filter controls. */
+.browse-format-chip {
+  gap: var(--space-2);
+}
+
+.browse-format-chip .browse-format-icon {
+  display: block;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.browse-format-chip.is-selected .browse-format-icon {
+  filter: invert(1);
+}
+
 /* Compact, disclosure-based mobile shell and browse controls */
 @media (max-width: 767px) {
   .main-content {
