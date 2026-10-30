@@ -1333,7 +1333,7 @@ describe('Mobile Dig app-like viewport', () => {
           navigationTop: navigation.getBoundingClientRect().top,
         };
       });
-      expect(restored.bottom).toBeLessThanOrEqual(restored.navigationTop - 7);
+      expect(Math.abs(restored.bottom - restored.navigationTop)).toBeLessThanOrEqual(1);
 
       await dialog.locator('[data-dig-filter-cancel]').click();
       expect(await dialog.isVisible()).toBe(false);
