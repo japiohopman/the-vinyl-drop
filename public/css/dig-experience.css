@@ -43,6 +43,32 @@
   min-height: 44px;
 }
 
+.dig-page-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dig-sound-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.dig-sound-toggle svg {
+  flex: 0 0 auto;
+}
+
+.dig-sound-toggle[aria-pressed="false"] {
+  color: var(--color-ink-muted);
+}
+
 .dig-context-row {
   display: flex;
   align-items: baseline;
@@ -673,6 +699,11 @@
   .dig-page-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .dig-page-actions {
+    align-self: flex-start;
+    justify-content: flex-start;
   }
 
   .dig-back-to-browse {

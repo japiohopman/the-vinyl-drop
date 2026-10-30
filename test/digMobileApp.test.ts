@@ -12,6 +12,8 @@ describe('Mobile Dig app-like viewport', () => {
   const headerPath = path.join(__dirname, '../views/partials/header.ejs');
   const digPath = path.join(__dirname, '../views/browse/responsive-dig.ejs');
   const css = readFullStylesheetSource();
+  const digPreferences = fs.readFileSync(path.join(__dirname, '../public/js/user-preferences.js'), 'utf8');
+  const digSounds = fs.readFileSync(path.join(__dirname, '../public/js/dig-sounds.js'), 'utf8');
   const digState = fs.readFileSync(path.join(__dirname, '../public/js/dig-state.js'), 'utf8');
   const digMode = fs.readFileSync(path.join(__dirname, '../public/js/dig-mode.js'), 'utf8');
   const digCrateFilter = fs.readFileSync(path.join(__dirname, '../public/js/dig-crate-filter.js'), 'utf8');
@@ -101,6 +103,31 @@ describe('Mobile Dig app-like viewport', () => {
 
   beforeEach(async () => {
     page = await browser.newPage();
+    await page.addInitScript(() => {
+      const playedSounds: string[] = [];
+      Object.defineProperty(window, '__digPlayedSounds', {
+        configurable: true,
+        value: playedSounds,
+      });
+      Object.defineProperty(window, 'Audio', {
+        configurable: true,
+        value: class TestAudio {
+          src: string;
+          currentTime = 0;
+          volume = 1;
+          preload = 'auto';
+
+          constructor(src: string) {
+            this.src = src;
+          }
+
+          play() {
+            playedSounds.push(this.src);
+            return Promise.resolve();
+          }
+        },
+      });
+    });
     await page.emulateMedia({ reducedMotion: 'reduce' });
   });
 
@@ -137,6 +164,8 @@ describe('Mobile Dig app-like viewport', () => {
     const headerHtml = results[0];
     const digHtml = results[1];
     const bodyContent = digHtml
+      .replace('<script src="/js/user-preferences.js" defer></script>', '')
+      .replace('<script src="/js/dig-sounds.js" defer></script>', '')
       .replace('<script src="/js/dig-state.js" defer></script>', '')
       .replace('<script src="/js/dig-mode.js" defer></script>', '');
     return '<!doctype html><html lang="en"><head>' +
@@ -169,6 +198,8 @@ describe('Mobile Dig app-like viewport', () => {
         }).__digTestVisualViewport = viewport;
       }, height);
     }
+    await page.addScriptTag({ content: digPreferences });
+    await page.addScriptTag({ content: digSounds });
     await page.addScriptTag({ content: digState });
     await page.addScriptTag({ content: digMode });
     await page.addScriptTag({ content: digCrateFilter });
@@ -1939,3 +1970,44 @@ describe('Mobile Dig app-like viewport', () => {
     expect(desktopWidths.bodyWidth).toBeLessThanOrEqual(1280);
   });
 });
+
+
+  it('defaults Dig sounds on, lets the user turn them off, and plays only for committed actions', async () => {
+    await loadPage(375, 812);
+
+    const soundToggle = page.locator('[data-dig-sound-toggle]');
+    await expect(soundToggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(soundToggle).toContainText('Sound on');
+
+    await soundToggle.click();
+    await expect(soundToggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(soundToggle).toContainText('Sound off');
+    await page.locator('[data-dig-flip]').first().click();
+    expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds?.length || 0)).toBe(0);
+
+    await soundToggle.click();
+    await page.locator('[data-dig-flip]').first().click();
+    expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds || [])).toEqual([
+      '/assets/sounds/dig/sleeve-flip.wav',
+    ]);
+
+    await page.locator('[data-dig-next]').click();
+    expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds || [])).toEqual([
+      '/assets/sounds/dig/sleeve-flip.wav',
+      '/assets/sounds/dig/record-change.mp3',
+    ]);
+  });
+
+  it('does not play a sound for a short or cancelled sleeve gesture or an unavailable boundary', async () => {
+    await loadPage(375, 812);
+    const stage = page.locator('[data-dig-swipe-area]').first();
+    const bounds = await stage.boundingBox();
+    if (!bounds) throw new Error('Dig sleeve stage was not laid out');
+
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    await page.mouse.down();
+    await page.mouse.up();
+    expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds?.length || 0)).toBe(0);
+    await expect(page.locator('[data-dig-prev]')).toBeDisabled();
+  });
+\n
