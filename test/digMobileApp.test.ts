@@ -1113,13 +1113,18 @@ describe('Mobile Dig app-like viewport', () => {
         position: style.position,
         top: rect.top,
         bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
         height: rect.height,
         navigationTop: navigationRect.top,
       };
     });
     expect(sheetGeometry.position).toBe('fixed');
     expect(sheetGeometry.height).toBeGreaterThan(0);
-    expect(sheetGeometry.bottom).toBeLessThanOrEqual(sheetGeometry.navigationTop - 7);
+    expect(sheetGeometry.top).toBeLessThan(85);
+    expect(sheetGeometry.left).toBe(0);
+    expect(sheetGeometry.right).toBe(390);
+    expect(Math.abs(sheetGeometry.bottom - sheetGeometry.navigationTop)).toBeLessThanOrEqual(1);
     expect(await dialog.locator('form').getAttribute('action')).toBe('/dig');
     expect(await dialog.locator('input[name="q"]').inputValue()).toBe('De La Soul');
     expect(await dialog.locator('select[name="genre"]').inputValue()).toBe('Hip Hop');
@@ -1142,7 +1147,29 @@ describe('Mobile Dig app-like viewport', () => {
       { format: '12-inch', source: '/assets/UI/12-ince.svg', decorative: 'true' },
       { format: '7-inch', source: '/assets/UI/7-ince.svg', decorative: 'true' },
     ]);
-    expect(await dialog.locator('label:has(input[name="whiteLabel"]) img').count()).toBe(0);
+    const formatLayout = await dialog.locator('.dig-crate-format-options').evaluate((element) => ({
+      columns: getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length,
+      iconWidths: Array.from(element.querySelectorAll('.dig-format-icon')).map((icon) =>
+        Math.round(icon.getBoundingClientRect().width)
+      ),
+    }));
+    expect(formatLayout.columns).toBe(3);
+    expect(formatLayout.iconWidths).toEqual([52, 52, 52]);
+    expect(await dialog.locator('.dig-crate-white-label-option').count()).toBe(1);
+    expect(await dialog.locator('.dig-crate-white-label-option img').count()).toBe(0);
+
+    const fieldOrder = await dialog.evaluate((element) => {
+      const format = element.querySelector('legend');
+      const genre = element.querySelector('label[for="dig-filter-genre"]');
+      return Boolean(format && genre &&
+        (format.compareDocumentPosition(genre) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    expect(fieldOrder).toBe(true);
+
+    const backdropColor = await dialog.evaluate((element) =>
+      getComputedStyle(element, '::backdrop').backgroundColor
+    );
+    expect(backdropColor).toMatch(/,\\s*0\\)$/);
 
     await dialog.locator('input[name="q"]').fill('cancelled query');
     await dialog.locator('[data-dig-filter-cancel]').click();
@@ -1198,8 +1225,8 @@ describe('Mobile Dig app-like viewport', () => {
       });
 
       expect(geometry.dialogTop).toBeGreaterThanOrEqual(0);
-      expect(geometry.dialogBottom).toBeLessThanOrEqual(geometry.navigationTop - 7);
-      expect(geometry.actionsBottom).toBeLessThanOrEqual(geometry.navigationTop - 7);
+      expect(Math.abs(geometry.dialogBottom - geometry.navigationTop)).toBeLessThanOrEqual(1);
+      expect(geometry.actionsBottom).toBeLessThanOrEqual(geometry.navigationTop + 1);
       expect(geometry.dialogBottom).toBeLessThan(geometry.viewportHeight);
       expect(geometry.navigationHeight).toBeGreaterThanOrEqual(60);
       expect(geometry.navigationZIndex).toBe('200');
