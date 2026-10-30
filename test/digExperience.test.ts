@@ -131,7 +131,7 @@ describe('Dig search-first responsive shell', () => {
     expect(html).toContain('src="/assets/UI/7-ince.svg"');
     expect((html.match(/class="browse-format-icon"/g) || [])).toHaveLength(3);
     expect(html).toContain('name="formatToggle" value="12-inch"');
-    expect(html).toMatch(/\\bbrowse-white-label-chip\\b/);
+    expect(html).toContain('browse-white-label-chip');
   });
 });
 
