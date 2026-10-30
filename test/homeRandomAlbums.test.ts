@@ -1,3 +1,4 @@
+import { PgDialect } from 'drizzle-orm/pg-core';
 import {
   findHomeDiscoveryListingsByCursor,
   JoinedListingRecord,
@@ -7,6 +8,7 @@ type QueryRecord = {
   where: unknown[];
   limits: number[];
   orderByCalls: number;
+  orderByExpressions: unknown[][];
 };
 
 function createFakeDatabase(responses: unknown[][]) {
@@ -14,7 +16,7 @@ function createFakeDatabase(responses: unknown[][]) {
   const db = {
     select: jest.fn(() => {
       const response = responses.shift() || [];
-      const queryRecord: QueryRecord = { where: [], limits: [], orderByCalls: 0 };
+      const queryRecord: QueryRecord = { where: [], limits: [], orderByCalls: 0, orderByExpressions: [] };
       queries.push(queryRecord);
 
       const builder: any = {
@@ -24,8 +26,9 @@ function createFakeDatabase(responses: unknown[][]) {
           queryRecord.where.push(condition);
           return builder;
         }),
-        orderBy: jest.fn(() => {
+        orderBy: jest.fn((...expressions: unknown[]) => {
           queryRecord.orderByCalls += 1;
+          queryRecord.orderByExpressions.push(expressions);
           return builder;
         }),
         limit: jest.fn((limit: number) => {
@@ -91,6 +94,33 @@ describe('Home Random Albums selection (#258)', () => {
     expect(queries[1].orderByCalls).toBe(1);
     expect(queries[0].where).toHaveLength(1);
     expect(queries[1].where).toHaveLength(1);
+
+    // Inspect the generated PostgreSQL predicates: only published rows,
+    // exclude Recent Drops, and use disjoint forward/wrap UUID ranges.
+    const dialect = new PgDialect();
+    const firstWhere = dialect.sqlToQuery(
+      queries[0].where[0] as Parameters<PgDialect['sqlToQuery']>[0]
+    );
+    const wrapWhere = dialect.sqlToQuery(
+      queries[1].where[0] as Parameters<PgDialect['sqlToQuery']>[0]
+    );
+    expect(firstWhere.sql).toContain('"status" =');
+    expect(firstWhere.sql).toContain('"id" not in');
+    expect(firstWhere.sql).toContain('"id" >=');
+    expect(firstWhere.params).toContain('published');
+    expect(firstWhere.params).toContain('recent-one');
+    expect(firstWhere.params).toContain('recent-two');
+    expect(firstWhere.params).toContain('80000000-0000-4000-8000-000000000000');
+    expect(wrapWhere.sql).toContain('"id" <');
+    expect(wrapWhere.params).toContain('published');
+    expect(wrapWhere.params).toContain('recent-one');
+    expect(wrapWhere.params).toContain('recent-two');
+
+    const orderBy = dialect.sqlToQuery(
+      queries[0].orderByExpressions[0][0] as Parameters<PgDialect['sqlToQuery']>[0]
+    );
+    expect(orderBy.sql).toContain('"id" asc');
+    expect(orderBy.sql.toLowerCase()).not.toContain('random');
   });
 
   it('returns a small eligible pool as-is without inventing or duplicating records', async () => {
