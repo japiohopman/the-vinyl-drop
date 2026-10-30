@@ -307,38 +307,32 @@
    * The small side/bottom inset and translucent paper surface make it feel like
    * an app surface, without covering the navigation's hit area.
    */
-  :root {
-    --dig-filter-nav-clearance: calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px) + 2px);
-  }
-
   .dig-crate-filter-dialog {
     position: fixed;
-    inset: auto 8px calc(var(--dig-filter-nav-clearance) + 8px);
+    inset: calc(env(safe-area-inset-top, 0px) + 72px) 0
+      calc(var(--mobile-nav-height, 60px) + env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
     width: auto;
     max-width: none;
-    max-height: min(calc(86dvh - var(--dig-filter-nav-clearance) - 16px), 720px);
+    max-height: none;
     margin: 0;
     padding: 0;
     overflow: auto;
-    border: 1px solid rgba(21, 21, 21, 0.14);
-    border-bottom: 0;
+    border: 0;
     border-top: 2px solid rgba(246, 15, 75, 0.82);
-    border-radius: 16px 16px 0 0;
+    border-radius: 0;
     color: var(--color-ink);
-    background: rgba(243, 239, 231, 0.97);
-    box-shadow: 0 -12px 32px rgba(21, 21, 21, 0.16);
-    backdrop-filter: blur(14px) saturate(1.04);
-    -webkit-backdrop-filter: blur(14px) saturate(1.04);
-    transform: translateY(105%);
-    opacity: 0;
-    transition: transform 300ms cubic-bezier(.2, .75, .25, 1), opacity 240ms ease;
+    background: #f3efe7;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transform: translate3d(0, 100%, 0);
+    transition: transform 360ms cubic-bezier(.22, .61, .36, 1);
     overscroll-behavior: contain;
   }
 
   .dig-crate-filter-dialog[open]:not(.is-closing) {
-    transform: translateY(0);
-    opacity: 1;
+    transform: translate3d(0, 0, 0);
   }
 
   /* The visual viewport shrinks when the software keyboard is shown. */
@@ -349,36 +343,20 @@
   }
 
   .dig-crate-filter-dialog.is-closing {
-    transform: translateY(105%);
-    opacity: 0;
+    transform: translate3d(0, 100%, 0);
+    transition-timing-function: cubic-bezier(.4, 0, 1, 1);
   }
 
   @starting-style {
     .dig-crate-filter-dialog[open] {
-      transform: translateY(105%);
-      opacity: 0;
+      transform: translate3d(0, 100%, 0);
     }
   }
 
+  /* The sheet is an in-context app surface, not a dimming modal overlay. */
   .dig-crate-filter-dialog::backdrop {
-    /*
-     * Keep the navigation visually clear even while the modal dims the content.
-     * The native modal still makes the background inert, as expected for a dialog.
-     */
-    background: linear-gradient(
-      to bottom,
-      rgba(18, 18, 18, 0.30) 0,
-      rgba(18, 18, 18, 0.30) calc(100% - var(--dig-filter-nav-clearance)),
-      rgba(18, 18, 18, 0) calc(100% - var(--dig-filter-nav-clearance)),
-      rgba(18, 18, 18, 0) 100%
-    );
-    transition: background-color 240ms ease;
-  }
-
-  @starting-style {
-    .dig-crate-filter-dialog[open]::backdrop {
-      background: rgba(18, 18, 18, 0);
-    }
+    background: transparent;
+    transition: none;
   }
 
   .dig-crate-filter-header {
@@ -474,41 +452,89 @@
 
   .dig-crate-format-options {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-2);
     margin-top: var(--space-2);
   }
 
   .dig-crate-filter-checkbox {
+    position: relative;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: var(--space-2);
+    justify-content: center;
+    gap: 4px;
     min-width: 0;
-    min-height: 44px;
-    padding: var(--space-2);
-    border: 1px solid rgba(21, 21, 21, 0.12);
-    border-radius: 4px;
-    background: rgba(255, 253, 248, 0.76);
+    min-height: 92px;
+    padding: 8px 4px 7px;
+    border: 1px solid rgba(21, 21, 21, 0.16);
+    border-radius: 5px;
+    background: rgba(255, 253, 248, 0.84);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+
+  .dig-crate-filter-checkbox:has(input:checked),
+  .dig-crate-white-label-option:has(input:checked) {
+    border-color: var(--color-rust);
+    background: rgba(246, 15, 75, 0.08);
+  }
+
+  .dig-crate-filter-checkbox:focus-within,
+  .dig-crate-white-label-option:focus-within {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
   }
 
   .dig-crate-filter-checkbox input {
-    flex: 0 0 auto;
+    position: absolute;
+    top: 7px;
+    left: 7px;
     width: 18px;
     height: 18px;
+    margin: 0;
     accent-color: var(--color-rust);
   }
 
   .dig-crate-filter-checkbox .dig-format-icon {
     display: block;
-    flex: 0 0 28px;
-    width: 28px;
-    height: 28px;
+    flex: 0 0 52px;
+    width: 52px;
+    height: 52px;
     object-fit: contain;
+    margin: 3px auto 0;
   }
 
   .dig-crate-filter-checkbox span {
+    display: block;
+    max-width: 100%;
     overflow-wrap: anywhere;
     font-size: var(--font-size-sm);
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .dig-crate-white-label-option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 44px;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid rgba(21, 21, 21, 0.16);
+    border-radius: 5px;
+    background: rgba(255, 253, 248, 0.84);
+    cursor: pointer;
+  }
+
+  .dig-crate-white-label-option input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--color-rust);
   }
 
   .dig-crate-filter-grid {
