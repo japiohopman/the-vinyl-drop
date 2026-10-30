@@ -341,6 +341,13 @@
     opacity: 1;
   }
 
+  /* The visual viewport shrinks when the software keyboard is shown. */
+  .dig-crate-filter-dialog.is-keyboard-open {
+    top: calc(var(--dig-visible-viewport-top, 0px) + 8px);
+    bottom: auto;
+    max-height: calc(var(--dig-visible-viewport-height, 100dvh) - 16px);
+  }
+
   .dig-crate-filter-dialog.is-closing {
     transform: translateY(105%);
     opacity: 0;
@@ -489,6 +496,14 @@
     width: 18px;
     height: 18px;
     accent-color: var(--color-rust);
+  }
+
+  .dig-crate-filter-checkbox .dig-format-icon {
+    display: block;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
   }
 
   .dig-crate-filter-checkbox span {
