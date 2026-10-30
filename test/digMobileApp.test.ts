@@ -452,6 +452,8 @@ describe('Mobile Dig app-like viewport', () => {
       scale: (card as HTMLElement).style.getPropertyValue('--dig-zoom-scale'),
     }))).toEqual({ zoomed: false, scale: '' });
     await dispatchTouchPointer('pointerup', 22, currentX + 5, currentY, false);
+    // End the remaining contact as well so the next pinch starts with two fresh pointers.
+    await dispatchTouchPointer('pointerup', 21, currentX - 5, currentY, true);
 
     // An idle timeout must never fire while both fingers are still touching
     // the sleeve. It starts only after the pinch interaction ends.
