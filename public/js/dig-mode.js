@@ -328,8 +328,18 @@
       pinchGesture = null;
       activePinch.card.classList.remove('is-zooming', 'is-zoom-resetting');
       activePinch.stage.classList.remove('is-gesture-active');
-      activePinch.pointerIds.forEach((pointerId) => touchPointers.delete(pointerId));
+      activePinch.pointerIds.forEach((pointerId) => {
+        touchPointers.delete(pointerId);
+        try {
+          if (activePinch.stage.hasPointerCapture(pointerId)) {
+            activePinch.stage.releasePointerCapture(pointerId);
+          }
+        } catch {
+          // The page may already have released this pointer during lifecycle cleanup.
+        }
+      });
     }
+    touchPointers.clear();
     slides.forEach((slide) => resetZoom(slide, false));
   }
 
