@@ -131,6 +131,19 @@ describe('Dig search-first responsive shell', () => {
     expect(html).toContain('src="/assets/UI/7-ince.svg"');
     expect((html.match(/class="browse-format-icon"/g) || [])).toHaveLength(3);
     expect(html).toContain('name="formatToggle" value="12-inch"');
+    const formatButtons = html.split('<button').slice(1)
+      .map((button) => '<button' + (button.split('</button>')[0] || '') + '</button>')
+      .filter((button) => button.includes('name="formatToggle"'));
+    const iconsByFormat = Object.fromEntries(formatButtons.map((button) => {
+      const value = button.split('value="')[1]?.split('"')[0] ?? '';
+      const source = button.split('class="browse-format-icon" src="')[1]?.split('"')[0] ?? null;
+      return [value, source];
+    }));
+    expect(iconsByFormat).toEqual({
+      lp: '/assets/UI/LP.svg',
+      '12-inch': '/assets/UI/12-ince.svg',
+      '7-inch': '/assets/UI/7-ince.svg',
+    });
     expect(html).toContain('browse-white-label-chip');
   });
 });
