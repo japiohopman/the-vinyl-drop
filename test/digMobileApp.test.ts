@@ -265,11 +265,43 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]')
       .evaluate((card) => card.classList.contains('is-zoom-resetting'))).toBe(true);
 
-    await dispatchTouchPointer('pointerdown', 63, x - 45, y, true);
-    await dispatchTouchPointer('pointerdown', 64, x + 45, y, false);
-    const resumedScale = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]')
-      .evaluate((card) => Number.parseFloat((card as HTMLElement).style.getPropertyValue('--dig-zoom-scale')));
-    expect(resumedScale).toBeCloseTo(visibleScale, 1);
+    // Read the in-flight transition and start the two-pointer gesture in one
+    // browser task. Separate Playwright round trips let the CSS transition
+    // advance between the expected-value sample and the second pointer-down.
+    const resumed = await stage.evaluate((element, coordinates) => {
+      const slide = element.closest('[data-dig-slide]');
+      const image = slide?.querySelector<HTMLElement>('.dig-sleeve-face-front .dig-sleeve-image');
+      const card = slide?.querySelector<HTMLElement>('[data-dig-sleeve-card]');
+      if (!slide || !image || !card) throw new Error('Active sleeve artwork is missing');
+
+      const matrix = new DOMMatrixReadOnly(getComputedStyle(image).transform);
+      const expectedScale = Math.sqrt(matrix.m11 * matrix.m11 + matrix.m12 * matrix.m12);
+      const pointerDown = (pointerId: number, clientX: number, isPrimary: boolean) => {
+        element.dispatchEvent(new PointerEvent('pointerdown', {
+          bubbles: true,
+          cancelable: true,
+          pointerId,
+          pointerType: 'touch',
+          isPrimary,
+          clientX,
+          clientY: coordinates.y,
+          button: 0,
+          buttons: 1,
+        }));
+      };
+
+      pointerDown(63, coordinates.x - 45, true);
+      pointerDown(64, coordinates.x + 45, false);
+
+      return {
+        expectedScale,
+        resumedScale: Number.parseFloat(card.style.getPropertyValue('--dig-zoom-scale')),
+        zooming: card.classList.contains('is-zooming'),
+      };
+    }, { x, y });
+    expect(resumed.expectedScale).toBeGreaterThan(1);
+    expect(resumed.resumedScale).toBeCloseTo(resumed.expectedScale, 2);
+    expect(resumed.zooming).toBe(true);
 
     await dispatchTouchPointer('pointerup', 63, x - 45, y, true);
     await dispatchTouchPointer('pointerup', 64, x + 45, y, false);
