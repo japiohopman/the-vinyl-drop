@@ -1,0 +1,14 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" width="512" height="512">
+	<style>
+		.s0 { fill: none;stroke: #000000;stroke-miterlimit:10;stroke-width: 2 } 
+		.s1 { fill: #000000;stroke: #000000;stroke-miterlimit:10;stroke-width: 2 } 
+		.s2 { fill: #ffffff;stroke: #000000;stroke-miterlimit:10;stroke-width: 2 } 
+	</style>
+	<g>
+		<path id="cover" fill-rule="evenodd" class="s0" d="m1224 41v1177h-1191v-1177zm-597 790c-112.81 0-204-91.19-204-204 0-112.81 91.19-204 204-204 112.81 0 204 91.19 204 204 0 112.81-91.19 204-204 204z"/>
+		<g id="Map 1">
+		</g>
+		<path id="Vorm 1" fill-rule="evenodd" class="s1" d="m627 817c-105.07 0-190-84.93-190-190 0-105.07 84.93-190 190-190 105.07 0 190 84.93 190 190 0 105.07-84.93 190-190 190z"/>
+		<path id="Vorm 2" fill-rule="evenodd" class="s2" d="m627 650.06c-11.64 0-21.06-9.42-21.06-21.06 0-11.64 9.42-21.06 21.06-21.06 11.64 0 21.06 9.42 21.06 21.06 0 11.64-9.42 21.06-21.06 21.06z"/>
+	</g>
+</svg>
