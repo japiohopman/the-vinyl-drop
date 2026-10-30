@@ -75,7 +75,10 @@ describe('Route-specific CSS bundles (#252)', () => {
     const publicProfile = cssLinks(await renderLayout('/profiles/crate_digger'));
     const profileEdit = cssLinks(await renderLayout('/profile/edit'));
 
-    expect(home).toEqual(sharedBundles.map((name) => `/css/${name}`));
+    expect(home).toEqual([
+      ...sharedBundles.map((name) => `/css/${name}`),
+      '/css/home.css',
+    ]);
     expect(dig).toEqual([
       '/css/style.css', '/css/dig-experience.css',
       '/css/style-after-features.css', '/css/browse-dig-controls.css', '/css/style-after-activity.css',
@@ -145,6 +148,9 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(home).not.toContain('/css/activity-release-selection.css');
     expect(home).not.toContain('/css/release-selection-overrides.css');
     expect(home).not.toContain('/css/dig-experience.css');
+    for (const nonHomeRoute of [dig, browse, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
+      expect(nonHomeRoute).not.toContain('/css/home.css');
+    }
     expect(home).not.toContain('/css/browse-dig-controls.css');
     expect(home).not.toContain('/css/dig-mobile-session.css');
     expect(home).not.toContain('/css/my-listings.css');
@@ -207,6 +213,7 @@ describe('Route-specific CSS bundles (#252)', () => {
     };
     const after = {
       general: routeMetrics(sharedBundles),
+      home: routeMetrics([...sharedBundles, 'home.css']),
       dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'dig-mobile-session.css', 'dig-mobile-crate.css']),
       browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2)]),
       myListings: routeMetrics(['style.css', 'my-listings.css', ...sharedBundles.slice(1)]),
@@ -220,7 +227,7 @@ describe('Route-specific CSS bundles (#252)', () => {
     };
 
     const before = {
-      shared: baselineShared, dig: baselineDig, myListings: baselineShared,
+      shared: baselineShared, home: baselineShared, dig: baselineDig, myListings: baselineShared,
       listingDetail: baselineShared, listingComments: baselineShared,
       activity: baselineShared, selectRelease: baselineShared,
       listingForms: baselineShared, profile: baselineShared, profileEdit: baselineShared,
