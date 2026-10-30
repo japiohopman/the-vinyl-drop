@@ -1112,6 +1112,7 @@ describe('Mobile Dig app-like viewport', () => {
       transitionDuration: getComputedStyle(element).transitionDuration,
     }));
     expect(mobilePanelState.isModal).toBe(false);
+    expect(await dialog.evaluate((element) => element.parentElement === document.body)).toBe(true);
     expect(mobilePanelState.transitionProperty).toContain('transform');
     expect(parseFloat(mobilePanelState.transitionDuration)).toBeGreaterThanOrEqual(0.3);
     await page.waitForFunction(() => {
