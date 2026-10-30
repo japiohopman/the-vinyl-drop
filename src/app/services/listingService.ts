@@ -38,6 +38,7 @@ import {
   findListingsBySellerId,
   findPublishedListingsBySellerId,
   findRecentPublishedListings as findRecentInRepo,
+  findHomeDiscoveryListingsByCursor as findHomeDiscoveryInRepo,
   JoinedListingRecord,
   searchListings,
   hasExplicitWhiteLabelInventory as hasWhiteLabelInRepo,
@@ -265,6 +266,21 @@ export async function getHomeFeedListings(
     dbOverride
   );
   return result.records.map(recordToListingCardViewModel);
+}
+
+/** Rotate through published listings outside Recent Drops using a fresh indexed UUID cursor per visit. */
+export async function getHomeDiscoveryListings(
+  limit = 6,
+  excludedListingIds: string[] = [],
+  dbOverride?: DbInstance
+): Promise<ListingCardViewModel[]> {
+  const records = await findHomeDiscoveryInRepo(
+    crypto.randomUUID(),
+    limit,
+    excludedListingIds,
+    dbOverride
+  );
+  return records.map(recordToListingCardViewModel);
 }
 
 export async function hasExplicitWhiteLabelInventory(dbOverride?: DbInstance): Promise<boolean> {
