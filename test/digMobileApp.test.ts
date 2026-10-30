@@ -409,16 +409,22 @@ describe('Mobile Dig app-like viewport', () => {
     expect(Math.abs(panned.panX)).toBeLessThanOrEqual((panned.scale - 1) * panned.width / 2 + 1);
     expect(Math.abs(panned.panY)).toBeLessThanOrEqual((panned.scale - 1) * panned.height / 2 + 1);
 
-    // If one finger is lifted, pinch capture ends but the zoom is retained.
+    // Releasing the pinch must retain the zoom, then a normal one-finger
+    // horizontal touch swipe must still flip this same physical record.
     await dispatchTouchPointer('pointerup', 11, firstZoom.x + 20, firstZoom.y + 14, true);
+    await dispatchTouchPointer('pointerup', 12, secondZoom.x + 20, secondZoom.y + 14, false);
     expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
       card.classList.contains('is-zoomed') && !card.classList.contains('is-zooming')
     )).toBe(true);
 
-    // Flipping the same record must reveal its reverse face at the same zoom.
-    await page.locator('[data-dig-slide].is-active [data-dig-flip]').evaluate((button) => {
-      (button as HTMLButtonElement).click();
-    });
+    const flipBounds = await stage.boundingBox();
+    if (!flipBounds) throw new Error('Zoomed sleeve has no bounding box');
+    const flipCenterX = flipBounds.x + flipBounds.width / 2;
+    const flipCenterY = flipBounds.y + flipBounds.height / 2;
+    await dispatchTouchPointer('pointerdown', 13, flipCenterX + 55, flipCenterY, true);
+    await dispatchTouchPointer('pointermove', 13, flipCenterX - 55, flipCenterY, true);
+    await dispatchTouchPointer('pointerup', 13, flipCenterX - 55, flipCenterY, true);
+
     const reverseZoom = await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) => {
       const backImage = card.querySelector<HTMLElement>('.dig-sleeve-face-back .dig-sleeve-image');
       if (!backImage) throw new Error('Back-face artwork is missing');
