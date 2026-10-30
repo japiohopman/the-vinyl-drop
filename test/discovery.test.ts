@@ -158,6 +158,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (listingService.getHomeDiscoveryListings as jest.Mock).mockResolvedValue([]);
 
     mockSupabase = {
       auth: {
