@@ -1123,7 +1123,7 @@ describe('Mobile Dig app-like viewport', () => {
     expect(sheetGeometry.height).toBeGreaterThan(0);
     expect(sheetGeometry.top).toBeLessThan(85);
     expect(sheetGeometry.left).toBe(0);
-    expect(sheetGeometry.right).toBe(390);
+    expect(sheetGeometry.right).toBe(375);
     expect(Math.abs(sheetGeometry.bottom - sheetGeometry.navigationTop)).toBeLessThanOrEqual(1);
     expect(await dialog.locator('form').getAttribute('action')).toBe('/dig');
     expect(await dialog.locator('input[name="q"]').inputValue()).toBe('De La Soul');
@@ -1148,7 +1148,7 @@ describe('Mobile Dig app-like viewport', () => {
       { format: '7-inch', source: '/assets/UI/7-ince.svg', decorative: 'true' },
     ]);
     const formatLayout = await dialog.locator('.dig-crate-format-options').evaluate((element) => ({
-      columns: getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length,
+      columns: getComputedStyle(element).gridTemplateColumns.trim().split(' ').filter(Boolean).length,
       iconWidths: Array.from(element.querySelectorAll('.dig-format-icon')).map((icon) =>
         Math.round(icon.getBoundingClientRect().width)
       ),
@@ -1169,7 +1169,7 @@ describe('Mobile Dig app-like viewport', () => {
     const backdropColor = await dialog.evaluate((element) =>
       getComputedStyle(element, '::backdrop').backgroundColor
     );
-    expect(backdropColor).toMatch(/,\\s*0\\)$/);
+    expect(backdropColor).toBe('rgba(0, 0, 0, 0)');
 
     await dialog.locator('input[name="q"]').fill('cancelled query');
     await dialog.locator('[data-dig-filter-cancel]').click();
