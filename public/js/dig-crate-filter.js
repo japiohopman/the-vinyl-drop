@@ -103,7 +103,7 @@
     }
 
     dialog.classList.add('is-closing');
-    closeTimer = window.setTimeout(finishClose, 360);
+    closeTimer = window.setTimeout(finishClose, 440);
   };
 
   dialog.addEventListener('transitionend', (event) => {
