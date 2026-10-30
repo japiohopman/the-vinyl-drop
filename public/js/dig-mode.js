@@ -878,8 +878,9 @@
       } catch {
         // Already released by the browser.
       }
+      const previousIndex = activeIndex;
       navigateTo(targetIndex, direction);
-      if (event.pointerType === 'touch') requestDigHapticPulse();
+      if (event.pointerType === 'touch' && activeIndex !== previousIndex) requestDigHapticPulse();
       return;
     }
 
