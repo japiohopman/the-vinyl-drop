@@ -197,6 +197,25 @@
         <input id="dig-filter-search" type="search" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
       </div>
 
+      <fieldset class="dig-crate-filter-fieldset">
+        <legend>Format</legend>
+        <div class="dig-crate-format-options">
+          <% digFilterFormats.forEach(function(option) { const iconPath = digFormatIconPaths[String(option.value).toLowerCase()]; %>
+            <label class="dig-crate-filter-checkbox" data-format="<%= String(option.value).toLowerCase() %>">
+              <input type="checkbox" name="format" value="<%= option.value %>" <%= selectedFormats.includes(option.value) ? 'checked' : '' %>>
+              <% if (iconPath) { %><img class="dig-format-icon" src="<%= iconPath %>" width="52" height="52" alt="" aria-hidden="true" loading="lazy"><% } %>
+              <span><%= option.label %></span>
+            </label>
+          <% }); %>
+        </div>
+        <% if (digWhiteLabelAvailable) { %>
+          <label class="dig-crate-white-label-option">
+            <input type="checkbox" name="whiteLabel" value="1" <%= filters.whiteLabel ? 'checked' : '' %>>
+            <span>White label</span>
+          </label>
+        <% } %>
+      </fieldset>
+
       <div class="dig-crate-filter-field">
         <label for="dig-filter-genre">Genre</label>
         <select id="dig-filter-genre" name="genre">
@@ -206,25 +225,6 @@
           <% }); %>
         </select>
       </div>
-
-      <fieldset class="dig-crate-filter-fieldset">
-        <legend>Format</legend>
-        <div class="dig-crate-format-options">
-          <% digFilterFormats.forEach(function(option) { const iconPath = digFormatIconPaths[String(option.value).toLowerCase()]; %>
-            <label class="dig-crate-filter-checkbox" data-format="<%= String(option.value).toLowerCase() %>">
-              <input type="checkbox" name="format" value="<%= option.value %>" <%= selectedFormats.includes(option.value) ? 'checked' : '' %>>
-              <% if (iconPath) { %><img class="dig-format-icon" src="<%= iconPath %>" width="28" height="28" alt="" aria-hidden="true" loading="lazy"><% } %>
-              <span><%= option.label %></span>
-            </label>
-          <% }); %>
-          <% if (digWhiteLabelAvailable) { %>
-            <label class="dig-crate-filter-checkbox">
-              <input type="checkbox" name="whiteLabel" value="1" <%= filters.whiteLabel ? 'checked' : '' %>>
-              <span>White label</span>
-            </label>
-          <% } %>
-        </div>
-      </fieldset>
 
       <div class="dig-crate-filter-grid">
         <div class="dig-crate-filter-field">
