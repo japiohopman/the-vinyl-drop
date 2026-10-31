@@ -91,7 +91,7 @@ describe('shared rate-limit middleware', () => {
       {
         name: 'login-failed-email',
         windowMs: 60_000,
-        maxHits: 1,
+        maxHits: 2,
         identify: (req) => String(req.body.email || ''),
         releaseOnSuccess: true,
       },
