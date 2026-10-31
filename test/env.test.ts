@@ -38,6 +38,29 @@ describe('Environment Validation', () => {
     expect(validateEnv({ ...staging, SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: 'true' }).SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED).toBe(true);
   });
 
+  it('keeps shared rate limits disabled in runtime environments until explicitly enabled', () => {
+    expect(validateEnv({ NODE_ENV: 'test' }).SHARED_RATE_LIMITS_ENABLED).toBe(true);
+    expect(validateEnv({
+      NODE_ENV: 'development',
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/development_db',
+      SUPABASE_URL: 'https://development-project.supabase.co',
+      SUPABASE_ANON_KEY: 'some-development-key',
+    }).SHARED_RATE_LIMITS_ENABLED).toBe(false);
+
+    const staging = {
+      NODE_ENV: 'staging',
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+      SUPABASE_URL: 'https://staging-project.supabase.co',
+      SUPABASE_ANON_KEY: 'some-staging-key',
+      APP_BASE_URL: 'https://staging.vinyldrop.onrender.com',
+      ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+      RECOVERY_SIGNING_SECRET: 'custom-staging-recovery-secret-key-32-bytes',
+    };
+    expect(validateEnv(staging).SHARED_RATE_LIMITS_ENABLED).toBe(false);
+    expect(validateEnv({ ...staging, SHARED_RATE_LIMITS_ENABLED: 'true' }).SHARED_RATE_LIMITS_ENABLED).toBe(true);
+    expect(validateEnv({ ...staging, SHARED_RATE_LIMITS_ENABLED: 'false' }).SHARED_RATE_LIMITS_ENABLED).toBe(false);
+  });
+
   it('keeps invite-only access opt-in and reads the private runtime allowlist', () => {
     expect(validateEnv({ NODE_ENV: 'test' }).BETA_INVITE_ONLY_ENABLED).toBe(false);
 
