@@ -16,7 +16,7 @@ function Invoke-PreflightCase {
         [Parameter(Mandatory = $true)][string]$Name,
         [Parameter(Mandatory = $true)][string]$ProjectRef,
         [Parameter(Mandatory = $true)][string]$PoolerHost,
-        [Parameter(Mandatory = $true)][string]$SslMode,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$SslMode,
         [Parameter(Mandatory = $true)][int]$ExpectedExitCode
     )
 
