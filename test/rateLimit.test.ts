@@ -62,7 +62,7 @@ describe('shared rate-limit middleware', () => {
   });
 
   it('uses a new fixed window after the previous window expires', async () => {
-    jest.useFakeTimers().setSystemTime(new Date('2026-10-31T07:00:00.000Z'));
+    const now = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-31T07:00:00.000Z'));
     const app = buildApp([{
       name: 'window-test',
       windowMs: 60_000,
@@ -74,7 +74,7 @@ describe('shared rate-limit middleware', () => {
     expect((await request(app).post('/limited').set('CF-Connecting-IP', '203.0.113.11')).status).toBe(200);
     expect((await request(app).post('/limited').set('CF-Connecting-IP', '203.0.113.11')).status).toBe(429);
 
-    jest.setSystemTime(new Date('2026-10-31T07:01:01.000Z'));
+    now.mockReturnValue(Date.parse('2026-10-31T07:01:01.000Z'));
     expect((await request(app).post('/limited').set('CF-Connecting-IP', '203.0.113.11')).status).toBe(200);
   });
 
@@ -99,8 +99,8 @@ describe('shared rate-limit middleware', () => {
       res.status(req.body.result === 'success' ? 302 : 400).end();
     });
 
-    expect((await request(app).post('/limited').set('CF-Connecting-IP', '203.0.113.12').send('email=a@example.com&result=failed')).status).toBe(400);
-    expect((await request(app).post('/limited').set('CF-Connecting-IP', '203.0.113.12').send('email=a@example.com&result=success')).status).toBe(302);
+    expect((await request(app).post('/limited').set('CF-Connecting-IP', '203.0.113.12').type('form').send('email=a@example.com&result=failed')).status).toBe(400);
+    expect((await request(app).post('/limited').set('CF-Connecting-IP', '203.0.113.12').type('form').send('email=a@example.com&result=success')).status).toBe(302);
     expect((await request(app).post('/limited').set('CF-Connecting-IP', '203.0.113.12').send('email=a@example.com&result=failed')).status).toBe(400);
   });
 
