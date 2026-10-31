@@ -1104,3 +1104,121 @@
     filter: none;
   }
 }
+
+
+/* Issue #271 — listing context, price and preview stay attached to the artwork. */
+@media (max-width: 767px) {
+  body.listing-detail-page .mobile-context-header {
+    align-items: center;
+  }
+
+  body.listing-detail-page .mobile-context-record-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    gap: 1px;
+    max-height: 54px;
+    overflow: hidden;
+    letter-spacing: 0;
+    line-height: 1.08;
+    text-transform: none;
+  }
+
+  body.listing-detail-page .mobile-context-record-artist {
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.listing-detail-page .mobile-context-record-title {
+    display: block;
+    min-width: 0;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.listing-detail-page .mobile-context-record-year {
+    color: var(--color-ink-muted);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 500;
+    line-height: 1;
+  }
+}
+
+.listing-detail-container .listing-artwork-sidecar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  width: fit-content;
+  max-width: 100%;
+  margin: -2px 1% var(--space-2) auto;
+}
+
+.listing-detail-container .listing-artwork-price-line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.listing-detail-container .listing-artwork-price-line .listing-price-display {
+  flex: 0 0 128px;
+}
+
+.listing-detail-container .listing-artwork-price-line .listing-trade-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-deep-green);
+  background: var(--color-deep-green);
+  color: var(--color-white);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.listing-detail-container .listing-artwork-sidecar .listing-music-preview {
+  justify-content: flex-end;
+  align-self: flex-end;
+  min-height: 44px;
+  margin: 0;
+}
+
+.listing-detail-container .listing-artwork-sidecar .youtube-preview-load {
+  border-radius: 50%;
+}
+
+.listing-detail-container .youtube-preview-play-glyph {
+  display: block;
+  width: 0;
+  height: 0;
+  margin-left: 3px;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 12px solid currentColor;
+}
+
+@media (max-width: 380px) {
+  .listing-detail-container .listing-artwork-sidecar {
+    margin-right: 0;
+  }
+
+  .listing-detail-container .listing-artwork-price-line .listing-price-display {
+    flex-basis: 120px;
+  }
+}

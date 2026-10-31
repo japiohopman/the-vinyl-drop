@@ -9,7 +9,7 @@
       aria-label="Play YouTube preview for <%= release.title %>"
       aria-description="Pressing Play loads YouTube and may share basic request and device information."
     >
-      <%- include('../partials/icon', { name: 'sound-on', size: '1.25rem', ariaHidden: true }) %>
+      <span class="youtube-preview-play-glyph" aria-hidden="true"></span>
     </button>
     <a class="youtube-preview-fallback" href="<%= 'https://www.youtube.com/watch?v=' + encodeURIComponent(previewVideoId) %>" target="_blank" rel="noopener noreferrer" aria-label="Open this preview on YouTube">
       <%- include('../partials/icon', { name: 'plain-arrow', size: '1rem', ariaHidden: true }) %>

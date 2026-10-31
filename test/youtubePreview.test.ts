@@ -157,7 +157,8 @@ describe('YouTube release preview (#226)', () => {
     expect(valid).toContain('data-youtube-preview-load');
     expect(valid).toContain('aria-label="Play YouTube preview for Sample Release"');
     expect(valid).toContain('aria-description="Pressing Play loads YouTube and may share basic request and device information."');
-    expect(valid).toContain('icon-sound-on');
+    expect(valid).toContain('youtube-preview-play-glyph');
+    expect(valid).not.toContain('icon-sound-on');
     expect(valid).toContain('aria-label="Open this preview on YouTube"');
     expect(valid).not.toContain('Listen to this release');
     expect(valid).not.toContain('Play preview</span>');
@@ -171,7 +172,8 @@ describe('YouTube release preview (#226)', () => {
   it('places the player after listing details and before comments, and provides shared-release editing and privacy disclosure', () => {
     const playerInclude = detailTemplate.indexOf("<%- include('../partials/youtube-preview', { release }) %>");
     const comments = detailTemplate.indexOf('<section class="listing-comments-entry"');
-    expect(playerInclude).toBeGreaterThan(detailTemplate.indexOf('class="listing-condition-overlay"'));
+    expect(playerInclude).toBeGreaterThan(detailTemplate.indexOf('class="listing-artwork-price-line"'));
+    expect(playerInclude).toBeLessThan(detailTemplate.indexOf('class="listing-info-section"'));
     expect(playerInclude).toBeLessThan(detailTemplate.indexOf('class="description-section"'));
     expect(comments).toBeGreaterThan(playerInclude);
     expect(routeSource).toContain("router.post('/:id/release-preview', requireAuth, validateSameOrigin, postUpdateReleaseYouTubePreview);");
@@ -193,7 +195,8 @@ describe('YouTube release preview (#226)', () => {
       const playerCss = stylesheet.slice(start, end) + listingDetailPolishCss;
       const renderedPartial = ejs.render(partial, {
         release: { id: releaseId, title: 'Sample Release', youtubeVideoId: validId },
-      }).replace('<script src="/js/youtube-preview.js" defer></script>', '');
+        getIconSvg: (name: string) => '<svg class="icon icon-' + name + '" aria-hidden="true"></svg>',
+      }, { filename: partialPath }).replace('<script src="/js/youtube-preview.js" defer></script>', '');
 
       for (const width of [320, 360, 390, 430, 768, 1280]) {
         const page = await browser.newPage({ viewport: { width, height: 900 } });
@@ -351,6 +354,16 @@ describe('YouTube release preview (#226)', () => {
     }
   });
 
+  it('places the listing price and Play control alongside the album artwork', () => {
+    const price = detailTemplate.indexOf('class="listing-artwork-price-line"');
+    const player = detailTemplate.indexOf("include('../partials/youtube-preview', { release })");
+    const details = detailTemplate.indexOf('class="listing-info-section"');
+    expect(price).toBeGreaterThan(detailTemplate.indexOf('class="listing-artwork-stage"'));
+    expect(player).toBeGreaterThan(price);
+    expect(player).toBeLessThan(details);
+    expect(detailTemplate).not.toContain('class="price-status-card"');
+  });
+
   it('renders a compact sleeve-and-disc hero, defers gallery images, and moves Favorite into an icon control', async () => {
     const detailPath = path.join(process.cwd(), 'views/listings/show.ejs');
     const rendered = await ejs.renderFile(detailPath, {
@@ -442,9 +455,9 @@ describe('YouTube release preview (#226)', () => {
 
   it('places the sleeve and exposed vinyl in one shared receding perspective', () => {
     const sharedTransform = 'perspective(var(--record-stage-perspective)) rotateY(var(--record-stage-yaw)) rotateZ(var(--record-stage-roll))';
-    expect(listingDetailPolishCss).toContain('--record-stage-perspective: 760px');
-    expect(listingDetailPolishCss).toContain('--record-stage-yaw: 22deg');
-    expect(listingDetailPolishCss).toContain('--record-stage-roll: -3deg');
+    expect(listingDetailPolishCss).toContain('--record-stage-perspective: 900px');
+    expect(listingDetailPolishCss).toContain('--record-stage-yaw: 16deg');
+    expect(listingDetailPolishCss).toContain('--record-stage-roll: -2deg');
     expect(listingDetailPolishCss.split(sharedTransform)).toHaveLength(3);
     expect(listingDetailPolishCss).toContain('transform-origin: 8% 50%');
   });
@@ -503,6 +516,7 @@ describe('YouTube release preview (#226)', () => {
   it('uses the shared mobile header back control for a listing detail route and does not mark + Drop active', () => {
     const locals = {
       currentPath: '/listings/' + listingId,
+      release: { artist: 'James Brown', title: 'Sex Machine', releaseYear: 1970 },
       currentUser: null,
       currentProfile: null,
       messagingEnabled: false,
@@ -510,7 +524,10 @@ describe('YouTube release preview (#226)', () => {
     const renderedHeader = ejs.render(headerTemplate, locals, { filename: headerPath });
     const renderedNav = ejs.render(navTemplate, locals, { filename: navPath });
 
-    expect(renderedHeader).toContain('<span class="mobile-context-heading">RECORD</span>');
+    expect(renderedHeader).toContain('class="mobile-context-record-artist">James Brown</span>');
+    expect(renderedHeader).toContain('class="mobile-context-record-title">Sex Machine</span>');
+    expect(renderedHeader).toContain('class="mobile-context-record-year">1970</span>');
+    expect(renderedHeader).not.toContain('<span class="mobile-context-heading">RECORD</span>');
     expect(renderedHeader).toContain('aria-label="Back to Dig results"');
     expect(renderedHeader).toContain('href="/dig"');
     expect(renderedNav).toContain('href="/drop/new" class="nav-link nav-link-action"');

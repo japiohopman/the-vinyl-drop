@@ -144,6 +144,18 @@
         <% } %>
       </div>
 
+      <div class="listing-artwork-sidecar" aria-label="Listing price and music preview">
+        <div class="listing-artwork-price-line">
+          <div class="listing-price-display" aria-label="Listing price">
+            <span class="listing-price-amount"><%= priceFormatted %></span>
+          </div>
+          <% if (listing.tradeAvailable) { %>
+            <span class="listing-trade-badge">Trade</span>
+          <% } %>
+        </div>
+        <%- include('../partials/youtube-preview', { release }) %>
+      </div>
+
       <% if (photos && photos.length > 1) { %>
         <dialog class="listing-gallery-dialog" id="listing-photo-gallery" data-listing-gallery-dialog aria-labelledby="listing-gallery-title">
           <div class="listing-gallery-dialog-inner">
@@ -195,25 +207,6 @@
         <p class="listing-condition-notes"><%= physicalCopy.notes %></p>
       <% } %>
 
-      <!-- Price & Status Bar -->
-      <div class="price-status-card">
-        <div class="listing-price-display" aria-label="Listing price">
-          <div class="listing-price-amount">
-            <%= priceFormatted %>
-          </div>
-        </div>
-
-        <div class="listing-status-actions">
-          <% if (listing.tradeAvailable) { %>
-            <span class="listing-trade-badge">
-              Trade
-            </span>
-          <% } %>
-
-
-        </div>
-      </div>
-
       <!-- Message Seller Action Button for Non-Seller when Messaging Enabled -->
       <% if (currentUser && !isSeller && listing.status === 'published' && typeof messagingEnabled !== 'undefined' && messagingEnabled) { %>
         <div class="message-seller-card">
@@ -226,8 +219,6 @@
           </form>
         </div>
       <% } %>
-
-      <%- include('../partials/youtube-preview', { release }) %>
 
       <!-- Description -->
       <% if (listing.description) { %>
