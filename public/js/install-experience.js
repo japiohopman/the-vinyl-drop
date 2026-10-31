@@ -45,6 +45,7 @@
   shareButton.addEventListener('click', async () => {
     announce('');
     if (typeof navigator.share === 'function') {
+      announce('Choose WhatsApp, email or another app from your device’s share menu.');
       try {
         await navigator.share({
           title: 'The Vinyl Drop',
