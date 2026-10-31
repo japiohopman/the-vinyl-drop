@@ -32,6 +32,29 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     throw 'npm was not found. Install/use the supported Node.js environment before running migrations.'
 }
 
+# Base must use the repository's lockfile-installed Drizzle Kit, never an npx
+# registry fallback that could install an unreviewed version while DB credentials
+# are in the process environment.
+$drizzleKitPath = $null
+if ($Phase -eq 'Base') {
+    $binDirectory = Join-Path (Get-Location) 'node_modules/.bin'
+    $drizzleKitNames = if ($env:OS -eq 'Windows_NT') {
+        @('drizzle-kit.cmd', 'drizzle-kit.ps1', 'drizzle-kit')
+    } else {
+        @('drizzle-kit')
+    }
+    foreach ($binaryName in $drizzleKitNames) {
+        $candidate = Join-Path $binDirectory $binaryName
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $drizzleKitPath = $candidate
+            break
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($drizzleKitPath)) {
+        throw 'The lockfile-installed local drizzle-kit binary is missing. Run npm ci --include=dev from the repository root before the Base phase; no registry fallback will be used.'
+    }
+}
+
 Write-Host "Production migration phase: $Phase"
 Write-Host "Project: $projectRef"
 Write-Host "Host: $poolerHost (Supabase Shared Session Pooler, port 5432; TLS required)"
@@ -91,7 +114,11 @@ try {
         [Environment]::SetEnvironmentVariable($name, $environmentValues[$name], 'Process')
     }
 
-    $engineName = if ($PSVersionTable.PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' }
+    $engineName = if ($PSVersionTable.PSEdition -eq 'Core') {
+        if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' }
+    } else {
+        'powershell.exe'
+    }
     $enginePath = Join-Path $PSHOME $engineName
     if (-not (Test-Path -LiteralPath $enginePath)) {
         throw 'Could not locate the PowerShell executable to run the isolated preflight process.'
@@ -157,7 +184,7 @@ export default defineConfig({
 
         try {
             Write-Host 'Applying only base migrations 0000-0005...'
-            npx drizzle-kit migrate --config=drizzle.production-base.config.ts
+            & $drizzleKitPath migrate --config=drizzle.production-base.config.ts
             if ($LASTEXITCODE -ne 0) {
                 throw 'Base migration phase failed. STOP: inspect drizzle.__drizzle_migrations before any retry.'
             }
