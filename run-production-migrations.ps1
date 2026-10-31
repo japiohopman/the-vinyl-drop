@@ -83,6 +83,7 @@ foreach ($name in $environmentValues.Keys) {
 
 $tempMigrationDirectory = Join-Path (Get-Location) '.production-migrations-base'
 $tempConfigPath = Join-Path (Get-Location) 'drizzle.production-base.config.ts'
+$createdTemporaryFiles = $false
 
 try {
     foreach ($name in $environmentValues.Keys) {
@@ -120,6 +121,7 @@ try {
 
         $metaDirectory = Join-Path $tempMigrationDirectory 'meta'
         New-Item -ItemType Directory -Path $metaDirectory -Force | Out-Null
+        $createdTemporaryFiles = $true
         foreach ($entry in $baseEntries) {
             $sourceMigration = Join-Path (Get-Location) ("drizzle/" + $entry.tag + '.sql')
             if (-not (Test-Path -LiteralPath $sourceMigration)) {
@@ -177,10 +179,10 @@ export default defineConfig({
     }
 }
 finally {
-    if (Test-Path -LiteralPath $tempMigrationDirectory) {
+    if ($createdTemporaryFiles -and (Test-Path -LiteralPath $tempMigrationDirectory)) {
         Remove-Item -LiteralPath $tempMigrationDirectory -Recurse -Force -ErrorAction SilentlyContinue
     }
-    if (Test-Path -LiteralPath $tempConfigPath) {
+    if ($createdTemporaryFiles -and (Test-Path -LiteralPath $tempConfigPath)) {
         Remove-Item -LiteralPath $tempConfigPath -Force -ErrorAction SilentlyContinue
     }
     foreach ($name in $previousValues.Keys) {
