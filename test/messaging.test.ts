@@ -33,7 +33,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
   beforeAll(async () => {
     pg = new PGlite();
     await pg.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
-      await pg.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
+    await pg.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
 
     // Bootstrap auth and storage stubs
     await pg.exec(`
