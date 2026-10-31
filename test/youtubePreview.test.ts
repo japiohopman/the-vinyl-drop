@@ -306,8 +306,8 @@ describe('YouTube release preview (#226)', () => {
           return {
             viewportWidth: window.innerWidth,
             documentWidth: document.documentElement.scrollWidth,
-            coverWidth: cover?.offsetWidth ?? 0,
-            coverHeight: cover?.offsetHeight ?? 0,
+            coverWidth: cover instanceof HTMLElement ? cover.offsetWidth : 0,
+            coverHeight: cover instanceof HTMLElement ? cover.offsetHeight : 0,
             coverTransform: cover ? getComputedStyle(cover).transform : 'missing',
             bevelBorderTop: cover ? getComputedStyle(cover, '::after').borderTopWidth : 'missing',
             imageObjectFit: image ? getComputedStyle(image).objectFit : '',
