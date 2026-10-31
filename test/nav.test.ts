@@ -1026,7 +1026,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       expect(await isFocused('#mobile-you-about-back')).toBe(true);
 
       const aboutLinks = await page.locator('#mobile-you-about-view .mobile-you-info-links a').evaluateAll((els) => els.map((el) => (el as { getAttribute: (name: string) => string | null }).getAttribute('href')));
-      expect(aboutLinks).toEqual(['/community-rules', '/terms', '/privacy', '/contact']);
+      expect(aboutLinks).toEqual(['/install', '/community-rules', '/terms', '/privacy', '/contact']);
 
       await page.click('#mobile-you-about-back');
       expect(await isElementVisible('#mobile-you-main-view')).toBe(true);
