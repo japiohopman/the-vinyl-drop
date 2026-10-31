@@ -80,3 +80,6 @@ try {
 finally {
     Pop-Location
 }
+
+Write-Host 'All production preflight regression cases passed.'
+exit 0
