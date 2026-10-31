@@ -41,6 +41,7 @@ describe('Environment Validation', () => {
   it('keeps shared rate limits disabled in runtime environments until explicitly enabled', () => {
     expect(validateEnv({ NODE_ENV: 'test' }).SHARED_RATE_LIMITS_ENABLED).toBe(true);
     expect(validateEnv({ NODE_ENV: 'test' }).SHARED_RATE_LIMITS_SECRET.length).toBeGreaterThanOrEqual(32);
+    expect(validateEnv({ NODE_ENV: 'test' }).STAGING_DIAGNOSTIC_TOKEN).toBe('');
     expect(validateEnv({
       NODE_ENV: 'development',
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/development_db',
@@ -58,6 +59,8 @@ describe('Environment Validation', () => {
       RECOVERY_SIGNING_SECRET: 'custom-staging-recovery-secret-key-32-bytes',
     };
     expect(validateEnv(staging).SHARED_RATE_LIMITS_ENABLED).toBe(false);
+    expect(validateEnv({ ...staging, STAGING_DIAGNOSTIC_TOKEN: 'a'.repeat(32) }).STAGING_DIAGNOSTIC_TOKEN).toBe('a'.repeat(32));
+    expect(() => validateEnv({ ...staging, STAGING_DIAGNOSTIC_TOKEN: 'too-short' })).toThrow('Invalid environment configuration');
     expect(validateEnv({ ...staging, SHARED_RATE_LIMITS_ENABLED: '0' }).SHARED_RATE_LIMITS_ENABLED).toBe(false);
     expect(validateEnv({
       ...staging,
