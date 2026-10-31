@@ -163,15 +163,32 @@ async function decrementBucket(bucket: RateLimitBucket): Promise<void> {
   if (testStore) return testStore.decrement(bucket);
   if (!queryClient) throw new Error('Rate-limit database connection is unavailable.');
 
-  await queryClient.unsafe(
-    'UPDATE private.rate_limit_buckets SET hit_count = hit_count - 1, updated_at = clock_timestamp() ' +
-    'WHERE bucket_key = $1 AND window_start = $2 AND hit_count > 1',
-    [bucket.bucketKey, new Date(bucket.windowStartMs)]
-  );
-  await queryClient.unsafe(
-    'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2 AND hit_count = 1',
-    [bucket.bucketKey, new Date(bucket.windowStartMs)]
-  );
+  // Serialize releases for this bucket. Without the row lock, two successful
+  // responses can both decrement a count that includes a failed login and then
+  // race to delete the remaining row.
+  await queryClient.begin(async (transaction) => {
+    const rows = await transaction.unsafe(
+      'SELECT hit_count FROM private.rate_limit_buckets ' +
+      'WHERE bucket_key = $1 AND window_start = $2 FOR UPDATE',
+      [bucket.bucketKey, new Date(bucket.windowStartMs)]
+    );
+
+    if (!rows[0]) return;
+
+    if (Number(rows[0].hit_count) <= 1) {
+      await transaction.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+      return;
+    }
+
+    await transaction.unsafe(
+      'UPDATE private.rate_limit_buckets SET hit_count = hit_count - 1, updated_at = clock_timestamp() ' +
+      'WHERE bucket_key = $1 AND window_start = $2',
+      [bucket.bucketKey, new Date(bucket.windowStartMs)]
+    );
+  });
 }
 
 async function pruneExpiredBuckets(nowMs: number): Promise<void> {
