@@ -56,7 +56,7 @@ Release-level YouTube previews store only a validated video ID. Seller edits req
 
 ## Application request rate limiting — Issue #89
 
-The source implementation uses private PostgreSQL fixed-window counters shared across application instances. It is fail-closed: if the required client-IP identity or counter store is unavailable, the protected request is not forwarded to its controller. The first migration is `0019_shared_rate_limit_buckets.sql`; source code must not be deployed to an environment until that migration has been separately applied and verified there.
+The source implementation uses private PostgreSQL fixed-window counters shared across application instances. It is fail-closed when enabled: if the required client-IP identity or counter store is unavailable, the protected request is not forwarded to its controller. The `SHARED_RATE_LIMITS_ENABLED` opt-in defaults to **false in development, staging and production** (tests default on with an injected test store). This allows an auto-deployed source change to land without activating requests against a counter table that has not yet been migrated. Enable the flag only after append-only migration `0019_shared_rate_limit_buckets.sql` has been applied and verified on that exact target.
 
 | Route group | Approved limit |
 | --- | --- |
