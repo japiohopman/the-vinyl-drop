@@ -34,7 +34,7 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
 
 Write-Host "Production migration phase: $Phase"
 Write-Host "Project: $projectRef"
-Write-Host "Host: $poolerHost (Supabase Shared Session Pooler, port 5432)"
+Write-Host "Host: $poolerHost (Supabase Shared Session Pooler, port 5432; TLS required)"
 Write-Host 'The password is requested securely and is not written to .env or printed.'
 
 $securePassword = Read-Host -Prompt 'Enter the production database password (input hidden)' -AsSecureString
@@ -57,7 +57,8 @@ finally {
 try {
     $encodedPassword = [System.Uri]::EscapeDataString($plainPassword)
     $databaseUser = "postgres.$projectRef"
-    $connectionString = 'postgresql://' + $databaseUser + ':' + $encodedPassword + '@' + $poolerHost + ':5432/postgres'
+    # Supabase recommends sslmode=require so the driver cannot fall back to plaintext.
+    $connectionString = 'postgresql://' + $databaseUser + ':' + $encodedPassword + '@' + $poolerHost + ':5432/postgres?sslmode=require'
 }
 finally {
     $plainPassword = $null
