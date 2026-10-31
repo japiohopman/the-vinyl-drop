@@ -925,3 +925,33 @@ describe('Dig photo-role migration compatibility', () => {
     }
   });
 });
+
+
+describe('Dig sound feedback preferences', () => {
+  it('offers an accessible sound toggle in the Dig header and loads shared preferences before sound playback', () => {
+    const view = fs.readFileSync(path.join(process.cwd(), 'views/browse/dig.ejs'), 'utf8');
+    const preferences = fs.readFileSync(path.join(process.cwd(), 'public/js/user-preferences.js'), 'utf8');
+    const sounds = fs.readFileSync(path.join(process.cwd(), 'public/js/dig-sounds.js'), 'utf8');
+
+    expect(view).toContain('data-dig-sound-toggle');
+    expect(view).toContain('aria-pressed="true"');
+    expect(view).toContain('data-dig-sound-label');
+    expect(view.indexOf('/js/user-preferences.js')).toBeLessThan(view.indexOf('/js/dig-sounds.js'));
+    expect(view.indexOf('/js/dig-sounds.js')).toBeLessThan(view.indexOf('/js/dig-mode.js'));
+    expect(preferences).toContain('soundEffectsEnabled: true');
+    expect(sounds).toContain("volume: 0.12");
+    expect(sounds).toContain("volume: 0.08");
+  });
+
+  it('only requests sounds from committed flips and valid record navigation, never from pointer movement', () => {
+    const script = fs.readFileSync(path.join(process.cwd(), 'public/js/dig-mode.js'), 'utf8');
+    const pointerMoveStart = script.indexOf('function handlePointerMove(event)');
+    const pointerMoveEnd = script.indexOf('function handlePointerUp(event)', pointerMoveStart);
+    const pointerMoveHandler = script.slice(pointerMoveStart, pointerMoveEnd);
+
+    expect(script).toContain("playDigSound('recordChange')");
+    expect(script).toContain("playDigSound('flip')");
+    expect(script).toContain('if (isTransitioning || !digState.isValidIndex(targetIndex, slides.length) || targetIndex === activeIndex) return;');
+    expect(pointerMoveHandler).not.toContain('playDigSound(');
+  });
+});

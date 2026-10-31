@@ -7,12 +7,51 @@
   const slides = Array.from(root.querySelectorAll('[data-dig-slide]'));
   const previousButton = root.querySelector('[data-dig-prev]');
   const nextButton = root.querySelector('[data-dig-next]');
+  const soundToggleButton = root.querySelector('[data-dig-sound-toggle]');
+  const preferences = window.VinylDropPreferences;
   const position = root.querySelector('[data-dig-position]');
   const headerPosition = document.querySelector('[data-dig-header-position]');
   const progress = root.querySelector('[data-dig-progress]');
   const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
   const transitionMs = 520;
   const swipeThreshold = 64;
+
+  function isSoundEffectsEnabled() {
+    return !preferences || typeof preferences.get !== 'function'
+      ? true
+      : preferences.get('soundEffectsEnabled') !== false;
+  }
+
+  function updateSoundToggle() {
+    if (!soundToggleButton) return;
+    const enabled = isSoundEffectsEnabled();
+    soundToggleButton.setAttribute('aria-pressed', String(enabled));
+    soundToggleButton.setAttribute('aria-label', enabled ? 'Turn sound effects off' : 'Turn sound effects on');
+    const label = soundToggleButton.querySelector('[data-dig-sound-label]');
+    if (label) label.textContent = enabled ? 'Sound on' : 'Sound off';
+    const waves = soundToggleButton.querySelector('[data-dig-sound-waves]');
+    const muted = soundToggleButton.querySelector('[data-dig-sound-muted]');
+    if (waves) waves.hidden = !enabled;
+    if (muted) muted.hidden = enabled;
+  }
+
+  function initializeSoundToggle() {
+    if (!soundToggleButton) return;
+    updateSoundToggle();
+    if (preferences && typeof preferences.subscribe === 'function') {
+      preferences.subscribe((_values, key) => {
+        if (key === 'soundEffectsEnabled') updateSoundToggle();
+      });
+    }
+    soundToggleButton.addEventListener('click', () => {
+      if (preferences && typeof preferences.set === 'function') {
+        preferences.set('soundEffectsEnabled', !isSoundEffectsEnabled());
+      }
+      updateSoundToggle();
+    });
+  }
+
+  initializeSoundToggle();
 
   if (!viewer || slides.length === 0) return;
 
@@ -32,6 +71,16 @@
 
   function setReducedMotion() {
     root.dataset.reducedMotion = motionPreference.matches ? 'true' : 'false';
+  }
+
+  function playDigSound(name) {
+    const soundPlayer = window.DigSounds;
+    if (!soundPlayer || typeof soundPlayer.play !== 'function') return;
+    try {
+      soundPlayer.play(name);
+    } catch {
+      // Sound is optional progressive enhancement; never block Dig.
+    }
   }
 
   function requestDigHapticPulse() {
@@ -423,6 +472,7 @@
     const card = slide.querySelector('[data-dig-sleeve-card]');
     if (!card) return;
     setFlipState(slide, digState.nextFlipState(card.classList.contains('is-flipped')));
+    playDigSound('flip');
     scheduleZoomReset(slide);
   }
 
@@ -462,6 +512,7 @@
 
   function navigateTo(targetIndex, direction) {
     if (isTransitioning || !digState.isValidIndex(targetIndex, slides.length) || targetIndex === activeIndex) return;
+    playDigSound('recordChange');
     flushPendingFlipSettle();
     resetAllZoom();
 
@@ -828,7 +879,10 @@
         slide.style.transition = '';
 
         if (motionPreference.matches) {
-          if (shouldFlip) setFlipState(slide, !wasFlipped);
+          if (shouldFlip) {
+            setFlipState(slide, !wasFlipped);
+            playDigSound('flip');
+          }
           card.style.transform = '';
           card.style.transition = '';
           scheduleZoomReset(slide);
@@ -840,7 +894,10 @@
         card.style.transform = draggedTransform;
         void card.offsetHeight;
         const angles = digState.flipSwipeAngles(wasFlipped, deltaX, shouldFlip);
-        if (shouldFlip) setFlipState(slide, !wasFlipped);
+        if (shouldFlip) {
+          setFlipState(slide, !wasFlipped);
+          playDigSound('flip');
+        }
         card.style.transform = 'rotateY(' + angles.animationAngle + 'deg)';
         scheduleZoomReset(slide);
         if (shouldFlip && event.pointerType === 'touch') requestDigHapticPulse();
