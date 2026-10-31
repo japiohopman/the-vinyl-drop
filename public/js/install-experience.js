@@ -44,7 +44,6 @@
   shareButton.addEventListener('click', async () => {
     announce('');
     if (typeof navigator.share === 'function') {
-      announce('Choose WhatsApp, email or another app from your device’s share menu.');
       try {
         await navigator.share({
           title: 'The Vinyl Drop',
@@ -52,7 +51,10 @@
           url: installUrl,
         });
       } catch (error) {
-        if (error && error.name === 'AbortError') return;
+        if (error && error.name === 'AbortError') {
+          announce('Sharing cancelled.');
+          return;
+        }
         await copyInstallLink();
       }
       return;

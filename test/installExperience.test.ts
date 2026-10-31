@@ -63,6 +63,7 @@ describe('PWA installation and native sharing — Issue #52', () => {
     expect(source).toContain("fetch(request).catch");
     expect(source).toContain("new Request(request, { credentials: 'omit' })");
     expect(source).toContain("!response.headers.has('set-cookie')");
+    expect(source).toContain("request.headers.has('authorization')");
     expect(source).toContain("return (await caches.match(OFFLINE_URL)) || Response.error()");
     const navigationHandler = source.slice(
       source.indexOf("if (request.mode === 'navigate')"),
@@ -90,6 +91,7 @@ describe('PWA installation and native sharing — Issue #52', () => {
     expect(source).toContain('navigator.share');
     expect(source).toContain('navigator.clipboard.writeText');
     expect(source).toContain("error.name === 'AbortError'");
+    expect(source).toContain("announce('Sharing cancelled.')");
     expect(source).toContain("event.preventDefault()");
     expect(source).toContain("window.addEventListener('appinstalled'");
     expect(source).not.toContain('wa.me');
