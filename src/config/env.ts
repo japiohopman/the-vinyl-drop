@@ -11,6 +11,10 @@ export const envSchema = z
     DATABASE_DIRECT_URL: z.string().optional(),
     SUPABASE_URL: z.string().optional(),
     SUPABASE_ANON_KEY: z.string().optional(),
+    SHARED_RATE_LIMITS_ENABLED: z.string().optional().transform((val) => {
+      if (val === undefined || val === '') return undefined;
+      return val.toLowerCase() === 'true' || val === '1';
+    }),
     SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: z.string().optional().transform((val) => {
       if (val === undefined || val === '') return undefined;
       return val.toLowerCase() === 'true' || val === '1';
@@ -174,6 +178,7 @@ export type Env = Omit<
   | 'ALLOWED_REDIRECT_URLS'
   | 'MESSAGING_ENABLED'
   | 'SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED'
+  | 'SHARED_RATE_LIMITS_ENABLED'
   | 'BETA_INVITE_ONLY_ENABLED'
   | 'BETA_ALLOWED_EMAILS'
 > & {
@@ -182,6 +187,7 @@ export type Env = Omit<
   RECOVERY_SIGNING_SECRET: string;
   MESSAGING_ENABLED: boolean;
   SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: boolean;
+  SHARED_RATE_LIMITS_ENABLED: boolean;
   BETA_INVITE_ONLY_ENABLED: boolean;
   BETA_ALLOWED_EMAILS: string;
 };
@@ -224,6 +230,11 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
       ? result.data.SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED
       : result.data.NODE_ENV === 'test';
 
+  // Shared rate limits stay off in every runtime environment until the target
+  // database has migration 0019 and the owner separately enables the feature.
+  const defaultSharedRateLimitsEnabled =
+    result.data.SHARED_RATE_LIMITS_ENABLED ?? result.data.NODE_ENV === 'test';
+
   // Invite-only access is opt-in; deploying source alone must not silently change existing sign-up behavior.
   // When enabled with an empty BETA_ALLOWED_EMAILS value, the allowlist helper intentionally denies everyone.
   const defaultBetaInviteOnlyEnabled = result.data.BETA_INVITE_ONLY_ENABLED ?? false;
@@ -238,6 +249,7 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
     SUPABASE_ANON_KEY: result.data.SUPABASE_ANON_KEY || 'mock-anon-key',
     MESSAGING_ENABLED: defaultMessagingEnabled,
     SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: defaultSignupPasswordCheckApprovalEnabled,
+    SHARED_RATE_LIMITS_ENABLED: defaultSharedRateLimitsEnabled,
     BETA_INVITE_ONLY_ENABLED: defaultBetaInviteOnlyEnabled,
     BETA_ALLOWED_EMAILS: defaultBetaAllowedEmails,
   };
