@@ -21,6 +21,10 @@ Read-only Supabase account inspection on 31 October 2026 returned:
 | Existing project database host | `db.xuhzhdjmgvqzjxijmksu.supabase.co` | Staging only |
 | Production Supabase project | Not present in returned project inventory | Must be separately provisioned after plan/cost approval |
 
+Read-only staging migration inspection on 31 October 2026 confirmed `drizzle.__drizzle_migrations` contains **20 entries**, matching the **20 versioned SQL files** `drizzle/0000` through `drizzle/0019` in the repository. This is the Drizzle migration history used by `npm run db:migrate`.
+
+The Supabase connector's `list_migrations` endpoint returned seven entries from the separate `supabase_migrations.schema_migrations` tracking table. Do not confuse that Supabase CLI history with the Drizzle migration ledger or use it as proof that the production Drizzle schema is current. Production verification must query/verify the Drizzle ledger itself and compare it with the repository migration set.
+
 Issue #278's recorded Render baseline identifies the staging service as `the-vinyl-drop-staging` in Frankfurt. The Render service inventory has not yet been refreshed in this preparation pass because the Render connector requires the owner to explicitly select a workspace before it can inspect or act on services. No Render service has been created or modified.
 
 ## 2. Current cost comparison (USD)
