@@ -115,6 +115,5 @@ The following security and moderation capabilities are documented as future road
 
 - User-facing content reporting buttons (for flagrant listings or abusive comments);
 - Administrative moderation dashboard;
-- IP-based or user-based API rate limiting;
 - Automated content abuse filtering;
 - Data export and right-to-be-forgotten automated account deletion tools.
