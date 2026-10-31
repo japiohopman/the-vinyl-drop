@@ -51,6 +51,17 @@ The current staging service is on Render Free, Frankfurt, with one configured in
 
 ---
 
+
+
+### Production target — Issue #278 (owner-approved 31 October 2026)
+
+- Canonical production origin: `https://thevinyldrop.nl`.
+- The `www.thevinyldrop.nl` alias/redirect behavior is **not yet verified**. Do not add it to application redirect allowlists or declare it canonical until DNS and HTTP redirect checks establish the intended behavior.
+- Production remains a separate future Render service and Supabase project. The current staging service/project must remain untouched.
+- The current connected Supabase organization inventory reports plan **Free** and one active project, `xuhzhdjmgvqzjxijmksu`, in `eu-west-1`; this is the staging project. There is no production Supabase project in the returned project inventory (31 October 2026).
+- Do not interpret the canonical domain being registered/SSL-enabled as proof that it points to a production application. Verify Render custom-domain ownership, DNS target, TLS and canonical redirects after the separate production service exists.
+- A production service is deliberately not declared in `render.yaml` yet: applying a non-free service definition may create a billable resource. The selected Render compute plan and Supabase organization/project cost must be explicitly accepted first.
+
 ## 1. Environment Taxonomy & Data Separation
 
 To ensure production integrity and prevent accidental data contamination, environments are strictly isolated:
@@ -59,7 +70,7 @@ To ensure production integrity and prevent accidental data contamination, enviro
 | --- | --- | --- | --- | --- |
 | **LOCAL** | `http://localhost:3000` | In-memory PGlite or Local Supabase CLI (`127.0.0.1:54322`) | Local Dev Instance | Daily feature development & unit testing |
 | **STAGING / BETA** | `https://the-vinyl-drop-staging.onrender.com` | Dedicated Staging PostgreSQL | Isolated Staging Project | Invite-only Beta testing (#48), integration, QA |
-| **PRODUCTION** | `https://vinyldrop.com` | Production PostgreSQL | Isolated Production Project | Public live marketplace |
+| **PRODUCTION** | `https://thevinyldrop.nl` | Dedicated production Supabase project — not yet provisioned | Separate production project — not yet provisioned | Intended public marketplace; deployment is blocked on Issue #278 |
 
 ### Security Invariants
 - **No Shared Persistence:** Staging and Production MUST use separate, completely isolated Supabase projects (database, auth, and object storage).
