@@ -1,6 +1,7 @@
 import express from 'express';
 import request from 'supertest';
-import { createStagingDiagnosticsHandler, StagingDiagnosticsDependencies } from '../src/app/controllers/stagingDiagnosticsController';
+import { createStagingDiagnosticsHandler } from '../src/app/controllers/stagingDiagnosticsController';
+import type { StagingDiagnosticsDependencies } from '../src/app/controllers/stagingDiagnosticsController';
 
 const TOKEN = 'temporary-staging-diagnostic-token-32-bytes';
 
