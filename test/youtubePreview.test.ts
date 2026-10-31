@@ -425,14 +425,11 @@ describe('YouTube release preview (#226)', () => {
   });
 
   it('places the sleeve and exposed vinyl in one shared receding perspective', () => {
+    const sharedTransform = 'perspective(var(--record-stage-perspective)) rotateY(var(--record-stage-yaw)) rotateZ(var(--record-stage-roll))';
     expect(listingDetailPolishCss).toContain('--record-stage-perspective: 760px');
     expect(listingDetailPolishCss).toContain('--record-stage-yaw: 22deg');
     expect(listingDetailPolishCss).toContain('--record-stage-roll: -3deg');
-    const sharedTransform = 'perspective(var(--record-stage-perspective)) rotateY(var(--record-stage-yaw)) rotateZ(var(--record-stage-roll))';
-    expect(listingDetailPolishCss.match(new RegExp(sharedTransform.replace(/[.*+?^${}()|[\]\\]/g, '\\  it('gives the exposed vinyl a clear left-to-right receding perspective', () => {
-    expect(listingDetailPolishCss).toContain('perspective(700px) rotateY(25deg) rotateZ(-4deg)');
-    expect(listingDetailPolishCss).toContain('transform-origin: 8% 50%');
-  });'), 'g'))).toHaveLength(2);
+    expect(listingDetailPolishCss.split(sharedTransform)).toHaveLength(3);
     expect(listingDetailPolishCss).toContain('transform-origin: 8% 50%');
   });
 
