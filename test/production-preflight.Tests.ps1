@@ -51,7 +51,7 @@ function Invoke-PreflightCase {
         [Environment]::SetEnvironmentVariable('DATABASE_URL', $connection, 'Process')
         [Environment]::SetEnvironmentVariable('DATABASE_DIRECT_URL', $connection, 'Process')
 
-        $output = & $pwsh.Source -NoProfile -File $preflightPath 2>&1 | Out-String
+        $output = & $pwsh.Source -NoProfile -File $preflightPath *>&1 | Out-String
         $actualExitCode = $LASTEXITCODE
         if ($actualExitCode -ne $ExpectedExitCode) {
             throw "$Name expected exit code $ExpectedExitCode but received $actualExitCode. Output: $output"
