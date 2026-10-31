@@ -177,7 +177,7 @@ describe('Listing comments UX (#220)', () => {
 
   it('uses one comments route and keeps the canonical POST endpoint', () => {
     expect(routesSource).toContain("router.get('/:id/comments', getListingCommentsPage)");
-    expect(routesSource).toContain("router.post('/:id/comments', requireAuth, validateSameOrigin, postCreateComment)");
+    expect(routesSource).toContain("router.post('/:id/comments', requireAuth, validateSameOrigin, rateLimits.listingComment, postCreateComment)");
   });
 
   it('loads the shared thread and listing context for the focused comments route', async () => {
