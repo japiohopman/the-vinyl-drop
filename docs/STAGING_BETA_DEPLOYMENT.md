@@ -53,7 +53,9 @@ The current staging service is on Render Free, Frankfurt, with one configured in
 
 
 
-### Production target — Issue #278 (owner-approved 31 October 2026)
+### Historical production provisioning snapshot — Issue #278 (superseded 31 October 2026)
+
+> **Historical snapshot only — do not use the bullets below as current production status.** They record the pre-provisioning inventory and decisions. The current production state and operational instructions are maintained in [`docs/PRODUCTION_DEPLOYMENT.md`](./PRODUCTION_DEPLOYMENT.md).
 
 - Canonical production origin: `https://thevinyldrop.nl`.
 - The `www.thevinyldrop.nl` alias/redirect behavior is **not yet verified**. Do not add it to application redirect allowlists or declare it canonical until DNS and HTTP redirect checks establish the intended behavior.
@@ -71,7 +73,7 @@ To ensure production integrity and prevent accidental data contamination, enviro
 | --- | --- | --- | --- | --- |
 | **LOCAL** | `http://localhost:3000` | In-memory PGlite or Local Supabase CLI (`127.0.0.1:54322`) | Local Dev Instance | Daily feature development & unit testing |
 | **STAGING / BETA** | `https://the-vinyl-drop-staging.onrender.com` | Dedicated Staging PostgreSQL | Isolated Staging Project | Invite-only Beta testing (#48), integration, QA |
-| **PRODUCTION** | `https://thevinyldrop.nl` | Dedicated production Supabase project — not yet provisioned | Separate production project — not yet provisioned | Intended public marketplace; deployment is blocked on Issue #278 |
+| **PRODUCTION** | `https://thevinyldrop.nl` | Dedicated production Supabase project (`anxhmlalxjvatrufcjei`) | Separate production Supabase project and manually provisioned Render Free service | Live owner-operated production environment; public-launch gates remain closed. See [Production Deployment](./PRODUCTION_DEPLOYMENT.md) and [Issue #278](https://github.com/japiohopman/the-vinyl-drop/issues/278). |
 
 ### Security Invariants
 - **No Shared Persistence:** Staging and Production MUST use separate, completely isolated Supabase projects (database, auth, and object storage).
