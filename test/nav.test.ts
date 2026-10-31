@@ -152,6 +152,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('href="/privacy"');
     expect(html).toContain('href="/terms"');
     expect(html).toContain('href="/community-rules"');
+    expect(html).toContain('href="/install">Install The Vinyl Drop</a>');
     expect(html).not.toContain('/messages');
     expect(html).not.toContain('LOG OUT');
   });
