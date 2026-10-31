@@ -58,7 +58,7 @@ Do not run the production migration helper again unless a new migration is inten
 | Health check path | `/health` |
 | Auto-Deploy | Off |
 
-Render reported the deployment as **Live / succeeded** at 31 October 2026, 19:41 UTC. The logs show `npm run start`, `node dist/server.js`, and `The Vinyl Drop listening on port 10000 [production]`. The deployment's TypeScript build completed successfully. The external production smoke test and DB-backed functional checks remain pending.
+Render reported the deployment as **Live / succeeded** at 31 October 2026, 19:41 UTC. The logs show `npm run start`, `node dist/server.js`, and `The Vinyl Drop listening on port 10000 [production]`. The deployment's TypeScript build completed successfully. At 19:45 UTC on 31 October 2026, Jaap manually opened `https://the-vinyl-drop.onrender.com/health` and received `status: ok`, timestamp `2026-10-31T19:45:24.541Z`, and uptime `253.147793256` seconds. This confirms the public health endpoint responds successfully. It is a process-health check only; DB-backed reads/writes, Auth, Storage and full application smoke tests remain pending.
 
 Auto-Deploy is intentionally disabled so a later push to `main` does not silently deploy to production. Future deployments require an explicit manual action. The live Render hostname is temporary; do not treat this as proof that the canonical custom domain, TLS or redirects are configured.
 
