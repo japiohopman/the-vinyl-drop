@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto';
 import postgres from 'postgres';
 import {
   decrementRateLimitBucketWithClient,
+  incrementRateLimitBucketWithClient,
   RateLimitBucket,
 } from '../src/app/services/rateLimitService';
 
@@ -30,7 +31,10 @@ describeWithPostgres('PostgreSQL shared rate-limit reservation release', () => {
     if (client) await client.end();
   });
 
-  it('serializes concurrent releases and preserves an outstanding failed login', async () => {
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
     const bucket: RateLimitBucket = {
       bucketKey: randomBytes(32).toString('hex'),
       windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
@@ -47,6 +51,7 @@ describeWithPostgres('PostgreSQL shared rate-limit reservation release', () => {
       await Promise.all([
         decrementRateLimitBucketWithClient(client, bucket),
         decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
       ]);
 
       const rows = await client.unsafe(
@@ -55,7 +60,7 @@ describeWithPostgres('PostgreSQL shared rate-limit reservation release', () => {
       );
 
       expect(rows).toHaveLength(1);
-      expect(Number(rows[0].hit_count)).toBe(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
     } finally {
       await client.unsafe(
         'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',

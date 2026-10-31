@@ -11,10 +11,19 @@ export const envSchema = z
     DATABASE_DIRECT_URL: z.string().optional(),
     SUPABASE_URL: z.string().optional(),
     SUPABASE_ANON_KEY: z.string().optional(),
-    SHARED_RATE_LIMITS_ENABLED: z.string().optional().transform((val) => {
-      if (val === undefined || val === '') return undefined;
-      return val.toLowerCase() === 'true' || val === '1';
+    SHARED_RATE_LIMITS_ENABLED: z.string().optional().transform((val, ctx) => {
+      if (val === undefined || val.trim() === '') return undefined;
+      const normalized = val.trim().toLowerCase();
+      if (normalized === 'true' || normalized === '1') return true;
+      if (normalized === 'false' || normalized === '0') return false;
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['SHARED_RATE_LIMITS_ENABLED'],
+        message: 'SHARED_RATE_LIMITS_ENABLED must be true, false, 1, or 0.',
+      });
+      return z.NEVER;
     }),
+    SHARED_RATE_LIMITS_SECRET: z.string().optional(),
     SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: z.string().optional().transform((val) => {
       if (val === undefined || val === '') return undefined;
       return val.toLowerCase() === 'true' || val === '1';
@@ -100,6 +109,17 @@ export const envSchema = z
       }
     }
 
+    if (
+      data.SHARED_RATE_LIMITS_ENABLED === true &&
+      (!data.SHARED_RATE_LIMITS_SECRET || data.SHARED_RATE_LIMITS_SECRET.trim().length < 32)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['SHARED_RATE_LIMITS_SECRET'],
+        message: 'SHARED_RATE_LIMITS_SECRET must be at least 32 characters when shared rate limits are enabled.',
+      });
+    }
+
     if (data.NODE_ENV === 'staging' || data.NODE_ENV === 'production') {
       if (!data.RECOVERY_SIGNING_SECRET || data.RECOVERY_SIGNING_SECRET.trim().length < 32) {
         ctx.addIssue({
@@ -179,6 +199,7 @@ export type Env = Omit<
   | 'MESSAGING_ENABLED'
   | 'SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED'
   | 'SHARED_RATE_LIMITS_ENABLED'
+  | 'SHARED_RATE_LIMITS_SECRET'
   | 'BETA_INVITE_ONLY_ENABLED'
   | 'BETA_ALLOWED_EMAILS'
 > & {
@@ -188,6 +209,7 @@ export type Env = Omit<
   MESSAGING_ENABLED: boolean;
   SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: boolean;
   SHARED_RATE_LIMITS_ENABLED: boolean;
+  SHARED_RATE_LIMITS_SECRET: string;
   BETA_INVITE_ONLY_ENABLED: boolean;
   BETA_ALLOWED_EMAILS: string;
 };
@@ -234,6 +256,13 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
   // database has migration 0019 and the owner separately enables the feature.
   const defaultSharedRateLimitsEnabled =
     result.data.SHARED_RATE_LIMITS_ENABLED ?? result.data.NODE_ENV === 'test';
+  const defaultSharedRateLimitsSecret =
+    result.data.SHARED_RATE_LIMITS_SECRET ||
+    (result.data.NODE_ENV === 'test' ? 'test-only-shared-rate-limit-signing-secret-32-bytes' : '');
+
+  if (defaultSharedRateLimitsEnabled && defaultSharedRateLimitsSecret.trim().length < 32) {
+    throw new Error('SHARED_RATE_LIMITS_SECRET must be at least 32 characters when shared rate limits are enabled');
+  }
 
   // Invite-only access is opt-in; deploying source alone must not silently change existing sign-up behavior.
   // When enabled with an empty BETA_ALLOWED_EMAILS value, the allowlist helper intentionally denies everyone.
@@ -250,6 +279,7 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
     MESSAGING_ENABLED: defaultMessagingEnabled,
     SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: defaultSignupPasswordCheckApprovalEnabled,
     SHARED_RATE_LIMITS_ENABLED: defaultSharedRateLimitsEnabled,
+    SHARED_RATE_LIMITS_SECRET: defaultSharedRateLimitsSecret,
     BETA_INVITE_ONLY_ENABLED: defaultBetaInviteOnlyEnabled,
     BETA_ALLOWED_EMAILS: defaultBetaAllowedEmails,
   };

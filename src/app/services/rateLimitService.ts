@@ -7,7 +7,8 @@ import { queryClient } from '../../db';
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
-const CLEANUP_INTERVAL = 5 * MINUTE;
+const CLEANUP_INTERVAL = MINUTE;
+const CLEANUP_BATCH_SIZE = 1000;
 
 export interface RateLimitRule {
   name: string;
@@ -31,7 +32,7 @@ export interface RateLimitStore {
 }
 
 let testStore: RateLimitStore | null = null;
-let lastCleanupAt = 0;
+let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Tests may inject an isolated deterministic store. No in-memory store is ever
@@ -131,9 +132,9 @@ function account(req: Request): string | null {
 }
 
 function makeBucketKey(scope: string, identity: string): string {
-  // Domain-separate a derived key from the existing recovery signing secret.
+  // Use a dedicated secret that remains stable across overlapping deployments.
   // Neither raw identifiers nor credentials are persisted in the counter table.
-  const derivedSecret = createHmac('sha256', config.RECOVERY_SIGNING_SECRET)
+  const derivedSecret = createHmac('sha256', config.SHARED_RATE_LIMITS_SECRET)
     .update('the-vinyl-drop:shared-rate-limit:v1')
     .digest();
   return createHmac('sha256', derivedSecret)
@@ -141,11 +142,11 @@ function makeBucketKey(scope: string, identity: string): string {
     .digest('hex');
 }
 
-async function incrementBucket(bucket: RateLimitBucket): Promise<number> {
-  if (testStore) return testStore.increment(bucket);
-  if (!queryClient) throw new Error('Rate-limit database connection is unavailable.');
-
-  const rows = await queryClient.unsafe(
+export async function incrementRateLimitBucketWithClient(
+  client: NonNullable<typeof queryClient>,
+  bucket: RateLimitBucket
+): Promise<number> {
+  const rows = await client.unsafe(
     'INSERT INTO private.rate_limit_buckets ' +
     '(bucket_key, window_start, hit_count, expires_at, updated_at) ' +
     'VALUES ($1, $2, 1, $3, clock_timestamp()) ' +
@@ -157,6 +158,12 @@ async function incrementBucket(bucket: RateLimitBucket): Promise<number> {
 
   if (!rows[0]) throw new Error('Rate-limit counter did not return a count.');
   return Number(rows[0].hit_count);
+}
+
+async function incrementBucket(bucket: RateLimitBucket): Promise<number> {
+  if (testStore) return testStore.increment(bucket);
+  if (!queryClient) throw new Error('Rate-limit database connection is unavailable.');
+  return incrementRateLimitBucketWithClient(queryClient, bucket);
 }
 
 export async function decrementRateLimitBucketWithClient(
@@ -204,11 +211,30 @@ async function pruneExpiredBuckets(nowMs: number): Promise<void> {
   await queryClient.unsafe(
     'WITH expired AS (' +
     'SELECT bucket_key, window_start FROM private.rate_limit_buckets ' +
-    'WHERE expires_at <= $1 ORDER BY expires_at LIMIT 500' +
+    'WHERE expires_at <= $1 ORDER BY expires_at LIMIT ' + CLEANUP_BATCH_SIZE +
     ') DELETE FROM private.rate_limit_buckets AS bucket USING expired ' +
     'WHERE bucket.bucket_key = expired.bucket_key AND bucket.window_start = expired.window_start',
     [new Date(nowMs)]
   );
+}
+
+/**
+ * Run bounded expiry cleanup independently of request traffic. Each tick deletes
+ * at most CLEANUP_BATCH_SIZE rows, allowing a backlog to drain over time.
+ */
+export function startRateLimitCleanup(): void {
+  if (!config.SHARED_RATE_LIMITS_ENABLED || !queryClient || cleanupTimer) return;
+
+  const runCleanup = (): void => {
+    void pruneExpiredBuckets(Date.now()).catch(() => {
+      // Do not expose database details or let maintenance failure affect the app.
+      console.error('Shared rate-limit expiry cleanup failed.');
+    });
+  };
+
+  runCleanup();
+  cleanupTimer = setInterval(runCleanup, CLEANUP_INTERVAL);
+  cleanupTimer.unref?.();
 }
 
 function sendRateLimitResponse(
@@ -278,14 +304,6 @@ export function createRateLimitMiddleware(rules: RateLimitRule[]): RequestHandle
       if (!buckets.length) {
         sendRateLimitResponse(req, res, 503, 60);
         return;
-      }
-
-      if (nowMs - lastCleanupAt >= CLEANUP_INTERVAL) {
-        lastCleanupAt = nowMs;
-        void pruneExpiredBuckets(nowMs).catch(() => {
-          // Cleanup is opportunistic; counter reads/writes remain fail-closed.
-          lastCleanupAt = 0;
-        });
       }
 
       let retryAfterSeconds = 0;
