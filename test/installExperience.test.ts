@@ -67,7 +67,7 @@ describe('PWA installation and native sharing — Issue #52', () => {
     expect(source).toContain("return (await caches.match(OFFLINE_URL)) || Response.error()");
     const navigationHandler = source.slice(
       source.indexOf("if (request.mode === 'navigate')"),
-      source.indexOf('if (!isCacheableStaticAsset(url.pathname))'),
+      source.indexOf("if (!isCacheableStaticAsset(url.pathname) || request.headers.has('authorization')) return;"),
     );
     expect(navigationHandler).not.toContain('cache.put');
     expect(source).not.toContain('caches.match(request) || fetch(request)');
