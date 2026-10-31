@@ -15,7 +15,10 @@ export async function verifyMigrations(): Promise<void> {
       IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
         CREATE ROLE supabase_auth_admin NOLOGIN;
       END IF;
-    END $$;
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+        CREATE ROLE service_role NOLOGIN BYPASSRLS;
+      END IF;
+    END $;
 
     CREATE SCHEMA IF NOT EXISTS auth;
     CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY);
@@ -147,7 +150,7 @@ export async function verifyMigrations(): Promise<void> {
   if (rateLimitColumns.rows.map((row) => row.column_name).join(',') !== 'bucket_key,window_start,hit_count,expires_at,updated_at') {
     throw new Error('Rate-limit counter schema contains unexpected columns');
   }
-  for (const role of ['anon', 'authenticated', 'supabase_auth_admin']) {
+  for (const role of ['anon', 'authenticated', 'supabase_auth_admin', 'service_role']) {
     const access = await pg.query<{ can_select: boolean; can_insert: boolean; can_update: boolean; can_delete: boolean }>(
       "SELECT has_table_privilege($1, 'private.rate_limit_buckets', 'SELECT') AS can_select, has_table_privilege($1, 'private.rate_limit_buckets', 'INSERT') AS can_insert, has_table_privilege($1, 'private.rate_limit_buckets', 'UPDATE') AS can_update, has_table_privilege($1, 'private.rate_limit_buckets', 'DELETE') AS can_delete;",
       [role]

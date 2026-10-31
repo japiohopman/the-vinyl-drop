@@ -26,4 +26,4 @@ CREATE INDEX rate_limit_buckets_expiry_idx
 ALTER TABLE private.rate_limit_buckets ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 REVOKE ALL PRIVILEGES ON TABLE private.rate_limit_buckets
-  FROM PUBLIC, anon, authenticated, supabase_auth_admin;
+  FROM PUBLIC, anon, authenticated, supabase_auth_admin, service_role;
