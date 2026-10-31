@@ -213,6 +213,13 @@ function sendRateLimitResponse(
  */
 export function createRateLimitMiddleware(rules: RateLimitRule[]): RequestHandler {
   return (req, res, next) => {
+    // Keep hosted deployments and local developer environments unchanged until
+    // the target database has migration 0019 and the owner enables this feature.
+    if (!config.SHARED_RATE_LIMITS_ENABLED) {
+      next();
+      return;
+    }
+
     // Existing route integration tests run without a database. Dedicated tests
     // inject a store and exercise the exact same middleware.
     if (config.NODE_ENV === 'test' && !testStore) {
