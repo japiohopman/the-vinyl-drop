@@ -1,5 +1,7 @@
 import { Browser, chromium, devices, webkit } from '@playwright/test';
 import { Server } from 'http';
+import { createApp } from '../src/app';
+
 jest.mock('../src/app/services/listingService', () => {
   const actual = jest.requireActual('../src/app/services/listingService');
   return {
@@ -8,8 +10,6 @@ jest.mock('../src/app/services/listingService', () => {
     getHomeDiscoveryListings: jest.fn().mockResolvedValue([]),
   };
 });
-
-import { createApp } from '../src/app';
 
 jest.setTimeout(120_000);
 
