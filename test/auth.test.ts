@@ -12,6 +12,10 @@ import { config } from '../src/config/env';
 import { isPasswordPwned } from '../src/app/services/pwnedPasswordService';
 import { createPasswordCheckedSignupApproval } from '../src/app/repositories/signupApprovalRepository';
 import { saveRegistrationConsent, hasRegistrationConsent } from '../src/app/repositories/registrationConsentRepository';
+import {
+  createInMemoryRateLimitStoreForTests,
+  setRateLimitStoreForTests,
+} from '../src/app/services/rateLimitService';
 
 jest.mock('../src/app/services/pwnedPasswordService', () => ({
   isPasswordPwned: jest.fn(),
@@ -608,6 +612,31 @@ describe('Authentication & Session Handling', () => {
       const cookieHeader = res.header['set-cookie'];
       const cookies = Array.isArray(cookieHeader) ? cookieHeader.join(';') : String(cookieHeader);
       expect(cookies).toContain('sb-access-token=valid-token');
+    });
+
+    it('POST /auth/login enforces the shared failed-attempt limit on the real route', async () => {
+      setRateLimitStoreForTests(createInMemoryRateLimitStoreForTests());
+      try {
+        mockSupabase.auth.signInWithPassword.mockResolvedValue({
+          data: { user: null, session: null },
+          error: { message: 'Invalid login credentials' },
+        });
+
+        const app = createApp();
+        const attempt = () => request(app)
+          .post('/auth/login')
+          .set('Origin', 'http://localhost:3000')
+          .send({ email: 'rate-limit-login@example.com', password: 'wrong-password' });
+
+        const failedAttempts = await Promise.all(Array.from({ length: 5 }, () => attempt()));
+        expect(failedAttempts.map((response) => response.status)).toEqual([400, 400, 400, 400, 400]);
+
+        const blockedAttempt = await attempt();
+        expect(blockedAttempt.status).toBe(429);
+        expect(mockSupabase.auth.signInWithPassword).toHaveBeenCalledTimes(5);
+      } finally {
+        setRateLimitStoreForTests(null);
+      }
     });
 
     it('POST /auth/login should reject state-changing requests missing both Origin and Referer headers (CSRF Fail-Closed)', async () => {
