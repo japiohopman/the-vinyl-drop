@@ -47,6 +47,10 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+      - name: Test production migration preflight guards
+        shell: pwsh
+        run: ./test/production-preflight.Tests.ps1
+
       - name: Run type checker
         run: npm run typecheck
 
