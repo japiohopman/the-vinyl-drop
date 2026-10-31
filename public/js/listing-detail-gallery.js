@@ -34,6 +34,10 @@
     nextButton.disabled = photos.length < 2;
 
     if (heroImage) {
+      heroImage.style.display = 'block';
+      const wrapper = heroImage.closest('.primary-photo-wrapper');
+      const fallbackBadge = wrapper ? wrapper.querySelector('.terminal-fallback-badge') : null;
+      if (fallbackBadge) fallbackBadge.remove();
       if (typeof window.handleImageFallback === 'function') {
         heroImage.onerror = function() { window.handleImageFallback(this); };
       }
