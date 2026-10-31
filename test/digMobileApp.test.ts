@@ -1980,8 +1980,6 @@ describe('Mobile Dig app-like viewport', () => {
   });
   it('defaults Dig sounds on, exposes a visible mute control, and plays only for committed actions', async () => {
     await loadPage(375, 812);
-    page.setDefaultTimeout(2500);
-    console.log('DIG_SOUND_DIAG: page loaded');
 
     const soundToggle = page.locator('[data-dig-sound-toggle]');
     expect(await soundToggle.isVisible()).toBe(true);
@@ -2004,34 +2002,25 @@ describe('Mobile Dig app-like viewport', () => {
       window as Window & { VinylDropPreferences?: { get(key: string): boolean } }
     ).VinylDropPreferences?.get('soundEffectsEnabled'))).toBe(true);
 
-    console.log('DIG_SOUND_DIAG: before mute click');
     await soundToggle.click();
-    console.log('DIG_SOUND_DIAG: after mute click');
     expect(await soundToggle.getAttribute('aria-pressed')).toBe('false');
     expect(await soundToggle.textContent()).toContain('Sound off');
     expect(await page.evaluate(() => (
       window as Window & { VinylDropPreferences?: { get(key: string): boolean } }
     ).VinylDropPreferences?.get('soundEffectsEnabled'))).toBe(false);
-    console.log('DIG_SOUND_DIAG: before muted flip click');
-    await page.locator('[data-dig-flip]').first().click();
-    console.log('DIG_SOUND_DIAG: after muted flip click');
+    await swipeActive(100, 0);
     expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds || [])).toEqual([]);
 
-    console.log('DIG_SOUND_DIAG: before unmute click');
     await soundToggle.click();
-    console.log('DIG_SOUND_DIAG: after unmute click');
     expect(await soundToggle.getAttribute('aria-pressed')).toBe('true');
     expect(await page.evaluate(() => (
       window as Window & { VinylDropPreferences?: { get(key: string): boolean } }
     ).VinylDropPreferences?.get('soundEffectsEnabled'))).toBe(true);
-    console.log('DIG_SOUND_DIAG: before enabled flip click');
-    await page.locator('[data-dig-flip]').first().click();
-    console.log('DIG_SOUND_DIAG: after enabled flip click');
+    await swipeActive(100, 0);
     expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds || [])).toEqual([
       '/assets/sounds/dig/sleeve-flip.wav',
     ]);
 
-    console.log('DIG_SOUND_DIAG: before vertical swipe');
     const stage = page.locator('.dig-slide.is-active [data-dig-swipe-area]');
     const stageBounds = await stage.boundingBox();
     if (!stageBounds) throw new Error('Active Dig sleeve stage was not laid out');
@@ -2041,7 +2030,6 @@ describe('Mobile Dig app-like viewport', () => {
     await page.mouse.down();
     await page.mouse.move(centerX, centerY - 100, { steps: 6 });
     await page.mouse.up();
-    console.log('DIG_SOUND_DIAG: after vertical swipe');
 
     expect(await page.locator('[data-dig-header-position]').textContent()).toBe('2 of 2');
     expect(await page.locator('[data-dig-slide].is-active').getAttribute('data-index')).toBe('1');
