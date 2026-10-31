@@ -25,7 +25,7 @@ router.get('/login', getLoginPage);
 router.post('/login', validateSameOrigin, rateLimits.login, postLogin);
 
 router.post('/google/start', validateSameOrigin, rateLimits.googleOAuthStart, postGoogleSignupStart);
-router.get('/google', getGoogleOAuth);
+router.get('/google', rateLimits.googleOAuthStart, getGoogleOAuth);
 router.get('/callback', getAuthCallback);
 
 router.get('/forgot-password', getForgotPasswordPage);
