@@ -33,6 +33,21 @@ This section supersedes earlier status snapshots below that describe Issue #49 a
 - The technical signup-bypass work and all three staging runtime checks for [Issue #118](https://github.com/japiohopman/the-vinyl-drop/issues/118) are complete. This runbook reconciliation supports its final review/closure; closing #118 does not widen the five-person risk acceptance. [Issue #89](https://github.com/japiohopman/the-vinyl-drop/issues/89) remains deferred until before cohort expansion. Keep `MESSAGING_ENABLED=false`; [Issue #119](https://github.com/japiohopman/the-vinyl-drop/issues/119) is closed for the trigger search-path defect, not as authorization to roll out messaging.
 - No production hook, Auth setting, billing setting, account, or production database state was changed as part of this reconciliation.
 
+## Shared rate-limit rollout gate — Issue #89 (source-only as of 2026-10-31)
+
+PR [#274](https://github.com/japiohopman/the-vinyl-drop/pull/274) introduces the approved shared request-rate-limit source and append-only migration `0019_shared_rate_limit_buckets.sql`. This section records the separation between a code deploy and activation.
+
+- Render staging auto-deploys commits from `main`. The source therefore includes `SHARED_RATE_LIMITS_ENABLED`, which defaults to **false in development, staging and production**. A code-only auto-deploy must leave the existing endpoints unchanged.
+- Do not set `SHARED_RATE_LIMITS_ENABLED=true` until migration 0019 has been separately applied to the exact target database and read-only verification confirms the private table, RLS, restricted Data API grants, and access from the application's existing direct PostgreSQL connection.
+- Before enabling the flag on a hosted target, run a controlled staging check that establishes the application receives one valid `CF-Connecting-IP` value through Render's Cloudflare edge. Do not log or persist the raw address. The middleware does not trust `X-Forwarded-For` or enable Express `trust proxy`.
+- After the migration and client-IP check pass, the owner may separately authorize setting `SHARED_RATE_LIMITS_ENABLED=true` in that environment. Keep `MESSAGING_ENABLED=false`; the messaging rate limits do not authorize feature activation.
+- If migration, DB access, or client identity is unavailable while the flag is enabled, protected routes fail closed with a neutral 503. Set the feature flag back to false only under an explicit rollback decision if enabling it causes an unexpected failure; do not silently weaken the failure behavior.
+- No migration, Render variable change or deployment was carried out by PR #274.
+
+The current staging service is on Render Free, Frankfurt, with one configured instance and auto-deploy from `main`. The private PostgreSQL counters are nevertheless shared by design and remain correct if the application later runs more than one instance.
+
+---
+
 ---
 
 ## 1. Environment Taxonomy & Data Separation
