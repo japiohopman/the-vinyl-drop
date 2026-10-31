@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { validateSameOrigin } from '../middleware/csrf';
+import { rateLimits } from '../services/rateLimitService';
 import {
   messagingFeatureGuard,
   getWidgetUnreadCount,
@@ -26,12 +27,12 @@ router.get('/widget/unread-count', getWidgetUnreadCount);
 router.get('/widget/data', getWidgetInbox);
 router.get('/widget/:conversationId', getWidgetConversation);
 router.get('/', getInboxPage);
-router.post('/listing/:listingId', validateSameOrigin, postStartConversation);
+router.post('/listing/:listingId', validateSameOrigin, rateLimits.messageStart, postStartConversation);
 // Preserve the original Listing message-start URL for existing callers.
-router.post('/:listingId', validateSameOrigin, postStartConversation);
-router.post('/profile/:profileId', validateSameOrigin, postStartDirectConversation);
+router.post('/:listingId', validateSameOrigin, rateLimits.messageStart, postStartConversation);
+router.post('/profile/:profileId', validateSameOrigin, rateLimits.messageStart, postStartDirectConversation);
 router.post('/saved-people/:profileId', validateSameOrigin, postSavedPersonAction);
-router.post('/:conversationId/send', validateSameOrigin, postSendMessage);
+router.post('/:conversationId/send', validateSameOrigin, rateLimits.messageSend, postSendMessage);
 router.post('/:conversationId/read', validateSameOrigin, postMarkRead);
 router.post('/:conversationId/archive', validateSameOrigin, postArchiveConversation);
 router.get('/:conversationId', getConversationPage);
