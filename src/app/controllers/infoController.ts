@@ -176,3 +176,21 @@ export function getCommunityRulesPage(req: Request, res: Response, next: NextFun
     next(error);
   }
 }
+
+
+/** Public installation and sharing guide for the first-party website PWA. */
+export function getInstallPage(req: Request, res: Response, next: NextFunction): void {
+  try {
+    // The shared shell contains account-aware navigation; never let an intermediary
+    // cache a rendered copy of this page across signed-in and signed-out sessions.
+    res.setHeader('Cache-Control', 'no-store');
+    renderWithLayout(res, 'info/install', {
+      title: 'Install',
+      installUrl: req.hostname === 'the-vinyl-drop-staging.onrender.com'
+        ? 'https://the-vinyl-drop-staging.onrender.com/install'
+        : 'https://thevinyldrop.nl/install',
+    }, next);
+  } catch (error) {
+    next(error);
+  }
+}

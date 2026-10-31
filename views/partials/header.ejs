@@ -9,7 +9,7 @@
   const isMyListingsPage = headerPath === '/listings';
   const isDigRoute = headerPath === '/dig';
   const digItemCount = typeof items !== 'undefined' && Array.isArray(items) ? items.length : 0;
-  const aboutPagePaths = ['/contact', '/privacy', '/terms', '/community-rules'];
+  const aboutPagePaths = ['/contact', '/privacy', '/terms', '/community-rules', '/install'];
   const isAboutPage = aboutPagePaths.includes(headerPath);
   let mobileSectionLabel = 'THE VINYL DROP';
 
@@ -39,6 +39,8 @@
     mobileSectionLabel = 'ABOUT · PRIVACY';
   } else if (headerPath === '/community-rules') {
     mobileSectionLabel = 'ABOUT · COMMUNITY RULES';
+  } else if (headerPath === '/install') {
+    mobileSectionLabel = 'INSTALL';
   }
 %>
 <header class="site-header">

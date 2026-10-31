@@ -13,6 +13,7 @@ import { getIconSvg } from './app/utils/iconRegistry';
 
 const VERSIONED_CSS_ASSETS = [
   '/css/style.css',
+  '/css/install.css',
   '/css/dig-experience.css',
   '/css/listing-detail.css',
   '/css/my-listings.css',
