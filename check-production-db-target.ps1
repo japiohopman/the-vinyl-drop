@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $canonicalOrigin = 'https://thevinyldrop.nl'
+$expectedProductionRef = 'anxhmlalxjvatrufcjei'
+$expectedProductionHost = 'aws-0-eu-west-1.pooler.supabase.com'
 $envPath = Join-Path (Get-Location) '.env'
 
 function Fail-Preflight {
@@ -43,6 +45,24 @@ function Get-DatabaseIdentity {
         }
 
         $hostName = $uri.DnsSafeHost.ToLowerInvariant()
+
+        # Require exactly one explicit TLS mode; prefer may fall back to plaintext.
+        $sslModes = @(
+            foreach ($queryItem in ($uri.Query.TrimStart('?') -split '&')) {
+                if ([string]::IsNullOrWhiteSpace($queryItem)) { continue }
+                $queryParts = $queryItem -split '=', 2
+                $queryKey = [System.Uri]::UnescapeDataString($queryParts[0])
+                if ($queryKey -ieq 'sslmode') {
+                    if ($queryParts.Count -ne 2) { '' }
+                    else { [System.Uri]::UnescapeDataString($queryParts[1]) }
+                }
+            }
+        )
+        if ($sslModes.Count -ne 1 -or $sslModes[0] -cne 'require') {
+            $script:problems += "$Name must include exactly one sslmode=require parameter."
+            return $null
+        }
+
         $userInfoParts = $uri.UserInfo -split ':', 2
         if ($userInfoParts.Count -ne 2) {
             throw 'Database URL is missing user credentials.'
@@ -81,17 +101,18 @@ $problems = @()
 $expectedRef = [Environment]::GetEnvironmentVariable('TVD_CONFIRM_PRODUCTION_DB_PROJECT_REF', 'Process')
 $projectRef = Get-EffectiveValue 'PRODUCTION_DB_PROJECT_REF'
 $dbHost = Get-EffectiveValue 'PRODUCTION_DB_HOST'
+
+if ([string]::IsNullOrWhiteSpace($expectedRef) -or $expectedRef -cne $expectedProductionRef) {
+    $problems += 'The process-only confirmation must equal the one approved production project reference.'
+}
 if ($expectedRef -eq 'xuhzhdjmgvqzjxijmksu') {
     $problems += 'The confirmed project ref is the known staging project; production migrations are forbidden against staging.'
 }
-if ([string]::IsNullOrWhiteSpace($expectedRef) -or $expectedRef -notmatch '^[a-z0-9]{20}$') {
-    $problems += 'Set process-only TVD_CONFIRM_PRODUCTION_DB_PROJECT_REF to the exact 20-character production project ref before running this check.'
+if ([string]::IsNullOrWhiteSpace($projectRef) -or $projectRef -cne $expectedProductionRef -or $projectRef -cne $expectedRef) {
+    $problems += 'PRODUCTION_DB_PROJECT_REF must exactly match the approved production project and process-only confirmation.'
 }
-if ([string]::IsNullOrWhiteSpace($projectRef) -or $projectRef -ne $expectedRef) {
-    $problems += 'PRODUCTION_DB_PROJECT_REF is missing or does not match the process-only confirmation value.'
-}
-if ([string]::IsNullOrWhiteSpace($dbHost)) {
-    $problems += 'PRODUCTION_DB_HOST is missing; set it to the exact host in the production Session Pooler connection string.'
+if ([string]::IsNullOrWhiteSpace($dbHost) -or $dbHost -cne $expectedProductionHost) {
+    $problems += 'PRODUCTION_DB_HOST must exactly match the approved production Session Pooler host.'
 }
 
 $nodeEnv = Get-EffectiveValue 'NODE_ENV'
@@ -166,7 +187,7 @@ if ($problems.Count -gt 0) {
 }
 
 Write-Host 'PRODUCTION TARGET CHECK PASSED' -ForegroundColor Green
-Write-Host "Production project reference: $expectedRef"
-Write-Host "Production database host: $dbHost"
+Write-Host "Production project reference: $expectedProductionRef"
+Write-Host "Production database host: $expectedProductionHost"
 Write-Host "Canonical application origin: $canonicalOrigin"
-Write-Host 'Only process environment values and optional .env settings were checked. No database connection was opened and no setting or data was changed.'
+Write-Host 'Both database URLs were checked for sslmode=require. Only process environment values and optional .env settings were checked; no database connection was opened and no setting or data was changed.'
