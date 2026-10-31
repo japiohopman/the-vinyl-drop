@@ -54,6 +54,34 @@ State-changing HTTP requests (`POST`, `PUT`, `DELETE`, `PATCH`) pass through `va
 
 Release-level YouTube previews store only a validated video ID. Seller edits require authenticated listing ownership; the release association is resolved server-side through the listing's physical copy. No YouTube API key, video search, arbitrary iframe markup, downloaded media, or automatic video selection is used. The embedded player is not requested until a visitor explicitly activates it; the privacy-enhanced `youtube-nocookie.com` domain does not imply that no data is sent to YouTube. The visitor has a normal YouTube link when embedding is unavailable.
 
+## Application request rate limiting — Issue #89
+
+The source implementation uses private PostgreSQL fixed-window counters shared across application instances. It is fail-closed: if the required client-IP identity or counter store is unavailable, the protected request is not forwarded to its controller. The first migration is `0019_shared_rate_limit_buckets.sql`; source code must not be deployed to an environment until that migration has been separately applied and verified there.
+
+| Route group | Approved limit |
+| --- | --- |
+| Email/password signup | 5 requests per hour per client IP |
+| Login | 5 failed attempts per 15 minutes per client-IP + normalized-email pair; 30 attempts per 15 minutes per client IP |
+| Password recovery request | 5 per hour per client-IP + normalized-email pair; 10 per hour per client IP |
+| Password reset submission | 5 per hour per client-IP + authenticated-user pair; 10 per hour per client IP |
+| Google OAuth start | 10 per 15 minutes per client IP; callback is excluded |
+| Contact form | 5 per hour per client IP, in addition to the existing per-email cooldown |
+| Listing creation | 5 per day per authenticated account |
+| Listing comments | 5 per 10 minutes and 30 per day per authenticated account |
+| Listing photo-upload requests | 5 per hour and 10 per day per authenticated account |
+| Discogs search/metadata lookup | 30 per 10 minutes per authenticated account |
+| Discogs imports | 5 per hour per authenticated account |
+| Messaging conversation starts | 5 per day per authenticated account |
+| Messaging sends | 30 per 10 minutes and 100 per day per authenticated account |
+
+Client IP extraction accepts one syntactically valid `CF-Connecting-IP` value in staging/production. It does not parse or trust `X-Forwarded-For`, and Express `trust proxy` remains unset. Render documents that inbound web-service requests pass through Cloudflare; Cloudflare documents that `CF-Connecting-IP` is a single client-IP value added on edge-to-origin traffic. See [Render's edge-protection and client-IP guidance](https://render.com/articles/how-render-handles-ddos-attacks) and [Cloudflare's HTTP header reference](https://developers.cloudflare.com/fundamentals/reference/http-headers/). A separate controlled runtime check is still required before staging or production use; no request IP is logged.
+
+Bucket identifiers are HMAC-derived using a domain-separated key from the existing recovery-signing secret. The private counter table stores only the derived identifier, window start, count and expiry, not raw IP addresses, e-mail addresses, credentials, tokens or submitted content. RLS is enabled and Supabase Data API roles receive no table privileges. Expired rows are pruned opportunistically; the request path does not depend on cleanup succeeding.
+
+A database outage returns a neutral `503`; exceeding a configured bucket returns `429` with `Retry-After`. Login retains generic application responses; password recovery remains non-enumerating. The initial five-person pilot remains the only approved cohort while the separate native leaked-password warning and other release gates remain as recorded in #62/#118. `MESSAGING_ENABLED=false` remains in force; message limits in the table are implemented as a pre-enable safeguard, not approval to activate messaging.
+
+The project operator handles reports through the existing contact channel. For the controlled pilot, keep only a minimal private incident note: date, category, related account or listing identifier where needed, status and action taken. Do not record raw IP addresses, passwords, session/recovery tokens, recovery URLs, or message bodies. This manual process is not an in-app reporting or moderation feature.
+
 ## Implemented file upload & photo security
 
 Listing photo uploads pass through a multi-stage security pipeline:
