@@ -27,56 +27,67 @@ The Supabase connector's `list_migrations` endpoint returned seven entries from 
 
 Issue #278's recorded Render baseline identifies the staging service as `the-vinyl-drop-staging` in Frankfurt. The Render service inventory has not yet been refreshed in this preparation pass because the Render connector requires the owner to explicitly select a workspace before it can inspect or act on services. No Render service has been created or modified.
 
-## 2. Current cost comparison (USD)
+## 2. Free-first deployment decision
 
-These are published list prices checked on 31 October 2026, not an invoice or an account-specific quote. They exclude tax, usage overages, email-provider charges, domain renewal and optional backup add-ons.
+**Default target for the current five-person, low-growth phase: $0/month additional platform spend.** The paid scenarios below are optional future upgrades, not prerequisites for beginning a closed, small-cohort production deployment.
 
-### Render — production web service
+### Render Free
 
-| Plan | Resources | Published price | Assessment |
-| --- | --- | ---: | --- |
-| Free | 0.1 CPU / 512 MB RAM | $0/month | **Not suitable for production.** Render explicitly says not to use Free services for production; they sleep after 15 minutes idle and can take about a minute to wake. |
-| Starter (`0.5c-512mb`) | 0.5 CPU / 512 MB RAM | $7/month | Lowest paid always-on web service. Lowest-cost candidate; memory headroom for Node.js and Sharp image processing is limited. |
-| Standard (`1c-2g`) | 1 CPU / 2 GB RAM | $25/month | **Recommended starting point** for the Express app and image-processing workload; provides materially more memory headroom. |
+Render Free web services support custom domains and managed TLS certificates. The current official limits include:
+- 512 MB RAM and a shared workspace allowance of 750 Free instance hours per calendar month.
+- A service spins down after 15 minutes without inbound traffic; the next request can take about one minute while it starts.
+- No persistent disk, no SSH/shell access, no scaling beyond one instance, no service-level uptime SLA, and Render may restart the service.
+- Usage above the included outbound-bandwidth/build allowances can cause service suspension or additional charges depending on workspace billing configuration.
+- Render describes Free as suitable for testing/hobby use and explicitly says not to use it for production applications.
 
-Sources: [Render pricing](https://render.com/pricing), [Render compute plans](https://render.com/docs/compute-plans), [Render Free service limits](https://render.com/docs/free).
+The app uses Supabase for PostgreSQL and Storage, so it must not depend on the Render filesystem for durable listing photos or database files. Confirm actual image processing memory use and workspace-wide 750-hour consumption during the pilot.
 
-### Supabase — separate production project
+Source: [Render Free service limits](https://render.com/docs/free).
 
-The connected organization is currently on Free. The published Pro price is **$25/month**, including **$10/month in compute credits**. Each project has its own compute. A Micro project is approximately **$10/month** before credits.
+### Supabase Free
 
-Assuming staging and production both run one Micro compute in the same Pro organization:
+The connected Supabase organization currently has the Free plan and only one active project (the existing staging project). Supabase Free allows up to two active projects in total, so one separate production project can fit without upgrading the organization.
 
-| Component | Estimated monthly price |
-| --- | ---: |
-| Supabase Pro organization subscription | $25 |
-| Two Micro project computes | $20 |
-| Included monthly compute credits | -$10 |
-| **Estimated organization total** | **$35/month** |
+Current published Free-plan limits include:
+- 500 MB database per project, shared CPU and 500 MB RAM.
+- 1 GB file storage per project.
+- 5 GB egress and 5 GB cached egress.
+- Up to 50,000 monthly active users.
+- No downloadable managed database backups.
+- Projects with insufficient database activity over a seven-day window may be paused automatically. A few real database requests per day are usually enough to avoid pausing, but Supabase does not guarantee that.
+- A paused project can be restored; data and settings are retained.
 
-Pro includes daily database backups with seven-day retention, 8 GB database disk per project, 250 GB egress and 100 GB file storage. Usage above included limits can incur additional charges. Point-in-Time Recovery is a separate, substantial add-on (currently about $100/month for seven-day retention) and also requires at least Small compute; it is **not included** in the $35 estimate.
+For five people and slow growth this may be a reasonable starting point, provided usage is monitored and we make our own regular database exports. Storage object bytes need their own backup/export process; a database dump contains Storage metadata, not the actual photos.
 
-Important backup boundary: Supabase database backups do **not** include the actual object bytes in Storage. A database restore alone does not restore listing photos deleted after that backup. A separate Storage-object backup/export and restore procedure must be decided and tested.
+Sources: [Supabase pricing and limits](https://supabase.com/pricing), [Free project limits](https://supabase.com/docs/guides/platform/billing-on-supabase), [automatic pausing](https://supabase.com/docs/guides/platform/free-project-pausing), [database backups](https://supabase.com/docs/guides/platform/backups).
 
-Sources: [Supabase pricing](https://supabase.com/pricing), [compute usage and credits](https://supabase.com/docs/guides/platform/manage-your-usage/compute), [database backups and PITR pricing](https://supabase.com/docs/guides/platform/backups).
+### What $0 means in practice
 
-### Combined monthly scenarios
+| Component | Free-first choice | Additional monthly platform cost |
+| --- | --- | ---: |
+| Render application | Separate Render Free web service | $0 |
+| Supabase database/Auth/Storage | Second Free project in The Vinyl Drop organization | $0 |
+| Custom domain and TLS | Existing domain, Render-managed TLS | $0 platform charge |
+| **Total additional platform spend** | | **$0/month** |
 
-| Runtime choice | Render | Supabase (two Micro projects, Pro) | Combined estimate |
-| --- | ---: | ---: | ---: |
-| Lowest paid candidate | $7 | $35 | **$42/month** |
-| Recommended starting point | $25 | $35 | **$60/month** |
+This is subject to the documented Free quotas and the workspace's actual usage. The two Render Free services share the workspace's 750 instance-hour allowance; monitor that pool rather than assuming each service gets 750 hours.
 
-No resource is authorized by this comparison. The Supabase connector must return an organization-specific project cost quote before creation; no project should be created until Jaap has reviewed the exact quote and explicitly approved it. Likewise, no Render service should be created until Jaap approves the compute plan and recurring spend.
+### Optional paid upgrade path — only when evidence justifies it
+
+If cold starts, memory, storage, database size, uptime or backup requirements become a real problem, review current prices again at that time. The present published reference prices are:
+- Render Starter: $7/month (512 MB RAM); Render Standard: $25/month (2 GB RAM).
+- Supabase Pro organization: starts at $25/month; additional project compute and usage can add cost. Two Micro projects under Pro may be about $35/month total under current credit assumptions.
+
+These are upgrade options only. They are **not recommended or authorized now**. No upgrade, add-on or spend is to be created unless the owner explicitly approves an exact current quote.
 
 ## 3. Intended isolation model
 
 | Concern | Staging | Production |
 | --- | --- | --- |
-| Render service | Existing `the-vinyl-drop-staging` | New, separate service from `main` |
+| Render service | Existing `the-vinyl-drop-staging` | New, separate Free service from `main` (subject to documented Free-plan risk acceptance) |
 | Render region | Frankfurt | Frankfurt candidate; confirm on service creation |
 | App origin | `https://the-vinyl-drop-staging.onrender.com` | `https://thevinyldrop.nl` |
-| Supabase project | `xuhzhdjmgvqzjxijmksu` | New project with independent credentials |
+| Supabase project | `xuhzhdjmgvqzjxijmksu` | Second Free project with independent credentials |
 | Auth users | Existing staging users only | Start empty; do not copy pilot accounts |
 | Storage | Existing staging buckets and objects | New buckets/policies; no staging photo copy |
 | Secrets | Staging-only values | Fresh, independent production-only values |
@@ -163,4 +174,4 @@ Until separately authorized, this preparation does **not**:
 - create production users, copy staging data, or open public signup;
 - enable shared rate limits or messaging.
 
-These boundaries preserve the existing staging environment and avoid unapproved spend or production mutations.
+These boundaries preserve the existing staging environment and avoid unapproved spend or production mutations. The current target is the Free-first route; a paid upgrade is not needed unless later evidence demonstrates a specific limitation that matters to the service.
