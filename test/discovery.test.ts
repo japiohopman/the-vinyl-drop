@@ -497,9 +497,10 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('data-placeholder="/assets/vinyl-placeholder.svg"');
       expect(res.text).toContain('data-placeholder-alt="Default vinyl placeholder for Blue Train"');
       expect(res.text).toContain('this.onerror=null;');
-      expect(res.text).toContain('class="thumbnail-btn selected"');
-      expect(res.text).toContain('aria-current="true"');
-      expect(res.text).toContain('data-alt-text="Back sleeve"');
+      expect(res.text).toContain('data-listing-gallery-open');
+      expect(res.text).toContain('data-listing-gallery-dialog');
+      expect(res.text).toContain('data-photo-url="/assets/back-photo.webp"');
+      expect(res.text).toContain('data-photo-alt="Back sleeve"');
 
       // Verify the local fallback SVG asset exists on disk
       const fs = await import('fs');

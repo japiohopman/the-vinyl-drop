@@ -92,6 +92,7 @@ describe('Listing comments UX (#220)', () => {
   jest.setTimeout(30000);
 
   const stylesheet = readFullStylesheetSource();
+  const listingDetailPolishCss = fs.readFileSync(path.join(process.cwd(), 'public/css/listing-detail-polish.css'), 'utf8');
   const disclosureScript = fs.readFileSync(path.join(__dirname, '../public/js/listing-comments-disclosure.js'), 'utf8');
   const partialPath = path.join(__dirname, '../views/partials/comment-thread.ejs');
   const commentsViewPath = path.join(__dirname, '../views/listings/comments.ejs');
@@ -158,7 +159,7 @@ describe('Listing comments UX (#220)', () => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <base href="http://localhost/">
-  <style>${stylesheet}</style>
+  <style>${stylesheet}${listingDetailPolishCss}</style>
 </head>
 <body>
   ${header}

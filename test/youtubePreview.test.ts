@@ -306,8 +306,8 @@ describe('YouTube release preview (#226)', () => {
           return {
             viewportWidth: window.innerWidth,
             documentWidth: document.documentElement.scrollWidth,
-            coverWidth: box?.width ?? 0,
-            coverHeight: box?.height ?? 0,
+            coverWidth: cover?.offsetWidth ?? 0,
+            coverHeight: cover?.offsetHeight ?? 0,
             coverTransform: cover ? getComputedStyle(cover).transform : 'missing',
             bevelBorderTop: cover ? getComputedStyle(cover, '::after').borderTopWidth : 'missing',
             imageObjectFit: image ? getComputedStyle(image).objectFit : '',
@@ -456,8 +456,10 @@ describe('YouTube release preview (#226)', () => {
           return {
             documentWidth: document.documentElement.scrollWidth,
             viewportWidth: window.innerWidth,
-            sleeveWidth: sleeve?.width ?? 0,
-            sleeveHeight: sleeve?.height ?? 0,
+            sleeveWidth: document.querySelector('.primary-photo-wrapper') instanceof HTMLElement
+              ? (document.querySelector('.primary-photo-wrapper') as HTMLElement).offsetWidth : 0,
+            sleeveHeight: document.querySelector('.primary-photo-wrapper') instanceof HTMLElement
+              ? (document.querySelector('.primary-photo-wrapper') as HTMLElement).offsetHeight : 0,
             discRight: disc?.right ?? 0,
             sleeveRight: sleeve?.right ?? 0,
             stageRight: stage?.right ?? 0,
