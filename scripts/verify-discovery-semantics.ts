@@ -13,6 +13,7 @@ async function main() {
   const pglite = new PGlite();
   // Supabase provides this internal role; the isolated PGlite database does not.
   await pglite.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
+  await pglite.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
 
   // Bootstrap auth schema and auth.uid() stub for PGlite execution
   await pglite.exec(`
