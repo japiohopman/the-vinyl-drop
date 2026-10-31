@@ -20,8 +20,7 @@ $requiredFiles = @(
     'package.json',
     'drizzle.config.ts',
     'drizzle/meta/_journal.json',
-    'check-production-db-target.ps1',
-    '.env'
+    'check-production-db-target.ps1'
 )
 foreach ($file in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path (Get-Location) $file))) {
