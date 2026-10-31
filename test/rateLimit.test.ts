@@ -15,6 +15,7 @@ describe('shared rate-limit middleware', () => {
 
   afterEach(() => {
     setRateLimitStoreForTests(null);
+    jest.restoreAllMocks();
     jest.useRealTimers();
   });
 
