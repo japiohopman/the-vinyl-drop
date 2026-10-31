@@ -437,13 +437,13 @@
 
 .listing-detail-container .listing-artwork-stage {
   /* One shared camera angle keeps the sleeve and record in the same 3D scene. */
-  --record-stage-perspective: 760px;
-  --record-stage-yaw: 22deg;
-  --record-stage-roll: -3deg;
+  --record-stage-perspective: 900px;
+  --record-stage-yaw: 16deg;
+  --record-stage-roll: -2deg;
   position: relative;
   isolation: isolate;
   width: 100%;
-  aspect-ratio: 1.42 / 1;
+  aspect-ratio: 1.16 / 1;
   margin: 0 auto;
   overflow: visible;
 }
@@ -451,14 +451,14 @@
 .listing-detail-container .listing-vinyl-disc {
   position: absolute;
   z-index: 1;
-  top: 50%;
-  right: 4%;
+  top: 42%;
+  right: 0;
   display: block;
-  width: 69%;
+  width: 66%;
   height: auto;
   aspect-ratio: 1;
   object-fit: contain;
-  transform: translateY(-50%) perspective(var(--record-stage-perspective)) rotateY(var(--record-stage-yaw)) rotateZ(var(--record-stage-roll));
+  transform: translateY(-50%) perspective(var(--record-stage-perspective)) translateZ(-8px) rotateY(var(--record-stage-yaw)) rotateZ(var(--record-stage-roll));
   transform-origin: 8% 50%;
   filter: drop-shadow(2px 4px 2px rgba(21, 21, 21, .28));
   pointer-events: none;
@@ -467,7 +467,7 @@
 .listing-detail-container .listing-artwork-stage .primary-photo-wrapper {
   position: absolute;
   z-index: 2;
-  top: 50%;
+  top: 42%;
   left: 0;
   width: 69%;
   height: auto;
@@ -849,5 +849,258 @@
   .listing-detail-container .primary-photo-wrapper {
     scroll-behavior: auto;
     transition: none !important;
+  }
+}
+
+
+/* Issue #271 — owner refinement pass: mirror, condition overlay and compact actions. */
+.listing-detail-container .listing-artwork-stage {
+  aspect-ratio: 1.16 / 1;
+  overflow: visible;
+}
+
+.listing-detail-container .listing-vinyl-reflection-mask,
+.listing-detail-container .listing-sleeve-reflection-mask {
+  position: absolute;
+  z-index: 0;
+  height: 18%;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: .23;
+  filter: blur(.35px);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .9), rgba(0, 0, 0, 0) 94%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .9), rgba(0, 0, 0, 0) 94%);
+}
+
+.listing-detail-container .listing-vinyl-reflection-mask {
+  top: 80%;
+  left: 0;
+  right: 0;
+}
+
+.listing-detail-container .listing-sleeve-reflection-mask {
+  top: 82%;
+  left: 0;
+  right: 0;
+}
+
+.listing-detail-container .listing-vinyl-reflection,
+.listing-detail-container .listing-sleeve-reflection {
+  position: absolute;
+  top: 0;
+  display: block;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.listing-detail-container .listing-vinyl-reflection {
+  right: 0;
+  width: 66%;
+  transform: perspective(var(--record-stage-perspective)) translateZ(-8px) rotateY(var(--record-stage-yaw)) rotateZ(var(--record-stage-roll)) scaleY(-1);
+  transform-origin: 8% 0;
+}
+
+.listing-detail-container .listing-sleeve-reflection {
+  left: 0;
+  width: 69%;
+  transform: perspective(var(--record-stage-perspective)) rotateY(var(--record-stage-yaw)) rotateZ(var(--record-stage-roll)) scaleY(-1);
+  transform-origin: 8% 0;
+}
+
+.listing-detail-container .listing-condition-overlay {
+  position: absolute;
+  z-index: 3;
+  left: 8px;
+  bottom: 8px;
+  max-width: calc(100% - 16px);
+  box-sizing: border-box;
+  padding: 4px 6px;
+  border: 1px solid rgba(21, 21, 21, .75);
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 2px 2px 0 rgba(21, 21, 21, .25);
+  backdrop-filter: blur(4px);
+}
+
+.listing-detail-container .listing-condition-overlay .condition-badge-group {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  margin: 0;
+}
+
+.listing-detail-container .listing-condition-overlay .condition-badge {
+  min-height: 22px;
+  padding: 2px 5px;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.listing-detail-container .listing-condition-overlay .badge-type {
+  font-size: 10px;
+}
+
+.listing-detail-container .listing-condition-overlay .badge-grade {
+  font-size: 11px;
+}
+
+.listing-detail-container .listing-condition-notes {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+}
+
+.listing-detail-container .listing-price-display {
+  display: inline-flex;
+  flex: 0 0 128px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 128px;
+  min-width: 128px;
+  height: 64px;
+  min-height: 64px;
+  margin: 0;
+  padding: 0 18px;
+  gap: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  background: url('/assets/UI/price_tag.svg') center / 100% 100% no-repeat;
+}
+
+.listing-detail-container .listing-price-amount {
+  color: #211f1b;
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 4.2vw, 1.3rem);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.listing-detail-container .listing-status-badge {
+  display: none !important;
+}
+
+.listing-detail-container .listing-seller-byline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: fit-content;
+  margin: 0;
+  padding: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+}
+
+.listing-detail-container .listing-seller-label {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2xs);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.listing-detail-container .listing-seller-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 32px;
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.listing-detail-container .listing-music-preview {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.listing-detail-container .youtube-preview-load {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-white);
+  color: var(--color-ink);
+  box-shadow: 2px 2px 0 var(--color-ink);
+  cursor: pointer;
+}
+
+.listing-detail-container .youtube-preview-load .icon {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.listing-detail-container .youtube-preview-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0;
+  color: var(--color-ink-muted);
+  text-decoration: none;
+}
+
+.listing-detail-container .youtube-preview-fallback .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.listing-detail-container .youtube-preview-frame {
+  flex: 0 0 100%;
+  margin: var(--space-2) 0 0;
+}
+
+@media (max-width: 380px) {
+  .listing-detail-container .listing-condition-overlay {
+    left: 5px;
+    bottom: 5px;
+    padding: 3px 4px;
+  }
+
+  .listing-detail-container .listing-condition-overlay .condition-badge {
+    padding: 2px 4px;
+  }
+
+  .listing-detail-container .listing-price-display {
+    flex-basis: 120px;
+    width: 120px;
+    min-width: 120px;
+    height: 60px;
+    min-height: 60px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listing-detail-container .listing-vinyl-reflection,
+  .listing-detail-container .listing-sleeve-reflection {
+    filter: none;
   }
 }

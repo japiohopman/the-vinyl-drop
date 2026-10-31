@@ -63,11 +63,18 @@
   <div class="listing-detail-grid">
     <!-- Left Column: Photo Gallery -->
     <% const defaultAlt = `Album cover artwork for ${release.title} by ${release.artist}`; %>
+    <% const initialArtworkUrl = photos && photos.length > 0 && photos[0].publicUrl ? photos[0].publicUrl : ((release && release.coverArtUrl) ? release.coverArtUrl : '/assets/vinyl-placeholder.svg'); %>
     <% const secondaryFallbackUrl = (release && release.coverArtUrl) ? release.coverArtUrl : '/assets/vinyl-placeholder.svg'; %>
     <% const secondaryFallbackAlt = (release && release.coverArtUrl) ? `Catalog cover artwork for ${release.title}` : `Default vinyl placeholder for ${release.title}`; %>
     <% const placeholderAlt = `Default vinyl placeholder for ${release.title}`; %>
     <div class="listing-gallery-section">
       <div class="listing-artwork-stage" role="group" aria-label="Album sleeve with vinyl record">
+        <div class="listing-vinyl-reflection-mask" aria-hidden="true">
+          <img class="listing-vinyl-reflection" src="/assets/UI/LP_vinyl.webp" alt="" width="512" height="512" loading="eager" decoding="async">
+        </div>
+        <div class="listing-sleeve-reflection-mask" aria-hidden="true">
+          <img class="listing-sleeve-reflection" data-listing-sleeve-reflection src="<%= initialArtworkUrl %>" alt="" decoding="async">
+        </div>
         <img class="listing-vinyl-disc" src="/assets/UI/LP_vinyl.webp" alt="" aria-hidden="true" width="512" height="512" loading="eager" decoding="async">
       <div class="primary-photo-wrapper">
         <% if (photos && photos.length > 0) { %>
@@ -105,6 +112,9 @@
             onerror="if (typeof renderTerminalFallback === 'function') { renderTerminalFallback(this); } else { this.onerror=null; }"
           />
         <% } %>
+        <div class="listing-condition-overlay">
+          <%- include('../partials/condition-badge', { mediaCondition: physicalCopy.mediaCondition, sleeveCondition: physicalCopy.sleeveCondition, size: 'sm' }) %>
+        </div>
       </div>
 
 
@@ -181,11 +191,13 @@
           <% if (release.genre) { %><span>Genre: <strong><%= release.genre %></strong></span><% } %>
         </div>
       </div>
+      <% if (physicalCopy.notes) { %>
+        <p class="listing-condition-notes"><%= physicalCopy.notes %></p>
+      <% } %>
 
       <!-- Price & Status Bar -->
       <div class="price-status-card">
-        <div class="listing-price-display">
-          <%- include('../partials/icon', { name: 'price-tag', size: '1.25rem', ariaHidden: true }) %>
+        <div class="listing-price-display" aria-label="Listing price">
           <div class="listing-price-amount">
             <%= priceFormatted %>
           </div>
@@ -197,9 +209,7 @@
               Trade
             </span>
           <% } %>
-          <span class="listing-status-badge">
-            <%= listing.status %>
-          </span>
+
 
         </div>
       </div>
@@ -217,17 +227,6 @@
         </div>
       <% } %>
 
-      <!-- Condition Grades -->
-      <div class="condition-section">
-        <h3 class="listing-condition-heading">Condition</h3>
-        <%- include('../partials/condition-badge', { mediaCondition: physicalCopy.mediaCondition, sleeveCondition: physicalCopy.sleeveCondition, size: 'md' }) %>
-        <% if (physicalCopy.notes) { %>
-          <p class="listing-condition-notes">
-            Notes: "<%= physicalCopy.notes %>"
-          </p>
-        <% } %>
-      </div>
-
       <%- include('../partials/youtube-preview', { release }) %>
 
       <!-- Description -->
@@ -238,31 +237,9 @@
         </div>
       <% } %>
 
-      <!-- Seller Profile Summary Card -->
-      <div class="seller-card">
-        <div class="seller-card-identity">
-          <div class="seller-avatar">
-            <% if (seller.avatarUrl) { %>
-              <img src="<%= seller.avatarUrl %>" alt="<%= seller.displayName || seller.username %>'s avatar">
-            <% } else { %>
-              <span><%= (seller.displayName || seller.username).substring(0, 1).toUpperCase() %></span>
-            <% } %>
-          </div>
-
-          <div>
-            <div class="seller-card-name"><%= seller.displayName || seller.username %></div>
-            <div class="seller-card-username">@<%= seller.username %></div>
-            <% if (seller.location) { %>
-              <div class="seller-card-location"><%- include('../partials/icon', { name: 'position-marker', size: '0.875rem', ariaHidden: true }) %><span><%= seller.location %></span></div>
-            <% } %>
-          </div>
-        </div>
-
-        <div class="seller-card-action">
-          <a href="/profiles/<%= encodeURIComponent(seller.username) %>" class="btn btn-outline btn-sm">
-            View Seller Profile
-          </a>
-        </div>
+      <div class="listing-seller-byline">
+        <span class="listing-seller-label">Seller</span>
+        <a href="/profiles/<%= encodeURIComponent(seller.username) %>" class="listing-seller-link">View seller</a>
       </div>
 
       <% if (isSeller) { %>

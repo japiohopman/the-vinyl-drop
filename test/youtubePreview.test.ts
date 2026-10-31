@@ -153,9 +153,11 @@ describe('YouTube release preview (#226)', () => {
     expect(valid).toContain('data-youtube-preview-frame');
     expect(valid).toContain('data-youtube-preview-load');
     expect(valid).toContain('aria-label="Play YouTube preview for Sample Release"');
-    expect(valid).toContain('Play preview');
-    expect(valid).toContain('Pressing Play loads YouTube');
-    expect(valid).toContain('Open this preview on YouTube');
+    expect(valid).toContain('aria-description="Pressing Play loads YouTube and may share basic request and device information."');
+    expect(valid).toContain('icon-sound-on');
+    expect(valid).toContain('aria-label="Open this preview on YouTube"');
+    expect(valid).not.toContain('Listen to this release');
+    expect(valid).not.toContain('Play preview</span>');
     expect(valid).not.toContain('<iframe');
     expect(valid).not.toContain('youtube-nocookie.com/embed/');
 
@@ -166,7 +168,7 @@ describe('YouTube release preview (#226)', () => {
   it('places the player after listing details and before comments, and provides shared-release editing and privacy disclosure', () => {
     const playerInclude = detailTemplate.indexOf("<%- include('../partials/youtube-preview', { release }) %>");
     const comments = detailTemplate.indexOf('<section class="listing-comments-entry"');
-    expect(playerInclude).toBeGreaterThan(detailTemplate.indexOf('class="condition-section"'));
+    expect(playerInclude).toBeGreaterThan(detailTemplate.indexOf('class="listing-condition-overlay"'));
     expect(playerInclude).toBeLessThan(detailTemplate.indexOf('class="description-section"'));
     expect(comments).toBeGreaterThan(playerInclude);
     expect(routeSource).toContain("router.post('/:id/release-preview', requireAuth, validateSameOrigin, postUpdateReleaseYouTubePreview);");
@@ -297,7 +299,7 @@ describe('YouTube release preview (#226)', () => {
           const title = document.querySelector('.listing-title')?.getBoundingClientRect();
           const artist = document.querySelector('.listing-artist')?.getBoundingClientRect();
           const price = document.querySelector('.listing-price-amount')?.getBoundingClientRect();
-          const condition = document.querySelector('.condition-section')?.getBoundingClientRect();
+          const condition = document.querySelector('.listing-condition-overlay')?.getBoundingClientRect();
           const primaryAction = document.querySelector('.listing-favorite-form .btn, .message-seller-card .btn')?.getBoundingClientRect();
           const commentsLink = window.innerWidth < 768
             ? document.querySelector('.listing-comments-entry-link')?.getBoundingClientRect()
@@ -317,7 +319,7 @@ describe('YouTube release preview (#226)', () => {
             primaryActionBottom: primaryAction?.bottom ?? Number.POSITIVE_INFINITY,
             decisionContentBottom: Math.max(title?.bottom ?? 0, artist?.bottom ?? 0, price?.bottom ?? 0, condition?.bottom ?? 0, primaryAction?.bottom ?? 0),
             favoriteButtonVisible: Boolean(document.querySelector('.listing-favorite-form .btn')?.getBoundingClientRect().height),
-            sellerLinkVisible: Boolean(document.querySelector('.seller-card-action .btn')?.getBoundingClientRect().height),
+            sellerLinkVisible: Boolean(document.querySelector('.listing-seller-link')?.getBoundingClientRect().height),
             commentsEntryVisible: Boolean(commentsLink?.height),
           };
         });
@@ -370,7 +372,15 @@ describe('YouTube release preview (#226)', () => {
     }, { filename: detailPath });
 
     expect(rendered).toContain('src="/assets/UI/LP_vinyl.webp"');
-    expect(rendered).toContain('class="icon icon-price-tag"');
+    expect(rendered).toContain('class="listing-condition-overlay"');
+    expect(rendered).toContain('data-listing-sleeve-reflection');
+    expect(rendered).toContain('class="listing-vinyl-reflection"');
+    expect(rendered).toContain('class="listing-seller-link">View seller</a>');
+    expect(rendered).not.toContain('class="listing-status-badge"');
+    expect(rendered).not.toContain('class="seller-card"');
+    expect(rendered).not.toContain('class="icon icon-price-tag"');
+    expect(listingDetailPolishCss).toContain("url('/assets/UI/price_tag.svg')");
+    expect(listingDetailPolishCss).toContain('scaleY(-1)');
     expect(rendered).toContain('data-listing-gallery-open');
     expect(rendered).toContain('aria-label="Save to favorites"');
     expect(rendered).not.toContain('class="thumbnail-list"');

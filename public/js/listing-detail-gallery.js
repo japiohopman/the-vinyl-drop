@@ -4,6 +4,7 @@
   if (!dialog || !opener || typeof dialog.showModal !== 'function') return;
 
   const heroImage = document.getElementById('main-photo-img');
+  const sleeveReflection = document.querySelector('[data-listing-sleeve-reflection]');
   const activeImage = dialog.querySelector('[data-listing-gallery-active-image]');
   const counter = dialog.querySelector('[data-listing-gallery-counter]');
   const closeButton = dialog.querySelector('[data-listing-gallery-close]');
@@ -15,6 +16,19 @@
   })).filter((photo) => photo.url);
 
   if (!photos.length || !activeImage || !counter || !closeButton || !previousButton || !nextButton) return;
+
+  if (heroImage && sleeveReflection) {
+    heroImage.addEventListener('load', () => {
+      const activeSource = heroImage.getAttribute('src');
+      if (activeSource && sleeveReflection.getAttribute('src') !== activeSource) {
+        sleeveReflection.style.visibility = 'visible';
+        sleeveReflection.src = activeSource;
+      }
+    });
+    sleeveReflection.onerror = () => {
+      sleeveReflection.style.visibility = 'hidden';
+    };
+  }
 
   let activeIndex = 0;
 
@@ -43,6 +57,10 @@
       }
       heroImage.src = photo.url;
       heroImage.alt = photo.alt;
+      if (sleeveReflection) {
+        sleeveReflection.style.visibility = 'visible';
+        sleeveReflection.src = photo.url;
+      }
     }
   }
 
