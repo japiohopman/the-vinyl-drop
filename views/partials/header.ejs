@@ -51,7 +51,20 @@
       </span>
     </a>
     <nav class="mobile-context-header" aria-label="Page navigation">
-      <span class="mobile-context-heading"><%= mobileSectionLabel %></span>
+      <% if (isListingDetailPage && typeof release !== 'undefined' && release) { %>
+        <span
+          class="mobile-context-heading mobile-context-record-heading"
+          aria-label="<%= release.artist %>, <%= release.title %><%= release.releaseYear ? ', ' + release.releaseYear : '' %>"
+        >
+          <span class="mobile-context-record-artist"><%= release.artist %></span>
+          <span class="mobile-context-record-title"><%= release.title %></span>
+          <% if (release.releaseYear) { %>
+            <span class="mobile-context-record-year"><%= release.releaseYear %></span>
+          <% } %>
+        </span>
+      <% } else { %>
+        <span class="mobile-context-heading"><%= mobileSectionLabel %></span>
+      <% } %>
       <% if (isDigRoute && digItemCount > 0) { %>
         <span class="mobile-dig-position" data-dig-header-position aria-live="polite" aria-atomic="true">1 of <%= digItemCount %></span>
       <% } else if (isAboutPage) { %>

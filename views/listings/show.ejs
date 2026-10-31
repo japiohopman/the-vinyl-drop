@@ -63,10 +63,19 @@
   <div class="listing-detail-grid">
     <!-- Left Column: Photo Gallery -->
     <% const defaultAlt = `Album cover artwork for ${release.title} by ${release.artist}`; %>
+    <% const initialArtworkUrl = photos && photos.length > 0 && photos[0].publicUrl ? photos[0].publicUrl : ((release && release.coverArtUrl) ? release.coverArtUrl : '/assets/vinyl-placeholder.svg'); %>
     <% const secondaryFallbackUrl = (release && release.coverArtUrl) ? release.coverArtUrl : '/assets/vinyl-placeholder.svg'; %>
     <% const secondaryFallbackAlt = (release && release.coverArtUrl) ? `Catalog cover artwork for ${release.title}` : `Default vinyl placeholder for ${release.title}`; %>
     <% const placeholderAlt = `Default vinyl placeholder for ${release.title}`; %>
     <div class="listing-gallery-section">
+      <div class="listing-artwork-stage" role="group" aria-label="Album sleeve with vinyl record">
+        <div class="listing-vinyl-reflection-mask" aria-hidden="true">
+          <img class="listing-vinyl-reflection" src="/assets/UI/LP_vinyl.webp" alt="" width="512" height="512" loading="eager" decoding="async">
+        </div>
+        <div class="listing-sleeve-reflection-mask" aria-hidden="true">
+          <img class="listing-sleeve-reflection" data-listing-sleeve-reflection src="<%= initialArtworkUrl %>" alt="" decoding="async">
+        </div>
+        <img class="listing-vinyl-disc" src="/assets/UI/LP_vinyl.webp" alt="" aria-hidden="true" width="512" height="512" loading="eager" decoding="async">
       <div class="primary-photo-wrapper">
         <% if (photos && photos.length > 0) { %>
           <img
@@ -103,50 +112,77 @@
             onerror="if (typeof renderTerminalFallback === 'function') { renderTerminalFallback(this); } else { this.onerror=null; }"
           />
         <% } %>
+        <div class="listing-condition-overlay">
+          <%- include('../partials/condition-badge', { mediaCondition: physicalCopy.mediaCondition, sleeveCondition: physicalCopy.sleeveCondition, size: 'sm' }) %>
+        </div>
+      </div>
+
+
+        <% if (currentUser && listing.status === 'published') { %>
+          <div class="listing-artwork-favorite">
+            <% if (typeof isFavorited !== 'undefined' && isFavorited) { %>
+              <form action="/listings/<%= listing.id %>/unfavorite" method="POST" class="listing-favorite-form">
+                <button type="submit" class="btn listing-favorite-icon is-saved" aria-label="Remove from favorites" aria-pressed="true" title="Remove from favorites">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.9l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.3 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg>
+                </button>
+              </form>
+            <% } else { %>
+              <form action="/listings/<%= listing.id %>/favorite" method="POST" class="listing-favorite-form">
+                <button type="submit" class="btn listing-favorite-icon" aria-label="Save to favorites" aria-pressed="false" title="Save to favorites">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.8 4.8a5.5 5.5 0 0 0-7.8 0L12 5.9l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.3 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg>
+                </button>
+              </form>
+            <% } %>
+          </div>
+        <% } %>
+        <% if (photos && photos.length > 1) { %>
+          <button type="button" class="listing-photos-trigger" data-listing-gallery-open aria-haspopup="dialog" aria-controls="listing-photo-gallery" aria-label="Open photo gallery, <%= photos.length %> photos">
+            <%- include('../partials/icon', { name: 'photo-camera', size: '1rem', ariaHidden: true }) %>
+            <span>Photos</span>
+            <span class="listing-photos-count"><%= photos.length %></span>
+          </button>
+        <% } %>
+      </div>
+
+      <div class="listing-artwork-sidecar" aria-label="Listing price and music preview">
+        <div class="listing-artwork-price-line">
+          <div class="listing-price-display" aria-label="Listing price">
+            <span class="listing-price-amount"><%= priceFormatted %></span>
+          </div>
+          <% if (listing.tradeAvailable) { %>
+            <span class="listing-trade-badge">Trade</span>
+          <% } %>
+        </div>
+        <%- include('../partials/youtube-preview', { release }) %>
       </div>
 
       <% if (photos && photos.length > 1) { %>
-        <div class="thumbnail-list">
-          <% photos.forEach(function(photo, index) { %>
-            <% const thumbAlt = photo.altText || `Item photo ${index + 1} for ${release.title}`; %>
-            <% const thumbUnavailableAlt = `Item photo ${index + 1} unavailable for ${release.title}`; %>
-            <button
-              type="button"
-              class="thumbnail-btn <%= index === 0 ? 'selected' : '' %>"
-              aria-current="<%= index === 0 ? 'true' : 'false' %>"
-              aria-label="<%= thumbAlt %>"
-              data-public-url="<%= photo.publicUrl %>"
-              data-alt-text="<%= thumbAlt %>"
-              data-unavailable-alt="<%= thumbUnavailableAlt %>"
-              onclick="
-                const mainImg = document.getElementById('main-photo-img');
-                if (mainImg) {
-                  mainImg.style.display = 'block';
-                  const wrapper = mainImg.closest('.primary-photo-wrapper') || mainImg.parentElement;
-                  if (wrapper) { const badge = wrapper.querySelector('.terminal-fallback-badge'); if (badge) badge.remove(); }
-                  if (typeof handleImageFallback === 'function') { mainImg.onerror = function() { handleImageFallback(this); }; }
-                  mainImg.src = this.getAttribute('data-public-url');
-                  mainImg.alt = this.getAttribute('data-alt-text');
-                }
-                document.querySelectorAll('.thumbnail-btn').forEach(btn => { btn.classList.remove('selected'); btn.setAttribute('aria-current', 'false'); });
-                this.classList.add('selected');
-                this.setAttribute('aria-current', 'true');
-              "
-
-            >
-              <img
-                src="<%= photo.publicUrl %>"
-                alt="<%= thumbAlt %>"
-                class="thumbnail-image"
-                data-placeholder="/assets/vinyl-placeholder.svg"
-                data-unavailable-alt="<%= thumbUnavailableAlt %>"
-                onerror="this.onerror=null; this.src=this.getAttribute('data-placeholder') || '/assets/vinyl-placeholder.svg'; const unAv=this.getAttribute('data-unavailable-alt'); if (unAv) { this.alt=unAv; if (this.parentElement && this.parentElement.tagName==='BUTTON') this.parentElement.setAttribute('aria-label', unAv); }"
-              >
-            </button>
-          <% }); %>
-        </div>
+        <dialog class="listing-gallery-dialog" id="listing-photo-gallery" data-listing-gallery-dialog aria-labelledby="listing-gallery-title">
+          <div class="listing-gallery-dialog-inner">
+            <header class="listing-gallery-dialog-header">
+              <h2 id="listing-gallery-title">Listing photos</h2>
+              <button type="button" class="listing-gallery-close" data-listing-gallery-close aria-label="Close photo gallery">×</button>
+            </header>
+            <div class="listing-gallery-viewer">
+              <button type="button" class="listing-gallery-nav" data-listing-gallery-previous aria-label="Previous photo">←</button>
+              <figure class="listing-gallery-current">
+                <img data-listing-gallery-active-image alt="" decoding="async">
+                <figcaption data-listing-gallery-counter aria-live="polite">1 / <%= photos.length %></figcaption>
+              </figure>
+              <button type="button" class="listing-gallery-nav" data-listing-gallery-next aria-label="Next photo">→</button>
+            </div>
+            <div class="listing-gallery-photo-data" hidden>
+              <% photos.forEach(function(photo, index) { %>
+                <% const galleryAlt = photo.altText || `Item photo ${index + 1} for ${release.title}`; %>
+                <span data-listing-gallery-photo data-photo-url="<%= photo.publicUrl %>" data-photo-alt="<%= galleryAlt %>"></span>
+              <% }); %>
+            </div>
+          </div>
+        </dialog>
       <% } %>
     </div>
+
+    <script src="/js/listing-detail-gallery.js" defer></script>
 
     <!-- Right Column: Details & Actions -->
     <div class="listing-info-section">
@@ -167,42 +203,9 @@
           <% if (release.genre) { %><span>Genre: <strong><%= release.genre %></strong></span><% } %>
         </div>
       </div>
-
-      <!-- Price & Status Bar -->
-      <div class="price-status-card">
-        <div>
-          <div class="listing-price-amount">
-            <%= priceFormatted %>
-          </div>
-        </div>
-
-        <div class="listing-status-actions">
-          <% if (listing.tradeAvailable) { %>
-            <span class="listing-trade-badge">
-              Trade
-            </span>
-          <% } %>
-          <span class="listing-status-badge">
-            <%= listing.status %>
-          </span>
-
-          <% if (currentUser && listing.status === 'published') { %>
-            <% if (typeof isFavorited !== 'undefined' && isFavorited) { %>
-              <form action="/listings/<%= listing.id %>/unfavorite" method="POST" class="listing-favorite-form">
-                <button type="submit" class="btn btn-outline btn-sm" aria-label="Remove from favorites">
-                  ❤️ Saved
-                </button>
-              </form>
-            <% } else { %>
-              <form action="/listings/<%= listing.id %>/favorite" method="POST" class="listing-favorite-form">
-                <button type="submit" class="btn btn-primary btn-sm" aria-label="Save to favorites">
-                  🤍 Favorite
-                </button>
-              </form>
-            <% } %>
-          <% } %>
-        </div>
-      </div>
+      <% if (physicalCopy.notes) { %>
+        <p class="listing-condition-notes"><%= physicalCopy.notes %></p>
+      <% } %>
 
       <!-- Message Seller Action Button for Non-Seller when Messaging Enabled -->
       <% if (currentUser && !isSeller && listing.status === 'published' && typeof messagingEnabled !== 'undefined' && messagingEnabled) { %>
@@ -217,19 +220,6 @@
         </div>
       <% } %>
 
-      <!-- Condition Grades -->
-      <div class="condition-section">
-        <h3 class="listing-condition-heading">Condition</h3>
-        <%- include('../partials/condition-badge', { mediaCondition: physicalCopy.mediaCondition, sleeveCondition: physicalCopy.sleeveCondition, size: 'md' }) %>
-        <% if (physicalCopy.notes) { %>
-          <p class="listing-condition-notes">
-            Notes: "<%= physicalCopy.notes %>"
-          </p>
-        <% } %>
-      </div>
-
-      <%- include('../partials/youtube-preview', { release }) %>
-
       <!-- Description -->
       <% if (listing.description) { %>
         <div class="description-section">
@@ -238,31 +228,9 @@
         </div>
       <% } %>
 
-      <!-- Seller Profile Summary Card -->
-      <div class="seller-card">
-        <div class="seller-card-identity">
-          <div class="seller-avatar">
-            <% if (seller.avatarUrl) { %>
-              <img src="<%= seller.avatarUrl %>" alt="<%= seller.displayName || seller.username %>'s avatar">
-            <% } else { %>
-              <span><%= (seller.displayName || seller.username).substring(0, 1).toUpperCase() %></span>
-            <% } %>
-          </div>
-
-          <div>
-            <div class="seller-card-name"><%= seller.displayName || seller.username %></div>
-            <div class="seller-card-username">@<%= seller.username %></div>
-            <% if (seller.location) { %>
-              <div class="seller-card-location"><%- include('../partials/icon', { name: 'position-marker', size: '0.875rem', ariaHidden: true }) %><span><%= seller.location %></span></div>
-            <% } %>
-          </div>
-        </div>
-
-        <div class="seller-card-action">
-          <a href="/profiles/<%= encodeURIComponent(seller.username) %>" class="btn btn-outline btn-sm">
-            View Seller Profile
-          </a>
-        </div>
+      <div class="listing-seller-byline">
+        <span class="listing-seller-label">Seller</span>
+        <a href="/profiles/<%= encodeURIComponent(seller.username) %>" class="listing-seller-link">View seller</a>
       </div>
 
       <% if (isSeller) { %>

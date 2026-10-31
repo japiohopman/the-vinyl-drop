@@ -165,7 +165,8 @@ describe('Compact mobile back navigation', () => {
     expect(digView).toContain('form action="/dig" method="GET" class="dig-crate-filter-form"');
     expect(listingDetailView).toContain('href="/dig"');
     expect(listingDetailView).toContain('aria-label="Back to Dig results"');
-    expect(listingDetailView).toContain('Condition</h3>');
+    expect(listingDetailView).toContain('class="listing-condition-overlay"');
+    expect(listingDetailView).toContain("include('../partials/condition-badge'");
     expect(listingDetailView).toContain('Description</h3>');
     expect(listingDetailView).not.toContain('Listing Price');
     expect(listingDetailView).not.toContain('Condition Grading');

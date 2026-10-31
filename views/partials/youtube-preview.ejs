@@ -1,26 +1,20 @@
 <% const previewVideoId = release && typeof release.youtubeVideoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(release.youtubeVideoId) ? release.youtubeVideoId : null; %>
 <% if (previewVideoId) { %>
-  <section class="listing-music-preview" aria-labelledby="listingMusicPreviewTitle" data-youtube-preview data-video-id="<%= previewVideoId %>" data-release-title="<%= release.title %>">
-    <div class="youtube-preview-heading">
-      <div class="youtube-preview-heading-copy">
-        <p class="youtube-preview-kicker">OPTIONAL LISTENING</p>
-        <h2 id="listingMusicPreviewTitle">Listen to this release</h2>
-        <p class="listing-music-preview-intro">A preview chosen by the seller. Press Play to load it.</p>
-      </div>
-      <button
-        type="button"
-        class="btn btn-outline btn-sm youtube-preview-load"
-        data-youtube-preview-load
-        aria-controls="youtube-preview-frame"
-        aria-label="Play YouTube preview for <%= release.title %>"
-      >
-        <span class="youtube-preview-play-mark" aria-hidden="true"></span>
-        <span>Play preview</span>
-      </button>
-    </div>
-    <p class="youtube-preview-privacy-note">Pressing Play loads YouTube and may share basic request and device information. Scrolling past this tile does not contact YouTube.</p>
+  <section class="listing-music-preview" data-youtube-preview data-video-id="<%= previewVideoId %>" data-release-title="<%= release.title %>" aria-label="Release listening preview">
+    <button
+      type="button"
+      class="btn youtube-preview-load"
+      data-youtube-preview-load
+      aria-controls="youtube-preview-frame"
+      aria-label="Play YouTube preview for <%= release.title %>"
+      aria-description="Pressing Play loads YouTube and may share basic request and device information."
+    >
+      <span class="youtube-preview-play-glyph" aria-hidden="true"></span>
+    </button>
+    <a class="youtube-preview-fallback" href="<%= 'https://www.youtube.com/watch?v=' + encodeURIComponent(previewVideoId) %>" target="_blank" rel="noopener noreferrer" aria-label="Open this preview on YouTube">
+      <%- include('../partials/icon', { name: 'plain-arrow', size: '1rem', ariaHidden: true }) %>
+    </a>
     <div class="youtube-preview-frame" id="youtube-preview-frame" data-youtube-preview-frame hidden></div>
-    <p class="youtube-preview-fallback">Can't play here or embedding is disabled? <a href="<%= 'https://www.youtube.com/watch?v=' + encodeURIComponent(previewVideoId) %>" target="_blank" rel="noopener noreferrer">Open this preview on YouTube</a>.</p>
   </section>
   <script src="/js/youtube-preview.js" defer></script>
 <% } %>

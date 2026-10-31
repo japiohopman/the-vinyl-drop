@@ -148,14 +148,20 @@ describe('YouTube release preview (#226)', () => {
   });
 
   it('renders a click-to-load preview only for a valid release video ID and omits it when missing/invalid', () => {
-    const valid = ejs.render(partial, { release: { id: releaseId, title: 'Sample Release', youtubeVideoId: validId } });
+    const valid = ejs.render(partial, {
+      release: { id: releaseId, title: 'Sample Release', youtubeVideoId: validId },
+      getIconSvg: (name: string) => '<svg class="icon icon-' + name + '" aria-hidden="true"></svg>',
+    }, { filename: partialPath });
     expect(valid).toContain('data-youtube-preview');
     expect(valid).toContain('data-youtube-preview-frame');
     expect(valid).toContain('data-youtube-preview-load');
     expect(valid).toContain('aria-label="Play YouTube preview for Sample Release"');
-    expect(valid).toContain('Play preview');
-    expect(valid).toContain('Pressing Play loads YouTube');
-    expect(valid).toContain('Open this preview on YouTube');
+    expect(valid).toContain('aria-description="Pressing Play loads YouTube and may share basic request and device information."');
+    expect(valid).toContain('youtube-preview-play-glyph');
+    expect(valid).not.toContain('icon-sound-on');
+    expect(valid).toContain('aria-label="Open this preview on YouTube"');
+    expect(valid).not.toContain('Listen to this release');
+    expect(valid).not.toContain('Play preview</span>');
     expect(valid).not.toContain('<iframe');
     expect(valid).not.toContain('youtube-nocookie.com/embed/');
 
@@ -166,7 +172,8 @@ describe('YouTube release preview (#226)', () => {
   it('places the player after listing details and before comments, and provides shared-release editing and privacy disclosure', () => {
     const playerInclude = detailTemplate.indexOf("<%- include('../partials/youtube-preview', { release }) %>");
     const comments = detailTemplate.indexOf('<section class="listing-comments-entry"');
-    expect(playerInclude).toBeGreaterThan(detailTemplate.indexOf('class="condition-section"'));
+    expect(playerInclude).toBeGreaterThan(detailTemplate.indexOf('class="listing-artwork-price-line"'));
+    expect(playerInclude).toBeLessThan(detailTemplate.indexOf('class="listing-info-section"'));
     expect(playerInclude).toBeLessThan(detailTemplate.indexOf('class="description-section"'));
     expect(comments).toBeGreaterThan(playerInclude);
     expect(routeSource).toContain("router.post('/:id/release-preview', requireAuth, validateSameOrigin, postUpdateReleaseYouTubePreview);");
@@ -188,7 +195,8 @@ describe('YouTube release preview (#226)', () => {
       const playerCss = stylesheet.slice(start, end) + listingDetailPolishCss;
       const renderedPartial = ejs.render(partial, {
         release: { id: releaseId, title: 'Sample Release', youtubeVideoId: validId },
-      }).replace('<script src="/js/youtube-preview.js" defer></script>', '');
+        getIconSvg: (name: string) => '<svg class="icon icon-' + name + '" aria-hidden="true"></svg>',
+      }, { filename: partialPath }).replace('<script src="/js/youtube-preview.js" defer></script>', '');
 
       for (const width of [320, 360, 390, 430, 768, 1280]) {
         const page = await browser.newPage({ viewport: { width, height: 900 } });
@@ -205,7 +213,7 @@ describe('YouTube release preview (#226)', () => {
         expect(await page.locator('iframe').count()).toBe(0);
         expect(externalRequests).toHaveLength(0);
         expect(await page.locator('[data-youtube-preview-frame]').isHidden()).toBe(true);
-        expect(await page.locator('[data-youtube-preview] .youtube-preview-fallback a').isVisible()).toBe(true);
+        expect(await page.locator('[data-youtube-preview] .youtube-preview-fallback').isVisible()).toBe(true);
 
         await page.evaluate(() => window.scrollTo(0, 900));
         await page.waitForTimeout(50);
@@ -228,7 +236,7 @@ describe('YouTube release preview (#226)', () => {
         expect(bounds!.width).toBeGreaterThanOrEqual(200);
         expect(bounds!.height).toBeGreaterThanOrEqual(200);
         expect(await loadButton.isHidden()).toBe(true);
-        expect(await page.locator('[data-youtube-preview] .youtube-preview-fallback a').isVisible()).toBe(true);
+        expect(await page.locator('[data-youtube-preview] .youtube-preview-fallback').isVisible()).toBe(true);
 
         await loadButton.dispatchEvent('click');
         expect(await page.locator('iframe').count()).toBe(1);
@@ -276,7 +284,9 @@ describe('YouTube release preview (#226)', () => {
       submittedContent: '',
       getIconSvg: () => '<svg aria-hidden="true" viewBox="0 0 24 24"></svg>',
     }, { filename: detailPath });
-    const body = renderedDetail.replace('<script src="/js/youtube-preview.js" defer></script>', '');
+    const body = renderedDetail
+      .replace('<script src="/js/youtube-preview.js" defer></script>', '')
+      .replace('<script src="/js/listing-detail-gallery.js" defer></script>', '');
 
     const browser: Browser = await chromium.launch({ headless: true });
     try {
@@ -292,11 +302,10 @@ describe('YouTube release preview (#226)', () => {
         const measurements = await page.evaluate(() => {
           const cover = document.querySelector('.primary-photo-wrapper');
           const image = document.querySelector('.listing-main-photo');
-          const box = cover?.getBoundingClientRect();
           const title = document.querySelector('.listing-title')?.getBoundingClientRect();
           const artist = document.querySelector('.listing-artist')?.getBoundingClientRect();
           const price = document.querySelector('.listing-price-amount')?.getBoundingClientRect();
-          const condition = document.querySelector('.condition-section')?.getBoundingClientRect();
+          const condition = document.querySelector('.listing-condition-overlay')?.getBoundingClientRect();
           const primaryAction = document.querySelector('.listing-favorite-form .btn, .message-seller-card .btn')?.getBoundingClientRect();
           const commentsLink = window.innerWidth < 768
             ? document.querySelector('.listing-comments-entry-link')?.getBoundingClientRect()
@@ -304,8 +313,8 @@ describe('YouTube release preview (#226)', () => {
           return {
             viewportWidth: window.innerWidth,
             documentWidth: document.documentElement.scrollWidth,
-            coverWidth: box?.width ?? 0,
-            coverHeight: box?.height ?? 0,
+            coverWidth: cover instanceof HTMLElement ? cover.offsetWidth : 0,
+            coverHeight: cover instanceof HTMLElement ? cover.offsetHeight : 0,
             coverTransform: cover ? getComputedStyle(cover).transform : 'missing',
             bevelBorderTop: cover ? getComputedStyle(cover, '::after').borderTopWidth : 'missing',
             imageObjectFit: image ? getComputedStyle(image).objectFit : '',
@@ -316,7 +325,7 @@ describe('YouTube release preview (#226)', () => {
             primaryActionBottom: primaryAction?.bottom ?? Number.POSITIVE_INFINITY,
             decisionContentBottom: Math.max(title?.bottom ?? 0, artist?.bottom ?? 0, price?.bottom ?? 0, condition?.bottom ?? 0, primaryAction?.bottom ?? 0),
             favoriteButtonVisible: Boolean(document.querySelector('.listing-favorite-form .btn')?.getBoundingClientRect().height),
-            sellerLinkVisible: Boolean(document.querySelector('.seller-card-action .btn')?.getBoundingClientRect().height),
+            sellerLinkVisible: Boolean(document.querySelector('.listing-seller-link')?.getBoundingClientRect().height),
             commentsEntryVisible: Boolean(commentsLink?.height),
           };
         });
@@ -345,9 +354,169 @@ describe('YouTube release preview (#226)', () => {
     }
   });
 
+  it('places the listing price and Play control alongside the album artwork', () => {
+    const price = detailTemplate.indexOf('class="listing-artwork-price-line"');
+    const player = detailTemplate.indexOf("include('../partials/youtube-preview', { release })");
+    const details = detailTemplate.indexOf('class="listing-info-section"');
+    expect(price).toBeGreaterThan(detailTemplate.indexOf('class="listing-artwork-stage"'));
+    expect(player).toBeGreaterThan(price);
+    expect(player).toBeLessThan(details);
+    expect(detailTemplate).not.toContain('class="price-status-card"');
+  });
+
+  it('renders a compact sleeve-and-disc hero, defers gallery images, and moves Favorite into an icon control', async () => {
+    const detailPath = path.join(process.cwd(), 'views/listings/show.ejs');
+    const rendered = await ejs.renderFile(detailPath, {
+      listing: { id: listingId, status: 'published', tradeAvailable: false, description: '' },
+      release: { id: releaseId, title: 'Sample Release', artist: 'Sample Artist', coverArtUrl: null, youtubeVideoId: null },
+      photos: [
+        { publicUrl: 'https://images.example/front.jpg', altText: 'Front cover' },
+        { publicUrl: 'https://images.example/back.jpg', altText: 'Back cover' },
+      ],
+      priceFormatted: '€12.00',
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
+      seller: { username: 'sample-seller', displayName: 'Sample Seller', location: 'Amsterdam', avatarUrl: null },
+      currentUser: { id: 'buyer-youtube-226', username: 'sample-buyer' },
+      isSeller: false,
+      isFavorited: false,
+      messagingEnabled: false,
+      comments: [],
+      commentsInitiallyOpen: false,
+      commentError: null,
+      submittedContent: '',
+      getIconSvg: (name: string) => '<svg class="icon icon-' + name + '" aria-hidden="true" viewBox="0 0 24 24"></svg>',
+    }, { filename: detailPath });
+
+    expect(rendered).toContain('src="/assets/UI/LP_vinyl.webp"');
+    expect(rendered).toContain('class="listing-condition-overlay"');
+    expect(rendered).toContain('data-listing-sleeve-reflection');
+    expect(rendered).toContain('class="listing-vinyl-reflection"');
+    expect(rendered).toContain('class="listing-vinyl-reflection-mask"');
+    expect(rendered).toContain('class="listing-sleeve-reflection-mask"');
+    expect(rendered).toContain('class="listing-seller-link">View seller</a>');
+    expect(rendered).not.toContain('class="listing-status-badge"');
+    expect(rendered).not.toContain('class="seller-card"');
+    expect(rendered).not.toContain('class="icon icon-price-tag"');
+    expect(listingDetailPolishCss).toContain("url('/assets/UI/price_tag.svg')");
+    expect(listingDetailPolishCss).toContain('scaleY(-1)');
+    expect(rendered).toContain('data-listing-gallery-open');
+    expect(rendered).toContain('aria-label="Save to favorites"');
+    expect(rendered).not.toContain('class="thumbnail-list"');
+    expect(rendered).not.toContain('<img src="https://images.example/back.jpg"');
+    expect(rendered).toContain('data-photo-url="https://images.example/back.jpg"');
+  });
+
+  it('opens the listing photo dialog, supports previous/next and Escape, and returns focus to Photos', async () => {
+    const detailPath = path.join(process.cwd(), 'views/listings/show.ejs');
+    const rendered = await ejs.renderFile(detailPath, {
+      listing: { id: listingId, status: 'published', tradeAvailable: false, description: '' },
+      release: { id: releaseId, title: 'Sample Release', artist: 'Sample Artist', coverArtUrl: null, youtubeVideoId: null },
+      photos: [
+        { publicUrl: 'https://images.example/front.jpg', altText: 'Front cover' },
+        { publicUrl: 'https://images.example/back.jpg', altText: 'Back cover' },
+      ],
+      priceFormatted: '€12.00',
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
+      seller: { username: 'sample-seller', displayName: 'Sample Seller', location: 'Amsterdam', avatarUrl: null },
+      currentUser: null,
+      isSeller: false,
+      messagingEnabled: false,
+      comments: [],
+      commentsInitiallyOpen: false,
+      commentError: null,
+      submittedContent: '',
+      getIconSvg: () => '<svg aria-hidden="true" viewBox="0 0 24 24"></svg>',
+    }, { filename: detailPath });
+    const body = rendered.replace('<script src="/js/listing-detail-gallery.js" defer></script>', '');
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 390, height: 812 } });
+      await page.route('https://images.example/**', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1"/></svg>' }));
+      await page.setContent('<style>' + stylesheet + listingDetailPolishCss + '</style>' + body);
+      await page.addScriptTag({ path: path.join(process.cwd(), 'public/js/listing-detail-gallery.js') });
+      const opener = page.locator('[data-listing-gallery-open]');
+      await opener.click();
+      const dialog = page.locator('[data-listing-gallery-dialog]');
+      expect(await dialog.evaluate((node: HTMLDialogElement) => node.open)).toBe(true);
+      expect(await page.locator('[data-listing-gallery-active-image]').getAttribute('src')).toBe('https://images.example/front.jpg');
+      await page.locator('[data-listing-gallery-next]').click();
+      expect(await page.locator('[data-listing-gallery-active-image]').getAttribute('src')).toBe('https://images.example/back.jpg');
+      expect(await page.locator('[data-listing-gallery-counter]').textContent()).toBe('2 / 2');
+      expect(await page.locator('#main-photo-img').getAttribute('src')).toBe('https://images.example/back.jpg');
+      expect(await page.locator('[data-listing-sleeve-reflection]').getAttribute('src')).toBe('https://images.example/back.jpg');
+      await page.keyboard.press('Escape');
+      expect(await dialog.evaluate((node: HTMLDialogElement) => node.open)).toBe(false);
+      expect(await opener.evaluate((node) => node === document.activeElement)).toBe(true);
+      await page.close();
+    } finally {
+      await browser.close();
+    }
+  });
+
+  it('places the sleeve and exposed vinyl in one shared receding perspective', () => {
+    const sharedTransform = 'perspective(var(--record-stage-perspective)) rotateY(var(--record-stage-yaw)) rotateZ(var(--record-stage-roll))';
+    expect(listingDetailPolishCss).toContain('--record-stage-perspective: 900px');
+    expect(listingDetailPolishCss).toContain('--record-stage-yaw: 16deg');
+    expect(listingDetailPolishCss).toContain('--record-stage-roll: -2deg');
+    expect(listingDetailPolishCss.split(sharedTransform)).toHaveLength(3);
+    expect(listingDetailPolishCss).toContain('transform-origin: 8% 50%');
+  });
+
+  it('keeps the vinyl visibly emerging from the sleeve without horizontal overflow at supported widths', async () => {
+    const detailPath = path.join(process.cwd(), 'views/listings/show.ejs');
+    const rendered = await ejs.renderFile(detailPath, {
+      listing: { id: listingId, status: 'published', tradeAvailable: false, description: '' },
+      release: { id: releaseId, title: 'Sample Release', artist: 'Sample Artist', coverArtUrl: null, youtubeVideoId: null },
+      photos: [],
+      priceFormatted: '€12.00',
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
+      seller: { username: 'sample-seller', displayName: 'Sample Seller', location: 'Amsterdam', avatarUrl: null },
+      currentUser: null,
+      isSeller: false,
+      messagingEnabled: false,
+      comments: [],
+      commentsInitiallyOpen: false,
+      commentError: null,
+      submittedContent: '',
+      getIconSvg: () => '<svg aria-hidden="true" viewBox="0 0 24 24"></svg>',
+    }, { filename: detailPath });
+    const body = rendered.replace('<script src="/js/listing-detail-gallery.js" defer></script>', '');
+    const browser = await chromium.launch({ headless: true });
+    try {
+      for (const width of [320, 360, 390, 430, 768, 1280]) {
+        const page = await browser.newPage({ viewport: { width, height: width < 768 ? 812 : 900 } });
+        await page.setContent('<style>' + stylesheet + listingDetailPolishCss + '</style>' + body);
+        const layout = await page.evaluate(() => {
+          const stage = document.querySelector('.listing-artwork-stage')?.getBoundingClientRect();
+          const sleeve = document.querySelector('.primary-photo-wrapper')?.getBoundingClientRect();
+          const disc = document.querySelector('.listing-vinyl-disc')?.getBoundingClientRect();
+          return {
+            documentWidth: document.documentElement.scrollWidth,
+            viewportWidth: window.innerWidth,
+            sleeveWidth: document.querySelector('.primary-photo-wrapper') instanceof HTMLElement
+              ? (document.querySelector('.primary-photo-wrapper') as HTMLElement).offsetWidth : 0,
+            sleeveHeight: document.querySelector('.primary-photo-wrapper') instanceof HTMLElement
+              ? (document.querySelector('.primary-photo-wrapper') as HTMLElement).offsetHeight : 0,
+            discRight: disc?.right ?? 0,
+            sleeveRight: sleeve?.right ?? 0,
+            stageRight: stage?.right ?? 0,
+          };
+        });
+        expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+        expect(layout.sleeveWidth).toBeGreaterThan(0);
+        expect(Math.abs(layout.sleeveWidth - layout.sleeveHeight)).toBeLessThanOrEqual(1.5);
+        expect(layout.discRight).toBeGreaterThan(layout.sleeveRight + 10);
+        await page.close();
+      }
+    } finally {
+      await browser.close();
+    }
+  });
+
   it('uses the shared mobile header back control for a listing detail route and does not mark + Drop active', () => {
     const locals = {
       currentPath: '/listings/' + listingId,
+      release: { artist: 'James Brown', title: 'Sex Machine', releaseYear: 1970 },
       currentUser: null,
       currentProfile: null,
       messagingEnabled: false,
@@ -355,7 +524,10 @@ describe('YouTube release preview (#226)', () => {
     const renderedHeader = ejs.render(headerTemplate, locals, { filename: headerPath });
     const renderedNav = ejs.render(navTemplate, locals, { filename: navPath });
 
-    expect(renderedHeader).toContain('<span class="mobile-context-heading">RECORD</span>');
+    expect(renderedHeader).toContain('class="mobile-context-record-artist">James Brown</span>');
+    expect(renderedHeader).toContain('class="mobile-context-record-title">Sex Machine</span>');
+    expect(renderedHeader).toContain('class="mobile-context-record-year">1970</span>');
+    expect(renderedHeader).not.toContain('<span class="mobile-context-heading">RECORD</span>');
     expect(renderedHeader).toContain('aria-label="Back to Dig results"');
     expect(renderedHeader).toContain('href="/dig"');
     expect(renderedNav).toContain('href="/drop/new" class="nav-link nav-link-action"');
