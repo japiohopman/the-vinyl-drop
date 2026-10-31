@@ -128,17 +128,20 @@ The production Auth URL configuration must use the canonical production site URL
    - The separate Free project `anxhmlalxjvatrufcjei` exists in `eu-west-1` and reports `ACTIVE_HEALTHY`.
    - The existing `xuhzhdjmgvqzjxijmksu` project remains staging.
    - The production project currently has no application tables, no Drizzle migration records, no `listing-photos` bucket and no Storage object policies.
-3. **Prepare production Storage before migration 0006**
-   - Staging has one public `listing-photos` bucket, a 5 MiB limit, and allowed MIME types `image/webp`, `image/jpeg`, `image/png`.
-   - Staging has four Storage object policies: scoped public read, authenticated seller insert, authenticated seller update and authenticated seller delete. Reproduce these exact policy names, commands, roles and predicates in the production project's Supabase Storage dashboard/policy editor.
+3. **Prepare production Storage**
+   - Staging has one public `listing-photos` bucket, a 5 MiB limit, and allowed MIME types `image/webp`, `image/jpeg`, `image/png`. Create the same bucket in production using the Supabase Storage dashboard.
+   - The four Storage object policies refer to `public.listings`. Because that table does not exist until base migrations 0000-0005 have run, create the four policies only after the Base migration phase described below.
    - Migration `0006_storage_objects_rls.sql` deliberately refuses to change the managed `storage.objects` table when the database role is not its owner unless the exact four policies already exist. The migration must not be bypassed or weakened.
 4. **Prepare the production DB connection**
    - Use the Shared Pooler **Session** URI, port `5432`; its hostname ends in `.pooler.supabase.com` and username is `postgres.anxhmlalxjvatrufcjei`.
    - Keep the database password out of Git, Issues, PRs and chat. The Render connector does not return the Supabase-generated password. Obtain the connection from the Supabase Dashboard; do not use the Transaction Pooler port `6543`.
    - Set non-secret local preflight values `PRODUCTION_DB_PROJECT_REF=anxhmlalxjvatrufcjei` and `PRODUCTION_DB_HOST` to the exact Session Pooler hostname.
-   - The corrected `check-production-db-target.ps1` checks the exact project ref, canonical origin/redirect allowlist, Supabase URL, database usernames/hosts and Session Pooler port. It opens no DB connection and changes nothing. It has not yet been exercised on Windows.
+   - The corrected `check-production-db-target.ps1` checks the exact project ref, canonical origin/redirect allowlist, Supabase URL, database usernames/hosts, password placeholder and Session Pooler port. It opens no DB connection and changes nothing. The migration runner also invokes this preflight in a child PowerShell process. Neither PowerShell script has yet been exercised on Windows.
 5. **Apply the reviewed Drizzle schema — explicitly authorized 31 October 2026, 16:41 UTC, but not yet run**
-   - Run the repository's `npm run db:migrate` against the production connection only, preserving `drizzle.__drizzle_migrations` as the authoritative history.
+   - The repository now includes `run-production-migrations.ps1`, which prompts for the DB password securely and keeps both connection URLs in the current process only. The password is not written to `.env`, Git, Issues or chat.
+   - First run `./run-production-migrations.ps1 -Phase Base`. It uses a temporary Drizzle journal containing only migrations 0000-0005, runs the normal Drizzle migrator, and removes the temporary files. This creates the application tables including `public.listings` and records the six migrations in the real `drizzle.__drizzle_migrations` ledger.
+   - After Base completes, create the four Storage object policies in the Supabase dashboard/policy editor (their predicates reference `public.listings`, now available). Verify the bucket and exact policy set read-only before proceeding.
+   - Then run `./run-production-migrations.ps1 -Phase Complete`. The normal repository runner applies the remaining migrations 0006-0019 and skips the six already recorded entries.
    - The full ordered source set is `drizzle/0000` through `drizzle/0019`. Do not use the separate Supabase CLI migration ledger as a substitute.
    - Stop immediately on any failure; inspect the Drizzle ledger before any retry because earlier migrations may already have committed.
    - Verify all 20 Drizzle records, tables, RLS, grants, private functions, bucket/policies and application DB-role access afterward.
