@@ -207,7 +207,7 @@ describe('YouTube release preview (#226)', () => {
         expect(await page.locator('iframe').count()).toBe(0);
         expect(externalRequests).toHaveLength(0);
         expect(await page.locator('[data-youtube-preview-frame]').isHidden()).toBe(true);
-        expect(await page.locator('[data-youtube-preview] .youtube-preview-fallback a').isVisible()).toBe(true);
+        expect(await page.locator('[data-youtube-preview] .youtube-preview-fallback').isVisible()).toBe(true);
 
         await page.evaluate(() => window.scrollTo(0, 900));
         await page.waitForTimeout(50);
@@ -230,7 +230,7 @@ describe('YouTube release preview (#226)', () => {
         expect(bounds!.width).toBeGreaterThanOrEqual(200);
         expect(bounds!.height).toBeGreaterThanOrEqual(200);
         expect(await loadButton.isHidden()).toBe(true);
-        expect(await page.locator('[data-youtube-preview] .youtube-preview-fallback a').isVisible()).toBe(true);
+        expect(await page.locator('[data-youtube-preview] .youtube-preview-fallback').isVisible()).toBe(true);
 
         await loadButton.dispatchEvent('click');
         expect(await page.locator('iframe').count()).toBe(1);
@@ -375,6 +375,8 @@ describe('YouTube release preview (#226)', () => {
     expect(rendered).toContain('class="listing-condition-overlay"');
     expect(rendered).toContain('data-listing-sleeve-reflection');
     expect(rendered).toContain('class="listing-vinyl-reflection"');
+    expect(rendered).toContain('class="listing-vinyl-reflection-mask"');
+    expect(rendered).toContain('class="listing-sleeve-reflection-mask"');
     expect(rendered).toContain('class="listing-seller-link">View seller</a>');
     expect(rendered).not.toContain('class="listing-status-badge"');
     expect(rendered).not.toContain('class="seller-card"');
@@ -425,6 +427,7 @@ describe('YouTube release preview (#226)', () => {
       expect(await page.locator('[data-listing-gallery-active-image]').getAttribute('src')).toBe('https://images.example/back.jpg');
       expect(await page.locator('[data-listing-gallery-counter]').textContent()).toBe('2 / 2');
       expect(await page.locator('#main-photo-img').getAttribute('src')).toBe('https://images.example/back.jpg');
+      expect(await page.locator('[data-listing-sleeve-reflection]').getAttribute('src')).toBe('https://images.example/back.jpg');
       await page.keyboard.press('Escape');
       expect(await dialog.evaluate((node: HTMLDialogElement) => node.open)).toBe(false);
       expect(await opener.evaluate((node) => node === document.activeElement)).toBe(true);
