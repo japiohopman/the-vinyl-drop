@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'crypto';
-import { Request, Response } from 'express';
+import { Request, RequestHandler, Response } from 'express';
 import { config } from '../../config/env';
 import { queryClient } from '../../db';
 import { getRateLimitClientIp } from '../services/rateLimitService';
@@ -28,39 +28,44 @@ function matchesDiagnosticToken(expected: string, supplied: string | undefined):
  */
 export function createStagingDiagnosticsHandler(
   dependencies: StagingDiagnosticsDependencies,
-) {
-  return async (req: Request, res: Response): Promise<Response | void> => {
+): RequestHandler {
+  return (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
 
-    if (
-      dependencies.nodeEnv !== 'staging'
-      || !dependencies.diagnosticToken
-      || typeof req.headers['x-staging-diagnostic-token'] !== 'string'
-      || !matchesDiagnosticToken(
-        dependencies.diagnosticToken,
-        req.headers['x-staging-diagnostic-token'],
-      )
-    ) {
-      res.status(404).end();
-      return;
-    }
+    void (async () => {
+      const suppliedToken = req.headers['x-staging-diagnostic-token'];
+      if (
+        dependencies.nodeEnv !== 'staging'
+        || !dependencies.diagnosticToken
+        || typeof suppliedToken !== 'string'
+        || !matchesDiagnosticToken(dependencies.diagnosticToken, suppliedToken)
+      ) {
+        res.status(404).end();
+        return;
+      }
 
-    const clientIpPresent = dependencies.resolveClientIp(req, 'staging') !== null;
-    let databaseAccess = false;
+      const clientIpPresent = dependencies.resolveClientIp(req, 'staging') !== null;
+      let databaseAccess = false;
 
-    try {
-      await dependencies.checkDatabase();
-      databaseAccess = true;
-    } catch {
-      // Keep database errors and credentials out of the diagnostic response.
-    }
+      try {
+        await dependencies.checkDatabase();
+        databaseAccess = true;
+      } catch {
+        // Keep database errors and credentials out of the diagnostic response.
+      }
 
-    const passed = clientIpPresent && databaseAccess;
-    return res.status(passed ? 200 : 503).json({
-      database: databaseAccess ? 'pass' : 'fail',
-      clientIpHeader: clientIpPresent ? 'pass' : 'fail',
+      const passed = clientIpPresent && databaseAccess;
+      res.status(passed ? 200 : 503).json({
+        database: databaseAccess ? 'pass' : 'fail',
+        clientIpHeader: clientIpPresent ? 'pass' : 'fail',
+      });
+    })().catch(() => {
+      // Fail closed without exposing unexpected diagnostics or request data.
+      if (!res.headersSent) {
+        res.status(503).json({ database: 'fail', clientIpHeader: 'fail' });
+      }
     });
   };
 }
