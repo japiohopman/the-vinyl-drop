@@ -37,9 +37,10 @@ export function createStagingDiagnosticsHandler(
     if (
       dependencies.nodeEnv !== 'staging'
       || !dependencies.diagnosticToken
+      || typeof req.headers['x-staging-diagnostic-token'] !== 'string'
       || !matchesDiagnosticToken(
         dependencies.diagnosticToken,
-        req.headers['x-staging-diagnostic-token'] as string | undefined,
+        req.headers['x-staging-diagnostic-token'],
       )
     ) {
       res.status(404).end();
