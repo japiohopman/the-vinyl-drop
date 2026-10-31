@@ -276,7 +276,9 @@ describe('YouTube release preview (#226)', () => {
       submittedContent: '',
       getIconSvg: () => '<svg aria-hidden="true" viewBox="0 0 24 24"></svg>',
     }, { filename: detailPath });
-    const body = renderedDetail.replace('<script src="/js/youtube-preview.js" defer></script>', '');
+    const body = renderedDetail
+      .replace('<script src="/js/youtube-preview.js" defer></script>', '')
+      .replace('<script src="/js/listing-detail-gallery.js" defer></script>', '');
 
     const browser: Browser = await chromium.launch({ headless: true });
     try {
@@ -365,11 +367,11 @@ describe('YouTube release preview (#226)', () => {
       commentsInitiallyOpen: false,
       commentError: null,
       submittedContent: '',
-      getIconSvg: () => '<svg aria-hidden="true" viewBox="0 0 24 24"></svg>',
+      getIconSvg: (name: string) => '<svg class="icon icon-' + name + '" aria-hidden="true" viewBox="0 0 24 24"></svg>',
     }, { filename: detailPath });
 
     expect(rendered).toContain('src="/assets/UI/LP_vinyl.webp"');
-    expect(rendered).toContain("name: 'price-tag'");
+    expect(rendered).toContain('class="icon icon-price-tag"');
     expect(rendered).toContain('data-listing-gallery-open');
     expect(rendered).toContain('aria-label="Save to favorites"');
     expect(rendered).not.toContain('class="thumbnail-list"');
@@ -402,6 +404,7 @@ describe('YouTube release preview (#226)', () => {
     const browser = await chromium.launch({ headless: true });
     try {
       const page = await browser.newPage({ viewport: { width: 390, height: 812 } });
+      await page.route('https://images.example/**', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><rect width="1" height="1"/></svg>' }));
       await page.setContent('<style>' + stylesheet + listingDetailPolishCss + '</style>' + body);
       await page.addScriptTag({ path: path.join(process.cwd(), 'public/js/listing-detail-gallery.js') });
       const opener = page.locator('[data-listing-gallery-open]');
