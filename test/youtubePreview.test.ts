@@ -148,7 +148,10 @@ describe('YouTube release preview (#226)', () => {
   });
 
   it('renders a click-to-load preview only for a valid release video ID and omits it when missing/invalid', () => {
-    const valid = ejs.render(partial, { release: { id: releaseId, title: 'Sample Release', youtubeVideoId: validId } });
+    const valid = ejs.render(partial, {
+      release: { id: releaseId, title: 'Sample Release', youtubeVideoId: validId },
+      getIconSvg: (name: string) => '<svg class="icon icon-' + name + '" aria-hidden="true"></svg>',
+    }, { filename: partialPath });
     expect(valid).toContain('data-youtube-preview');
     expect(valid).toContain('data-youtube-preview-frame');
     expect(valid).toContain('data-youtube-preview-load');
