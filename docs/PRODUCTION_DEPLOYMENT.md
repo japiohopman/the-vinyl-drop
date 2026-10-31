@@ -1,7 +1,7 @@
 # Production Deployment — The Vinyl Drop
 
 **Governing Issue:** [#278 — establish an isolated production environment](https://github.com/japiohopman/the-vinyl-drop/issues/278)  
-**Status:** Preparation only. No production resource, billing plan, DNS record, Auth setting, database or deployment has been created or changed by this runbook.  
+**Status:** Free-first preparation. A separate Supabase Free production project exists and is healthy, but its application schema and Storage setup are still empty. No Render production service, production Auth configuration, DNS change or application deployment has been created.  
 **Last checked:** 31 October 2026.
 
 ## 1. Owner-approved target and present inventory
@@ -19,13 +19,13 @@ Read-only Supabase account inspection on 31 October 2026 returned:
 | Existing project | `xuhzhdjmgvqzjxijmksu` | Existing staging project; keep as staging |
 | Existing project region | `eu-west-1` | Ireland |
 | Existing project database host | `db.xuhzhdjmgvqzjxijmksu.supabase.co` | Staging only |
-| Production Supabase project | Not present in returned project inventory | Must be separately provisioned after plan/cost approval |
+| Production Supabase project | `the-vinyl-drop-production` (`anxhmlalxjvatrufcjei`) | Separate Free project; `ACTIVE_HEALTHY`, created 31 October 2026 at a quoted $0/month |
 
 Read-only staging migration inspection on 31 October 2026 confirmed `drizzle.__drizzle_migrations` contains **20 entries**, matching the **20 versioned SQL files** `drizzle/0000` through `drizzle/0019` in the repository. This is the Drizzle migration history used by `npm run db:migrate`.
 
 The Supabase connector's `list_migrations` endpoint returned seven entries from the separate `supabase_migrations.schema_migrations` tracking table. Do not confuse that Supabase CLI history with the Drizzle migration ledger or use it as proof that the production Drizzle schema is current. Production verification must query/verify the Drizzle ledger itself and compare it with the repository migration set.
 
-Issue #278's recorded Render baseline identifies the staging service as `the-vinyl-drop-staging` in Frankfurt. The Render service inventory has not yet been refreshed in this preparation pass because the Render connector requires the owner to explicitly select a workspace before it can inspect or act on services. No Render service has been created or modified.
+Jaap explicitly selected the Render workspace `Jaap's workspace`. The latest read-only inventory confirms the existing `the-vinyl-drop-staging` service remains in Frankfurt and no separate The Vinyl Drop production web service has been created.
 
 ## 2. Free-first deployment decision
 
@@ -46,7 +46,7 @@ Source: [Render Free service limits](https://render.com/docs/free).
 
 ### Supabase Free
 
-The connected Supabase organization currently has the Free plan and only one active project (the existing staging project). Supabase Free allows up to two active projects in total, so one separate production project can fit without upgrading the organization.
+The connected Supabase organization remains on the Free plan. It now contains the existing staging project and the newly created production project, using the two active-project slots available on Supabase Free.
 
 Current published Free-plan limits include:
 - 500 MB database per project, shared CPU and 500 MB RAM.
@@ -87,7 +87,7 @@ These are upgrade options only. They are **not recommended or authorized now**. 
 | Render service | Existing `the-vinyl-drop-staging` | New, separate Free service from `main` (subject to documented Free-plan risk acceptance) |
 | Render region | Frankfurt | Frankfurt candidate; confirm on service creation |
 | App origin | `https://the-vinyl-drop-staging.onrender.com` | `https://thevinyldrop.nl` |
-| Supabase project | `xuhzhdjmgvqzjxijmksu` | Second Free project with independent credentials |
+| Supabase project | `xuhzhdjmgvqzjxijmksu` | `anxhmlalxjvatrufcjei`, independent credentials and empty app schema |
 | Auth users | Existing staging users only | Start empty; do not copy pilot accounts |
 | Storage | Existing staging buckets and objects | New buckets/policies; no staging photo copy |
 | Secrets | Staging-only values | Fresh, independent production-only values |
@@ -104,8 +104,8 @@ Set these values only in the new production Render service's protected environme
 | `PORT` | Render-provided port (the app already supports `PORT`) |
 | `APP_BASE_URL` | `https://thevinyldrop.nl` |
 | `ALLOWED_REDIRECT_URLS` | Only the confirmed canonical production origin. Add `www` only if a deliberate alias/redirect design requires it and is verified. |
-| `DATABASE_URL` | Production Supabase pooled PostgreSQL connection string |
-| `DATABASE_DIRECT_URL` | Production-only direct/migration connection string; use only during an explicitly authorized migration operation |
+| `DATABASE_URL` | Production Supabase Shared Pooler **Session** connection string, port `5432` |
+| `DATABASE_DIRECT_URL` | Same production project via the Shared Pooler Session endpoint on port `5432` for the Drizzle migration operation; never use Transaction Pooler port `6543` |
 | `SUPABASE_URL` | New production Supabase project URL |
 | `SUPABASE_ANON_KEY` | New production project's publishable/anon key |
 | `RECOVERY_SIGNING_SECRET` | Fresh random secret, at least 32 characters; never reuse staging |
@@ -120,29 +120,43 @@ The production Auth URL configuration must use the canonical production site URL
 
 ## 5. Ordered provisioning and verification procedure
 
-1. **Owner decisions and cost approval**
-   - Confirm the apex domain and whether `www` must redirect to it.
-   - Review the Render plan and current recurring price.
-   - Request the Supabase project cost quote for the selected organization.
-   - Explicitly approve the exact nonzero monthly spend before creating or upgrading anything.
-2. **Create isolated Supabase production project**
-   - Use an EU region selected by the owner; Frankfurt (`eu-central-1`) is the preferred low-latency candidate for the Netherlands.
-   - Keep the existing `xuhzhdjmgvqzjxijmksu` project as staging.
-   - Record the new project ref and database host as non-secret identifiers.
-3. **Provision production Render service**
-   - Connect `japiohopman/the-vinyl-drop`, branch `main`, in Frankfurt.
-   - Use the explicitly approved non-free compute plan.
-   - Configure `/health` as the health check; keep auto-deploy tied only to `main`.
-   - Do not attach the production custom domain until the service is healthy on its temporary Render hostname.
-4. **Set production-only secrets and closed gates**
-   - Populate the environment contract above through the protected provider UI/connector.
-   - Keep invite-only registration enabled, shared rate limits disabled pending #89, and messaging disabled.
-5. **Apply reviewed schema and policies**
-   - Compare the full migration history against the repository before any migration.
-   - Populate the non-secret `PRODUCTION_DB_PROJECT_REF` and `PRODUCTION_DB_HOST` values in the operator's local `.env`; never put DB passwords or secrets in those fields.
-   - Set the process-only confirmation value to the exact production project ref and run `./check-production-db-target.ps1`. The script checks `NODE_ENV`, canonical origin/redirect allowlist, `SUPABASE_URL`, both DB URLs, direct migration host and pooler project identity. It opens no database connection and changes nothing.
-   - Require a separate explicit authorization immediately before applying production migrations. The preflight is a target identity check, not migration approval.
-   - Verify Drizzle migration history, RLS, grants, private functions, Storage buckets/policies and application DB-role access afterward.
+1. **Owner decisions and Free-plan acceptance**
+   - The owner has accepted the Render Free and Supabase Free availability, quota and manual-backup limitations for the current five-person cohort.
+   - The canonical origin is `https://thevinyldrop.nl`; whether `www` redirects to the apex remains undecided.
+   - No paid plan, add-on or recurring spend is authorized.
+2. **Supabase production project — completed**
+   - The separate Free project `anxhmlalxjvatrufcjei` exists in `eu-west-1` and reports `ACTIVE_HEALTHY`.
+   - The existing `xuhzhdjmgvqzjxijmksu` project remains staging.
+   - The production project currently has no application tables, no Drizzle migration records, no `listing-photos` bucket and no Storage object policies.
+3. **Prepare production Storage before migration 0006**
+   - Staging has one public `listing-photos` bucket, a 5 MiB limit, and allowed MIME types `image/webp`, `image/jpeg`, `image/png`.
+   - Staging has four Storage object policies: scoped public read, authenticated seller insert, authenticated seller update and authenticated seller delete. Reproduce these exact policy names, commands, roles and predicates in the production project's Supabase Storage dashboard/policy editor.
+   - Migration `0006_storage_objects_rls.sql` deliberately refuses to change the managed `storage.objects` table when the database role is not its owner unless the exact four policies already exist. The migration must not be bypassed or weakened.
+4. **Prepare the production DB connection**
+   - Use the Shared Pooler **Session** URI, port `5432`; its hostname ends in `.pooler.supabase.com` and username is `postgres.anxhmlalxjvatrufcjei`.
+   - Keep the database password out of Git, Issues, PRs and chat. The Render connector does not return the Supabase-generated password. Obtain the connection from the Supabase Dashboard; do not use the Transaction Pooler port `6543`.
+   - Set non-secret local preflight values `PRODUCTION_DB_PROJECT_REF=anxhmlalxjvatrufcjei` and `PRODUCTION_DB_HOST` to the exact Session Pooler hostname.
+   - The corrected `check-production-db-target.ps1` checks the exact project ref, canonical origin/redirect allowlist, Supabase URL, database usernames/hosts and Session Pooler port. It opens no DB connection and changes nothing. It has not yet been exercised on Windows.
+5. **Apply the reviewed Drizzle schema — explicitly authorized 31 October 2026, 16:41 UTC, but not yet run**
+   - Run the repository's `npm run db:migrate` against the production connection only, preserving `drizzle.__drizzle_migrations` as the authoritative history.
+   - The full ordered source set is `drizzle/0000` through `drizzle/0019`. Do not use the separate Supabase CLI migration ledger as a substitute.
+   - Stop immediately on any failure; inspect the Drizzle ledger before any retry because earlier migrations may already have committed.
+   - Verify all 20 Drizzle records, tables, RLS, grants, private functions, bucket/policies and application DB-role access afterward.
+6. **Provision production Render service**
+   - Workspace `Jaap's workspace` has been explicitly selected.
+   - Once the production database connection is ready and the reviewed schema/policies are verified, create a separate Render **Free** web service from `japiohopman/the-vinyl-drop`, branch `main`, region Frankfurt.
+   - Configure `/health` as the health check and keep auto-deploy tied only to `main`. Do not attach the production custom domain until the service is healthy on its temporary Render hostname.
+7. **Set production-only secrets and closed gates**
+   - Configure the environment contract above using protected Render settings. Use fresh production-only recovery and rate-limit secrets.
+   - Keep invite-only registration closed, `SHARED_RATE_LIMITS_ENABLED=false` and `MESSAGING_ENABLED=false`.
+8. **Configure Auth, email and storage**
+   - Configure site URL, exact redirect allowlist, email templates/SMTP and Before User Created hook independently in production.
+   - Enable password-check approval only after migration `0011` and the production hook are configured and verified.
+   - Start with no staging users, listings or photos.
+9. **Attach domain and smoke-test after separate approvals**
+   - Production migrations are authorized, but DNS changes, production Auth hook activation, deployment and opening registration retain separate approval gates.
+   - Verify TLS, canonical redirects, `/health`, email confirmation, password recovery and Google OAuth only after their corresponding settings are authorized.
+   - Confirm staging remains connected exclusively to the staging Supabase project and remains usable.
 6. **Configure Auth, email and storage**
    - Configure site URL, exact redirect allowlist, email templates/SMTP and Before User Created hook for the production project.
    - Enable the password-check approval setting only after its production hook is proven active.
@@ -165,13 +179,14 @@ The production Auth URL configuration must use the canonical production site URL
 ## 6. Explicit non-actions
 
 Until separately authorized, this preparation does **not**:
-- upgrade the Supabase organization plan;
-- create a Supabase production project;
-- create a Render production service or choose a paid compute plan;
-- set production environment variables or secrets;
-- apply production database migrations or Auth hooks;
+- upgrade the Supabase organization plan or incur paid spend;
+- create a Render production service before its database credentials/schema are ready;
+- apply production migrations before the Storage bucket and four exact Storage policies are provisioned;
+- activate the production Before User Created Auth hook or change Auth URL/SMTP settings;
 - change STRATO DNS, attach the domain, or issue/replace TLS;
 - create production users, copy staging data, or open public signup;
 - enable shared rate limits or messaging.
+
+Jaap explicitly authorized the 20 Drizzle migrations on 31 October 2026 at 16:41 UTC. That authorization remains unused until the migration preconditions above are satisfied. The corrected PowerShell preflight has not yet been tested on Windows.
 
 These boundaries preserve the existing staging environment and avoid unapproved spend or production mutations. The current target is the Free-first route; a paid upgrade is not needed unless later evidence demonstrates a specific limitation that matters to the service.
