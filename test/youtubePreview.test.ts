@@ -424,6 +424,11 @@ describe('YouTube release preview (#226)', () => {
     }
   });
 
+  it('gives the exposed vinyl a clear left-to-right receding perspective', () => {
+    expect(listingDetailPolishCss).toContain('perspective(700px) rotateY(25deg) rotateZ(-4deg)');
+    expect(listingDetailPolishCss).toContain('transform-origin: 8% 50%');
+  });
+
   it('keeps the vinyl visibly emerging from the sleeve without horizontal overflow at supported widths', async () => {
     const detailPath = path.join(process.cwd(), 'views/listings/show.ejs');
     const rendered = await ejs.renderFile(detailPath, {

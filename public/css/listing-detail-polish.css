@@ -454,8 +454,9 @@
   height: auto;
   aspect-ratio: 1;
   object-fit: contain;
-  transform: translateY(-50%) perspective(900px) rotateY(17deg) rotateZ(-4deg);
-  transform-origin: center;
+  transform: translateY(-50%) perspective(700px) rotateY(25deg) rotateZ(-4deg);
+  /* Anchor the hidden side at the sleeve: the exposed right edge recedes in depth. */
+  transform-origin: 8% 50%;
   filter: drop-shadow(2px 4px 2px rgba(21, 21, 21, .28));
   pointer-events: none;
 }
