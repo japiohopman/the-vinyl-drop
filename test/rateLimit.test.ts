@@ -105,6 +105,26 @@ describe('shared rate-limit middleware', () => {
     expect((await request(app).post('/limited').set('CF-Connecting-IP', '203.0.113.12').type('form').send('email=a@example.com&result=failed')).status).toBe(400);
   });
 
+  it('fails closed when a required hosted client-IP identity is unavailable', async () => {
+    const nextHandler = jest.fn((_req: express.Request, res: express.Response) => res.status(200).send('unexpected'));
+    const app = express();
+    app.post('/limited', createRateLimitMiddleware([{
+      name: 'required-client-ip',
+      windowMs: 60_000,
+      maxHits: 1,
+      identify: () => null,
+      required: true,
+    }]), nextHandler);
+
+    const response = await request(app)
+      .post('/limited')
+      .set('X-Forwarded-For', '203.0.113.99');
+
+    expect(response.status).toBe(503);
+    expect(response.text).toContain('temporarily unavailable');
+    expect(nextHandler).not.toHaveBeenCalled();
+  });
+
   it('fails closed with a neutral 503 response when the counter store is unavailable', async () => {
     setRateLimitStoreForTests({
       increment: async () => { throw new Error('database password must not leak'); },
