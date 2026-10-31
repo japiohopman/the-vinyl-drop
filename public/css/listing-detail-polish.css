@@ -436,6 +436,10 @@
 }
 
 .listing-detail-container .listing-artwork-stage {
+  /* One shared camera angle keeps the sleeve and record in the same 3D scene. */
+  --record-stage-perspective: 760px;
+  --record-stage-yaw: 22deg;
+  --record-stage-roll: -3deg;
   position: relative;
   isolation: isolate;
   width: 100%;
@@ -454,8 +458,7 @@
   height: auto;
   aspect-ratio: 1;
   object-fit: contain;
-  transform: translateY(-50%) perspective(700px) rotateY(25deg) rotateZ(-4deg);
-  /* Anchor the hidden side at the sleeve: the exposed right edge recedes in depth. */
+  transform: translateY(-50%) perspective(var(--record-stage-perspective)) rotateY(var(--record-stage-yaw)) rotateZ(var(--record-stage-roll));
   transform-origin: 8% 50%;
   filter: drop-shadow(2px 4px 2px rgba(21, 21, 21, .28));
   pointer-events: none;
@@ -470,8 +473,9 @@
   height: auto;
   aspect-ratio: 1;
   overflow: hidden;
-  transform: translateY(-50%) perspective(1200px) rotateY(-3deg) rotateX(.8deg);
-  transform-origin: center;
+  transform: translateY(-50%) perspective(var(--record-stage-perspective)) rotateY(var(--record-stage-yaw)) rotateZ(var(--record-stage-roll));
+  /* Keep the near/left edge steady and let the right edge recede with the record. */
+  transform-origin: 8% 50%;
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, .76),
     inset -1px -1px 0 rgba(21, 21, 21, .12),
