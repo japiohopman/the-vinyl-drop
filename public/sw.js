@@ -42,7 +42,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (!isCacheableStaticAsset(url.pathname)) return;
+  if (!isCacheableStaticAsset(url.pathname) || request.headers.has('authorization')) return;
 
   // Public, same-origin files only. Omit cookies on these requests and never cache
   // responses that set cookies or do not return a successful same-origin response.
