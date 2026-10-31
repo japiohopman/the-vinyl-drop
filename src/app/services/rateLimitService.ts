@@ -159,14 +159,14 @@ async function incrementBucket(bucket: RateLimitBucket): Promise<number> {
   return Number(rows[0].hit_count);
 }
 
-async function decrementBucket(bucket: RateLimitBucket): Promise<void> {
-  if (testStore) return testStore.decrement(bucket);
-  if (!queryClient) throw new Error('Rate-limit database connection is unavailable.');
-
+export async function decrementRateLimitBucketWithClient(
+  client: NonNullable<typeof queryClient>,
+  bucket: RateLimitBucket
+): Promise<void> {
   // Serialize releases for this bucket. Without the row lock, two successful
   // responses can both decrement a count that includes a failed login and then
   // race to delete the remaining row.
-  await queryClient.begin(async (transaction) => {
+  await client.begin(async (transaction) => {
     const rows = await transaction.unsafe(
       'SELECT hit_count FROM private.rate_limit_buckets ' +
       'WHERE bucket_key = $1 AND window_start = $2 FOR UPDATE',
@@ -189,6 +189,12 @@ async function decrementBucket(bucket: RateLimitBucket): Promise<void> {
       [bucket.bucketKey, new Date(bucket.windowStartMs)]
     );
   });
+}
+
+async function decrementBucket(bucket: RateLimitBucket): Promise<void> {
+  if (testStore) return testStore.decrement(bucket);
+  if (!queryClient) throw new Error('Rate-limit database connection is unavailable.');
+  await decrementRateLimitBucketWithClient(queryClient, bucket);
 }
 
 async function pruneExpiredBuckets(nowMs: number): Promise<void> {
