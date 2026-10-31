@@ -124,8 +124,9 @@ The production Auth URL configuration must use the canonical production site URL
    - Keep invite-only registration enabled, shared rate limits disabled pending #89, and messaging disabled.
 5. **Apply reviewed schema and policies**
    - Compare the full migration history against the repository before any migration.
-   - Run the exact production-project/host identity preflight.
-   - Require a separate explicit authorization immediately before applying production migrations.
+   - Populate the non-secret `PRODUCTION_DB_PROJECT_REF` and `PRODUCTION_DB_HOST` values in the operator's local `.env`; never put DB passwords or secrets in those fields.
+   - Set the process-only confirmation value to the exact production project ref and run `./check-production-db-target.ps1`. The script checks `NODE_ENV`, canonical origin/redirect allowlist, `SUPABASE_URL`, both DB URLs, direct migration host and pooler project identity. It opens no database connection and changes nothing.
+   - Require a separate explicit authorization immediately before applying production migrations. The preflight is a target identity check, not migration approval.
    - Verify Drizzle migration history, RLS, grants, private functions, Storage buckets/policies and application DB-role access afterward.
 6. **Configure Auth, email and storage**
    - Configure site URL, exact redirect allowlist, email templates/SMTP and Before User Created hook for the production project.
