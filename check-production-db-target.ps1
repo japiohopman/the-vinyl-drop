@@ -46,20 +46,28 @@ function Get-DatabaseIdentity {
 
         $hostName = $uri.DnsSafeHost.ToLowerInvariant()
 
-        # Require exactly one explicit TLS mode; prefer may fall back to plaintext.
-        $sslModes = @(
-            foreach ($queryItem in ($uri.Query.TrimStart('?') -split '&')) {
-                if ([string]::IsNullOrWhiteSpace($queryItem)) { continue }
-                $queryParts = $queryItem -split '=', 2
-                $queryKey = [System.Uri]::UnescapeDataString($queryParts[0])
-                if ($queryKey -ieq 'sslmode') {
-                    if ($queryParts.Count -ne 2) { '' }
-                    else { [System.Uri]::UnescapeDataString($queryParts[1]) }
-                }
-            }
+        # Only the single explicit TLS parameter is allowed; prefer/allow can fall back.
+        $queryItems = @(
+            $uri.Query.TrimStart('?') -split '&' |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
         )
-        if ($sslModes.Count -ne 1 -or $sslModes[0] -cne 'require') {
+        if ($queryItems.Count -ne 1) {
+            $script:problems += "$Name must contain only one query parameter: sslmode=require."
+            return $null
+        }
+        $queryParts = $queryItems[0] -split '=', 2
+        $queryKey = [System.Uri]::UnescapeDataString($queryParts[0])
+        $sslMode = if ($queryParts.Count -eq 2) {
+            [System.Uri]::UnescapeDataString($queryParts[1])
+        } else {
+            ''
+        }
+        if ($queryKey -ine 'sslmode' -or $sslMode -cne 'require') {
             $script:problems += "$Name must include exactly one sslmode=require parameter."
+            return $null
+        }
+        if ($uri.AbsolutePath -cne '/postgres' -or -not [string]::IsNullOrEmpty($uri.Fragment)) {
+            $script:problems += "$Name must target only the postgres database without a URL fragment."
             return $null
         }
 
@@ -121,8 +129,16 @@ if ($nodeEnv -cne 'production') {
 $appBaseUrl = Get-EffectiveValue 'APP_BASE_URL'
 try {
     $appUri = [System.Uri]$appBaseUrl
-    if ($appUri.GetLeftPart([System.UriPartial]::Authority).TrimEnd('/') -cne $canonicalOrigin) {
-        $problems += "APP_BASE_URL must use the canonical origin $canonicalOrigin."
+    if (
+        $appUri.Scheme -cne 'https' -or
+        $appUri.DnsSafeHost.ToLowerInvariant() -cne 'thevinyldrop.nl' -or
+        $appUri.Port -ne 443 -or
+        $appUri.AbsolutePath -cne '/' -or
+        -not [string]::IsNullOrEmpty($appUri.Query) -or
+        -not [string]::IsNullOrEmpty($appUri.Fragment) -or
+        -not [string]::IsNullOrEmpty($appUri.UserInfo)
+    ) {
+        $problems += "APP_BASE_URL must be exactly the canonical origin $canonicalOrigin with no path, port override, query, fragment or credentials."
     }
 }
 catch {
@@ -150,8 +166,16 @@ else {
 $supabaseUrl = Get-EffectiveValue 'SUPABASE_URL'
 try {
     $supabaseUri = [System.Uri]$supabaseUrl
-    if ($supabaseUri.Scheme -cne 'https' -or $supabaseUri.DnsSafeHost.ToLowerInvariant() -cne "$expectedRef.supabase.co") {
-        $problems += 'SUPABASE_URL does not match the confirmed production project.'
+    if (
+        $supabaseUri.Scheme -cne 'https' -or
+        $supabaseUri.DnsSafeHost.ToLowerInvariant() -cne "$expectedRef.supabase.co" -or
+        $supabaseUri.Port -ne 443 -or
+        $supabaseUri.AbsolutePath -cne '/' -or
+        -not [string]::IsNullOrEmpty($supabaseUri.Query) -or
+        -not [string]::IsNullOrEmpty($supabaseUri.Fragment) -or
+        -not [string]::IsNullOrEmpty($supabaseUri.UserInfo)
+    ) {
+        $problems += 'SUPABASE_URL must be exactly the HTTPS origin for the confirmed production project with no path, port override, query, fragment or credentials.'
     }
 }
 catch {
