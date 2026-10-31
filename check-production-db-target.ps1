@@ -70,16 +70,14 @@ function Get-DatabaseIdentity {
 
         $userName = [System.Uri]::UnescapeDataString($userInfoParts[0])
         $password = [System.Uri]::UnescapeDataString($userInfoParts[1])
-        $directHost = "db.$ExpectedRef.supabase.co"
-        $isDirect = ($hostName -eq $directHost -and $userName -eq 'postgres' -and $uri.Port -eq 5432)
-        $isSessionPooler = (
-            $hostName.EndsWith('.pooler.supabase.com') -and
+        $isApprovedSessionPooler = (
+            $hostName -eq $expectedProductionHost -and
             $userName -eq "postgres.$ExpectedRef" -and
             $uri.Port -eq 5432
         )
 
-        if (-not ($isDirect -or $isSessionPooler)) {
-            $script:problems += "$Name does not identify the confirmed production project using a direct or Session Pooler endpoint on port 5432."
+        if (-not $isApprovedSessionPooler) {
+            $script:problems += "$Name does not identify the approved production Shared Session Pooler endpoint on port 5432."
             return $null
         }
         if ([string]::IsNullOrWhiteSpace($password) -or $password -match '^\[YOUR-PASSWORD\]$') {
