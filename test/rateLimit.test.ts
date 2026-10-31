@@ -105,6 +105,32 @@ describe('shared rate-limit middleware', () => {
     expect((await request(app).post('/limited').set('CF-Connecting-IP', '203.0.113.12').type('form').send('email=a@example.com&result=failed')).status).toBe(400);
   });
 
+  it('keeps a failed login counted after concurrent successful reservations are released', async () => {
+    const app = buildApp([{
+      name: 'concurrent-login-failed-email',
+      windowMs: 60_000,
+      maxHits: 5,
+      identify: (req) => String(req.body.email || ''),
+      releaseOnSuccess: true,
+    }], (req, res) => {
+      res.status(req.body.result === 'success' ? 302 : 401).end();
+    });
+
+    const send = (result: 'success' | 'failed') =>
+      request(app).post('/limited').type('form').send('email=shared@example.com&result=' + result);
+
+    expect((await send('failed')).status).toBe(401);
+
+    const concurrentSuccesses = await Promise.all([send('success'), send('success')]);
+    expect(concurrentSuccesses.map((response) => response.status)).toEqual([302, 302]);
+
+    // One failed attempt must remain after both successful reservations release.
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      expect((await send('failed')).status).toBe(401);
+    }
+    expect((await send('failed')).status).toBe(429);
+  });
+
   it('fails closed when a required hosted client-IP identity is unavailable', async () => {
     const nextHandler = jest.fn((_req: express.Request, res: express.Response) => res.status(200).send('unexpected'));
     const app = express();
