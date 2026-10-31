@@ -345,6 +345,132 @@ describe('YouTube release preview (#226)', () => {
     }
   });
 
+  it('renders a compact sleeve-and-disc hero, defers gallery images, and moves Favorite into an icon control', async () => {
+    const detailPath = path.join(process.cwd(), 'views/listings/show.ejs');
+    const rendered = await ejs.renderFile(detailPath, {
+      listing: { id: listingId, status: 'published', tradeAvailable: false, description: '' },
+      release: { id: releaseId, title: 'Sample Release', artist: 'Sample Artist', coverArtUrl: null, youtubeVideoId: null },
+      photos: [
+        { publicUrl: 'https://images.example/front.jpg', altText: 'Front cover' },
+        { publicUrl: 'https://images.example/back.jpg', altText: 'Back cover' },
+      ],
+      priceFormatted: '€12.00',
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
+      seller: { username: 'sample-seller', displayName: 'Sample Seller', location: 'Amsterdam', avatarUrl: null },
+      currentUser: { id: 'buyer-youtube-226', username: 'sample-buyer' },
+      isSeller: false,
+      isFavorited: false,
+      messagingEnabled: false,
+      comments: [],
+      commentsInitiallyOpen: false,
+      commentError: null,
+      submittedContent: '',
+      getIconSvg: () => '<svg aria-hidden="true" viewBox="0 0 24 24"></svg>',
+    }, { filename: detailPath });
+
+    expect(rendered).toContain('src="/assets/UI/LP_vinyl.webp"');
+    expect(rendered).toContain("name: 'price-tag'");
+    expect(rendered).toContain('data-listing-gallery-open');
+    expect(rendered).toContain('aria-label="Save to favorites"');
+    expect(rendered).not.toContain('class="thumbnail-list"');
+    expect(rendered).not.toContain('<img src="https://images.example/back.jpg"');
+    expect(rendered).toContain('data-photo-url="https://images.example/back.jpg"');
+  });
+
+  it('opens the listing photo dialog, supports previous/next and Escape, and returns focus to Photos', async () => {
+    const detailPath = path.join(process.cwd(), 'views/listings/show.ejs');
+    const rendered = await ejs.renderFile(detailPath, {
+      listing: { id: listingId, status: 'published', tradeAvailable: false, description: '' },
+      release: { id: releaseId, title: 'Sample Release', artist: 'Sample Artist', coverArtUrl: null, youtubeVideoId: null },
+      photos: [
+        { publicUrl: 'https://images.example/front.jpg', altText: 'Front cover' },
+        { publicUrl: 'https://images.example/back.jpg', altText: 'Back cover' },
+      ],
+      priceFormatted: '€12.00',
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
+      seller: { username: 'sample-seller', displayName: 'Sample Seller', location: 'Amsterdam', avatarUrl: null },
+      currentUser: null,
+      isSeller: false,
+      messagingEnabled: false,
+      comments: [],
+      commentsInitiallyOpen: false,
+      commentError: null,
+      submittedContent: '',
+      getIconSvg: () => '<svg aria-hidden="true" viewBox="0 0 24 24"></svg>',
+    }, { filename: detailPath });
+    const body = rendered.replace('<script src="/js/listing-detail-gallery.js" defer></script>', '');
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 390, height: 812 } });
+      await page.setContent('<style>' + stylesheet + listingDetailPolishCss + '</style>' + body);
+      await page.addScriptTag({ path: path.join(process.cwd(), 'public/js/listing-detail-gallery.js') });
+      const opener = page.locator('[data-listing-gallery-open]');
+      await opener.click();
+      const dialog = page.locator('[data-listing-gallery-dialog]');
+      expect(await dialog.evaluate((node: HTMLDialogElement) => node.open)).toBe(true);
+      expect(await page.locator('[data-listing-gallery-active-image]').getAttribute('src')).toBe('https://images.example/front.jpg');
+      await page.locator('[data-listing-gallery-next]').click();
+      expect(await page.locator('[data-listing-gallery-active-image]').getAttribute('src')).toBe('https://images.example/back.jpg');
+      expect(await page.locator('[data-listing-gallery-counter]').textContent()).toBe('2 / 2');
+      expect(await page.locator('#main-photo-img').getAttribute('src')).toBe('https://images.example/back.jpg');
+      await page.keyboard.press('Escape');
+      expect(await dialog.evaluate((node: HTMLDialogElement) => node.open)).toBe(false);
+      expect(await opener.evaluate((node) => node === document.activeElement)).toBe(true);
+      await page.close();
+    } finally {
+      await browser.close();
+    }
+  });
+
+  it('keeps the vinyl visibly emerging from the sleeve without horizontal overflow at supported widths', async () => {
+    const detailPath = path.join(process.cwd(), 'views/listings/show.ejs');
+    const rendered = await ejs.renderFile(detailPath, {
+      listing: { id: listingId, status: 'published', tradeAvailable: false, description: '' },
+      release: { id: releaseId, title: 'Sample Release', artist: 'Sample Artist', coverArtUrl: null, youtubeVideoId: null },
+      photos: [],
+      priceFormatted: '€12.00',
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
+      seller: { username: 'sample-seller', displayName: 'Sample Seller', location: 'Amsterdam', avatarUrl: null },
+      currentUser: null,
+      isSeller: false,
+      messagingEnabled: false,
+      comments: [],
+      commentsInitiallyOpen: false,
+      commentError: null,
+      submittedContent: '',
+      getIconSvg: () => '<svg aria-hidden="true" viewBox="0 0 24 24"></svg>',
+    }, { filename: detailPath });
+    const body = rendered.replace('<script src="/js/listing-detail-gallery.js" defer></script>', '');
+    const browser = await chromium.launch({ headless: true });
+    try {
+      for (const width of [320, 360, 390, 430, 768, 1280]) {
+        const page = await browser.newPage({ viewport: { width, height: width < 768 ? 812 : 900 } });
+        await page.setContent('<style>' + stylesheet + listingDetailPolishCss + '</style>' + body);
+        const layout = await page.evaluate(() => {
+          const stage = document.querySelector('.listing-artwork-stage')?.getBoundingClientRect();
+          const sleeve = document.querySelector('.primary-photo-wrapper')?.getBoundingClientRect();
+          const disc = document.querySelector('.listing-vinyl-disc')?.getBoundingClientRect();
+          return {
+            documentWidth: document.documentElement.scrollWidth,
+            viewportWidth: window.innerWidth,
+            sleeveWidth: sleeve?.width ?? 0,
+            sleeveHeight: sleeve?.height ?? 0,
+            discRight: disc?.right ?? 0,
+            sleeveRight: sleeve?.right ?? 0,
+            stageRight: stage?.right ?? 0,
+          };
+        });
+        expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+        expect(layout.sleeveWidth).toBeGreaterThan(0);
+        expect(Math.abs(layout.sleeveWidth - layout.sleeveHeight)).toBeLessThanOrEqual(1.5);
+        expect(layout.discRight).toBeGreaterThan(layout.sleeveRight + 10);
+        await page.close();
+      }
+    } finally {
+      await browser.close();
+    }
+  });
+
   it('uses the shared mobile header back control for a listing detail route and does not mark + Drop active', () => {
     const locals = {
       currentPath: '/listings/' + listingId,
