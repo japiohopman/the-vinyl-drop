@@ -6,6 +6,7 @@ import { getContactPage, postContactMessage, getCommunityRulesPage, getPrivacyNo
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
 import { requireAuth } from '../middleware/auth';
 import { validateSameOrigin } from '../middleware/csrf';
+import { rateLimits } from '../services/rateLimitService';
 import { getCreateCustomReleasePage } from '../controllers/releaseController';
 import authRoutes from './authRoutes';
 import profileRoutes from './profileRoutes';
@@ -22,7 +23,7 @@ router.get('/browse', getBrowsePage);
 router.get('/search', getSearchPage);
 router.get('/activity', getActivityPage);
 router.get('/contact', getContactPage);
-router.post('/contact', validateSameOrigin, postContactMessage);
+router.post('/contact', validateSameOrigin, rateLimits.contact, postContactMessage);
 router.get('/community-rules', getCommunityRulesPage);
 router.get('/terms', getTermsOfUsePage);
 router.get('/privacy', getPrivacyNoticePage);
