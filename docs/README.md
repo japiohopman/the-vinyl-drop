@@ -17,6 +17,7 @@ This directory is the source of truth for product and architecture decisions.
 | ROADMAP.md | Truthful architectural phase map (Phases 0-5 completed, Phase 5 Closeout #39 current, future Phase 5B/6/7/8 boundaries) |
 | DECISIONS.md | Architectural decision records (ADRs) for foundational technology and domain choices |
 | PRELAUNCH_OPERATIONS.md | Operational requirements, environment strategy, closed beta, hosting, payments/shipping boundaries, launch gates |
+| PRODUCTION_DEPLOYMENT.md | Issue #278 production environment plan, current cost comparison, isolation and deployment runbook |
 | PHASE_0.md | Completion contract for Phase 0 |
 
 ## Source-of-truth rules

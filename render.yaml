@@ -1,5 +1,7 @@
 # Render Infrastructure-as-Code Blueprint
-# Defines the staging web service for The Vinyl Drop (Express + EJS + Supabase)
+# Defines the staging web service for The Vinyl Drop (Express + EJS + Supabase).
+# Production remains intentionally undeclared here until Issue #278 has explicit
+# owner approval for the non-free Render plan and separate Supabase project.
 
 services:
   - type: web
