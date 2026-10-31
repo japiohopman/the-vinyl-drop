@@ -134,6 +134,45 @@ export async function verifyMigrations(): Promise<void> {
   );
   if (consentRows.rows[0].count !== 0) throw new Error('Registration-consent audit did not cascade on Auth identity deletion');
 
+  // The shared rate-limit counters are private server-side state, not Data API data.
+  const rateLimitTable = await pg.query<{ relrowsecurity: boolean }>(
+    "SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'private' AND c.relname = 'rate_limit_buckets' AND c.relkind = 'r';"
+  );
+  if (rateLimitTable.rows.length !== 1 || !rateLimitTable.rows[0].relrowsecurity) {
+    throw new Error('Private rate-limit counter table is missing or RLS is disabled');
+  }
+  const rateLimitColumns = await pg.query<{ column_name: string }>(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'private' AND table_name = 'rate_limit_buckets' ORDER BY ordinal_position;"
+  );
+  if (rateLimitColumns.rows.map((row) => row.column_name).join(',') !== 'bucket_key,window_start,hit_count,expires_at,updated_at') {
+    throw new Error('Rate-limit counter schema contains unexpected columns');
+  }
+  for (const role of ['anon', 'authenticated', 'supabase_auth_admin']) {
+    const access = await pg.query<{ can_select: boolean; can_insert: boolean; can_update: boolean; can_delete: boolean }>(
+      "SELECT has_table_privilege($1, 'private.rate_limit_buckets', 'SELECT') AS can_select, has_table_privilege($1, 'private.rate_limit_buckets', 'INSERT') AS can_insert, has_table_privilege($1, 'private.rate_limit_buckets', 'UPDATE') AS can_update, has_table_privilege($1, 'private.rate_limit_buckets', 'DELETE') AS can_delete;",
+      [role]
+    );
+    const privileges = access.rows[0];
+    if (privileges.can_select || privileges.can_insert || privileges.can_update || privileges.can_delete) {
+      throw new Error('Rate-limit counters are accessible to restricted role ' + role);
+    }
+  }
+  const rateLimitFixtureKey = 'a'.repeat(64);
+  const rateLimitWindowStart = new Date('2026-10-31T07:00:00.000Z');
+  const rateLimitExpiry = new Date('2026-10-31T08:00:00.000Z');
+  const firstRateLimitHit = await pg.query<{ hit_count: number }>(
+    'INSERT INTO private.rate_limit_buckets (bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 1, $3) ON CONFLICT (bucket_key, window_start) DO UPDATE SET hit_count = private.rate_limit_buckets.hit_count + 1 RETURNING hit_count;',
+    [rateLimitFixtureKey, rateLimitWindowStart, rateLimitExpiry]
+  );
+  const secondRateLimitHit = await pg.query<{ hit_count: number }>(
+    'INSERT INTO private.rate_limit_buckets (bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 1, $3) ON CONFLICT (bucket_key, window_start) DO UPDATE SET hit_count = private.rate_limit_buckets.hit_count + 1 RETURNING hit_count;',
+    [rateLimitFixtureKey, rateLimitWindowStart, rateLimitExpiry]
+  );
+  if (firstRateLimitHit.rows[0]?.hit_count !== 1 || secondRateLimitHit.rows[0]?.hit_count !== 2) {
+    throw new Error('Rate-limit bucket upsert did not atomically increment its counter');
+  }
+  await pg.query('DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1;', [rateLimitFixtureKey]);
+
   // 1. Verify expected public tables (including private messaging and Saved People)
   const tablesRes = await pg.query<{ table_name: string }>(
     `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;`
