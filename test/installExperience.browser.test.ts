@@ -2,6 +2,15 @@ import { Browser, chromium, devices, webkit } from '@playwright/test';
 import { Server } from 'http';
 import { createApp } from '../src/app';
 
+jest.mock('../src/app/services/listingService', () => {
+  const actual = jest.requireActual('../src/app/services/listingService');
+  return {
+    ...actual,
+    getHomeFeedListings: jest.fn().mockResolvedValue([]),
+    getHomeDiscoveryListings: jest.fn().mockResolvedValue([]),
+  };
+});
+
 jest.setTimeout(120_000);
 
 describe('PWA browser smoke tests — Issue #52', () => {
@@ -60,6 +69,52 @@ describe('PWA browser smoke tests — Issue #52', () => {
         expect(dimensions.document).toBeLessThanOrEqual(width);
         expect(dimensions.body).toBeLessThanOrEqual(width);
       }
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('makes the install guide discoverable from Home and the mobile Me → About menu', async () => {
+    const context = await chromiumBrowser.newContext({ serviceWorkers: 'block' });
+    const page = await context.newPage();
+
+    try {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
+
+      const homeInstallLink = page.getByRole('link', { name: 'Install The Vinyl Drop' });
+      expect(await homeInstallLink.isVisible()).toBe(true);
+      expect(await homeInstallLink.getAttribute('href')).toBe('/install');
+      expect(await page.locator('.footer-links a[href="/install"]').count()).toBe(1);
+
+      for (const width of [360, 390, 430, 768, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        const bounds = await homeInstallLink.boundingBox();
+        const dimensions = await page.evaluate(() => ({
+          viewport: window.innerWidth,
+          document: document.documentElement.scrollWidth,
+          body: document.body.scrollWidth,
+        }));
+
+        expect(bounds).not.toBeNull();
+        expect(bounds!.x).toBeGreaterThanOrEqual(0);
+        expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+        expect(dimensions.viewport).toBe(width);
+        expect(dimensions.document).toBeLessThanOrEqual(width);
+        expect(dimensions.body).toBeLessThanOrEqual(width);
+      }
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.locator('#mobile-you-trigger').click();
+      await page.locator('#mobile-you-about-trigger').click();
+
+      const aboutInstallLink = page.locator('#mobile-you-about-view a[href="/install"]');
+      expect(await aboutInstallLink.isVisible()).toBe(true);
+      expect(await aboutInstallLink.textContent()).toBe('Install The Vinyl Drop');
+
+      await aboutInstallLink.click();
+      await page.waitForURL(`${baseUrl}/install`);
+      expect(await page.locator('#install-title').isVisible()).toBe(true);
     } finally {
       await context.close();
     }

@@ -50,6 +50,20 @@
   min-height: 42px;
 }
 
+.home-install-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  margin-top: var(--space-2);
+  color: var(--color-rust-accessible);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .home-section-heading {
   display: flex;
   align-items: end;
