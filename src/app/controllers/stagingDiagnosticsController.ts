@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'crypto';
-import { Request, RequestHandler, Response } from 'express';
+import { Request, RequestHandler } from 'express';
 import { config } from '../../config/env';
 import { queryClient } from '../../db';
 import { getRateLimitClientIp } from '../services/rateLimitService';
