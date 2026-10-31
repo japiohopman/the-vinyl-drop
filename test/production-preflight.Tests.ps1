@@ -17,7 +17,9 @@ function Invoke-PreflightCase {
         [Parameter(Mandatory = $true)][string]$ProjectRef,
         [Parameter(Mandatory = $true)][string]$PoolerHost,
         [Parameter(Mandatory = $true)][AllowEmptyString()][string]$SslMode,
-        [Parameter(Mandatory = $true)][int]$ExpectedExitCode
+        [Parameter(Mandatory = $true)][int]$ExpectedExitCode,
+        [string]$AppBaseUrl = 'https://thevinyldrop.nl',
+        [string]$SupabaseUrl = ''
     )
 
     $names = @(
@@ -41,9 +43,14 @@ function Invoke-PreflightCase {
         [Environment]::SetEnvironmentVariable('PRODUCTION_DB_PROJECT_REF', $ProjectRef, 'Process')
         [Environment]::SetEnvironmentVariable('PRODUCTION_DB_HOST', $PoolerHost, 'Process')
         [Environment]::SetEnvironmentVariable('NODE_ENV', 'production', 'Process')
-        [Environment]::SetEnvironmentVariable('APP_BASE_URL', 'https://thevinyldrop.nl', 'Process')
+        [Environment]::SetEnvironmentVariable('APP_BASE_URL', $AppBaseUrl, 'Process')
         [Environment]::SetEnvironmentVariable('ALLOWED_REDIRECT_URLS', 'https://thevinyldrop.nl', 'Process')
-        [Environment]::SetEnvironmentVariable('SUPABASE_URL', 'https://' + $ProjectRef + '.supabase.co', 'Process')
+        $effectiveSupabaseUrl = if ([string]::IsNullOrWhiteSpace($SupabaseUrl)) {
+            'https://' + $ProjectRef + '.supabase.co'
+        } else {
+            $SupabaseUrl
+        }
+        [Environment]::SetEnvironmentVariable('SUPABASE_URL', $effectiveSupabaseUrl, 'Process')
 
         $user = 'postgres.' + $ProjectRef
         $query = if ([string]::IsNullOrWhiteSpace($SslMode)) { '' } else { '?sslmode=' + $SslMode }
@@ -76,6 +83,10 @@ try {
     Invoke-PreflightCase -Name 'unapproved pooler host is rejected' -ProjectRef $expectedProductionRef -PoolerHost 'aws-9-eu-west-1.pooler.supabase.com' -SslMode 'require' -ExpectedExitCode 1
     Invoke-PreflightCase -Name 'TLS prefer mode is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'prefer' -ExpectedExitCode 1
     Invoke-PreflightCase -Name 'missing TLS mode is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode '' -ExpectedExitCode 1
+    Invoke-PreflightCase -Name 'duplicate TLS modes are rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require&sslmode=disable' -ExpectedExitCode 1
+    Invoke-PreflightCase -Name 'APP_BASE_URL path is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1 -AppBaseUrl 'https://thevinyldrop.nl/wrong-prefix'
+    Invoke-PreflightCase -Name 'SUPABASE_URL port override is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1 -SupabaseUrl 'https://anxhmlalxjvatrufcjei.supabase.co:8443'
+    Invoke-PreflightCase -Name 'SUPABASE_URL path prefix is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1 -SupabaseUrl 'https://anxhmlalxjvatrufcjei.supabase.co/prefix/'
 }
 finally {
     Pop-Location
