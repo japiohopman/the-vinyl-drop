@@ -21,7 +21,11 @@
   function showPhoto(index) {
     activeIndex = (index + photos.length) % photos.length;
     const photo = photos[activeIndex];
-    activeImage.onerror = null;
+    activeImage.onerror = function() {
+      this.onerror = null;
+      this.src = '/assets/vinyl-placeholder.svg';
+      this.alt = photo.alt + ' (image unavailable)';
+    };
     activeImage.src = photo.url;
     activeImage.alt = photo.alt;
     activeImage.hidden = false;

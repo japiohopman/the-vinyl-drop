@@ -67,7 +67,7 @@
     <% const secondaryFallbackAlt = (release && release.coverArtUrl) ? `Catalog cover artwork for ${release.title}` : `Default vinyl placeholder for ${release.title}`; %>
     <% const placeholderAlt = `Default vinyl placeholder for ${release.title}`; %>
     <div class="listing-gallery-section">
-      <div class="listing-artwork-stage" aria-label="Album sleeve with vinyl record">
+      <div class="listing-artwork-stage" role="group" aria-label="Album sleeve with vinyl record">
         <img class="listing-vinyl-disc" src="/assets/UI/LP_vinyl.webp" alt="" aria-hidden="true" width="512" height="512" loading="eager" decoding="async">
       <div class="primary-photo-wrapper">
         <% if (photos && photos.length > 0) { %>
