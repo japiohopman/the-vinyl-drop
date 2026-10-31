@@ -4,7 +4,7 @@ const OFFLINE_URL = '/offline.html';
 function isCacheableStaticAsset(pathname) {
   const isPublicAssetPath = /^\/(?:css|js|fonts|assets)\//.test(pathname);
   const isRootIconOrManifest = /^\/(?:site\.webmanifest|favicon\.ico|favicon-16x16\.png|favicon-32x32\.png|apple-touch-icon\.png|android-chrome-192x192\.png|android-chrome-512x512\.png)$/.test(pathname);
-  const isStaticFileType = /\.(?:css|js|mjs|woff2?|ttf|otf|svg|png|jpe?g|webp|ico|json)$/i.test(pathname);
+  const isStaticFileType = /\.(?:css|js|mjs|woff2?|ttf|otf|svg|png|jpe?g|webp|ico|json|webmanifest)$/i.test(pathname);
   return (isPublicAssetPath || isRootIconOrManifest) && isStaticFileType;
 }
 
@@ -52,13 +52,22 @@ self.addEventListener('fetch', (event) => {
       const response = await fetch(publicRequest);
       if (response.ok && response.status === 200 && response.type === 'basic'
         && !response.headers.has('set-cookie')) {
-        const cache = await caches.open(CACHE_NAME);
-        await cache.put(request, response.clone());
+        try {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(publicRequest, response.clone());
+        } catch {
+          // Cache storage is best effort; a quota or storage error must not
+          // discard a successful network response for a public static asset.
+        }
       }
       return response;
     } catch {
-      const cache = await caches.open(CACHE_NAME);
-      return (await cache.match(request)) || Response.error();
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        return (await cache.match(request)) || Response.error();
+      } catch {
+        return Response.error();
+      }
     }
   })());
 });

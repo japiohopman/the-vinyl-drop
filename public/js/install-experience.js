@@ -1,3 +1,4 @@
+/* global document, navigator, window */
 (() => {
   const installButton = document.querySelector('[data-install-action]');
   const shareButton = document.querySelector('[data-share-action]');
@@ -7,7 +8,7 @@
 
   if (!installButton || !shareButton || !status || !copyFallback || !shareUrlField) return;
 
-  const installUrl = new URL('/install', window.location.origin).toString();
+  const installUrl = shareUrlField.value;
   let deferredInstallPrompt = null;
 
   function announce(message) {
@@ -50,6 +51,7 @@
           text: 'Buy. Trade. Dig. Open The Vinyl Drop on your device.',
           url: installUrl,
         });
+        copyFallback.hidden = true;
       } catch (error) {
         if (error && error.name === 'AbortError') {
           announce('Sharing cancelled.');

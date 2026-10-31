@@ -186,7 +186,9 @@ export function getInstallPage(req: Request, res: Response, next: NextFunction):
     res.setHeader('Cache-Control', 'no-store');
     renderWithLayout(res, 'info/install', {
       title: 'Install',
-      installUrl: 'https://thevinyldrop.nl/install',
+      installUrl: req.hostname === 'the-vinyl-drop-staging.onrender.com'
+        ? 'https://the-vinyl-drop-staging.onrender.com/install'
+        : 'https://thevinyldrop.nl/install',
     }, next);
   } catch (error) {
     next(error);

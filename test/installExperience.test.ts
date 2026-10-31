@@ -23,10 +23,20 @@ describe('PWA installation and native sharing — Issue #52', () => {
     expect(response.text).toContain('Open as Web App');
     expect(response.text).toContain('Desktop');
     expect(response.text).toContain('href="https://thevinyldrop.nl/install"');
+    expect(response.text).toContain('value="https://thevinyldrop.nl/install"');
     expect(response.text).toContain('href="/css/install.css?v=');
     expect(response.text).toContain('/js/install-experience.js');
     expect(response.text).toContain('/js/pwa-registration.js');
     expect(response.text).toContain('href="/install"');
+  });
+
+  it('uses the staging origin for Share/Copy on the staging host so the smoke test remains on staging', async () => {
+    const response = await request(app)
+      .get('/install')
+      .set('Host', 'the-vinyl-drop-staging.onrender.com');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('value="https://the-vinyl-drop-staging.onrender.com/install"');
   });
 
   it('publishes a root-scoped standalone manifest with the existing 192 and 512 pixel icons', async () => {
@@ -51,7 +61,30 @@ describe('PWA installation and native sharing — Issue #52', () => {
     expect(response.status).toBe(200);
     expect(response.headers['content-type']).toMatch(/image\/svg\+xml/);
     const qrSvg = fs.readFileSync(path.join(publicDirectory, 'assets/install-qr.svg'), 'utf8');
+    const expectedRows = fs.readFileSync(path.join(__dirname, 'fixtures/install-qr-matrix.txt'), 'utf8')
+      .trim()
+      .split(/\r?\n/);
+    const pathData = qrSvg.match(/<path d="([^"]+)"/)?.[1];
+
     expect(qrSvg).toContain('https://thevinyldrop.nl/install');
+    expect(expectedRows).toHaveLength(37);
+    expect(expectedRows.every((row) => row.length === 37)).toBe(true);
+    expect(pathData).toBeTruthy();
+
+    const actualMatrix = Array.from({ length: 37 }, () => Array(37).fill('0'));
+    const modules = /M(\d+),(\d+)h(\d+)v1h-(\d+)z/g;
+    let match: RegExpExecArray | null;
+    while ((match = modules.exec(pathData as string)) !== null) {
+      const x = Number(match[1]);
+      const y = Number(match[2]);
+      const width = Number(match[3]);
+      expect(Number(match[4])).toBe(width);
+      for (let column = x; column < x + width; column += 1) {
+        actualMatrix[y][column] = '1';
+      }
+    }
+
+    expect(actualMatrix.map((row) => row.join(''))).toEqual(expectedRows);
   });
 
   it('registers a root-scoped service worker that never caches navigations or private responses', async () => {
@@ -63,6 +96,8 @@ describe('PWA installation and native sharing — Issue #52', () => {
     expect(source).toContain("fetch(request).catch");
     expect(source).toContain("new Request(request, { credentials: 'omit' })");
     expect(source).toContain("!response.headers.has('set-cookie')");
+    expect(source).toContain('|ico|json|webmanifest');
+    expect(source).toContain('Cache storage is best effort');
     expect(source).toContain("request.headers.has('authorization')");
     expect(source).toContain("return (await caches.match(OFFLINE_URL)) || Response.error()");
     const navigationHandler = source.slice(
@@ -92,6 +127,8 @@ describe('PWA installation and native sharing — Issue #52', () => {
     expect(source).toContain('navigator.clipboard.writeText');
     expect(source).toContain("error.name === 'AbortError'");
     expect(source).toContain("announce('Sharing cancelled.')");
+    expect(source).toContain('const installUrl = shareUrlField.value;');
+    expect(source).toContain('copyFallback.hidden = true;');
     expect(source).toContain("event.preventDefault()");
     expect(source).toContain("window.addEventListener('appinstalled'");
     expect(source).not.toContain('wa.me');
