@@ -294,7 +294,6 @@ describe('YouTube release preview (#226)', () => {
         const measurements = await page.evaluate(() => {
           const cover = document.querySelector('.primary-photo-wrapper');
           const image = document.querySelector('.listing-main-photo');
-          const box = cover?.getBoundingClientRect();
           const title = document.querySelector('.listing-title')?.getBoundingClientRect();
           const artist = document.querySelector('.listing-artist')?.getBoundingClientRect();
           const price = document.querySelector('.listing-price-amount')?.getBoundingClientRect();
