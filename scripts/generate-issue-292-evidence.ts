@@ -19,11 +19,7 @@ import { VINYL_FORMAT_FILTERS } from '../src/domain/releaseFormat';
 const root = process.cwd();
 const views = path.join(root, 'views');
 const publicDirectory = path.join(root, 'public');
-const evidenceDirectory = process.env.UI_EVIDENCE_DIR || '';
-
-if (!evidenceDirectory) {
-  throw new Error('UI_EVIDENCE_DIR must be set so screenshots are written to an explicit evidence folder.');
-}
+const evidenceDirectory = process.env.UI_EVIDENCE_DIR?.trim() || 'artifacts/issue-292';
 
 const stylesheet = readFullStylesheetSource();
 const testUser = {
@@ -237,7 +233,7 @@ async function makePages(baseUrl: string): Promise<Array<{
     ],
   });
 
-  const entries = [
+  const entries: Array<{ name: string; route: string; body: string; searchSelector?: string }> = [
     { name: 'browse', route: '/browse', body: browse, searchSelector: '#search-q' },
     { name: 'dig', route: '/dig', body: dig, searchSelector: '#dig-primary-search' },
     { name: 'drop-select-release', route: '/drop/new', body: releaseSelection, searchSelector: '.select-release-search-form input[name="q"]' },
@@ -247,7 +243,7 @@ async function makePages(baseUrl: string): Promise<Array<{
     { name: 'activity', route: '/activity', body: activity },
   ];
 
-  const pages = [];
+  const pages: Array<{ name: string; html: string; searchSelector?: string }> = [];
   for (const entry of entries) {
     const header = await renderHeader(entry.route);
     pages.push({
@@ -308,8 +304,9 @@ async function run(): Promise<void> {
             `${surface.name} at ${viewport.width}px overflows horizontally (document ${dimensions.document}px, body ${dimensions.body}px)`
           );
 
-          if (surface.searchSelector) {
-            const search = page.locator(surface.searchSelector).first();
+          const searchSelector = surface.searchSelector;
+          if (searchSelector) {
+            const search = page.locator(searchSelector).first();
             if (await search.isVisible()) {
               const state = await search.evaluate((element) => {
                 const input = element as HTMLInputElement;
