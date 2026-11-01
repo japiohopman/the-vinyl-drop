@@ -39,12 +39,12 @@
       </div>
     <% } else if (release && release.coverArtUrl) { %>
       <div style="margin-bottom: var(--space-6);">
-        <h2 style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-3);">Album Cover Artwork</h2>
+        <h2 style="font-family: var(--font-display); font-size: var(--font-size-md); margin-bottom: var(--space-3);">Release catalogue artwork · reference image</h2>
         <div style="max-width: 220px; border: var(--border-thick); border-radius: var(--radius-sm); overflow: hidden;">
-          <img src="<%= release.coverArtUrl %>" alt="<%= release.title %> artwork" style="width: 100%; height: 220px; object-fit: cover; display: block;" referrerpolicy="no-referrer" />
+          <img data-artwork-image src="<%= release.coverArtUrl %>" alt="Catalogue artwork for <%= release.title %> by <%= release.artist %>; reference image, not a photo of this physical copy" style="width: 100%; height: 220px; object-fit: contain; display: block; background: #fff;" referrerpolicy="no-referrer" />
         </div>
         <span style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); display: block; margin-top: var(--space-2);">
-          Showing catalog cover artwork. You can upload custom physical item photos in the edit page.
+          This is the release artwork, not a photograph of the seller's physical copy.
         </span>
       </div>
     <% } else { %>
