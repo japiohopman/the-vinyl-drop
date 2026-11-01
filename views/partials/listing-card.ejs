@@ -68,7 +68,7 @@
     <div class="listing-card-footer">
       <span class="listing-card-seller">
         <%- include('./icon', { name: 'user', size: '12px', ariaHidden: true }) %>
-        <%= sellerUsername %>
+        <span class="listing-card-seller-name"><%= sellerUsername %></span>
       </span>
       <% if (sellerLocation) { %>
         <span class="listing-card-location">
