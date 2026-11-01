@@ -178,7 +178,7 @@
     <!-- View Mode Switcher -->
     <div class="view-mode-toggle" role="group" aria-label="Dig presentation mode">
       <a
-        href="<%= routeBase %>?<%= queryBaseParams %>&page=<%= pagination.page %>&view=grid"
+        href="<%= routeBase + '?' + queryBaseParams + '&page=' + pagination.page + '&view=grid' %>"
         class="view-toggle-btn <%= currentView === 'grid' ? 'active' : '' %>"
         <%- currentView === 'grid' ? 'aria-current="page"' : '' %>
         aria-label="Grid view"
@@ -192,7 +192,7 @@
         <span>Grid</span>
       </a>
       <a
-        href="<%= routeBase %>?<%= queryBaseParams %>&page=<%= pagination.page %>&view=list"
+        href="<%= routeBase + '?' + queryBaseParams + '&page=' + pagination.page + '&view=list' %>"
         class="view-toggle-btn <%= currentView === 'list' ? 'active' : '' %>"
         <%- currentView === 'list' ? 'aria-current="page"' : '' %>
         aria-label="List view"
@@ -233,7 +233,7 @@
         <% const queryWithView = `${queryBaseParams}&view=${currentView}`; %>
 
         <% if (pagination.page > 1) { %>
-          <a href="<%= routeBase %>?<%= queryWithView %>&page=<%= pagination.page - 1 %>" class="btn btn-outline btn-sm">
+          <a href="<%= routeBase + '?' + queryWithView + '&page=' + (pagination.page - 1) %>" class="btn btn-outline btn-sm">
             ← Previous
           </a>
         <% } %>
@@ -243,7 +243,7 @@
         </span>
 
         <% if (pagination.page < pagination.totalPages) { %>
-          <a href="<%= routeBase %>?<%= queryWithView %>&page=<%= pagination.page + 1 %>" class="btn btn-outline btn-sm">
+          <a href="<%= routeBase + '?' + queryWithView + '&page=' + (pagination.page + 1) %>" class="btn btn-outline btn-sm">
             Next →
           </a>
         <% } %>
