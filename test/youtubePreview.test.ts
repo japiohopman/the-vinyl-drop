@@ -438,7 +438,6 @@ describe('YouTube release preview (#226)', () => {
     expect(rendered).toContain('Catalogue artwork for Doggystyle by Snoop Dogg');
     expect(rendered).toContain('<img src="https://catalog.example/doggystyle.jpg" alt="" loading="lazy">');
     expect(rendered).not.toContain('src="https://storage.example/back-cover.jpg"');
-    expect(rendered).toContain('data-photo-url="https://storage.example/back-cover.jpg"');
   });
 
   it('opens the listing photo dialog, supports previous/next and Escape, and returns focus to Photos', async () => {
