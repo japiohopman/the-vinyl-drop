@@ -50,6 +50,10 @@ describe('Options page and live theme preferences', () => {
             await page.evaluate(() => {
               const mobileNavigation = document.querySelector('.mobile-bottom-nav') as HTMLElement | null;
               if (!mobileNavigation) return;
+              const placeholder = document.createElement('span');
+              placeholder.dataset.optionsEvidenceMobileNavPlaceholder = 'true';
+              placeholder.hidden = true;
+              mobileNavigation.parentElement?.insertBefore(placeholder, mobileNavigation);
               document.body.appendChild(mobileNavigation);
               mobileNavigation.style.setProperty('position', 'static', 'important');
               mobileNavigation.style.setProperty('inset', 'auto', 'important');
@@ -70,6 +74,14 @@ describe('Options page and live theme preferences', () => {
             });
           }
         }
+        await page.evaluate(() => {
+          const mobileNavigation = document.querySelector('.mobile-bottom-nav') as HTMLElement | null;
+          const placeholder = document.querySelector('[data-options-evidence-mobile-nav-placeholder]');
+          if (!mobileNavigation || !placeholder?.parentElement) return;
+          placeholder.parentElement.insertBefore(mobileNavigation, placeholder);
+          placeholder.remove();
+          mobileNavigation.removeAttribute('style');
+        });
       }
 
       await page.locator('[data-theme-choice][value="midnight-groove"]').locator('xpath=..').click();
