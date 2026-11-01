@@ -53,7 +53,7 @@
       <div class="photo-section-header">
         <div>
           <h2>Photos</h2>
-          <p>Optional photos of the exact copy you are selling. The release artwork above is already used as the front reference until you add your own front photo.</p>
+          <p>Optional photos of the exact copy you are selling. <% if (release.coverArtUrl) { %>The release artwork above already supplies the Dig front until you add your own front photo.<% } else { %>No catalogue artwork is available yet; add a front photo to show the sleeve in Dig.<% } %></p>
         </div>
         <button type="button" class="btn btn-outline btn-sm photo-help-trigger" data-open-photo-help>
           <span class="photo-help-mark" aria-hidden="true">?</span>
