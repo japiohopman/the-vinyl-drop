@@ -12,9 +12,9 @@ function getThemeTokens(theme: string): Record<string, string> {
   if (!block) throw new Error('Missing theme token block: ' + theme);
 
   const tokens: Record<string, string> = {};
-  for (const line of block.split('\\n')) {
-    const token = line.match(/--([a-z-]+):\\s*(#[0-9A-Fa-f]{6})\\s*;/);
-    if (token) tokens[token[1]] = token[2];
+  for (const line of block.split('\n')) {
+    const token = line.match(/--([a-z-]+):\s*(#[0-9A-Fa-f]{6})\s*;/);
+    if (token) tokens['--' + token[1]] = token[2];
   }
   return tokens;
 }
@@ -34,9 +34,9 @@ function contrast(first: string, second: string): number {
 
 describe('shared theme token contrast', () => {
   it.each(themes)('%s preserves text, actions, focus and status contrast', (theme) => {
-    const t = getThemeTokens(theme);
+    const tokens = getThemeTokens(theme);
     const atLeast = (foreground: string, background: string, minimum: number) => {
-      expect(contrast(t[foreground], t[background])).toBeGreaterThanOrEqual(minimum);
+      expect(contrast(tokens[foreground], tokens[background])).toBeGreaterThanOrEqual(minimum);
     };
 
     atLeast('--color-ink', '--color-paper', 4.5);
@@ -58,7 +58,7 @@ describe('shared theme token contrast', () => {
 
   it('retains the original infrared highlight alongside its contrast-safe interactive tone', () => {
     expect(themes).toHaveLength(6);
-    expect(getThemeTokens('record-shop')['color-rust-highlight']).toBe('#F60F4B');
-    expect(getThemeTokens('record-shop')['color-rust-accessible']).toBe('#D6003B');
+    expect(getThemeTokens('record-shop')['--color-rust-highlight']).toBe('#F60F4B');
+    expect(getThemeTokens('record-shop')['--color-rust-accessible']).toBe('#D6003B');
   });
 });
