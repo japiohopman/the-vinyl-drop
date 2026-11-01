@@ -428,7 +428,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     });
     await page.addScriptTag({ content: discogsLookupScript });
     await page.locator('form[data-discogs-lookup-form]').evaluate(
-      'form => form.addEventListener("submit", event => { event.preventDefault(); form.dataset.testSubmitted = "true"; })'
+      'form => form.addEventListener("submit", event => { event.preventDefault(); if (form.dataset.lookupPending !== "true") form.dataset.testSubmitted = "true"; })'
     );
 
     await page.locator('#releaseArtist').fill('Snoop Dogg');
