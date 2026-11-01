@@ -27,4 +27,12 @@ Every theme must satisfy:
 
 The bright original infrared is retained as `--color-rust-highlight` for palette identity; interactive text and filled controls use the contrast-safe `--color-rust-accessible` / `--color-rust` pair. Disabled controls do not rely on opacity-reduced text, so their contrast remains measurable and legible. The fair condition badge uses a darker foreground to meet the same grade-label contrast target. The dark theme reverses the role of the surface token so native controls and button labels stay legible in a dark colour scheme.
 
+
+
+## Route-specific surface coverage
+
+The shared token layer also covers states that previously had page-local fixed colors: the mobile Dig crate backdrop and filter sheet, translucent Dig metadata/header surfaces, selected filter cards, + DROP validation errors, mobile account-menu hover states, and outgoing message bubbles. These surfaces are checked against the active theme tokens in `test/themeTokens.test.ts`; the Dig mobile browser regression test compares resolved colors against the same theme tokens rather than pinning the original Record Shop RGB values.
+
+Artwork-specific colors remain intentionally separate: the sleeve/cardboard material, the price-tag illustration and modal dimming/backdrop layers are not recolored as part of a theme switch.
+
 Theme preference is applied to the document root before the CSS is parsed. The same custom-property layer therefore affects the shared shell, navigation, marketplace cards, forms, Browse/Dig, Activity and profile pages. Theme choice and interaction settings are local to the browser/device; there is no account sync or database storage.
