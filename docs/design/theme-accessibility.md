@@ -22,7 +22,9 @@ Every theme must satisfy:
 - Primary and secondary action labels (`--color-white`) against their accent backgrounds (`--color-rust` and `--color-deep-green`): **at least 4.5:1**.
 - Focus indicators and primary control borders against page and card surfaces: **at least 3:1**.
 - Error and success boundaries against their status surfaces: **at least 3:1**.
+- Disabled buttons and form controls use the theme's card surface, muted text and primary border without opacity blending; muted text remains **at least 4.5:1** and the border **at least 3:1**.
+- The four semantic condition-grade badges are tested for **at least 4.5:1** text contrast and **3:1** border contrast on their grade-specific backgrounds.
 
-The bright original infrared is retained as `--color-rust-highlight` for palette identity; interactive text and filled controls use the contrast-safe `--color-rust-accessible` / `--color-rust` pair. The dark theme reverses the role of the surface token so native controls and button labels stay legible in a dark colour scheme.
+The bright original infrared is retained as `--color-rust-highlight` for palette identity; interactive text and filled controls use the contrast-safe `--color-rust-accessible` / `--color-rust` pair. Disabled controls do not rely on opacity-reduced text, so their contrast remains measurable and legible. The fair condition badge uses a darker foreground to meet the same grade-label contrast target. The dark theme reverses the role of the surface token so native controls and button labels stay legible in a dark colour scheme.
 
 Theme preference is applied to the document root before the CSS is parsed. The same custom-property layer therefore affects the shared shell, navigation, marketplace cards, forms, Browse/Dig, Activity and profile pages. Theme choice and interaction settings are local to the browser/device; there is no account sync or database storage.
