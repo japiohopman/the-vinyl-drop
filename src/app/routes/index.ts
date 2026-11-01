@@ -14,14 +14,15 @@ import listingRoutes from './listingRoutes';
 import releaseRoutes from './releaseRoutes';
 import messagingRoutes from './messagingRoutes';
 import { postStagingDiagnostics } from '../controllers/stagingDiagnosticsController';
+import { getCatalogueSuggestions } from '../controllers/catalogueSearchController';
 
 const router = Router();
-
 router.get('/', getHomePage);
 router.get('/browse/dig', getDigBrowsePage);
 router.get('/dig', getResponsiveDigPage);
 router.get('/browse', getBrowsePage);
 router.get('/search', getSearchPage);
+router.get('/api/catalogue-suggestions', rateLimits.catalogueSuggestion, getCatalogueSuggestions);
 router.get('/activity', getActivityPage);
 router.get('/contact', getContactPage);
 router.get('/install', getInstallPage);
@@ -29,28 +30,16 @@ router.post('/contact', validateSameOrigin, rateLimits.contact, postContactMessa
 router.get('/community-rules', getCommunityRulesPage);
 router.get('/terms', getTermsOfUsePage);
 router.get('/privacy', getPrivacyNoticePage);
-
 router.use('/auth', authRoutes);
 router.use('/listings', listingRoutes);
 router.use('/releases', releaseRoutes);
 router.use('/messages', messagingRoutes);
-
-// The + DROP destination starts the Discogs-assisted custom release flow.
 router.get('/drop/new', requireAuth, getCreateCustomReleasePage);
-
 router.get('/design-system', getDesignSystemPage);
 router.post('/design-system/demo', postDesignSystemDemo);
-
 router.post('/_internal/staging/diagnostics', postStagingDiagnostics);
-
 router.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString(), uptime: process.uptime() });
 });
-
 router.use('/', profileRoutes);
-
 export default router;
