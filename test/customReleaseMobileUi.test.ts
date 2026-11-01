@@ -272,6 +272,16 @@ describe('Custom release mobile navigation and artwork picker', () => {
       buffer: Buffer.from('fake image bytes'),
     });
     expect(await page.locator('#releaseCoverArtFilename').textContent()).toBe('test-cover.webp');
+    await page.waitForFunction(
+      () => !document.querySelector('[data-release-cover-override-preview]')?.hasAttribute('hidden'),
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(await page.locator('[data-release-cover-override-image]').getAttribute('src')).toMatch(/^data:image\/webp;base64,/);
+    await page.locator('[data-clear-release-cover-override]').click();
+    expect(await page.locator('#releaseCoverArt').inputValue()).toBe('');
+    expect(await page.locator('#releaseCoverArtFilename').textContent()).toBe('No file selected');
+    expect(await page.locator('[data-release-cover-override-preview]').isHidden()).toBe(true);
 
     await page.setViewportSize({ width: 900, height: 780 });
     expect(await page.locator('.custom-release-file-mobile-label').isVisible()).toBe(false);
@@ -336,6 +346,36 @@ describe('Custom release mobile navigation and artwork picker', () => {
     }));
     expect(dimensions.document).toBeLessThanOrEqual(376);
     expect(dimensions.body).toBeLessThanOrEqual(376);
+  });
+
+  it('explains when Discogs artwork cannot load and keeps manual replacement available', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+    await page.route('https://i.discogs.com/**', async (route) => {
+      await route.fulfill({ status: 404, body: 'missing image' });
+    });
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          found: true,
+          matchType: 'release',
+          metadata: { coverArtUrl: 'https://i.discogs.com/missing-cover.jpg' },
+        }),
+      });
+    });
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Snoop Dogg');
+    await page.locator('#releaseTitle').fill('Doggystyle');
+    await page.waitForFunction(
+      () => document.querySelector('[data-discogs-cover-preview-status]')?.textContent?.includes('could not be loaded') === true,
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(await page.locator('[data-discogs-cover-preview] img').isHidden()).toBe(true);
+    expect(await page.locator('#releaseCoverArt').isEnabled()).toBe(true);
   });
 
   it('preserves manually corrected metadata when a later lookup runs', async () => {
