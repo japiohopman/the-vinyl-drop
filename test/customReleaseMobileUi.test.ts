@@ -383,7 +383,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.setViewportSize({ width: 375, height: 800 });
     await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
 
-    let allowLookupResponse: (() => void) | null = null;
+    let allowLookupResponse!: () => void;
     const responseGate = new Promise<void>((resolve) => { allowLookupResponse = resolve; });
     await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
       await responseGate;
@@ -410,7 +410,6 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.locator('form[data-discogs-lookup-form]').evaluate('form => form.requestSubmit()');
     expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-submitted')).toBeNull();
 
-    if (!allowLookupResponse) throw new Error('Discogs test response gate was not initialized.');
     allowLookupResponse();
 
     await page.waitForFunction(
