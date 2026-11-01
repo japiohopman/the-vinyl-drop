@@ -95,7 +95,7 @@ export async function verifyMigrations(): Promise<void> {
   );
   if (catalogueExtensions.rows.length !== 1 || catalogueExtensions.rows.some((row) => row.schema_name !== 'extensions') ||
       !catalogueExtensions.rows.some((row) => row.extname === 'pg_trgm')) {
-    throw new Error('Catalogue search extensions must both be installed in the extensions schema');
+    throw new Error('The pg_trgm extension must be installed in the extensions schema');
   }
   const fuzzySimilarity = await pg.query<{ score: number; normalized: string }>(
     "SELECT extensions.similarity('Prnce', 'Prince') AS score, translate(lower('Björk'), 'ö', 'o') AS normalized;"
