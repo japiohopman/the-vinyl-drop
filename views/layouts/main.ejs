@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title : 'The Vinyl Drop' %> | The Vinyl Drop</title>
 
+  <!-- Apply local preferences before stylesheets so the saved theme never flashes. -->
+  <script src="/js/user-preferences.js"></script>
+
   <!-- Self-hosted Open Font License families; no third-party font requests. -->
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/fonts/fonts.css') : '/fonts/fonts.css' %>">
 
@@ -70,6 +73,11 @@
   <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-crate.css') : '/css/dig-mobile-crate.css' %>">
+  <% } %>
+  <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/themes.css') : '/css/themes.css' %>">
+  <% if (typeof currentPath !== 'undefined' && currentPath === '/options') { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/options.css') : '/css/options.css' %>">
+    <script src="/js/options.js" defer></script>
   <% } %>
   <script src="/js/toast.js" defer></script>
   <script src="/js/artwork-fallback.js" defer></script>

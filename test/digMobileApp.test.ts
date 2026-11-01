@@ -469,6 +469,33 @@ describe('Mobile Dig app-like viewport', () => {
     await dispatchTouchPointer('pointerup', pointerId, startX + deltaX, startY + deltaY, true);
   }
 
+  it('honors the independent haptic feedback preference without blocking Dig gestures', async () => {
+    await loadPage(375, 812);
+    await page.evaluate(() => (
+      window as Window & {
+        VinylDropPreferences?: { set(key: string, value: boolean): boolean };
+      }
+    ).VinylDropPreferences?.set('hapticFeedbackEnabled', false));
+    await mockDigVibration();
+
+    await swipeActiveByTouch(-110, 0, 1001);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(true);
+    expect(await readDigVibrationCalls()).toEqual([]);
+
+    await page.evaluate(() => (
+      window as Window & {
+        VinylDropPreferences?: { set(key: string, value: boolean): boolean };
+      }
+    ).VinylDropPreferences?.set('hapticFeedbackEnabled', true));
+    await swipeActiveByTouch(110, 0, 1002);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(false);
+    expect(await readDigVibrationCalls()).toEqual([10]);
+  });
+
   it('requests one subtle haptic pulse for a committed touch flip and record change', async () => {
     await loadPage(375, 812);
     await mockDigVibration();

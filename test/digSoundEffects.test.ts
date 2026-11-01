@@ -43,11 +43,68 @@ function loadPreferences(localStorage: StorageLike): PreferenceApi {
 }
 
 describe('shared browser preferences', () => {
-  it('defaults sound effects to on and exposes a reusable preference snapshot', () => {
+  it('defaults device preferences on and uses the original Record Shop theme', () => {
     const { storage } = createStorage();
     const preferences = loadPreferences(storage);
-    expect(preferences.get('soundEffectsEnabled')).toBe(true);
-    expect(preferences.getAll()).toEqual({ soundEffectsEnabled: true });
+    expect(preferences.getAll()).toEqual({
+      soundEffectsEnabled: true,
+      hapticFeedbackEnabled: true,
+      tutorialsEnabled: true,
+      theme: 'record-shop',
+    });
+  });
+
+  it('persists independent sound, haptic, tutorial and theme changes in one storage record', () => {
+    const { storage, values } = createStorage();
+    const preferences = loadPreferences(storage);
+    const notifications: string[] = [];
+    preferences.subscribe((_values, key) => notifications.push(key));
+
+    expect(preferences.set('soundEffectsEnabled', false)).toBe(true);
+    expect(preferences.set('hapticFeedbackEnabled', false)).toBe(true);
+    expect(preferences.set('tutorialsEnabled', false)).toBe(true);
+    expect(preferences.set('theme', 'midnight-groove')).toBe(true);
+    expect(preferences.set('theme', 'not-a-theme')).toBe(false);
+    expect(preferences.set('unknownPreference', true)).toBe(false);
+
+    expect(preferences.getAll()).toEqual({
+      soundEffectsEnabled: false,
+      hapticFeedbackEnabled: false,
+      tutorialsEnabled: false,
+      theme: 'midnight-groove',
+    });
+    expect(JSON.parse(values.get('tvd:preferences:v1') || '{}')).toEqual({
+      soundEffectsEnabled: false,
+      hapticFeedbackEnabled: false,
+      tutorialsEnabled: false,
+      theme: 'midnight-groove',
+    });
+    expect(storage.setItem).toHaveBeenCalledTimes(4);
+    expect(notifications).toEqual([
+      'soundEffectsEnabled',
+      'hapticFeedbackEnabled',
+      'tutorialsEnabled',
+      'theme',
+    ]);
+  });
+
+  it('ignores malformed, unknown and invalid values in stored preferences', () => {
+    const { storage } = createStorage({
+      'tvd:preferences:v1': JSON.stringify({
+        soundEffectsEnabled: 'off',
+        hapticFeedbackEnabled: false,
+        tutorialsEnabled: true,
+        theme: 'unknown-theme',
+        extraSetting: true,
+      }),
+    });
+    const preferences = loadPreferences(storage);
+    expect(preferences.getAll()).toEqual({
+      soundEffectsEnabled: true,
+      hapticFeedbackEnabled: false,
+      tutorialsEnabled: true,
+      theme: 'record-shop',
+    });
   });
 
   it('reads and persists the disabled choice for later pages and settings surfaces', () => {
@@ -68,7 +125,7 @@ describe('shared browser preferences', () => {
     expect(notifications).toEqual(['soundEffectsEnabled']);
   });
 
-  it('keeps a working in-memory preference when browser storage throws', () => {
+  it('keeps all preference types working in memory when browser storage throws', () => {
     const unavailableStorage = {
       getItem: jest.fn(() => { throw new Error('Storage unavailable'); }),
       setItem: jest.fn(() => { throw new Error('Storage unavailable'); }),
@@ -76,7 +133,15 @@ describe('shared browser preferences', () => {
     const preferences = loadPreferences(unavailableStorage);
     expect(preferences.get('soundEffectsEnabled')).toBe(true);
     expect(preferences.set('soundEffectsEnabled', false)).toBe(true);
-    expect(preferences.get('soundEffectsEnabled')).toBe(false);
+    expect(preferences.set('hapticFeedbackEnabled', false)).toBe(true);
+    expect(preferences.set('tutorialsEnabled', false)).toBe(true);
+    expect(preferences.set('theme', 'blue-note')).toBe(true);
+    expect(preferences.getAll()).toEqual({
+      soundEffectsEnabled: false,
+      hapticFeedbackEnabled: false,
+      tutorialsEnabled: false,
+      theme: 'blue-note',
+    });
   });
 });
 

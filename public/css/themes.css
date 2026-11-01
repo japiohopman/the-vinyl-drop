@@ -1,0 +1,163 @@
+/* Curated theme tokens. Keep the two selectors paired so the Options previews use
+   exactly the same palette values as the active application. */
+html[data-theme="record-shop"],
+.theme-swatch[data-theme="record-shop"] {
+  --color-paper: #F3EFE7;
+  --color-ink: #151515;
+  --color-white: #FFFDF8;
+  --color-rust: #D6003B;
+  --color-rust-accessible: #D6003B;
+  --color-rust-highlight: #F60F4B;
+  --color-deep-green: #30463D;
+  --color-ink-muted: #4A4A4A;
+  --color-border: #151515;
+  --color-border-subtle: #D8D2C5;
+  --color-focus: #D6003B;
+  --color-surface-hover: #EBE5D9;
+  --color-rust-hover: #B80032;
+  --color-green-hover: #23342D;
+  --color-error-bg: #FDF0F3;
+  --color-error-border: #D6003B;
+  --color-success-bg: #E8F0EC;
+  --color-success-border: #30463D;
+  --color-surface-card: var(--color-white);
+  --color-surface-muted: var(--color-surface-hover);
+  --color-paper-muted: var(--color-surface-hover);
+}
+
+html[data-theme="blue-note"],
+.theme-swatch[data-theme="blue-note"] {
+  --color-paper: #EAF1F8;
+  --color-ink: #162B43;
+  --color-white: #F8FBFF;
+  --color-rust: #1D528E;
+  --color-rust-accessible: #1D528E;
+  --color-rust-highlight: #2866A8;
+  --color-deep-green: #244E45;
+  --color-ink-muted: #42566D;
+  --color-border: #162B43;
+  --color-border-subtle: #BDCAD8;
+  --color-focus: #1D528E;
+  --color-surface-hover: #DDE8F3;
+  --color-rust-hover: #16477F;
+  --color-green-hover: #1B3E36;
+  --color-error-bg: #F9E9E8;
+  --color-error-border: #9C2F32;
+  --color-success-bg: #E5F0EA;
+  --color-success-border: #235A48;
+  --color-surface-card: var(--color-white);
+  --color-surface-muted: var(--color-surface-hover);
+  --color-paper-muted: var(--color-surface-hover);
+}
+
+html[data-theme="soul-45"],
+.theme-swatch[data-theme="soul-45"] {
+  --color-paper: #F1E4D6;
+  --color-ink: #2E211B;
+  --color-white: #FFF9F1;
+  --color-rust: #893323;
+  --color-rust-accessible: #893323;
+  --color-rust-highlight: #A43F2D;
+  --color-deep-green: #3D5B42;
+  --color-ink-muted: #5C483E;
+  --color-border: #2E211B;
+  --color-border-subtle: #D6C4B3;
+  --color-focus: #893323;
+  --color-surface-hover: #E8D8C8;
+  --color-rust-hover: #772B1D;
+  --color-green-hover: #2C4834;
+  --color-error-bg: #FFF0EB;
+  --color-error-border: #9B3028;
+  --color-success-bg: #E7F0E6;
+  --color-success-border: #2F5C40;
+  --color-surface-card: var(--color-white);
+  --color-surface-muted: var(--color-surface-hover);
+  --color-paper-muted: var(--color-surface-hover);
+}
+
+html[data-theme="mint-press"],
+.theme-swatch[data-theme="mint-press"] {
+  --color-paper: #E5EFE8;
+  --color-ink: #183126;
+  --color-white: #F8FFF9;
+  --color-rust: #1C5A3F;
+  --color-rust-accessible: #1C5A3F;
+  --color-rust-highlight: #246B4B;
+  --color-deep-green: #28513C;
+  --color-ink-muted: #425C50;
+  --color-border: #183126;
+  --color-border-subtle: #C0D1C6;
+  --color-focus: #1C5A3F;
+  --color-surface-hover: #D7E7DC;
+  --color-rust-hover: #164B34;
+  --color-green-hover: #1D3E2E;
+  --color-error-bg: #FBECEA;
+  --color-error-border: #A13030;
+  --color-success-bg: #DDEDE3;
+  --color-success-border: #28513C;
+  --color-surface-card: var(--color-white);
+  --color-surface-muted: var(--color-surface-hover);
+  --color-paper-muted: var(--color-surface-hover);
+}
+
+html[data-theme="midnight-groove"],
+.theme-swatch[data-theme="midnight-groove"] {
+  --color-paper: #121A22;
+  --color-ink: #F1F1E8;
+  --color-white: #202C36;
+  --color-rust: #FFE29A;
+  --color-rust-accessible: #FFE29A;
+  --color-rust-highlight: #FFD166;
+  --color-deep-green: #A9C7B8;
+  --color-ink-muted: #C0C8CE;
+  --color-border: #687987;
+  --color-border-subtle: #435361;
+  --color-focus: #FFE29A;
+  --color-surface-hover: #293844;
+  --color-rust-hover: #FFF0BC;
+  --color-green-hover: #B5D0C2;
+  --color-error-bg: #3A2026;
+  --color-error-border: #FF9EAA;
+  --color-success-bg: #1D3830;
+  --color-success-border: #81C9A5;
+  --color-surface-card: var(--color-white);
+  --color-surface-muted: var(--color-surface-hover);
+  --color-paper-muted: var(--color-surface-hover);
+}
+
+html[data-theme="purple-haze"],
+.theme-swatch[data-theme="purple-haze"] {
+  --color-paper: #EFE9F5;
+  --color-ink: #2C2036;
+  --color-white: #FCF9FF;
+  --color-rust: #63358F;
+  --color-rust-accessible: #63358F;
+  --color-rust-highlight: #7543A6;
+  --color-deep-green: #385146;
+  --color-ink-muted: #574D60;
+  --color-border: #2C2036;
+  --color-border-subtle: #CEC3D8;
+  --color-focus: #63358F;
+  --color-surface-hover: #E4DBEE;
+  --color-rust-hover: #57307C;
+  --color-green-hover: #2D443B;
+  --color-error-bg: #F8E9ED;
+  --color-error-border: #AE3652;
+  --color-success-bg: #E4EFE9;
+  --color-success-border: #385146;
+  --color-surface-card: var(--color-white);
+  --color-surface-muted: var(--color-surface-hover);
+  --color-paper-muted: var(--color-surface-hover);
+}
+
+html[data-theme="record-shop"],
+html[data-theme="blue-note"],
+html[data-theme="soul-45"],
+html[data-theme="mint-press"],
+html[data-theme="purple-haze"] {
+  color-scheme: light;
+}
+
+html[data-theme="midnight-groove"] {
+  color-scheme: dark;
+}

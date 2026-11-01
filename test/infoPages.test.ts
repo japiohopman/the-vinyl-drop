@@ -29,6 +29,29 @@ describe('Contact & Community Rules Pages (Phase 6A - Issue #46)', () => {
     });
   });
 
+  describe('GET /options', () => {
+    it('is public, device-local, theme-aware and does not cache session navigation', async () => {
+      const res = await request(app).get('/options');
+
+      expect(res.status).toBe(200);
+      expect(res.headers['cache-control']).toBe('no-store');
+      expect(res.text).toContain('<h1 id="options-title">Options</h1>');
+      expect(res.text).toContain('data-preference="soundEffectsEnabled"');
+      expect(res.text).toContain('data-preference="hapticFeedbackEnabled"');
+      expect(res.text).toContain('data-preference="tutorialsEnabled"');
+      expect(res.text).toContain('name="theme"');
+      expect(res.text).toContain('Record Shop');
+      expect(res.text).toContain('Blue Note');
+      expect(res.text).toContain('Soul 45');
+      expect(res.text).toContain('Mint Press');
+      expect(res.text).toContain('Midnight Groove');
+      expect(res.text).toContain('Purple Haze');
+      expect(res.text).toContain('href="/options"');
+      expect(res.text.indexOf('<script src="/js/user-preferences.js"></script>'))
+        .toBeLessThan(res.text.indexOf('/css/themes.css'));
+    });
+  });
+
   describe('GET /privacy', () => {
     it('renders the current privacy notice and accurately discloses the manual deletion boundary', async () => {
       const res = await request(app).get('/privacy');
