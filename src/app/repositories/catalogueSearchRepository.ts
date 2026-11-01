@@ -49,7 +49,7 @@ function isMissingCatalogueExtension(error: unknown): boolean {
   const code = typeof candidate.code === 'string' ? candidate.code : '';
   const message = typeof candidate.message === 'string' ? candidate.message : '';
   return ['42883', '3F000', '42704'].includes(code) ||
-    /extensions\\.(?:similarity|%)|gin_trgm_ops.*does not exist|operator does not exist/i.test(message);
+    /extensions\.(?:similarity|%)|gin_trgm_ops.*does not exist|operator does not exist/i.test(message);
 }
 
 async function searchField(
