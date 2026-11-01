@@ -166,4 +166,60 @@ describe('Options page and live theme preferences', () => {
       await unsupportedPage.close();
     }
   });
+  it('exposes named preference controls, synchronizes their state labels and supports keyboard use', async () => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    try {
+      await page.addInitScript(() => {
+        Object.defineProperty(Navigator.prototype, 'vibrate', {
+          configurable: true,
+          value: () => true,
+        });
+      });
+      await page.goto(origin + '/options', { waitUntil: 'networkidle' });
+
+      const preferences = [
+        { selector: '#options-sound', name: 'Sound effects' },
+        { selector: '#options-haptics', name: 'Haptic feedback' },
+        { selector: '#options-tutorials', name: 'Gesture tips' },
+      ];
+      for (const preference of preferences) {
+        const control = page.locator(preference.selector);
+        expect(await page.getByRole('checkbox', { name: preference.name }).count()).toBe(1);
+        const state = control.locator('xpath=..').locator('[data-preference-state]');
+        expect(await state.textContent()).toBe('On');
+        await control.uncheck();
+        expect(await state.textContent()).toBe('Off');
+        await control.check();
+        expect(await state.textContent()).toBe('On');
+      }
+
+      const sound = page.locator('#options-sound');
+      await sound.focus();
+      await page.keyboard.press('Space');
+      expect(await sound.isChecked()).toBe(false);
+      expect(await sound.locator('xpath=..').locator('[data-preference-state]').textContent()).toBe('Off');
+
+      await page.locator('[data-theme-choice][value="record-shop"]').focus();
+      await page.keyboard.press('ArrowRight');
+      expect(await page.locator('[data-theme-choice][value="blue-note"]').isChecked()).toBe(true);
+      expect(await page.locator('html').getAttribute('data-theme')).toBe('blue-note');
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('removes theme-card transitions when reduced motion is requested', async () => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    try {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.goto(origin + '/options', { waitUntil: 'networkidle' });
+      const duration = await page.locator('.options-theme-choice').first().evaluate((element) =>
+        getComputedStyle(element).transitionDuration
+      );
+      expect(duration.split(',').every((value) => Number.parseFloat(value.trim()) === 0)).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
+
 });
