@@ -104,6 +104,7 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
           country: 'UK',
           format: 'Vinyl, LP, Album',
           genre: 'Funk, Soul',
+          coverArtUrl: 'https://i.discogs.com/example-cover.jpg',
         },
       });
       expect(DiscogsMetadataProvider.prototype.searchCandidates).toHaveBeenCalledWith({
@@ -191,6 +192,7 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
             // The result title is the containing release, not the searched track.
             title: 'Different Release Album',
             label: 'Polydor',
+            coverArtUrl: 'https://i.discogs.com/album-cover.jpg',
             releaseYear: 1971,
             country: 'US',
             format: 'Vinyl, LP, Album',
@@ -224,12 +226,67 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
           label: 'Polydor',
           releaseYear: '1971',
           country: 'US',
+          coverArtUrl: 'https://i.discogs.com/album-cover.jpg',
         },
       });
       expect(calls).toEqual([
         { artist: 'James Brown', title: 'Sex Machine' },
         { artist: 'James Brown', track: 'Sex Machine' },
       ]);
+    });
+
+    it('prefers a matching track result that includes catalogue artwork over an earlier image-less result', async () => {
+      jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockImplementation(async (query) => {
+        if (query.track) {
+          return [
+            {
+              id: 'discogs:994',
+              providerName: 'discogs',
+              externalId: '994',
+              artist: 'Snoop Dogg',
+              title: 'Image-less release',
+              matchScore: 0,
+              matchedEvidence: [],
+              provenance: { provider: 'discogs', externalId: '994', fetchedAt: '2026-01-01T00:00:00.000Z' },
+            },
+            {
+              id: 'discogs:995',
+              providerName: 'discogs',
+              externalId: '995',
+              artist: 'Snoop Dogg',
+              title: 'Doggystyle',
+              coverArtUrl: 'https://i.discogs.com/doggystyle.jpg',
+              matchScore: 0,
+              matchedEvidence: [],
+              provenance: { provider: 'discogs', externalId: '995', fetchedAt: '2026-01-01T00:00:00.000Z' },
+            },
+          ];
+        }
+        return [{
+          id: 'discogs:996',
+          providerName: 'discogs',
+          externalId: '996',
+          artist: 'Different Artist',
+          title: 'A Different Album',
+          matchScore: 0,
+          matchedEvidence: [],
+          provenance: { provider: 'discogs', externalId: '996', fetchedAt: '2026-01-01T00:00:00.000Z' },
+        }];
+      });
+
+      const response = await supertest(app)
+        .get('/releases/lookup-metadata')
+        .query({ artist: 'Snoop Dogg', title: 'Gin and Juice' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        found: true,
+        matchType: 'track',
+        metadata: {
+          coverArtUrl: 'https://i.discogs.com/doggystyle.jpg',
+        },
+      });
     });
 
     it('tries a broad query when structured release and track searches have no confident match', async () => {
