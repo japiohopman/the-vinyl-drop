@@ -435,7 +435,7 @@ describe('YouTube release preview (#226)', () => {
     }, { filename: detailPath });
 
     expect(rendered).toContain('src="https://catalog.example/doggystyle.jpg"');
-    expect(rendered).toContain('Catalogue artwork for Snoop Dogg');
+    expect(rendered).toContain('Catalogue artwork for Doggystyle by Snoop Dogg');
     expect(rendered).not.toContain('src="https://storage.example/back-cover.jpg"');
     expect(rendered).toContain('data-photo-url="https://storage.example/back-cover.jpg"');
   });
