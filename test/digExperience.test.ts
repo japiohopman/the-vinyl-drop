@@ -266,19 +266,29 @@ describe('Dig artwork face semantics', () => {
     expect(result.hasExplicitBackCover).toBe(false);
   });
 
-  it('does not use catalog/release artwork or other photo roles when a front-cover photo is missing', () => {
+  it('uses release catalogue artwork as the front fallback when the seller has no front photo', () => {
     const result = resolveDigArtwork([
       photo('record', 0, '/seller/record.webp', 'Side A label'),
       photo('inside_sleeve', 1, '/seller/inside.webp', 'Gatefold binnenkant'),
       photo('insert_poster', 2, '/seller/poster.webp', 'Poster'),
       photo('detail', 3, '/seller/detail.webp', 'Corner wear'),
-    ], 'Madvillainy', 'Madvillain');
+    ], 'Madvillainy', 'Madvillain', undefined, 'https://i.discogs.com/madvillainy.jpg');
 
-    expect(result.front.src).toBe('/assets/vinyl-placeholder.svg');
-    expect(result.front.sourceKind).toBe('placeholder');
-    expect(result.front.altText).toContain('No front-cover photo available');
+    expect(result.front.src).toBe('https://i.discogs.com/madvillainy.jpg');
+    expect(result.front.sourceKind).toBe('catalogue_artwork');
+    expect(result.front.sourceLabel).toContain('Discogs catalogue artwork');
+    expect(result.front.altText).toContain('not a photo of this physical copy');
     expect(result.back).toBeNull();
     expect(result.hasExplicitBackCover).toBe(false);
+  });
+
+  it('still prefers the seller physical front photo over release catalogue artwork', () => {
+    const result = resolveDigArtwork([
+      photo('front_cover', 1, '/seller/actual-front.webp', 'Actual copy front'),
+    ], 'Madvillainy', 'Madvillain', undefined, 'https://i.discogs.com/madvillainy.jpg');
+
+    expect(result.front.src).toBe('/seller/actual-front.webp');
+    expect(result.front.sourceKind).toBe('seller_front');
   });
 
   it('uses a configurable neutral placeholder when neither explicit cover role exists', () => {
@@ -520,6 +530,8 @@ describe('Dig photo-role contract', () => {
     expect(css).toContain('.dig-flip-control:focus-visible');
     expect(css).toContain('clip: rect(0, 0, 0, 0)');
     expect(view).toContain('Front cover not photographed');
+    expect(view).toContain('data-artwork-image');
+    expect(view).toContain('Discogs catalogue artwork');
     expect(view).toContain('↑ next / discard · ↓ previous / restore');
     expect(view).not.toContain('← previous · → next');
     expect(view).not.toContain('Release artwork');
@@ -655,7 +667,7 @@ describe('searchDigListings PGlite database integration', () => {
     expect(item.backArtwork?.src).toContain('listings/photos/back.webp');
   });
 
-  it('never substitutes catalog release.cover_art_url when no seller cover photos exist in DB', async () => {
+  it('uses catalog release.cover_art_url as Dig front when no seller front photo exists in DB', async () => {
     const sellerId = '11111111-1111-4111-8111-222222222222';
     const releaseId = '22222222-2222-4222-8222-333333333333';
     const copyId = '33333333-3333-4333-8333-444444444444';
@@ -672,9 +684,9 @@ describe('searchDigListings PGlite database integration', () => {
 
     expect(result.items.length).toBe(1);
     const item = result.items[0];
-    expect(item.frontArtwork.sourceKind).toBe('placeholder');
-    expect(item.frontArtwork.src).toBe('/assets/vinyl-placeholder.svg');
-    expect(item.frontArtwork.src).not.toBe('https://catalog.example/coltrane.jpg');
+    expect(item.frontArtwork.sourceKind).toBe('catalogue_artwork');
+    expect(item.frontArtwork.src).toBe('https://catalog.example/coltrane.jpg');
+    expect(item.frontArtwork.sourceLabel).toContain('Discogs catalogue artwork');
     expect(item.backArtwork).toBeNull();
   });
 });
