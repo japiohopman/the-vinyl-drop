@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 dotenv.config();
 
+const MAX_BETA_ALLOWED_EMAILS = 13;
+
 export const envSchema = z
   .object({
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -61,11 +63,11 @@ export const envSchema = z
       ),
     ];
 
-    if (betaAllowedEmails.length > 5) {
+    if (betaAllowedEmails.length > MAX_BETA_ALLOWED_EMAILS) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['BETA_ALLOWED_EMAILS'],
-        message: 'The invite-only pilot is limited to five email addresses at most.',
+        message: `The invite-only beta supports at most ${MAX_BETA_ALLOWED_EMAILS} unique email addresses.`,
       });
     }
 
