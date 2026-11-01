@@ -223,6 +223,27 @@ describe('Shared listing artwork priority', () => {
     expect(card.fallbackImageUrl).toBe('https://catalog.example/blue-lines.webp');
   });
 
+  it('uses catalogue artwork when the only seller photos are the back cover or record', () => {
+    const card = buildListingCardFromDetails({
+      listing: { id: 'listing-artwork-back-only', price: 1800, tradeAvailable: false },
+      release: {
+        title: 'Doggystyle',
+        artist: 'Snoop Dogg',
+        format: 'LP',
+        coverArtUrl: 'https://catalog.example/doggystyle.jpg',
+      },
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG' },
+      seller: { username: 'record_seller' },
+      photos: [
+        { publicUrl: '/seller/back.webp', role: 'back_cover', displayOrder: 0 },
+        { publicUrl: '/seller/record.webp', role: 'record', displayOrder: 1 },
+      ],
+    });
+
+    expect(card.imageUrl).toBe('https://catalog.example/doggystyle.jpg');
+    expect(card.fallbackImageUrl).toBeUndefined();
+  });
+
   it('leaves a missing cover to the shared local placeholder instead of inventing catalogue artwork', () => {
     const card = buildListingCardFromDetails({
       listing: { id: 'listing-artwork-2', price: 1800, tradeAvailable: false },
