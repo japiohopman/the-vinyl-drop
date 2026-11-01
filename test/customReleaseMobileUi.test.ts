@@ -378,6 +378,49 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('#releaseCoverArt').isEnabled()).toBe(true);
   });
 
+  it('waits for a pending Discogs lookup before allowing DROP form submission', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+
+    let allowLookupResponse: (() => void) | null = null;
+    const responseGate = new Promise<void>((resolve) => { allowLookupResponse = resolve; });
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      await responseGate;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          found: true,
+          matchType: 'release',
+          metadata: { coverArtUrl: 'https://i.discogs.com/doggystyle.jpg' },
+        }),
+      });
+    });
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('form[data-discogs-lookup-form]').evaluate(
+      'form => form.addEventListener("submit", event => { event.preventDefault(); form.dataset.testSubmitted = "true"; })'
+    );
+
+    await page.locator('#releaseArtist').fill('Snoop Dogg');
+    await page.locator('#releaseTitle').fill('Doggystyle');
+    await page.waitForRequest((request) => request.url().includes('/releases/lookup-metadata?'));
+    expect(await page.locator('.custom-release-submit').isDisabled()).toBe(true);
+
+    await page.locator('form[data-discogs-lookup-form]').evaluate('form => form.requestSubmit()');
+    expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-submitted')).toBeNull();
+
+    if (!allowLookupResponse) throw new Error('Discogs test response gate was not initialized.');
+    allowLookupResponse();
+
+    await page.waitForFunction(
+      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-test-submitted') === 'true',
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('https://i.discogs.com/doggystyle.jpg');
+  });
+
   it('preserves manually corrected metadata when a later lookup runs', async () => {
     const releaseHtml = await renderReleasePage();
     await page.setViewportSize({ width: 375, height: 800 });
