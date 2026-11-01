@@ -57,6 +57,9 @@ jobs:
       - name: Run unit & integration tests
         run: npm test
 
+      - name: Verify catalogue search performance and browser accessibility
+        run: npm run test:catalogue-search
+
       - name: Verify database migrations
         run: npm run db:verify
 

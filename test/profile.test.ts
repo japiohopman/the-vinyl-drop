@@ -8,6 +8,7 @@ import { updateProfile, AuthorizationError } from '../src/app/services/profileSe
 import * as profileService from '../src/app/services/profileService';
 import { Profile } from '../src/db/schema/profiles';
 import { PGlite } from '@electric-sql/pglite';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import path from 'path';
@@ -361,7 +362,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
 
   describe('Database Boundary Invariant (profiles_username_lower_idx)', () => {
     it('should enforce case-insensitive unique constraint at the database boundary via profiles_username_lower_idx', async () => {
-      const pg = new PGlite();
+      const pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
       await pg.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
       await pg.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
       await pg.exec(`

@@ -14,6 +14,7 @@ import listingRoutes from './listingRoutes';
 import releaseRoutes from './releaseRoutes';
 import messagingRoutes from './messagingRoutes';
 import { postStagingDiagnostics } from '../controllers/stagingDiagnosticsController';
+import { getCatalogueSuggestions } from '../controllers/catalogueSearchController';
 
 const router = Router();
 
@@ -22,6 +23,7 @@ router.get('/browse/dig', getDigBrowsePage);
 router.get('/dig', getResponsiveDigPage);
 router.get('/browse', getBrowsePage);
 router.get('/search', getSearchPage);
+router.get('/api/catalogue-suggestions', rateLimits.catalogueSuggestion, getCatalogueSuggestions);
 router.get('/activity', getActivityPage);
 router.get('/contact', getContactPage);
 router.get('/install', getInstallPage);
