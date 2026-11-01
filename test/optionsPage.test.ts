@@ -58,7 +58,7 @@ describe('Options page and live theme preferences', () => {
         }
       }
 
-      await page.locator('[data-theme-choice][value="midnight-groove"]').check();
+      await page.locator('[data-theme-choice][value="midnight-groove"]').locator('xpath=..').click();
       expect(await page.locator('html').getAttribute('data-theme')).toBe('midnight-groove');
       expect(await page.locator('body').evaluate((element) =>
         getComputedStyle(element).backgroundColor
@@ -129,6 +129,7 @@ describe('Options page and live theme preferences', () => {
             buttonBorder: contrast(buttonColors.border, buttonColors.background),
             inputText: contrast(inputColors.text, inputColors.background),
             inputBorder: contrast(inputColors.border, inputColors.background),
+            inputColors,
             buttonOpacity: buttonColors.opacity,
             inputOpacity: inputColors.opacity,
           };
@@ -136,6 +137,9 @@ describe('Options page and live theme preferences', () => {
       });
 
       results.forEach((result) => {
+        if (result.inputBorder < 3) {
+          throw new Error(`${result.theme} disabled input border contrast ${result.inputBorder}: ${JSON.stringify(result.inputColors)}`);
+        }
         expect(result.buttonText).toBeGreaterThanOrEqual(4.5);
         expect(result.inputText).toBeGreaterThanOrEqual(4.5);
         expect(result.buttonBorder).toBeGreaterThanOrEqual(3);
