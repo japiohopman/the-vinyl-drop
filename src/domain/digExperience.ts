@@ -51,8 +51,8 @@ export function resolveDigArtwork(
         }
       : {
           src: placeholderUrl,
-          altText: `No front-cover photo or catalogue artwork available for ${title} — ${artist}`,
-          sourceLabel: 'No front-cover artwork available',
+          altText: `No front-cover photo available for the physical copy of ${title} — ${artist}`,
+          sourceLabel: 'No front-cover photo available',
           sourceKind: 'placeholder',
         };
 
