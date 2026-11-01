@@ -14,12 +14,14 @@
   <% const queryBaseParams = [baseQueryParams, formatParams, filters.whiteLabel ? 'whiteLabel=1' : ''].filter(Boolean).join('&'); %>
 
   <div class="browse-header">
-    <h1>
+    <div class="browse-header-copy">
+      <h1>
       <%= filters.q ? `Search: "${filters.q}"` : ((typeof responsiveDig !== 'undefined' && responsiveDig) ? 'Dig Vinyl Records' : 'Browse Vinyl Record Drops') %>
-    </h1>
-    <p class="browse-header-description">
-      Dig through physical vinyl records available in our local community marketplace.
-    </p>
+      </h1>
+      <p class="browse-header-description">
+        Dig through physical vinyl records available in our local community marketplace.
+      </p>
+    </div>
     <div class="browse-header-actions">
       <% if (typeof responsiveDig === 'undefined' || !responsiveDig) { %>
         <a class="btn btn-outline" href="/dig?<%= queryBaseParams %>" aria-label="Open mobile crate-dig mode">
