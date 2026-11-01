@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { AddressInfo, Server } from 'node:net';
 import ejs from 'ejs';
-import { chromium } from '@playwright/test';
+import { chromium, type Browser } from '@playwright/test';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 import { VINYL_FORMAT_FILTERS } from '../src/domain/releaseFormat';
 import { readFullStylesheetSource } from '../test/stylesheetTestHelper';
@@ -83,7 +83,7 @@ async function run(): Promise<void> {
 
   const address = server.address() as AddressInfo;
   const baseUrl = 'http://127.0.0.1:' + address.port;
-  const browser = await chromium.launch({ headless: true });
+  let browser: Browser | undefined;
   const failures: string[] = [];
   const viewports = [
     { width: 360, height: 800, minimumColumns: 1 },
@@ -95,6 +95,7 @@ async function run(): Promise<void> {
   ];
 
   try {
+    browser = await chromium.launch({ headless: true });
     const html = await renderBrowse(baseUrl);
     for (const viewport of viewports) {
       const page = await browser.newPage({ viewport });
@@ -173,7 +174,7 @@ async function run(): Promise<void> {
     assert.equal(failures.length, 0, failures.join('\n'));
     console.log('[browse-evidence] Captured ' + viewports.length + ' Browse screenshots in ' + evidencePath);
   } finally {
-    await browser.close();
+    await browser?.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 }
