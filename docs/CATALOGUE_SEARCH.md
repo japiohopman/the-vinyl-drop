@@ -6,10 +6,10 @@ The same-origin endpoint is `GET /api/catalogue-suggestions?q=<query>`. It accep
 
 Suggestions describe only artist, release-title and label fields from releases linked to a published listing. Draft-only inventory is excluded. Seller, profile, email and private account fields are never selected. Catalogue-number matching remains available through the existing full Browse/Dig search.
 
-Exact normalized matches rank first, then prefixes, contains matches and PostgreSQL trigram near-matches. Case, accents, whitespace and punctuation are ignored only in comparison keys; canonical names such as `AC/DC`, `P!nk` and `Björk` remain unchanged.
+Exact normalized matches rank first, then prefixes, contains matches and PostgreSQL trigram near-matches. Case, common Latin accents, whitespace and punctuation are ignored only in comparison keys; canonical names such as `AC/DC`, `P!nk` and `Björk` remain unchanged.
 
 Migration `0020_catalogue_search_trigram` installs `pg_trgm` in the non-public `extensions` schema and adds GIN trigram indexes for artist, title and label. The endpoint falls back to exact/prefix/contains matching if a rolling deployment receives app code before the migration. Requests reuse the existing shared rate-limit service at 30 per client IP per minute when its owner-controlled global feature gate is enabled.
 
-CI verifies the migration in isolated PGlite, fuzzy matching, punctuation/accent normalization, published-only visibility, the 25,004-row trigram query plan, plus keyboard/touch behaviour, filter retention, stale-response handling and safe text rendering.
+CI verifies the migration in isolated PGlite, fuzzy matching, punctuation/accent normalization using built-in PostgreSQL `translate`, published-only visibility, the 25,004-row trigram query plan, plus keyboard/touch behaviour, filter retention, stale-response handling and safe text rendering.
 
 Migration `0020` is included as code only. No staging or production database migration, extension installation, environment setting or feature flag was changed.
