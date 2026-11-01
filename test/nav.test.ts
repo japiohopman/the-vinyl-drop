@@ -138,6 +138,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('+ DROP');
     expect(html).toContain('ACTIVITY');
     expect(html).toContain('SIGN IN');
+    expect(html).toContain('class="nav-link nav-link-options"');
+    expect(html).toContain('href="/options"');
     expect(html).toContain('id="mobile-you-surface"');
     expect(html).toContain('<span>ME</span>');
     expect(html).toContain('aria-label="Me"');
