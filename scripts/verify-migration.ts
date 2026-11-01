@@ -1,6 +1,5 @@
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
-import { unaccent } from '@electric-sql/pglite/contrib/unaccent';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import fs from 'fs';
@@ -9,7 +8,7 @@ import path from 'path';
 export async function verifyMigrations(): Promise<void> {
   console.log('🔄 Verifying database migrations via Drizzle migrator against isolated in-memory PostgreSQL engine...');
 
-  const pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never, unaccent: unaccent as never } });
+  const pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
 
   // Bootstrap auth and storage schemas, auth.uid(), auth.role(), and storage.foldername() stubs for local/PGlite migration verification
   await pg.exec(`
@@ -92,17 +91,17 @@ export async function verifyMigrations(): Promise<void> {
   await migrate(db, { migrationsFolder: drizzleDir });
 
   const catalogueExtensions = await pg.query<{ extname: string; schema_name: string }>(
-    "SELECT e.extname, n.nspname AS schema_name FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname IN ('pg_trgm', 'unaccent') ORDER BY e.extname;"
+    "SELECT e.extname, n.nspname AS schema_name FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'pg_trgm' ORDER BY e.extname;"
   );
-  if (catalogueExtensions.rows.length !== 2 || catalogueExtensions.rows.some((row) => row.schema_name !== 'extensions') ||
-      !catalogueExtensions.rows.some((row) => row.extname === 'pg_trgm') || !catalogueExtensions.rows.some((row) => row.extname === 'unaccent')) {
+  if (catalogueExtensions.rows.length !== 1 || catalogueExtensions.rows.some((row) => row.schema_name !== 'extensions') ||
+      !catalogueExtensions.rows.some((row) => row.extname === 'pg_trgm')) {
     throw new Error('Catalogue search extensions must both be installed in the extensions schema');
   }
-  const fuzzySimilarity = await pg.query<{ score: number; unaccented: string }>(
-    "SELECT extensions.similarity('Prnce', 'Prince') AS score, extensions.unaccent('Björk') AS unaccented;"
+  const fuzzySimilarity = await pg.query<{ score: number; normalized: string }>(
+    "SELECT extensions.similarity('Prnce', 'Prince') AS score, translate(lower('Björk'), 'ö', 'o') AS normalized;"
   );
-  if (Number(fuzzySimilarity.rows[0]?.score) < 0.3 || fuzzySimilarity.rows[0]?.unaccented !== 'Bjork') {
-    throw new Error('Catalogue search trigram similarity or accent normalization is not functioning');
+  if (Number(fuzzySimilarity.rows[0]?.score) < 0.3 || fuzzySimilarity.rows[0]?.normalized !== 'bjork') {
+    throw new Error('Catalogue search trigram similarity or built-in accent normalization is not functioning');
   }
 
   // Verify migration history table recorded all migration entries
