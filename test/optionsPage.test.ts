@@ -1,5 +1,7 @@
 import { chromium, Browser, Page } from 'playwright';
 import { AddressInfo } from 'net';
+import fs from 'fs';
+import path from 'path';
 import { createApp } from '../src/app';
 
 describe('Options page and live theme preferences', () => {
@@ -37,6 +39,24 @@ describe('Options page and live theme preferences', () => {
       expect(await page.locator('h1').textContent()).toBe('Options');
       expect(await page.locator('html').getAttribute('data-theme')).toBe('record-shop');
       expect(await page.locator('[data-theme-choice]').count()).toBe(6);
+
+      const evidenceDirectory = process.env.OPTIONS_EVIDENCE_DIR;
+      if (evidenceDirectory) {
+        fs.mkdirSync(evidenceDirectory, { recursive: true });
+        const themes = ['record-shop', 'blue-note', 'soul-45', 'mint-press', 'midnight-groove', 'purple-haze'];
+        for (const width of [390, 1280]) {
+          await page.setViewportSize({ width, height: 900 });
+          for (const theme of themes) {
+            await page.locator('[data-theme-choice][value="' + theme + '"]').check();
+            await page.evaluate(() => document.fonts.ready.then(() => undefined));
+            await page.screenshot({
+              path: path.join(evidenceDirectory, 'options-' + width + '-' + theme + '.png'),
+              fullPage: true,
+              animations: 'disabled',
+            });
+          }
+        }
+      }
 
       await page.locator('[data-theme-choice][value="midnight-groove"]').check();
       expect(await page.locator('html').getAttribute('data-theme')).toBe('midnight-groove');
