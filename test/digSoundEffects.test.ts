@@ -120,7 +120,12 @@ describe('shared browser preferences', () => {
     expect(preferences.set('unknownPreference', true)).toBe(false);
     unsubscribe();
 
-    expect(JSON.parse(values.get('tvd:preferences:v1') || '{}')).toEqual({ soundEffectsEnabled: true });
+    expect(JSON.parse(values.get('tvd:preferences:v1') || '{}')).toEqual({
+      soundEffectsEnabled: true,
+      hapticFeedbackEnabled: true,
+      tutorialsEnabled: true,
+      theme: 'record-shop',
+    });
     expect(storage.setItem).toHaveBeenCalledTimes(1);
     expect(notifications).toEqual(['soundEffectsEnabled']);
   });
