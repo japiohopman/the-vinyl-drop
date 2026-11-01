@@ -33,7 +33,10 @@
       <input type="hidden" name="whiteLabel" value="<%= filters.whiteLabel ? '1' : '' %>">
       <input type="hidden" name="view" value="<%= currentView %>">
       <label class="dig-search-visually-hidden" for="dig-primary-search">Search records</label>
-      <input type="search" id="dig-primary-search" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #">
+      <div class="form-search-control">
+        <%- include('../partials/icon', { name: 'search', size: '1rem', ariaHidden: true }) %>
+        <input type="search" id="dig-primary-search" name="q" class="form-control" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #">
+      </div>
       <button type="submit" class="btn btn-primary">Search</button>
     </form>
 
