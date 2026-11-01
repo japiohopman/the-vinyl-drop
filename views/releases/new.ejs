@@ -23,6 +23,11 @@
     <p class="discogs-lookup-status" id="discogsLookupStatus" role="status" aria-live="polite" aria-atomic="true" data-state="idle">Enter an artist and title to check Discogs.</p>
     <input type="hidden" name="coverArtUrl" id="discogsCoverArtUrl" value="<%= form.values.coverArtUrl || '' %>" data-discogs-field="coverArtUrl" />
 
+    <div class="discogs-cover-preview" data-discogs-cover-preview hidden>
+      <img src="" alt="Discogs catalogue artwork preview" loading="lazy" referrerpolicy="no-referrer" />
+      <p data-discogs-cover-preview-status>Discogs catalogue artwork found.</p>
+    </div>
+
     <details class="custom-release-details" id="releaseMetadataDetails">
       <summary>Release details</summary>
       <div class="custom-release-grid">
@@ -57,11 +62,7 @@
       </div>
 
       <fieldset class="release-catalog-artwork">
-        <legend>Catalogue artwork (optional)</legend>
-        <div class="discogs-cover-preview" data-discogs-cover-preview hidden>
-          <img src="" alt="Discogs catalogue artwork preview" loading="lazy" referrerpolicy="no-referrer" />
-          <p data-discogs-cover-preview-status>Discogs catalogue artwork found.</p>
-        </div>
+        <legend>Catalogue artwork replacement (optional)</legend>
         <div class="release-cover-override-preview" data-release-cover-override-preview hidden>
           <img src="" alt="Preview of your replacement catalogue artwork" data-release-cover-override-image />
           <div>
