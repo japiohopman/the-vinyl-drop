@@ -60,7 +60,8 @@ describe('Options page and live theme preferences', () => {
             });
           }
           for (const theme of themes) {
-            await page.locator('[data-theme-choice][value="' + theme + '"]').check();
+            await page.locator('[data-theme-choice][value="' + theme + '"]').locator('xpath=..').click();
+            expect(await page.locator('html').getAttribute('data-theme')).toBe(theme);
             await page.evaluate(() => document.fonts.ready.then(() => undefined));
             await page.screenshot({
               path: path.join(evidenceDirectory, 'options-' + width + '-' + theme + '.png'),
