@@ -9,7 +9,7 @@ import path from 'path';
 export async function verifyMigrations(): Promise<void> {
   console.log('🔄 Verifying database migrations via Drizzle migrator against isolated in-memory PostgreSQL engine...');
 
-  const pg = new PGlite({ extensions: { pg_trgm, unaccent } });
+  const pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never, unaccent: unaccent as never } });
 
   // Bootstrap auth and storage schemas, auth.uid(), auth.role(), and storage.foldername() stubs for local/PGlite migration verification
   await pg.exec(`
