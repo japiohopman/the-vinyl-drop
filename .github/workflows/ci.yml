@@ -77,6 +77,20 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Capture Issue #293 desktop Browse evidence
+        env:
+          BROWSE_EVIDENCE_DIR: artifacts/issue-293
+        run: npm run test:browse-evidence
+
+      - name: Upload Issue #293 desktop Browse evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-293-browse-playwright-evidence
+          path: artifacts/issue-293/
+          if-no-files-found: warn
+          retention-days: 14
+
   production-preflight-windows:
     runs-on: windows-latest
     steps:
