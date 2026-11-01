@@ -18,7 +18,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:verify": "tsx scripts/verify-migration.ts",
     "db:seed:staging": "tsx scripts/seed-staging.ts",
-    "test:browse-evidence": "tsx scripts/generate-issue-293-evidence.ts"
+    "test:browse-evidence": "tsx scripts/generate-issue-293-evidence.ts",
+    "test:catalogue-search": "tsx scripts/test-catalogue-search.ts"
   },
   "keywords": [
     "vinyl",
