@@ -87,7 +87,7 @@ export function buildListingCardFromDetails(details: {
   seller: { username: string; location?: string | null };
   photos?: Array<{ publicUrl: string; role?: string; displayOrder?: number }>;
 }): ListingCardViewModel {
-  const primaryPhoto = details.photos?.find((photo) => photo.role === 'front_cover') || details.photos?.[0];
+  const primaryPhoto = details.photos?.find((photo) => photo.role === 'front_cover');
   const primaryImage = primaryPhoto?.publicUrl || details.release.coverArtUrl || undefined;
   const fallbackImage = primaryPhoto ? details.release.coverArtUrl || undefined : undefined;
 
