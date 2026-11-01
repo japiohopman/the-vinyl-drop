@@ -99,7 +99,7 @@ describe('Environment Validation', () => {
     });
     expect(accepted.BETA_ALLOWED_EMAILS).toBe(thirteenUniqueAddresses);
 
-    const duplicatesDoNotIncreaseTheUniqueCount = `${thirteenUniqueAddresses},TESTER1@EXAMPLE.COM,tester2@example.com`;
+    const duplicatesDoNotIncreaseTheUniqueCount = `${thirteenUniqueAddresses}, TESTER1@EXAMPLE.COM , tester2@example.com`;
     expect(validateEnv({
       NODE_ENV: 'test',
       BETA_ALLOWED_EMAILS: duplicatesDoNotIncreaseTheUniqueCount,
