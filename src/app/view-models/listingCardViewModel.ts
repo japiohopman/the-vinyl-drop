@@ -10,7 +10,6 @@ export interface ListingCardViewModel {
   sleeveCondition: string;
   imageUrl?: string;
   fallbackImageUrl?: string;
-  imageAlt?: string;
   imageAlt: string;
   sellerUsername?: string;
   sellerLocation?: string;
@@ -87,7 +86,7 @@ export function buildListingCardFromDetails(details: {
   release: { title: string; artist: string; releaseYear?: number | null; format?: string | null; coverArtUrl?: string | null };
   physicalCopy: { mediaCondition: string; sleeveCondition: string };
   seller: { username: string; location?: string | null };
-  photos?: Array<{ publicUrl: string; role?: string; displayOrder?: number }>;
+  photos?: Array<{ publicUrl: string; role?: string; displayOrder?: number; altText?: string | null }>;
 }): ListingCardViewModel {
   const primaryPhoto = details.photos?.find((photo) => photo.role === 'front_cover');
   const primaryImage = primaryPhoto?.publicUrl || details.release.coverArtUrl || undefined;
