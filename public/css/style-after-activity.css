@@ -488,6 +488,13 @@
   text-overflow: ellipsis;
 }
 
+.browse-page-container .listing-card-seller-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .browse-page-container .listing-card-location {
   overflow: hidden;
   text-overflow: ellipsis;
