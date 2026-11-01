@@ -535,6 +535,10 @@
 }
 
 @media (max-width: 767px) {
+  .dig-responsive-desktop .browse-page-container .browse-header {
+    display: none;
+  }
+
   .browse-page-container {
     width: 100%;
     margin: var(--space-3) auto;
