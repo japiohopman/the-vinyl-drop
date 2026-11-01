@@ -10,7 +10,6 @@
   var coverPreview = form.querySelector('[data-discogs-cover-preview]');
   var coverPreviewImage = coverPreview ? coverPreview.querySelector('img') : null;
   var coverPreviewStatus = coverPreview ? coverPreview.querySelector('[data-discogs-cover-preview-status]') : null;
-  var submitButton = form.querySelector('button[type="submit"]');
   var manualArtworkInput = form.querySelector('#releaseCoverArt');
   var manualArtworkFilename = form.querySelector('#releaseCoverArtFilename');
   var manualArtworkPreview = form.querySelector('[data-release-cover-override-preview]');
@@ -34,7 +33,6 @@
 
   function setLookupPending(pending) {
     lookupPending = pending;
-    if (submitButton) submitButton.disabled = pending;
     form.dataset.lookupPending = pending ? 'true' : 'false';
   }
 
