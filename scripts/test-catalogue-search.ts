@@ -12,7 +12,7 @@ const delay=(ms:number):Promise<void>=>new Promise(resolve=>setTimeout(resolve,m
 async function verifyPerformance():Promise<void>{
  const pg=new PGlite({extensions:{pg_trgm,unaccent}});
  try{
-  await pg.exec(\`
+  await pg.exec(`
    CREATE SCHEMA extensions;
    CREATE EXTENSION unaccent WITH SCHEMA extensions;
    CREATE EXTENSION pg_trgm WITH SCHEMA extensions;
@@ -21,7 +21,7 @@ async function verifyPerformance():Promise<void>{
    INSERT INTO public.releases(artist) VALUES('Prince'),('Prince'),('The Prnce Band'),('Prince Jam');
    CREATE INDEX releases_artist_trgm_idx ON public.releases USING GIN(artist extensions.gin_trgm_ops);
    ANALYZE public.releases;
-  \`);
+  `);
   const started=performance.now();
   const results=await pg.query<{artist:string;score:number}>(
    "SELECT artist,extensions.similarity(artist,'Prnce') AS score FROM public.releases WHERE artist OPERATOR(extensions.%) 'Prnce' ORDER BY score DESC,artist ASC LIMIT 8;"
@@ -57,14 +57,14 @@ async function verifyBrowser():Promise<void>{
    res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify({suggestions:[suggestion]}));return;
   }
   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});
-  res.end(\`<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1">
+  res.end(`<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>.catalogue-search-autocomplete{position:relative;width:100%}.catalogue-suggestions{position:absolute;top:100%;left:0;right:0;margin:0;padding:0;list-style:none;background:white;border:1px solid #777}.catalogue-suggestions[hidden]{display:none}.catalogue-suggestion-option{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:8px;cursor:pointer}.catalogue-suggestions-status{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}</style>
 </head><body><form id="search-form"><input type="hidden" name="genre" value="Jazz"><input type="hidden" name="format" value="lp"><label for="catalogue-query">Search</label>
 <div class="catalogue-search-autocomplete"><input id="catalogue-query" name="q" data-catalogue-search-input data-suggestion-url="/api/catalogue-suggestions" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="catalogue-suggestions-catalogue-query">
 <ul id="catalogue-suggestions-catalogue-query" class="catalogue-suggestions" role="listbox" hidden></ul>
 <p id="catalogue-suggestions-status-catalogue-query" class="catalogue-suggestions-status" role="status" aria-live="polite"></p></div><button type="submit">Search</button></form>
 <script>document.getElementById('search-form').addEventListener('submit',event=>{event.preventDefault();document.body.dataset.submitted=new URLSearchParams(new FormData(event.currentTarget)).toString();});</script>
-<script src="/catalogue-search-suggestions.js" defer></script></body></html>\`);
+<script src="/catalogue-search-suggestions.js" defer></script></body></html>`);
  });
  let browser:Browser|undefined;
  try{
