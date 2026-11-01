@@ -61,6 +61,73 @@ describe('Options page and live theme preferences', () => {
     }
   });
 
+  it('keeps disabled buttons and form controls legible in every theme', async () => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    try {
+      await page.goto(origin + '/options', { waitUntil: 'networkidle' });
+      const results = await page.evaluate(() => {
+        const button = document.createElement('button');
+        button.className = 'btn btn-primary';
+        button.disabled = true;
+        button.textContent = 'Disabled action';
+        document.body.append(button);
+
+        const input = document.createElement('input');
+        input.className = 'form-control';
+        input.disabled = true;
+        document.body.append(input);
+
+        const luminance = (color: string) => {
+          const values = color.match(/[0-9.]+/g)?.slice(0, 3).map(Number) || [];
+          const linear = values.map((value) => {
+            const channel = value / 255;
+            return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+          });
+          return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+        };
+        const contrast = (first: string, second: string) => {
+          const [lighter, darker] = [luminance(first), luminance(second)].sort((a, b) => b - a);
+          return (lighter + 0.05) / (darker + 0.05);
+        };
+        const read = (element: Element) => {
+          const style = getComputedStyle(element);
+          return {
+            text: style.color,
+            background: style.backgroundColor,
+            border: style.borderTopColor,
+            opacity: style.opacity,
+          };
+        };
+
+        return ['record-shop', 'blue-note', 'soul-45', 'mint-press', 'midnight-groove', 'purple-haze'].map((theme) => {
+          document.documentElement.setAttribute('data-theme', theme);
+          const buttonColors = read(button);
+          const inputColors = read(input);
+          return {
+            theme,
+            buttonText: contrast(buttonColors.text, buttonColors.background),
+            buttonBorder: contrast(buttonColors.border, buttonColors.background),
+            inputText: contrast(inputColors.text, inputColors.background),
+            inputBorder: contrast(inputColors.border, inputColors.background),
+            buttonOpacity: buttonColors.opacity,
+            inputOpacity: inputColors.opacity,
+          };
+        });
+      });
+
+      results.forEach((result) => {
+        expect(result.buttonText).toBeGreaterThanOrEqual(4.5);
+        expect(result.inputText).toBeGreaterThanOrEqual(4.5);
+        expect(result.buttonBorder).toBeGreaterThanOrEqual(3);
+        expect(result.inputBorder).toBeGreaterThanOrEqual(3);
+        expect(result.buttonOpacity).toBe('1');
+        expect(result.inputOpacity).toBe('1');
+      });
+    } finally {
+      await page.close();
+    }
+  });
+
   it('shows haptic controls only when the browser exposes the Vibration API', async () => {
     const supportedPage = await browser.newPage();
     try {
