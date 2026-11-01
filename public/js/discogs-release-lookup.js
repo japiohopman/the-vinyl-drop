@@ -38,7 +38,7 @@
     return key === 'coverArtUrl' ? coverArtUrlInput : form.querySelector('[data-discogs-field="' + key + '"]');
   }
 
-  function updateCoverPreview(value) {
+  function updateCoverPreview(value, hasMatch) {
     if (!coverPreview || !coverPreviewImage) return;
     if (typeof value === 'string' && /^https:\/\//i.test(value)) {
       coverPreview.hidden = false;
@@ -59,9 +59,13 @@
       coverPreviewImage.src = value;
     } else {
       coverPreviewImage.removeAttribute('src');
-      coverPreviewImage.hidden = false;
-      coverPreview.hidden = true;
-      if (coverPreviewStatus) coverPreviewStatus.textContent = 'No Discogs catalogue artwork is available for this match.';
+      coverPreviewImage.hidden = true;
+      coverPreview.hidden = !hasMatch;
+      if (coverPreviewStatus) {
+        coverPreviewStatus.textContent = hasMatch
+          ? 'Discogs matched this release, but no catalogue artwork is available. You can add your own artwork in Release details.'
+          : '';
+      }
     }
   }
 
@@ -72,7 +76,7 @@
       if (field.dataset.discogsFilled === 'true' && field.dataset.userEdited !== 'true') field.value = '';
       delete field.dataset.discogsFilled;
     });
-    updateCoverPreview(coverArtUrlInput ? coverArtUrlInput.value : '');
+    updateCoverPreview(coverArtUrlInput ? coverArtUrlInput.value : '', false);
   }
 
   Object.keys(fieldMap).forEach(function (key) {
@@ -90,7 +94,7 @@
       field.value = String(value);
       field.dataset.discogsFilled = 'true';
     });
-    updateCoverPreview(coverArtUrlInput ? coverArtUrlInput.value : '');
+    updateCoverPreview(coverArtUrlInput ? coverArtUrlInput.value : '', true);
     if (metadataDetails) metadataDetails.open = true;
   }
 
