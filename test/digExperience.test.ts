@@ -258,6 +258,53 @@ describe('Shared listing artwork priority', () => {
   });
 });
 
+describe('Listing preview catalogue artwork fallback', () => {
+  async function renderPreview(photos: Array<{ role: string; publicUrl: string; altText: string }>) {
+    const viewPath = path.join(process.cwd(), 'views/listings/preview.ejs');
+    return ejs.renderFile(viewPath, {
+      listing: { id: 'listing-preview-art', status: 'published', tradeAvailable: false, description: '' },
+      release: {
+        id: 'release-preview-art',
+        title: 'Doggystyle',
+        artist: 'Snoop Dogg',
+        coverArtUrl: 'https://catalog.example/doggystyle.jpg',
+        label: 'Death Row',
+        catalogueNumber: 'DRR-63002',
+        releaseYear: 1993,
+        format: 'LP',
+      },
+      photos,
+      priceFormatted: '€20.00',
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG' },
+      seller: { username: 'record_seller', location: 'Amsterdam' },
+    }, { filename: viewPath });
+  }
+
+  it('shows the catalogue image as a labelled front reference when no seller front photo exists', async () => {
+    const html = await renderPreview([
+      { role: 'back_cover', publicUrl: 'https://storage.example/back.jpg', altText: 'Actual back of the copy' },
+      { role: 'record', publicUrl: 'https://storage.example/record.jpg', altText: 'Actual record label' },
+    ]);
+
+    expect(html).toContain('src="https://catalog.example/doggystyle.jpg"');
+    expect(html).toContain('Catalogue artwork for Doggystyle by Snoop Dogg');
+    expect(html).toContain('Release catalogue artwork · reference image');
+    expect(html).toContain('src="https://storage.example/back.jpg"');
+    expect(html).toContain('src="https://storage.example/record.jpg"');
+  });
+
+  it('does not duplicate catalogue artwork when a seller front-cover photo exists', async () => {
+    const html = await renderPreview([
+      { role: 'front_cover', publicUrl: 'https://storage.example/front.jpg', altText: 'Actual front of the copy' },
+      { role: 'back_cover', publicUrl: 'https://storage.example/back.jpg', altText: 'Actual back of the copy' },
+    ]);
+
+    expect(html).toContain('src="https://storage.example/front.jpg"');
+    expect(html).toContain('src="https://storage.example/back.jpg"');
+    expect(html).not.toContain('release-catalogue-artwork-card');
+  });
+});
+
 describe('Dig artwork face semantics', () => {
   it('chooses only explicitly selected front and back photos, independent of display order', () => {
     const result = resolveDigArtwork([
