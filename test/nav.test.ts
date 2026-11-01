@@ -171,6 +171,8 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('View Profile');
     expect(html).toContain('Edit Profile');
     expect(html).toContain('My Listings');
+    expect(html).toContain('href="/options" class="desktop-you-menu-item">Options &amp; Appearance</a>');
+    expect(html).toContain('href="/options">Options &amp; Appearance</a>');
     expect(html).toContain('/auth/logout');
     expect(html).toContain('LOG OUT');
     expect(html).not.toContain('class="mobile-you-email"');
