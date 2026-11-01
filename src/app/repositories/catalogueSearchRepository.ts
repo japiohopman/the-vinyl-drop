@@ -2,6 +2,32 @@ import { and, asc, desc, eq, or, sql, type SQL } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { listings, physicalCopies, releases } from '../../db/schema';
 
+const ACCENT_GROUPS: Record<string, string> = {
+  a: 'àáâãäåāăąǎǟǡǻȁȃȧạảấầẩẫậắằẳẵặ',
+  e: 'èéêëēĕėęěȅȇẹẻẽếềểễệ',
+  i: 'ìíîïĩīĭįǐȉȋịỉ',
+  o: 'òóôõöøōŏőǒǫǭǿȍȏȫȭȯȱọỏốồổỗộớờởỡợ',
+  u: 'ùúûüũūŭůűųǔȕȗụủứừửữự',
+  y: 'ýÿŷȳỳỵỷỹ',
+  n: 'ñńņň',
+  c: 'çćĉċč',
+  s: 'śŝşšș',
+  z: 'źżž',
+  l: 'ĺļľŀł',
+  r: 'ŕŗř',
+  t: 'ţťŧ',
+  d: 'ďđ',
+  g: 'ğĝģġ',
+  h: 'ĥħ',
+  j: 'ĵ',
+  k: 'ķ',
+  w: 'ŵẃẁẅ',
+};
+const ACCENTED_CHARACTERS = Object.values(ACCENT_GROUPS).join('');
+const ASCII_CHARACTERS = Object.entries(ACCENT_GROUPS)
+  .map(([replacement, characters]) => replacement.repeat(Array.from(characters).length))
+  .join('');
+
 type DbInstance = ReturnType<typeof getDb>;
 export type CatalogueSuggestionKind = 'artist' | 'release' | 'label';
 
@@ -13,10 +39,8 @@ export interface CatalogueSuggestionRow {
   similarity: number;
 }
 
-function normalizedFieldExpression(field: SQL, useExtensions: boolean): SQL<string> {
-  return useExtensions
-    ? sql<string>`regexp_replace(extensions.unaccent(lower(${field})), '[[:space:][:punct:]]+', '', 'g')`
-    : sql<string>`regexp_replace(lower(${field}), '[[:space:][:punct:]]+', '', 'g')`;
+function normalizedFieldExpression(field: SQL): SQL<string> {
+  return sql<string>`regexp_replace(translate(lower(${field}), ${ACCENTED_CHARACTERS}, ${ASCII_CHARACTERS}), '[[:space:][:punct:]]+', '', 'g')`;
 }
 
 function isMissingCatalogueExtension(error: unknown): boolean {
@@ -25,7 +49,7 @@ function isMissingCatalogueExtension(error: unknown): boolean {
   const code = typeof candidate.code === 'string' ? candidate.code : '';
   const message = typeof candidate.message === 'string' ? candidate.message : '';
   return ['42883', '3F000', '42704'].includes(code) ||
-    /extensions\.(?:unaccent|similarity|%)|gin_trgm_ops.*does not exist|operator does not exist/i.test(message);
+    /extensions\\.(?:similarity|%)|gin_trgm_ops.*does not exist|operator does not exist/i.test(message);
 }
 
 async function searchField(
@@ -37,7 +61,7 @@ async function searchField(
   useExtensions: boolean,
   contextField?: SQL
 ): Promise<CatalogueSuggestionRow[]> {
-  const normalizedValue = normalizedFieldExpression(field, useExtensions);
+  const normalizedValue = normalizedFieldExpression(field);
   const fuzzyMatch = useExtensions && Array.from(normalizedQuery).length >= 3
     ? sql<boolean>`${field} OPERATOR(extensions.%) ${query}`
     : sql<boolean>`false`;
