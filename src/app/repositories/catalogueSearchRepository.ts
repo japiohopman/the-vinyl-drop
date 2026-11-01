@@ -28,6 +28,11 @@ const ASCII_CHARACTERS = Object.entries(ACCENT_GROUPS)
   .map(([replacement, characters]) => replacement.repeat(Array.from(characters).length))
   .join('');
 
+// Inline these fixed mapping tables as SQL literals so the normalized expression
+// is structurally identical everywhere it appears (SELECT, WHERE and GROUP BY).
+const ACCENTED_CHARACTERS_SQL = sql.raw("'" + ACCENTED_CHARACTERS.replace(/'/g, "''") + "'");
+const ASCII_CHARACTERS_SQL = sql.raw("'" + ASCII_CHARACTERS.replace(/'/g, "''") + "'");
+
 type DbInstance = ReturnType<typeof getDb>;
 export type CatalogueSuggestionKind = 'artist' | 'release' | 'label';
 
@@ -40,7 +45,7 @@ export interface CatalogueSuggestionRow {
 }
 
 function normalizedFieldExpression(field: SQL): SQL<string> {
-  return sql<string>`regexp_replace(translate(lower(${field}), ${ACCENTED_CHARACTERS}, ${ASCII_CHARACTERS}), '[[:space:][:punct:]]+', '', 'g')`;
+  return sql<string>`regexp_replace(translate(lower(${field}), ${ACCENTED_CHARACTERS_SQL}, ${ASCII_CHARACTERS_SQL}), '[[:space:][:punct:]]+', '', 'g')`;
 }
 
 function isMissingCatalogueExtension(error: unknown): boolean {
