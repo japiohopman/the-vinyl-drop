@@ -1,6 +1,5 @@
 import { check, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-
 export const releases = pgTable(
   'releases',
   {
@@ -23,27 +22,16 @@ export const releases = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    check(
-      'releases_youtube_video_id_check',
-      sql`${table.youtubeVideoId} IS NULL OR ${table.youtubeVideoId} ~ '^[A-Za-z0-9_-]{11}
-    index('releases_title_idx').on(table.title),
-    index('releases_label_idx').on(table.label),
-    index('releases_cat_num_idx').on(table.catalogueNumber),
-    index('releases_year_idx').on(table.releaseYear),
-  ]
-);
-
-export type Release = typeof releases.$inferSelect;
-export type NewRelease = typeof releases.$inferInsert;
-`
-    ),
+    check('releases_youtube_video_id_check', sql`${table.youtubeVideoId} IS NULL OR ${table.youtubeVideoId} ~ '^[A-Za-z0-9_-]{11}$'`),
     index('releases_artist_idx').on(table.artist),
     index('releases_title_idx').on(table.title),
     index('releases_label_idx').on(table.label),
     index('releases_cat_num_idx').on(table.catalogueNumber),
     index('releases_year_idx').on(table.releaseYear),
+    index('releases_artist_trgm_idx').using('gin', sql`${table.artist} extensions.gin_trgm_ops`),
+    index('releases_title_trgm_idx').using('gin', sql`${table.title} extensions.gin_trgm_ops`),
+    index('releases_label_trgm_idx').using('gin', sql`${table.label} extensions.gin_trgm_ops`),
   ]
 );
-
 export type Release = typeof releases.$inferSelect;
 export type NewRelease = typeof releases.$inferInsert;
