@@ -131,6 +131,22 @@ async function run(): Promise<void> {
         assert.ok(searchState.paddingLeft >= 40, 'Search text collides with its icon at ' + viewport.width + 'px');
         assert.ok(searchState.accessibleName, 'Search has no accessible label at ' + viewport.width + 'px');
 
+        let reachedByKeyboard = false;
+        for (let tab = 0; tab < 60; tab += 1) {
+          await page.keyboard.press('Tab');
+          if (await search.evaluate((element) => element === document.activeElement)) {
+            reachedByKeyboard = true;
+            break;
+          }
+        }
+        assert.ok(reachedByKeyboard, 'Search is not reachable by keyboard at ' + viewport.width + 'px');
+        const focusOutline = await search.evaluate((element) => parseFloat(getComputedStyle(element).outlineWidth));
+        assert.ok(focusOutline >= 3, 'Search has no visible keyboard focus at ' + viewport.width + 'px');
+
+        const chipHeight = await page.locator('.browse-format-chip').first()
+          .evaluate((element) => element.getBoundingClientRect().height);
+        assert.ok(chipHeight >= 44, 'Format filter target is too small at ' + viewport.width + 'px');
+
         const cardColumns = await page.locator('.listing-grid').evaluate((element) => {
           const template = getComputedStyle(element).gridTemplateColumns;
           return template.split(' ').filter(Boolean).length;
