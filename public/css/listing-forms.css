@@ -128,6 +128,33 @@
   font-size: var(--font-size-xs);
   overflow-wrap: anywhere;
 }
+.release-cover-override-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-deep-green);
+  background: var(--color-paper);
+}
+.release-cover-override-preview[hidden] { display: none; }
+.release-cover-override-preview > img {
+  display: block;
+  flex: 0 0 72px;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background: var(--color-white);
+}
+.release-cover-override-preview strong {
+  display: block;
+  font-size: var(--font-size-sm);
+}
+.release-cover-override-preview p {
+  margin: var(--space-1) 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+}
 .custom-release-artwork-copy {
   margin: 0;
   color: var(--color-ink-muted);
