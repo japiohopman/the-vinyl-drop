@@ -4,21 +4,14 @@
   const overridePreview = document.querySelector('[data-release-cover-override-preview]');
   const overrideImage = overridePreview ? overridePreview.querySelector('[data-release-cover-override-image]') : null;
   const clearOverrideButton = document.querySelector('[data-clear-release-cover-override]');
-  let objectUrl = null;
+  let previewSequence = 0;
 
   if (!(input instanceof HTMLInputElement) || !fileName) return;
 
-  function clearObjectUrl() {
-    if (objectUrl) {
-      URL.revokeObjectURL(objectUrl);
-      objectUrl = null;
-    }
-  }
-
   function clearOverride() {
+    previewSequence += 1;
     input.value = '';
     fileName.textContent = 'No file selected';
-    clearObjectUrl();
     if (overrideImage) overrideImage.removeAttribute('src');
     if (overridePreview) overridePreview.hidden = true;
   }
@@ -29,20 +22,29 @@
       ? selectedFiles.map((file) => file.name).join(', ')
       : 'No file selected';
 
-    clearObjectUrl();
-    if (selectedFiles.length && overrideImage && overridePreview) {
-      objectUrl = URL.createObjectURL(selectedFiles[0]);
-      overrideImage.src = objectUrl;
-      overridePreview.hidden = false;
-    } else if (overrideImage && overridePreview) {
-      overrideImage.removeAttribute('src');
-      overridePreview.hidden = true;
+    previewSequence += 1;
+    const currentSequence = previewSequence;
+    if (!selectedFiles.length || !overrideImage || !overridePreview) {
+      if (overrideImage) overrideImage.removeAttribute('src');
+      if (overridePreview) overridePreview.hidden = true;
+      return;
     }
+
+    const reader = new FileReader();
+    reader.addEventListener('load', function () {
+      if (currentSequence !== previewSequence || typeof reader.result !== 'string') return;
+      overrideImage.src = reader.result;
+      overridePreview.hidden = false;
+    });
+    reader.addEventListener('error', function () {
+      if (currentSequence !== previewSequence) return;
+      overridePreview.hidden = true;
+      fileName.textContent = selectedFiles[0].name + ' — preview unavailable';
+    });
+    reader.readAsDataURL(selectedFiles[0]);
   });
 
   if (clearOverrideButton) {
     clearOverrideButton.addEventListener('click', clearOverride);
   }
-
-  window.addEventListener('pagehide', clearObjectUrl, { once: true });
 })();
