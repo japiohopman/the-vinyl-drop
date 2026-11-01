@@ -88,10 +88,30 @@ describe('Environment Validation', () => {
     expect(enabled.BETA_ALLOWED_EMAILS).toBe('Tester@One.example, second@example.com, tester@one.example');
   });
 
-  it('rejects more than five unique beta testers or malformed allowlist addresses', () => {
+  it('accepts 13 unique beta testers, deduplicates case-insensitively, and rejects 14 or malformed addresses', () => {
+    const thirteenUniqueAddresses = Array.from(
+      { length: 13 },
+      (_, index) => `tester${index + 1}@example.com`
+    ).join(',');
+    const accepted = validateEnv({
+      NODE_ENV: 'test',
+      BETA_ALLOWED_EMAILS: thirteenUniqueAddresses,
+    });
+    expect(accepted.BETA_ALLOWED_EMAILS).toBe(thirteenUniqueAddresses);
+
+    const duplicatesDoNotIncreaseTheUniqueCount = `${thirteenUniqueAddresses}, TESTER1@EXAMPLE.COM , tester2@example.com`;
+    expect(validateEnv({
+      NODE_ENV: 'test',
+      BETA_ALLOWED_EMAILS: duplicatesDoNotIncreaseTheUniqueCount,
+    }).BETA_ALLOWED_EMAILS).toBe(duplicatesDoNotIncreaseTheUniqueCount);
+
+    const fourteenUniqueAddresses = Array.from(
+      { length: 14 },
+      (_, index) => `tester${index + 1}@example.com`
+    ).join(',');
     expect(() => validateEnv({
       NODE_ENV: 'test',
-      BETA_ALLOWED_EMAILS: 'one@example.com,two@example.com,three@example.com,four@example.com,five@example.com,six@example.com',
+      BETA_ALLOWED_EMAILS: fourteenUniqueAddresses,
     })).toThrow('Invalid environment configuration');
 
     expect(() => validateEnv({
