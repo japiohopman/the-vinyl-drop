@@ -11,7 +11,7 @@ export interface DigArtworkFace {
   src: string;
   altText: string;
   sourceLabel: string;
-  sourceKind: 'seller_front' | 'placeholder' | 'seller_back';
+  sourceKind: 'seller_front' | 'catalogue_artwork' | 'placeholder' | 'seller_back';
 }
 
 export interface DigArtworkSelection {
@@ -21,10 +21,9 @@ export interface DigArtworkSelection {
 }
 
 /**
- * Resolve Dig sleeve faces only from the seller-selected photo roles.
- *
- * Release catalogue art and legacy/unclassified photos belong to older
- * artwork paths and must never be substituted for photos of this physical copy.
+ * Prefer a seller-selected front photo for this physical copy, then use the
+ * release catalogue artwork as the visual fallback. Catalogue artwork is
+ * explicitly labelled as reference art, never as a seller photo.
  */
 export function resolveDigArtwork(
   inputPhotos: DigPhotoCandidate[],
@@ -43,12 +42,19 @@ export function resolveDigArtwork(
         sourceLabel: 'Photo of the front cover of this physical copy',
         sourceKind: 'seller_front',
       }
-    : {
-        src: placeholderUrl,
-        altText: `No front-cover photo available for the physical copy of ${title} — ${artist}`,
-        sourceLabel: 'No front-cover photo available',
-        sourceKind: 'placeholder',
-      };
+    : catalogueArtworkUrl
+      ? {
+          src: catalogueArtworkUrl,
+          altText: `Catalogue artwork for ${title} — ${artist}; release reference, not a photo of this physical copy`,
+          sourceLabel: 'Discogs catalogue artwork — release reference',
+          sourceKind: 'catalogue_artwork',
+        }
+      : {
+          src: placeholderUrl,
+          altText: `No front-cover photo or catalogue artwork available for ${title} — ${artist}`,
+          sourceLabel: 'No front-cover artwork available',
+          sourceKind: 'placeholder',
+        };
 
   const back: DigArtworkFace | null = explicitBack
     ? {
