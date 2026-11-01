@@ -307,7 +307,7 @@ export async function searchDigListings(
       ...photo,
       publicUrl: getPhotoPublicUrl(photo.storagePath),
     }));
-    const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist);
+    const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist, undefined, record.release.coverArtUrl);
     const base = recordToListingCardViewModel(record);
 
     return {
