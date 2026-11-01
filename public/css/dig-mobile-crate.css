@@ -438,7 +438,7 @@
     font-weight: 700;
   }
 
-  .dig-crate-filter-field input:not([type="checkbox"]):not([type="radio"]),
+  .dig-crate-filter-field input:not([type="checkbox"]):not([type="radio"]):not(.form-control),
   .dig-crate-filter-field select {
     box-sizing: border-box;
     width: 100%;
@@ -450,10 +450,6 @@
     background: var(--color-white);
     font: inherit;
     padding: var(--space-2) var(--space-3);
-  }
-
-  .dig-crate-filter-field .form-search-control > input {
-    padding-left: 2.75rem;
   }
 
   .dig-crate-filter-fieldset {
