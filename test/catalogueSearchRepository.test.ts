@@ -11,7 +11,7 @@ describe('public catalogue suggestions', () => {
   let db: ReturnType<typeof getDb>;
 
   beforeAll(async () => {
-    pg = new PGlite({ extensions: { pg_trgm, unaccent } });
+    pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never, unaccent: unaccent as never } });
     await pg.exec(`
       CREATE SCHEMA extensions;
       CREATE EXTENSION unaccent WITH SCHEMA extensions;
