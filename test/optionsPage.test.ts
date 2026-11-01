@@ -89,12 +89,14 @@ describe('Options page and live theme preferences', () => {
         const button = document.createElement('button');
         button.className = 'btn btn-primary';
         button.disabled = true;
+        button.style.transition = 'none';
         button.textContent = 'Disabled action';
         document.body.append(button);
 
         const input = document.createElement('input');
         input.className = 'form-control';
         input.disabled = true;
+        input.style.transition = 'none';
         document.body.append(input);
 
         const luminance = (color: string) => {
@@ -129,12 +131,6 @@ describe('Options page and live theme preferences', () => {
             buttonBorder: contrast(buttonColors.border, buttonColors.background),
             inputText: contrast(inputColors.text, inputColors.background),
             inputBorder: contrast(inputColors.border, inputColors.background),
-            inputColors,
-            borderToken: getComputedStyle(document.documentElement).getPropertyValue('--color-border').trim(),
-            inputBorderToken: getComputedStyle(input).getPropertyValue('--color-border').trim(),
-            inputBorderShorthand: getComputedStyle(input).border,
-            inputBorderStyle: getComputedStyle(input).borderTopStyle,
-            inputBorderWidth: getComputedStyle(input).borderTopWidth,
             buttonOpacity: buttonColors.opacity,
             inputOpacity: inputColors.opacity,
           };
