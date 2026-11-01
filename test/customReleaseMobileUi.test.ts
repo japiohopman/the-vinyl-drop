@@ -338,6 +338,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('#discogsLookupStatus').getAttribute('role')).toBe('status');
     expect(await page.locator('#releaseMetadataDetails').getAttribute('open')).not.toBeNull();
     expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
+    expect(await page.locator('[data-discogs-cover-preview]').evaluate('element => element.closest("details") === null')).toBe(true);
     expect(await page.locator('[data-discogs-cover-preview] img').getAttribute('src')).toBe('https://i.discogs.com/example-cover.jpg');
 
     const dimensions = await page.evaluate(() => ({
@@ -346,6 +347,34 @@ describe('Custom release mobile navigation and artwork picker', () => {
     }));
     expect(dimensions.document).toBeLessThanOrEqual(376);
     expect(dimensions.body).toBeLessThanOrEqual(376);
+  });
+
+  it('shows an explicit state when a confident Discogs match has no artwork URL', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          found: true,
+          matchType: 'release',
+          metadata: { label: 'No Image Records' },
+        }),
+      });
+    });
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Local Artist');
+    await page.locator('#releaseTitle').fill('White Label');
+    await page.waitForFunction(
+      () => document.querySelector('[data-discogs-cover-preview-status]')?.textContent?.includes('no catalogue artwork is available') === true,
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
+    expect(await page.locator('[data-discogs-cover-preview] img').isHidden()).toBe(true);
+    expect(await page.locator('#releaseCoverArt').isEnabled()).toBe(true);
   });
 
   it('explains when Discogs artwork cannot load and keeps manual replacement available', async () => {
