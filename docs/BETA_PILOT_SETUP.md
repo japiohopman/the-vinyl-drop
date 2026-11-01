@@ -33,8 +33,8 @@ The live allowlist and provider-level tester lists are separate controls. Do not
 
 Before increasing the live cohort beyond five:
 
-1. Complete and reconcile the before-expansion security and release work in [#89](https://github.com/japiohopman/the-vinyl-drop), [#118](https://github.com/japiohopman/the-vinyl-drop), and the applicable privacy/data-handling requirements in [#88](https://github.com/japiohopman/the-vinyl-drop) / [#154](https://github.com/japiohopman/the-vinyl-drop).
-2. Confirm the production boundary and release requirements in [#278](https://github.com/japiohopman/the-vinyl-drop) before any production access change.
+1. Complete and reconcile the before-expansion security and release work in [#89](https://github.com/japiohopman/the-vinyl-drop/issues/89), [#118](https://github.com/japiohopman/the-vinyl-drop/issues/118), and the applicable privacy/data-handling requirements in [#88](https://github.com/japiohopman/the-vinyl-drop/issues/88) / [#154](https://github.com/japiohopman/the-vinyl-drop/issues/154).
+2. Confirm the production boundary and release requirements in [#278](https://github.com/japiohopman/the-vinyl-drop/issues/278) before any production access change.
 3. Obtain Jaap's explicit authorization for the exact cohort expansion and runtime/provider edits.
 4. Only then update the private runtime allowlist and the separate Google OAuth test-user list consistently. Keep `BETA_INVITE_ONLY_ENABLED=true`; never add addresses to Git.
 5. With the separately authorized staging process, smoke-test one approved synthetic identity and one denied synthetic identity through password and provider sign-in as applicable. Confirm the welcome appears once per browser and does not repeat after its flash is consumed.
