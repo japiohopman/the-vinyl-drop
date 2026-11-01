@@ -33,7 +33,7 @@
     <div class="my-listings-list">
       <% listings.forEach(function(item) { %>
         <%
-          const sellerPhoto = (item.photos && item.photos.length > 0) ? item.photos[0] : null;
+          const sellerPhoto = (item.photos || []).find(function(photo) { return photo.role === 'front_cover'; }) || null;
           const releaseArt = (item.release && item.release.coverArtUrl) ? item.release.coverArtUrl : null;
           const localPlaceholder = '/assets/vinyl-placeholder.svg';
 
