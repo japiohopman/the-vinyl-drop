@@ -130,6 +130,11 @@ describe('Options page and live theme preferences', () => {
             inputText: contrast(inputColors.text, inputColors.background),
             inputBorder: contrast(inputColors.border, inputColors.background),
             inputColors,
+            borderToken: getComputedStyle(document.documentElement).getPropertyValue('--color-border').trim(),
+            inputBorderToken: getComputedStyle(input).getPropertyValue('--color-border').trim(),
+            inputBorderShorthand: getComputedStyle(input).border,
+            inputBorderStyle: getComputedStyle(input).borderTopStyle,
+            inputBorderWidth: getComputedStyle(input).borderTopWidth,
             buttonOpacity: buttonColors.opacity,
             inputOpacity: inputColors.opacity,
           };
@@ -138,7 +143,7 @@ describe('Options page and live theme preferences', () => {
 
       results.forEach((result) => {
         if (result.inputBorder < 3) {
-          throw new Error(`${result.theme} disabled input border contrast ${result.inputBorder}: ${JSON.stringify(result.inputColors)}`);
+          throw new Error(`${result.theme} disabled input border contrast ${result.inputBorder}: ${JSON.stringify({ colors: result.inputColors, borderToken: result.borderToken, inputBorderToken: result.inputBorderToken, border: result.inputBorderShorthand, style: result.inputBorderStyle, width: result.inputBorderWidth })}`);
         }
         expect(result.buttonText).toBeGreaterThanOrEqual(4.5);
         expect(result.inputText).toBeGreaterThanOrEqual(4.5);
