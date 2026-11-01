@@ -370,8 +370,8 @@ describe('YouTube release preview (#226)', () => {
       listing: { id: listingId, status: 'published', tradeAvailable: false, description: '' },
       release: { id: releaseId, title: 'Sample Release', artist: 'Sample Artist', coverArtUrl: null, youtubeVideoId: null },
       photos: [
-        { publicUrl: 'https://images.example/front.jpg', altText: 'Front cover' },
-        { publicUrl: 'https://images.example/back.jpg', altText: 'Back cover' },
+        { publicUrl: 'https://images.example/front.jpg', altText: 'Front cover', role: 'front_cover' },
+        { publicUrl: 'https://images.example/back.jpg', altText: 'Back cover', role: 'back_cover' },
       ],
       priceFormatted: '€12.00',
       physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
@@ -404,6 +404,40 @@ describe('YouTube release preview (#226)', () => {
     expect(rendered).not.toContain('class="thumbnail-list"');
     expect(rendered).not.toContain('<img src="https://images.example/back.jpg"');
     expect(rendered).toContain('data-photo-url="https://images.example/back.jpg"');
+  });
+
+  it('uses release catalogue artwork as the listing-detail front when only a back photo exists', async () => {
+    const detailPath = path.join(process.cwd(), 'views/listings/show.ejs');
+    const rendered = await ejs.renderFile(detailPath, {
+      listing: { id: listingId, status: 'published', tradeAvailable: false, description: '' },
+      release: {
+        id: releaseId,
+        title: 'Doggystyle',
+        artist: 'Snoop Dogg',
+        coverArtUrl: 'https://catalog.example/doggystyle.jpg',
+        youtubeVideoId: null,
+      },
+      photos: [
+        { publicUrl: 'https://storage.example/back-cover.jpg', altText: 'Actual back cover', role: 'back_cover' },
+      ],
+      priceFormatted: '€20.00',
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
+      seller: { username: 'sample-seller', displayName: 'Sample Seller', location: 'Amsterdam', avatarUrl: null },
+      currentUser: null,
+      isSeller: false,
+      isFavorited: false,
+      messagingEnabled: false,
+      comments: [],
+      commentsInitiallyOpen: false,
+      commentError: null,
+      submittedContent: '',
+      getIconSvg: () => '<svg aria-hidden="true" viewBox="0 0 24 24"></svg>',
+    }, { filename: detailPath });
+
+    expect(rendered).toContain('src="https://catalog.example/doggystyle.jpg"');
+    expect(rendered).toContain('Catalogue artwork for Snoop Dogg');
+    expect(rendered).not.toContain('src="https://storage.example/back-cover.jpg"');
+    expect(rendered).toContain('data-photo-url="https://storage.example/back-cover.jpg"');
   });
 
   it('opens the listing photo dialog, supports previous/next and Escape, and returns focus to Photos', async () => {
