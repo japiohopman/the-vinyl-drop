@@ -429,6 +429,14 @@ describe('Custom release mobile navigation and artwork picker', () => {
       });
     });
     await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Snoop Dogg');
+    await page.locator('#releaseTitle').fill('Doggystyle');
+    await page.waitForRequest((request) => request.url().includes('/releases/lookup-metadata?'));
+    await page.waitForFunction(
+      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-lookup-pending') === 'true',
+      undefined,
+      { timeout: 3000 }
+    );
     await page.addScriptTag({
       content: `
         (() => {
@@ -440,8 +448,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
             form.setAttribute('data-test-invalid-fields', invalidFields.join(','));
           }
           // This test is about the asynchronous Discogs submit lifecycle.
-          // Assert native validity above, then keep browser validation out of
-          // the event-observation path so the test measures our submit handler.
+          // Assert native validity after the required values have been filled,
+          // then isolate the submit event from browser validation.
           form.noValidate = true;
           document.addEventListener('submit', (event) => {
             if (event.target !== form) return;
@@ -454,15 +462,6 @@ describe('Custom release mobile navigation and artwork picker', () => {
         })();
       `,
     });
-
-    await page.locator('#releaseArtist').fill('Snoop Dogg');
-    await page.locator('#releaseTitle').fill('Doggystyle');
-    await page.waitForRequest((request) => request.url().includes('/releases/lookup-metadata?'));
-    await page.waitForFunction(
-      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-lookup-pending') === 'true',
-      undefined,
-      { timeout: 3000 }
-    );
     expect(await page.locator('.custom-release-submit').isEnabled()).toBe(true);
     expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-invalid-fields')).toBeNull();
 
