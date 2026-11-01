@@ -29,7 +29,8 @@ export function resolveDigArtwork(
   inputPhotos: DigPhotoCandidate[],
   title: string,
   artist: string,
-  placeholderUrl = '/assets/vinyl-placeholder.svg'
+  placeholderUrl = '/assets/vinyl-placeholder.svg',
+  catalogueArtworkUrl?: string | null
 ): DigArtworkSelection {
   const photos = [...inputPhotos].sort((a, b) => a.displayOrder - b.displayOrder);
   const explicitFront = photos.find((photo) => photo.role === 'front_cover');
