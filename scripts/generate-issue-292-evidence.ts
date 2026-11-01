@@ -78,7 +78,15 @@ async function makePages(baseUrl: string): Promise<Array<{
 }>> {
   const browse = await renderView('browse/index.ejs', {
     title: 'Browse',
-    listings: [],
+    listings: [{
+      id: 'listing-ui-evidence',
+      title: '3 Feet High and Rising',
+      artist: 'De La Soul',
+      sellerUsername: 'crate_digger',
+      sellerLocation: 'Amsterdam',
+      imageUrl: '/assets/vinyl-placeholder.svg',
+      priceFormatted: '€25.00',
+    }],
     filters: {
       q: 'De La Soul',
       genre: 'Hip Hop',
@@ -281,7 +289,12 @@ async function run(): Promise<void> {
       for (const viewport of viewports) {
         const page = await browser.newPage({ viewport });
         try {
-          await page.setContent(surface.html, { waitUntil: 'networkidle', timeout: 15000 });
+          await page.setContent(surface.html, { waitUntil: 'load', timeout: 15000 });
+          if (surface.name === 'browse') {
+            await page.locator('.browse-mobile-filter-panel').evaluate((element) => {
+              (element as HTMLDetailsElement).open = true;
+            });
+          }
 
           const dimensions = await page.evaluate(() => ({
             viewport: window.innerWidth,
