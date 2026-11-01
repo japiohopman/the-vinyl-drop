@@ -1,14 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 
-const source = fs.readFileSync(path.join(process.cwd(), 'public/css/themes.css'), 'utf8');
+const themeSource = fs.readFileSync(path.join(process.cwd(), 'public/css/themes.css'), 'utf8');
+const baseStyleSource = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
 const themes = ['record-shop', 'blue-note', 'soul-45', 'mint-press', 'midnight-groove', 'purple-haze'];
+const conditionBadges = ['condition-badge-mint', 'condition-badge-nm', 'condition-badge-vg', 'condition-badge-fair'];
 
 function getThemeTokens(theme: string): Record<string, string> {
   const selector = new RegExp(
     'html\\[data-theme="' + theme + '"\\],\\s*\\.theme-swatch\\[data-theme="' + theme + '"\\]\\s*\\{([\\s\\S]*?)\\}'
   );
-  const block = source.match(selector)?.[1];
+  const block = themeSource.match(selector)?.[1];
   if (!block) throw new Error('Missing theme token block: ' + theme);
 
   const tokens: Record<string, string> = {};
@@ -17,6 +19,17 @@ function getThemeTokens(theme: string): Record<string, string> {
     if (token) tokens['--' + token[1]] = token[2];
   }
   return tokens;
+}
+
+function getConditionBadgeColors(name: string): { background: string; foreground: string; border: string } {
+  const selector = new RegExp('\\.' + name + '\\s*\\{([^}]*)\\}');
+  const block = baseStyleSource.match(selector)?.[1];
+  if (!block) throw new Error('Missing condition badge style: ' + name);
+  const background = block.match(/background-color:\s*(#[0-9A-Fa-f]{6})\s*;/)?.[1];
+  const foreground = block.match(/color:\s*(#[0-9A-Fa-f]{6})\s*;/)?.[1];
+  const border = block.match(/border-color:\s*(#[0-9A-Fa-f]{6})\s*;/)?.[1];
+  if (!background || !foreground || !border) throw new Error('Incomplete condition badge colors: ' + name);
+  return { background, foreground, border };
 }
 
 function luminance(hex: string): number {
@@ -33,7 +46,7 @@ function contrast(first: string, second: string): number {
 }
 
 describe('shared theme token contrast', () => {
-  it.each(themes)('%s preserves text, actions, focus and status contrast', (theme) => {
+  it.each(themes)('%s preserves text, actions, focus, disabled and status contrast', (theme) => {
     const tokens = getThemeTokens(theme);
     const atLeast = (foreground: string, background: string, minimum: number) => {
       expect(contrast(tokens[foreground], tokens[background])).toBeGreaterThanOrEqual(minimum);
@@ -54,6 +67,14 @@ describe('shared theme token contrast', () => {
     atLeast('--color-border', '--color-white', 3);
     atLeast('--color-error-border', '--color-error-bg', 3);
     atLeast('--color-success-border', '--color-success-bg', 3);
+  });
+
+  it.each(themes)('%s keeps condition badges readable against their semantic grade colours', () => {
+    conditionBadges.forEach((badgeName) => {
+      const badge = getConditionBadgeColors(badgeName);
+      expect(contrast(badge.foreground, badge.background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(badge.border, badge.background)).toBeGreaterThanOrEqual(3);
+    });
   });
 
   it('retains the original infrared highlight alongside its contrast-safe interactive tone', () => {
