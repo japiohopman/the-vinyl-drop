@@ -340,7 +340,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('#discogsLookupStatus').getAttribute('role')).toBe('status');
     expect(await page.locator('#releaseMetadataDetails').getAttribute('open')).not.toBeNull();
     expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
-    expect(await page.locator('[data-discogs-cover-preview]').evaluate('element => element.closest("details") === null')).toBe(true);
+    expect(await page.locator('#releaseMetadataDetails [data-discogs-cover-preview]').count()).toBe(0);
     expect(await page.locator('[data-discogs-cover-preview] img').getAttribute('src')).toBe('https://i.discogs.com/example-cover.jpg');
 
     const dimensions = await page.evaluate(() => ({
@@ -438,7 +438,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.waitForRequest((request) => request.url().includes('/releases/lookup-metadata?'));
     expect(await page.locator('.custom-release-submit').isDisabled()).toBe(true);
 
-    await page.locator('form[data-discogs-lookup-form]').evaluate('form => form.requestSubmit()');
+    await page.locator('form[data-discogs-lookup-form]').evaluate('form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))');
     expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-submitted')).toBeNull();
 
     allowLookupResponse();
