@@ -15,8 +15,8 @@ export interface CatalogueSuggestionRow {
 
 function normalizedFieldExpression(field: SQL, useExtensions: boolean): SQL<string> {
   return useExtensions
-    ? sql<string>\`regexp_replace(extensions.unaccent(lower(\${field})), '[[:space:][:punct:]]+', '', 'g')\`
-    : sql<string>\`regexp_replace(lower(\${field}), '[[:space:][:punct:]]+', '', 'g')\`;
+    ? sql<string>`regexp_replace(extensions.unaccent(lower(${field})), '[[:space:][:punct:]]+', '', 'g')`
+    : sql<string>`regexp_replace(lower(${field}), '[[:space:][:punct:]]+', '', 'g')`;
 }
 
 function isMissingCatalogueExtension(error: unknown): boolean {
@@ -39,27 +39,27 @@ async function searchField(
 ): Promise<CatalogueSuggestionRow[]> {
   const normalizedValue = normalizedFieldExpression(field, useExtensions);
   const fuzzyMatch = useExtensions && Array.from(normalizedQuery).length >= 3
-    ? sql<boolean>\`\${field} OPERATOR(extensions.%) \${query}\`
-    : sql<boolean>\`false\`;
+    ? sql<boolean>`${field} OPERATOR(extensions.%) ${query}`
+    : sql<boolean>`false`;
 
   const matchingCondition = or(
     eq(normalizedValue, normalizedQuery),
-    sql<boolean>\`\${normalizedValue} LIKE \${normalizedQuery + '%'}\`,
-    sql<boolean>\`\${normalizedValue} LIKE \${'%' + normalizedQuery + '%'}\`,
+    sql<boolean>`${normalizedValue} LIKE ${normalizedQuery + '%'}`,
+    sql<boolean>`${normalizedValue} LIKE ${'%' + normalizedQuery + '%'}`,
     fuzzyMatch
   )!;
-  const matchRank = sql<number>\`CASE
-    WHEN \${normalizedValue} = \${normalizedQuery} THEN 0
-    WHEN \${normalizedValue} LIKE \${normalizedQuery + '%'} THEN 1
-    WHEN \${normalizedValue} LIKE \${'%' + normalizedQuery + '%'} THEN 2
-    ELSE 3 END\`;
+  const matchRank = sql<number>`CASE
+    WHEN ${normalizedValue} = ${normalizedQuery} THEN 0
+    WHEN ${normalizedValue} LIKE ${normalizedQuery + '%'} THEN 1
+    WHEN ${normalizedValue} LIKE ${'%' + normalizedQuery + '%'} THEN 2
+    ELSE 3 END`;
   const similarityScore = useExtensions
-    ? sql<number>\`MAX(extensions.similarity(\${field}, \${query}))\`
-    : sql<number>\`0::real\`;
-  const valueExpression = sql<string>\`MIN(\${field})\`;
+    ? sql<number>`MAX(extensions.similarity(${field}, ${query}))`
+    : sql<number>`0::real`;
+  const valueExpression = sql<string>`MIN(${field})`;
   const contextExpression = contextField
-    ? sql<string>\`MIN(\${contextField})\`
-    : sql<string>\`NULL::text\`;
+    ? sql<string>`MIN(${contextField})`
+    : sql<string>`NULL::text`;
   const grouping = contextField ? [normalizedValue, contextField] : [normalizedValue];
 
   const rows = await db.select({
@@ -73,7 +73,7 @@ async function searchField(
     .innerJoin(listings, eq(listings.physicalCopyId, physicalCopies.id))
     .where(and(
       eq(listings.status, 'published'),
-      sql\`\${field} IS NOT NULL\`,
+      sql`${field} IS NOT NULL`,
       matchingCondition
     ))
     .groupBy(...grouping)
@@ -99,9 +99,9 @@ export async function searchCatalogueSuggestionRows(
 ): Promise<CatalogueSuggestionRow[]> {
   const db = dbOverride || getDb();
   const fields = [
-    { kind: 'artist' as const, field: sql\`\${releases.artist}\` },
-    { kind: 'release' as const, field: sql\`\${releases.title}\`, context: sql\`\${releases.artist}\` },
-    { kind: 'label' as const, field: sql\`\${releases.label}\` },
+    { kind: 'artist' as const, field: sql`${releases.artist}` },
+    { kind: 'release' as const, field: sql`${releases.title}`, context: sql`${releases.artist}` },
+    { kind: 'label' as const, field: sql`${releases.label}` },
   ];
 
   const runQueries = async (useExtensions: boolean): Promise<CatalogueSuggestionRow[]> => {
