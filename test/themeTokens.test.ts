@@ -25,9 +25,9 @@ function getConditionBadgeColors(name: string): { background: string; foreground
   const selector = new RegExp('\\.' + name + '\\s*\\{([^}]*)\\}');
   const block = baseStyleSource.match(selector)?.[1];
   if (!block) throw new Error('Missing condition badge style: ' + name);
-  const background = block.match(/background-color:\s*(#[0-9A-Fa-f]{6})\s*;/)?.[1];
-  const foreground = block.match(/color:\s*(#[0-9A-Fa-f]{6})\s*;/)?.[1];
-  const border = block.match(/border-color:\s*(#[0-9A-Fa-f]{6})\s*;/)?.[1];
+  const background = block.match(/(?:^|\\n)\\s*background-color:\\s*(#[0-9A-Fa-f]{6})\\s*;/)?.[1];
+  const foreground = block.match(/(?:^|\\n)\\s*color:\\s*(#[0-9A-Fa-f]{6})\\s*;/)?.[1];
+  const border = block.match(/(?:^|\\n)\\s*border-color:\\s*(#[0-9A-Fa-f]{6})\\s*;/)?.[1];
   if (!background || !foreground || !border) throw new Error('Incomplete condition badge colors: ' + name);
   return { background, foreground, border };
 }
