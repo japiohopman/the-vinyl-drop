@@ -1058,7 +1058,12 @@ body.account-surface-open {
   color: var(--color-ink-muted);
 }
 
-.form-control {
+.form-control,
+.form-input {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 44px;
+  width: 100%;
   font-family: var(--font-body);
   font-size: var(--font-size-base);
   color: var(--color-ink);
@@ -1066,16 +1071,17 @@ body.account-surface-open {
   border: var(--border-thick);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
-  width: 100%;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-textarea.form-control {
+textarea.form-control,
+textarea.form-input {
   resize: vertical;
   min-height: 100px;
 }
 
-select.form-control {
+select.form-control,
+select.form-input {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23151515' d='M6 8.825L1.175 4 2.238 2.938 6 6.7 9.763 2.937 10.825 4z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -1083,12 +1089,47 @@ select.form-control {
   padding-right: var(--space-8);
 }
 
-.form-control:focus {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 1px;
+/* Shared search-field icon placement; the icon never covers the value or focus ring. */
+.form-search-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
 }
 
-.form-control:disabled {
+.form-search-control > .icon-search {
+  position: absolute;
+  z-index: 1;
+  left: var(--space-3);
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-ink-muted);
+  pointer-events: none;
+}
+
+.form-search-control:focus-within > .icon-search {
+  color: var(--color-ink);
+}
+
+.form-search-control > input {
+  min-width: 0;
+  width: 100%;
+}
+
+.form-search-control > .form-control,
+.form-search-control > .form-input {
+  padding-left: 2.75rem;
+}
+
+.form-control:focus-visible,
+.form-input:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.form-control:disabled,
+.form-input:disabled {
   background-color: var(--color-surface-hover);
   cursor: not-allowed;
   opacity: 0.7;
@@ -1099,7 +1140,10 @@ select.form-control {
   color: var(--color-rust-accessible);
 }
 
-.has-error .form-control {
+.has-error .form-control,
+.has-error .form-input,
+.form-control[aria-invalid="true"],
+.form-input[aria-invalid="true"] {
   border-color: var(--color-error-border);
   background-color: var(--color-error-bg);
 }
