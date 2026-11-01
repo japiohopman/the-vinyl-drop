@@ -57,7 +57,9 @@ function chooseConfidentDiscogsMatch(
     const score = (candidate: CandidateRelease) =>
       (normalizeLookupText(candidate.artist) === normalizeLookupText(artist) ? 2 : 0) +
       (normalizeLookupText(candidate.title) === normalizeLookupText(title) ? 2 : 0);
-    return score(b) - score(a);
+    const confidenceDifference = score(b) - score(a);
+    if (confidenceDifference !== 0) return confidenceDifference;
+    return Number(Boolean(b.coverArtUrl)) - Number(Boolean(a.coverArtUrl));
   });
   return matched[0] || null;
 }
@@ -73,9 +75,14 @@ function chooseConfidentTrackMatch(
   candidates: CandidateRelease[],
   artist: string
 ): CandidateRelease | null {
-  return candidates.find((candidate) =>
+  const matched = candidates.filter((candidate) =>
     hasConfidentTextMatch(artist, candidate.artist, 1)
-  ) || null;
+  );
+
+  // Track search results describe containing releases. Keep the strict artist
+  // match, but prefer a result with actual catalogue artwork so the form can
+  // show the cover rather than silently selecting an image-less first result.
+  return matched.find((candidate) => Boolean(candidate.coverArtUrl)) || matched[0] || null;
 }
 
 export async function getDiscogsMetadataLookup(req: Request, res: Response, _next: NextFunction): Promise<void> {
