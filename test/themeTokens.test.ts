@@ -5,6 +5,7 @@ const themeSource = fs.readFileSync(path.join(process.cwd(), 'public/css/themes.
 const baseStyleSource = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
 const mobileCrateSource = fs.readFileSync(path.join(process.cwd(), 'public/css/dig-mobile-crate.css'), 'utf8');
 const listingFormsSource = fs.readFileSync(path.join(process.cwd(), 'public/css/listing-forms.css'), 'utf8');
+const profileUiSource = fs.readFileSync(path.join(process.cwd(), 'public/css/style-after-profile-editor.css'), 'utf8');
 const themes = ['record-shop', 'blue-note', 'soul-45', 'mint-press', 'midnight-groove', 'purple-haze'];
 const conditionBadges = ['condition-badge-mint', 'condition-badge-nm', 'condition-badge-vg', 'condition-badge-fair'];
 
@@ -94,6 +95,9 @@ describe('shared theme token contrast', () => {
     expect(listingFormsSource).toContain('background: var(--color-error-bg);');
     expect(listingFormsSource).toContain('color: var(--color-ink);');
     expect(listingFormsSource).not.toContain('background: #fee2e2;');
+    expect(baseStyleSource).toContain('background: color-mix(in srgb, var(--color-white) 12%, transparent);');
+    expect(profileUiSource).toContain('border-color: color-mix(in srgb, var(--color-rust) 45%, transparent);');
+    expect(profileUiSource).toContain('background: color-mix(in srgb, var(--color-rust) 6%, transparent);');
   });
 
   it('retains the original infrared highlight alongside its contrast-safe interactive tone', () => {
