@@ -67,18 +67,12 @@
 
     <div class="listing-card-footer">
       <span class="listing-card-seller">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
+        <%- include('./icon', { name: 'user', size: '12px', ariaHidden: true }) %>
         <%= sellerUsername %>
       </span>
       <% if (sellerLocation) { %>
         <span class="listing-card-location">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-            <circle cx="12" cy="10" r="3"></circle>
-          </svg>
+          <%- include('./icon', { name: 'pin', size: '12px', ariaHidden: true }) %>
           <%= sellerLocation %>
         </span>
       <% } %>
