@@ -437,7 +437,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.locator('#releaseTitle').fill('Doggystyle');
     await page.waitForRequest((request) => request.url().includes('/releases/lookup-metadata?'));
     await page.waitForFunction(
-      () => document.querySelector('form[data-discogs-lookup-form]')?.dataset.lookupPending === 'true',
+      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-lookup-pending') === 'true',
       undefined,
       { timeout: 3000 }
     );
