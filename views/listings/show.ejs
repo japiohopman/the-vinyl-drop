@@ -65,6 +65,8 @@
     <% const defaultAlt = `Album cover artwork for ${release.title} by ${release.artist}`; %>
     <% const frontCoverPhoto = (photos || []).find(function(photo) { return photo.role === 'front_cover'; }); %>
     <% const initialArtworkUrl = frontCoverPhoto && frontCoverPhoto.publicUrl ? frontCoverPhoto.publicUrl : ((release && release.coverArtUrl) ? release.coverArtUrl : '/assets/vinyl-placeholder.svg'); %>
+    <% const catalogueArtworkAlt = `Catalogue artwork for ${release.title} by ${release.artist}; release reference, not a photo of the physical copy`; %>
+    <% const frontPhotoAlt = frontCoverPhoto ? (frontCoverPhoto.altText || `Front-cover photo of the physical copy of ${release.title} by ${release.artist}`) : defaultAlt; %>
     <% const secondaryFallbackUrl = (release && release.coverArtUrl) ? release.coverArtUrl : '/assets/vinyl-placeholder.svg'; %>
     <% const secondaryFallbackAlt = (release && release.coverArtUrl) ? `Catalog cover artwork for ${release.title}` : `Default vinyl placeholder for ${release.title}`; %>
     <% const placeholderAlt = `Default vinyl placeholder for ${release.title}`; %>
@@ -82,7 +84,7 @@
           <img
             id="main-photo-img"
             src="<%= frontCoverPhoto.publicUrl %>"
-            alt="<%= frontCoverPhoto.altText || defaultAlt %>"
+            alt="<%= frontPhotoAlt %>"
             class="listing-main-photo"
             referrerpolicy="no-referrer"
             data-secondary-fallback="<%= secondaryFallbackUrl %>"
@@ -95,7 +97,7 @@
           <img
             id="main-photo-img"
             src="<%= release.coverArtUrl %>"
-            alt="<%= defaultAlt %>"
+            alt="<%= catalogueArtworkAlt %>"
             class="listing-main-photo"
             referrerpolicy="no-referrer"
             data-placeholder="/assets/vinyl-placeholder.svg"
