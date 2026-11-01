@@ -147,7 +147,7 @@ describe('Square cover photo cropper', () => {
     expect(await page.evaluate("document.activeElement && document.activeElement.classList.contains('photo-file-trigger')")).toBe(true);
     expect(await page.locator('#altText').getAttribute('placeholder')).toBe('Front cover of the record sleeve');
     expect(await page.locator('#altText').getAttribute('required')).toBeNull();
-    expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload front cover');
+    expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload front of your copy');
 
     await page.locator('[data-close-photo-upload]').first().click({ timeout: 5000 });
     await page.locator('[data-open-photo-upload][data-photo-role="back_cover"]').click({ timeout: 5000 });
@@ -155,7 +155,7 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('.photo-role-field').isVisible()).toBe(false);
     expect(await page.locator('#altText').getAttribute('placeholder')).toBe('Back cover of the record sleeve');
     expect(await page.locator('#altText').getAttribute('required')).toBeNull();
-    expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload back cover');
+    expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload back of your copy');
   });
 
   it('crops both front and back cover uploads to the exact square preview', async () => {

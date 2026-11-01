@@ -34,6 +34,7 @@ describe('My Listings Artwork Thumbnails (#146)', () => {
             {
               publicUrl: 'https://storage.example/seller-photo-1.jpg',
               altText: 'Custom physical sleeve photo',
+              role: 'front_cover',
             },
           ],
         },
@@ -51,6 +52,34 @@ describe('My Listings Artwork Thumbnails (#146)', () => {
       expect(html).toContain('data-secondary-src="https://catalog.example/coltrane-catalog.jpg"');
       expect(html).toContain('data-secondary-alt="Catalog cover artwork for Blue Train"');
       expect(html).toContain('data-placeholder="/assets/vinyl-placeholder.svg"');
+    });
+
+    it('does not substitute a back-cover or record photo for the default front artwork', async () => {
+      const html = await ejs.renderFile(viewPath, {
+        listings: [{
+          id: 'listing-back-only',
+          status: 'draft',
+          tradeAvailable: false,
+          priceFormatted: '€20.00',
+          release: {
+            title: 'Doggystyle',
+            artist: 'Snoop Dogg',
+            releaseYear: 1993,
+            coverArtUrl: 'https://catalog.example/doggystyle.jpg',
+          },
+          physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG' },
+          photos: [{
+            publicUrl: 'https://storage.example/back-cover.jpg',
+            altText: 'Back cover of the actual copy',
+            role: 'back_cover',
+          }],
+        }],
+        viewHidden: false,
+      });
+
+      expect(html).toContain('src="https://catalog.example/doggystyle.jpg"');
+      expect(html).not.toContain('src="https://storage.example/back-cover.jpg"');
+      expect(html).toContain('Catalog cover artwork for Doggystyle');
     });
 
     it('falls back to release coverArtUrl when no seller photo is available', async () => {
@@ -194,6 +223,7 @@ describe('My Listings Artwork Thumbnails (#146)', () => {
             {
               publicUrl: 'https://broken-seller-storage.invalid/seller-shot.jpg',
               altText: 'Original 1973 sleeve',
+              role: 'front_cover',
             },
           ],
         },

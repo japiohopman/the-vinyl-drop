@@ -55,11 +55,11 @@ async function attachPrimaryPhotoPaths(
   const photoRecords = await db
     .select()
     .from(listingPhotos)
-    .where(inArray(listingPhotos.listingId, listingIds))
-    .orderBy(
-      sql`case when ${listingPhotos.role} = 'front_cover' then 0 else 1 end`,
-      asc(listingPhotos.displayOrder)
-    );
+    .where(and(
+      inArray(listingPhotos.listingId, listingIds),
+      eq(listingPhotos.role, 'front_cover')
+    ))
+    .orderBy(asc(listingPhotos.displayOrder));
 
   const primaryPhotoMap = new Map<string, string>();
   for (const photo of photoRecords) {

@@ -115,7 +115,10 @@
                             <p>No seller-selected front-cover photo has been added for this copy.</p>
                           </div>
                         <% } else { %>
-                          <img class="dig-sleeve-image" src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
+                          <img class="dig-sleeve-image" data-artwork-image src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
+                          <% if (item.frontArtwork.sourceKind === 'catalogue_artwork') { %>
+                            <span class="dig-artwork-source-label">Discogs catalogue artwork</span>
+                          <% } %>
                         <% } %>
                       </div>
                       <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Back cover" aria-hidden="true">

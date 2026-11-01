@@ -111,6 +111,11 @@ function recordToListingCardViewModel(record: JoinedListingRecord): ListingCardV
     sleeveCondition: record.physicalCopy.sleeveCondition,
     imageUrl,
     fallbackImageUrl,
+    imageAlt: record.primaryPhotoPath
+      ? `Front-cover photo of the physical copy of ${record.release.title} by ${record.release.artist}`
+      : record.release.coverArtUrl
+        ? `Catalogue artwork for ${record.release.title} by ${record.release.artist}; release reference, not a photo of the physical copy`
+        : undefined,
     sellerUsername: record.seller.username,
     sellerLocation: record.seller.location || undefined,
     url: `/listings/${record.listing.id}`,
@@ -307,7 +312,7 @@ export async function searchDigListings(
       ...photo,
       publicUrl: getPhotoPublicUrl(photo.storagePath),
     }));
-    const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist);
+    const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist, undefined, record.release.coverArtUrl);
     const base = recordToListingCardViewModel(record);
 
     return {

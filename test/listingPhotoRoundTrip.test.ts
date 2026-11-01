@@ -8,7 +8,7 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { setOverrideDb } from '../src/db';
 import { getEditListingPage, postUploadPhoto } from '../src/app/controllers/listingController';
 import { getDigBrowsePage } from '../src/app/controllers/browseController';
-import { getCreateCustomReleasePage } from '../src/app/controllers/releaseController';
+import { getCreateCustomReleasePage, postCreateCustomRelease } from '../src/app/controllers/releaseController';
 import { errorHandler } from '../src/app/middleware/errorHandler';
 import { validateSameOrigin } from '../src/app/middleware/csrf';
 import { multipartUploadHandler } from '../src/app/middleware/upload';
@@ -94,6 +94,7 @@ describe('Seller cover photo HTTP round trip', () => {
     );
     app.get('/listings/:id/edit', authenticateTestSeller, getEditListingPage);
     app.get('/releases/new', authenticateTestSeller, getCreateCustomReleasePage);
+    app.post('/releases/new', authenticateTestSeller, validateSameOrigin, multipartUploadHandler, postCreateCustomRelease);
     app.get('/browse/dig', getDigBrowsePage);
     app.use(errorHandler);
   });
@@ -102,6 +103,28 @@ describe('Seller cover photo HTTP round trip', () => {
     clearInMemoryStorage();
     setOverrideDb(null);
     await database.close();
+  });
+
+  it('persists Discogs catalogue artwork from the multipart DROP form', async () => {
+    const coverArtUrl = 'https://i.discogs.com/snoop-dogg-doggystyle.jpg';
+    const response = await supertest(app)
+      .post('/releases/new')
+      .set('Origin', new URL(config.APP_BASE_URL).origin)
+      .field('artist', 'Snoop Dogg')
+      .field('title', 'Doggystyle')
+      .field('format', 'LP')
+      .field('coverArtUrl', coverArtUrl);
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toMatch(/^\/listings\/create\?releaseId=/);
+    const releaseIdFromRedirect = response.headers.location.match(/releaseId=([0-9a-f-]+)/i)?.[1];
+    expect(releaseIdFromRedirect).toBeTruthy();
+
+    const stored = await database.query<{ cover_art_url: string | null }>(
+      `SELECT cover_art_url FROM public.releases WHERE id = '${releaseIdFromRedirect}'`
+    );
+    expect(stored.rows).toHaveLength(1);
+    expect(stored.rows[0].cover_art_url).toBe(coverArtUrl);
   });
 
   it('persists each submitted role and renders those exact stored photos in Dig', async () => {
@@ -147,17 +170,20 @@ describe('Seller cover photo HTTP round trip', () => {
 
     const releaseForm = await supertest(app).get('/releases/new');
     expect(releaseForm.status).toBe(200);
-    expect(releaseForm.text).toContain('Catalogue artwork (optional)');
-    expect(releaseForm.text).toContain('This artwork represents the release edition.');
-    expect(releaseForm.text).toContain('Photos of your physical copy are added in the next step.');
+    expect(releaseForm.text).toContain('Catalogue artwork replacement (optional)');
+    expect(releaseForm.text).toContain('Use the Discogs release artwork by default');
+    expect(releaseForm.text).toContain('Photos of the exact physical copy are added in the next step.');
     expect(releaseForm.text).toContain('name="coverArt"');
     expect(releaseForm.text).not.toContain('name="photo"');
     expect(releaseForm.text).not.toContain('name="role"');
 
     const listingPhotoForm = await supertest(app).get(`/listings/${listingId}/edit`);
     expect(listingPhotoForm.status).toBe(200);
-    expect(listingPhotoForm.text).toContain('Front cover');
-    expect(listingPhotoForm.text).toContain('Back cover');
+    expect(listingPhotoForm.text).toContain('Front of your copy');
+    expect(listingPhotoForm.text).toContain('Back of your copy');
+    expect(listingPhotoForm.text).toContain('Release artwork');
+    expect(listingPhotoForm.text).toContain('https://catalog.example/miles.jpg');
+    expect(listingPhotoForm.text).toContain('already supplies the Dig front');
     expect(listingPhotoForm.text).toContain('Additional photos');
     expect(listingPhotoForm.text).toContain('Photo help');
     expect(listingPhotoForm.text).toContain('Choose photo');
