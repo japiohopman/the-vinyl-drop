@@ -19,7 +19,7 @@ import { VINYL_FORMAT_FILTERS } from '../src/domain/releaseFormat';
 const root = process.cwd();
 const views = path.join(root, 'views');
 const publicDirectory = path.join(root, 'public');
-const evidenceDirectory = process.env.UI_EVIDENCE_DIR;
+const evidenceDirectory = process.env.UI_EVIDENCE_DIR || '';
 
 if (!evidenceDirectory) {
   throw new Error('UI_EVIDENCE_DIR must be set so screenshots are written to an explicit evidence folder.');
@@ -260,7 +260,8 @@ async function makePages(baseUrl: string): Promise<Array<{
 }
 
 async function run(): Promise<void> {
-  fs.mkdirSync(path.resolve(root, evidenceDirectory), { recursive: true });
+  const evidencePath = path.resolve(root, evidenceDirectory);
+  fs.mkdirSync(evidencePath, { recursive: true });
 
   const staticApp = express();
   staticApp.use(express.static(publicDirectory));
@@ -340,8 +341,7 @@ async function run(): Promise<void> {
           }
 
           const screenshotPath = path.resolve(
-            root,
-            evidenceDirectory,
+            evidencePath,
             `${surface.name}-${viewport.width}px.png`
           );
           await page.screenshot({ path: screenshotPath, fullPage: true, animations: 'disabled' });
@@ -357,7 +357,7 @@ async function run(): Promise<void> {
     }
 
     assert.equal(failures.length, 0, failures.join('\n'));
-    console.log(`[ui-evidence] Captured ${pages.length * viewports.length} screenshots in ${path.resolve(root, evidenceDirectory)}`);
+    console.log(`[ui-evidence] Captured ${pages.length * viewports.length} screenshots in ${evidencePath}`);
   } finally {
     await browser.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));
