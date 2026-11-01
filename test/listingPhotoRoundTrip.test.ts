@@ -170,9 +170,9 @@ describe('Seller cover photo HTTP round trip', () => {
 
     const releaseForm = await supertest(app).get('/releases/new');
     expect(releaseForm.status).toBe(200);
-    expect(releaseForm.text).toContain('Catalogue artwork (optional)');
-    expect(releaseForm.text).toContain('This artwork represents the release edition.');
-    expect(releaseForm.text).toContain('Photos of your physical copy are added in the next step.');
+    expect(releaseForm.text).toContain('Catalogue artwork replacement (optional)');
+    expect(releaseForm.text).toContain('Use the Discogs release artwork by default');
+    expect(releaseForm.text).toContain('Photos of the exact physical copy are added in the next step.');
     expect(releaseForm.text).toContain('name="coverArt"');
     expect(releaseForm.text).not.toContain('name="photo"');
     expect(releaseForm.text).not.toContain('name="role"');
