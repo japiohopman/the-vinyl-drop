@@ -229,7 +229,7 @@ describe('Environment Validation', () => {
         SUPABASE_URL: 'https://prod-project.supabase.co',
         SUPABASE_ANON_KEY: 'prod-key',
         APP_BASE_URL: 'http://localhost:3000',
-        ALLOWED_REDIRECT_URLS: 'https://vinyldrop.com',
+        ALLOWED_REDIRECT_URLS: 'https://thevinyldrop.nl',
       })
     ).toThrow('Invalid environment configuration');
     expect(consoleErrorSpy).toHaveBeenCalled();

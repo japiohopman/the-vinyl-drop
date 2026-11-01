@@ -47,6 +47,10 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+      - name: Test production migration preflight guards
+        shell: pwsh
+        run: ./test/production-preflight.Tests.ps1
+
       - name: Run type checker
         run: npm run typecheck
 
@@ -58,3 +62,18 @@ jobs:
 
       - name: Build project
         run: npm run build
+
+  production-preflight-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Test production migration preflight on Windows
+        shell: pwsh
+        run: ./test/production-preflight.Tests.ps1

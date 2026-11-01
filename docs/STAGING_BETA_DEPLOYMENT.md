@@ -51,6 +51,20 @@ The current staging service is on Render Free, Frankfurt, with one configured in
 
 ---
 
+
+
+### Historical production provisioning snapshot — Issue #278 (superseded 31 October 2026)
+
+> **Historical snapshot only — do not use the bullets below as current production status.** They record the pre-provisioning inventory and decisions. The current production state and operational instructions are maintained in [`docs/PRODUCTION_DEPLOYMENT.md`](./PRODUCTION_DEPLOYMENT.md).
+
+- Canonical production origin: `https://thevinyldrop.nl`.
+- The `www.thevinyldrop.nl` alias/redirect behavior is **not yet verified**. Do not add it to application redirect allowlists or declare it canonical until DNS and HTTP redirect checks establish the intended behavior.
+- Production remains a separate future Render service and Supabase project. The current staging service/project must remain untouched.
+- The current connected Supabase organization inventory reports plan **Free** and one active project, `xuhzhdjmgvqzjxijmksu`, in `eu-west-1`; this is the staging project. There is no production Supabase project in the returned project inventory (31 October 2026).
+- Read-only inspection confirmed the staging Drizzle ledger `drizzle.__drizzle_migrations` contains 20 entries, matching the repository's 20 SQL files (`drizzle/0000`–`drizzle/0019`). Supabase CLI migration tracking is separate and must not be used as a substitute for the Drizzle ledger.
+- Do not interpret the canonical domain being registered/SSL-enabled as proof that it points to a production application. Verify Render custom-domain ownership, DNS target, TLS and canonical redirects after the separate production service exists.
+- A production service is deliberately not declared in `render.yaml` yet: applying a non-free service definition may create a billable resource. The selected Render compute plan and Supabase organization/project cost must be explicitly accepted first.
+
 ## 1. Environment Taxonomy & Data Separation
 
 To ensure production integrity and prevent accidental data contamination, environments are strictly isolated:
@@ -59,7 +73,7 @@ To ensure production integrity and prevent accidental data contamination, enviro
 | --- | --- | --- | --- | --- |
 | **LOCAL** | `http://localhost:3000` | In-memory PGlite or Local Supabase CLI (`127.0.0.1:54322`) | Local Dev Instance | Daily feature development & unit testing |
 | **STAGING / BETA** | `https://the-vinyl-drop-staging.onrender.com` | Dedicated Staging PostgreSQL | Isolated Staging Project | Invite-only Beta testing (#48), integration, QA |
-| **PRODUCTION** | `https://vinyldrop.com` | Production PostgreSQL | Isolated Production Project | Public live marketplace |
+| **PRODUCTION** | `https://thevinyldrop.nl` | Dedicated production Supabase project (`anxhmlalxjvatrufcjei`) | Separate production Supabase project and manually provisioned Render Free service | Live owner-operated production environment; public-launch gates remain closed. See [Production Deployment](./PRODUCTION_DEPLOYMENT.md) and [Issue #278](https://github.com/japiohopman/the-vinyl-drop/issues/278). |
 
 ### Security Invariants
 - **No Shared Persistence:** Staging and Production MUST use separate, completely isolated Supabase projects (database, auth, and object storage).
