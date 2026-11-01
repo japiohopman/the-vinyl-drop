@@ -430,7 +430,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     });
     await page.addScriptTag({ content: discogsLookupScript });
     await page.locator('form[data-discogs-lookup-form]').evaluate(
-      'form => form.addEventListener("submit", event => { event.preventDefault(); if (form.dataset.lookupPending !== "true") form.dataset.testSubmitted = "true"; })'
+      'form => { form.requestSubmit = function () { form.dataset.testRequestSubmit = "true"; }; }'
     );
 
     await page.locator('#releaseArtist').fill('Snoop Dogg');
@@ -439,15 +439,16 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('.custom-release-submit').isDisabled()).toBe(true);
 
     await page.locator('form[data-discogs-lookup-form]').evaluate('form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))');
-    expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-submitted')).toBeNull();
+    expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-request-submit')).toBeNull();
 
     allowLookupResponse();
 
     await page.waitForFunction(
-      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-test-submitted') === 'true',
+      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-test-request-submit') === 'true',
       undefined,
       { timeout: 3000 }
     );
+    expect(await page.locator('.custom-release-submit').isDisabled()).toBe(false);
     expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('https://i.discogs.com/doggystyle.jpg');
   });
 
