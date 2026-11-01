@@ -12,7 +12,7 @@ describe('public catalogue suggestions', () => {
 
   beforeAll(async () => {
     pg = new PGlite({ extensions: { pg_trgm, unaccent } });
-    await pg.exec(\`
+    await pg.exec(`
       CREATE SCHEMA extensions;
       CREATE EXTENSION unaccent WITH SCHEMA extensions;
       CREATE EXTENSION pg_trgm WITH SCHEMA extensions;
@@ -22,7 +22,7 @@ describe('public catalogue suggestions', () => {
       CREATE INDEX releases_artist_trgm_idx ON public.releases USING GIN(artist extensions.gin_trgm_ops);
       CREATE INDEX releases_title_trgm_idx ON public.releases USING GIN(title extensions.gin_trgm_ops);
       CREATE INDEX releases_label_trgm_idx ON public.releases USING GIN(label extensions.gin_trgm_ops);
-    \`);
+    `);
     const records = [
       ['10000000-0000-4000-8000-000000000001','Prince','Purple Rain','Warner Bros.','W  nos. 1'],
       ['10000000-0000-4000-8000-000000000002','Prince','Sign o the Times','Paisley Park','W  nos. 2'],
