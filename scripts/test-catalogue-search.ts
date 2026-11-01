@@ -4,17 +4,15 @@ import path from 'path';
 import { performance } from 'perf_hooks';
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
-import { unaccent } from '@electric-sql/pglite/contrib/unaccent';
 import { chromium, type Browser } from 'playwright';
 
 const delay=(ms:number):Promise<void>=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function verifyPerformance():Promise<void>{
- const pg=new PGlite({extensions:{pg_trgm:pg_trgm as never,unaccent:unaccent as never}});
+ const pg=new PGlite({extensions:{pg_trgm:pg_trgm as never}});
  try{
   await pg.exec(`
    CREATE SCHEMA extensions;
-   CREATE EXTENSION unaccent WITH SCHEMA extensions;
    CREATE EXTENSION pg_trgm WITH SCHEMA extensions;
    CREATE TABLE public.releases(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),artist text NOT NULL);
    INSERT INTO public.releases(artist) SELECT 'Independent Artist '||n::text||' Ensemble' FROM generate_series(1,25000) AS n;
