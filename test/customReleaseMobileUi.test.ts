@@ -429,8 +429,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
       });
     });
     await page.addScriptTag({ content: discogsLookupScript });
-    await page.locator('form[data-discogs-lookup-form]').evaluate(
-      'form => { form.addEventListener("submit", event => { event.preventDefault(); form.dataset.testSubmitCount = String(Number(form.dataset.testSubmitCount || "0") + 1); }); }'
+    await page.evaluate(
+      '() => { const form = document.querySelector("form[data-discogs-lookup-form]"); if (!form) throw new Error("DROP form not found"); document.addEventListener("submit", event => { if (event.target !== form) return; event.preventDefault(); form.setAttribute("data-test-submit-count", String(Number(form.getAttribute("data-test-submit-count") || "0") + 1)); }, true); }'
     );
 
     await page.locator('#releaseArtist').fill('Snoop Dogg');
