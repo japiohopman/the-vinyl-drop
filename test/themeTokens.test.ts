@@ -3,6 +3,8 @@ import path from 'path';
 
 const themeSource = fs.readFileSync(path.join(process.cwd(), 'public/css/themes.css'), 'utf8');
 const baseStyleSource = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
+const mobileCrateSource = fs.readFileSync(path.join(process.cwd(), 'public/css/dig-mobile-crate.css'), 'utf8');
+const listingFormsSource = fs.readFileSync(path.join(process.cwd(), 'public/css/listing-forms.css'), 'utf8');
 const themes = ['record-shop', 'blue-note', 'soul-45', 'mint-press', 'midnight-groove', 'purple-haze'];
 const conditionBadges = ['condition-badge-mint', 'condition-badge-nm', 'condition-badge-vg', 'condition-badge-fair'];
 
@@ -65,7 +67,9 @@ describe('shared theme token contrast', () => {
     atLeast('--color-focus', '--color-white', 3);
     atLeast('--color-border', '--color-paper', 3);
     atLeast('--color-border', '--color-white', 3);
+    atLeast('--color-ink', '--color-error-bg', 4.5);
     atLeast('--color-error-border', '--color-error-bg', 3);
+    atLeast('--color-ink', '--color-success-bg', 4.5);
     atLeast('--color-success-border', '--color-success-bg', 3);
   });
 
@@ -75,6 +79,21 @@ describe('shared theme token contrast', () => {
       expect(contrast(badge.foreground, badge.background)).toBeGreaterThanOrEqual(4.5);
       expect(contrast(badge.border, badge.background)).toBeGreaterThanOrEqual(3);
     });
+  });
+
+
+
+  it('uses shared theme surfaces for mobile Dig and + DROP validation states', () => {
+    expect(mobileCrateSource).toContain('background: var(--color-surface-hover);');
+    expect(mobileCrateSource).toContain('background: var(--color-paper);');
+    expect(mobileCrateSource).toContain('background: var(--color-deep-green);');
+    expect(mobileCrateSource).toContain('background: color-mix(in srgb, var(--color-paper) 82%, transparent);');
+    expect(mobileCrateSource).toContain('background: color-mix(in srgb, var(--color-white) 84%, transparent);');
+    expect(mobileCrateSource).toContain('background: color-mix(in srgb, var(--color-rust) 8%, transparent);');
+    expect(listingFormsSource).toContain('border: 1px solid var(--color-error-border);');
+    expect(listingFormsSource).toContain('background: var(--color-error-bg);');
+    expect(listingFormsSource).toContain('color: var(--color-ink);');
+    expect(listingFormsSource).not.toContain('background: #fee2e2;');
   });
 
   it('retains the original infrared highlight alongside its contrast-safe interactive tone', () => {
