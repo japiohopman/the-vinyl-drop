@@ -430,25 +430,30 @@ describe('Custom release mobile navigation and artwork picker', () => {
     });
     await page.addScriptTag({ content: discogsLookupScript });
     await page.locator('form[data-discogs-lookup-form]').evaluate(
-      'form => { form.requestSubmit = function () { form.dataset.testRequestSubmit = "true"; }; }'
+      'form => { form.addEventListener("submit", event => { event.preventDefault(); form.dataset.testSubmitCount = String(Number(form.dataset.testSubmitCount || "0") + 1); }); }'
     );
 
     await page.locator('#releaseArtist').fill('Snoop Dogg');
     await page.locator('#releaseTitle').fill('Doggystyle');
     await page.waitForRequest((request) => request.url().includes('/releases/lookup-metadata?'));
+    await page.waitForFunction(
+      () => document.querySelector('form[data-discogs-lookup-form]')?.dataset.lookupPending === 'true',
+      undefined,
+      { timeout: 3000 }
+    );
     expect(await page.locator('.custom-release-submit').isEnabled()).toBe(true);
 
     await page.locator('.custom-release-submit').click();
-    expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-request-submit')).toBeNull();
+    expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-submit-count')).toBe('1');
 
     allowLookupResponse();
 
     await page.waitForFunction(
-      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-test-request-submit') === 'true',
+      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-test-submit-count') === '2',
       undefined,
       { timeout: 3000 }
     );
-    expect(await page.locator('.custom-release-submit').isDisabled()).toBe(false);
+    expect(await page.locator('.custom-release-submit').isEnabled()).toBe(true);
     expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('https://i.discogs.com/doggystyle.jpg');
   });
 
