@@ -10,16 +10,26 @@
     if (status) status.textContent = message;
   }
 
+  function syncBooleanPreference(key) {
+    const control = page.querySelector('[data-preference="' + key + '"]');
+    if (!control || control.type !== 'checkbox') return;
+    const enabled = preferences.get(key) === true;
+    control.checked = enabled;
+    const state = control.parentElement && control.parentElement.querySelector('[data-preference-state]');
+    if (state) state.textContent = enabled ? 'On' : 'Off';
+  }
+
   function bindBooleanPreference(key) {
     const control = page.querySelector('[data-preference="' + key + '"]');
     if (!control || control.type !== 'checkbox') return;
-    control.checked = preferences.get(key) === true;
+    syncBooleanPreference(key);
     control.addEventListener('change', () => {
       if (!preferences.set(key, control.checked)) {
-        control.checked = preferences.get(key) === true;
+        syncBooleanPreference(key);
         announce('That setting could not be changed.');
         return;
       }
+      syncBooleanPreference(key);
       announce('Preference updated for this browser.');
     });
   }
@@ -56,8 +66,7 @@
   preferences.subscribe((_values, key) => {
     if (key === 'theme') syncThemeChoices();
     if (key === 'soundEffectsEnabled' || key === 'hapticFeedbackEnabled' || key === 'tutorialsEnabled') {
-      const control = page.querySelector('[data-preference="' + key + '"]');
-      if (control && control.type === 'checkbox') control.checked = preferences.get(key) === true;
+      syncBooleanPreference(key);
     }
   });
   syncThemeChoices();
