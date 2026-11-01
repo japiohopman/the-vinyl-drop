@@ -236,6 +236,11 @@
   line-height: var(--line-height-base);
 }
 
+.browse-header-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .browse-header-actions {
   flex: 0 0 auto;
 }
@@ -260,6 +265,16 @@
 
 .browse-search-row .browse-keyword-control {
   min-width: 0;
+}
+
+.browse-search-row .browse-keyword-control > label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .browse-search-row .browse-search-submit {
@@ -413,7 +428,7 @@
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  min-height: calc(2 * var(--line-height-snug));
+  min-height: 2.6em;
   font-size: var(--font-size-md);
 }
 
