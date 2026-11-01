@@ -1,6 +1,5 @@
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
-import { unaccent } from '@electric-sql/pglite/contrib/unaccent';
 import { drizzle } from 'drizzle-orm/pglite';
 import type { getDb } from '../src/db';
 import { searchCatalogueSuggestionRows } from '../src/app/repositories/catalogueSearchRepository';
@@ -11,10 +10,9 @@ describe('public catalogue suggestions', () => {
   let db: ReturnType<typeof getDb>;
 
   beforeAll(async () => {
-    pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never, unaccent: unaccent as never } });
+    pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
     await pg.exec(`
       CREATE SCHEMA extensions;
-      CREATE EXTENSION unaccent WITH SCHEMA extensions;
       CREATE EXTENSION pg_trgm WITH SCHEMA extensions;
       CREATE TABLE public.releases(id uuid PRIMARY KEY, artist text NOT NULL, title text NOT NULL, label text, catalogue_number text);
       CREATE TABLE public.physical_copies(id uuid PRIMARY KEY, release_id uuid NOT NULL REFERENCES public.releases(id));
