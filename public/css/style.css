@@ -646,7 +646,7 @@ body.account-surface-open {
     height: 44px;
     min-height: 44px;
     padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    border: 1px solid color-mix(in srgb, var(--color-white) 50%, transparent);
     border-radius: 5px;
     background: transparent;
     color: var(--color-white);
@@ -656,7 +656,7 @@ body.account-surface-open {
   }
 
   .mobile-you-about-back[hidden] { display: none !important; }
-  .mobile-you-about-back:hover { background: rgba(255, 255, 255, 0.12); }
+  .mobile-you-about-back:hover { background: color-mix(in srgb, var(--color-white) 12%, transparent); }
 
   .mobile-you-close-btn {
     display: inline-flex;
@@ -668,14 +668,14 @@ body.account-surface-open {
     height: 44px;
     min-height: 44px;
     background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    border: 1px solid color-mix(in srgb, var(--color-white) 50%, transparent);
     border-radius: 5px;
     color: var(--color-white);
     cursor: pointer;
     box-shadow: none;
   }
 
-  .mobile-you-close-btn:hover { background-color: rgba(255, 255, 255, 0.12); }
+  .mobile-you-close-btn:hover { background-color: color-mix(in srgb, var(--color-white) 12%, transparent); }
 
   .mobile-you-views {
     display: grid;
