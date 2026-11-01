@@ -436,9 +436,9 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.locator('#releaseArtist').fill('Snoop Dogg');
     await page.locator('#releaseTitle').fill('Doggystyle');
     await page.waitForRequest((request) => request.url().includes('/releases/lookup-metadata?'));
-    expect(await page.locator('.custom-release-submit').isDisabled()).toBe(true);
+    expect(await page.locator('.custom-release-submit').isEnabled()).toBe(true);
 
-    await page.locator('form[data-discogs-lookup-form]').evaluate('form => form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))');
+    await page.locator('.custom-release-submit').click();
     expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-request-submit')).toBeNull();
 
     allowLookupResponse();
