@@ -67,9 +67,13 @@
           <div class="browse-search-row">
             <div class="browse-keyword-control">
               <label for="search-q">Search records</label>
-              <div class="form-search-control">
-                <%- include('../partials/icon', { name: 'search', size: '1rem', ariaHidden: true }) %>
-                <input type="search" id="search-q" name="q" class="form-control" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
+              <div class="catalogue-search-autocomplete">
+                <div class="form-search-control">
+                  <%- include('../partials/icon', { name: 'search', size: '1rem', ariaHidden: true }) %>
+                  <input type="search" id="search-q" name="q" class="form-control" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off" data-catalogue-search-input data-suggestion-url="/api/catalogue-suggestions" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="catalogue-suggestions-search-q">
+                </div>
+                <ul id="catalogue-suggestions-search-q" class="catalogue-suggestions" role="listbox" aria-label="Catalogue suggestions" hidden></ul>
+                <p id="catalogue-suggestions-status-search-q" class="catalogue-suggestions-status" role="status" aria-live="polite"></p>
               </div>
             </div>
             <button type="submit" class="btn btn-primary browse-search-submit">Search</button>
