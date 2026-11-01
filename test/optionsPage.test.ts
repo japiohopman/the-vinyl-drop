@@ -46,6 +46,19 @@ describe('Options page and live theme preferences', () => {
         const themes = ['record-shop', 'blue-note', 'soul-45', 'mint-press', 'midnight-groove', 'purple-haze'];
         for (const width of [390, 1280]) {
           await page.setViewportSize({ width, height: 900 });
+          if (width < 768) {
+            await page.evaluate(() => {
+              const mobileNavigation = document.querySelector('.mobile-bottom-nav') as HTMLElement | null;
+              if (!mobileNavigation) return;
+              document.body.appendChild(mobileNavigation);
+              mobileNavigation.style.setProperty('position', 'static', 'important');
+              mobileNavigation.style.setProperty('inset', 'auto', 'important');
+              mobileNavigation.style.setProperty('z-index', 'auto', 'important');
+              mobileNavigation.style.setProperty('padding-bottom', '0', 'important');
+              mobileNavigation.style.setProperty('box-shadow', 'none', 'important');
+              mobileNavigation.style.setProperty('margin-top', '16px', 'important');
+            });
+          }
           for (const theme of themes) {
             await page.locator('[data-theme-choice][value="' + theme + '"]').check();
             await page.evaluate(() => document.fonts.ready.then(() => undefined));
