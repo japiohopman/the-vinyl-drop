@@ -9,12 +9,14 @@ import { getIconSvg } from '../src/app/utils/iconRegistry';
 // inside functions serialized and executed by Playwright in a browser page.
 interface PlaywrightTestStatusElement {
   getAttribute(name: string): string | null;
+  hasAttribute(name: string): boolean;
+  textContent: string | null;
 }
 interface PlaywrightTestDocument {
   documentElement: { scrollWidth: number };
   body: { scrollWidth: number };
   getElementById(id: string): PlaywrightTestStatusElement | null;
-  querySelector(selector: string): object | null;
+  querySelector(selector: string): PlaywrightTestStatusElement | null;
 }
 declare const window: { innerWidth: number };
 declare const document: PlaywrightTestDocument;
