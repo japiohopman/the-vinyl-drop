@@ -16,6 +16,7 @@ const publicDirectory = path.join(root, 'public');
 const evidenceDirectory = process.env.BROWSE_EVIDENCE_DIR?.trim() || 'artifacts/issue-293';
 const stylesheet = readFullStylesheetSource();
 
+/** Renders the Browse template with production styles and representative listing fixtures. */
 async function renderBrowse(baseUrl: string): Promise<string> {
   const body = await ejs.renderFile(path.join(views, 'browse/index.ejs'), {
     getIconSvg,
@@ -69,6 +70,7 @@ async function renderBrowse(baseUrl: string): Promise<string> {
     '<main class="main-content container">' + body + '</main></body></html>';
 }
 
+/** Validates Browse layout and keyboard access, then captures the configured viewport screenshots. */
 async function run(): Promise<void> {
   const evidencePath = path.resolve(root, evidenceDirectory);
   fs.mkdirSync(evidencePath, { recursive: true });
