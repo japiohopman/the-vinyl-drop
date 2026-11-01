@@ -15,7 +15,10 @@ export async function getCatalogueSuggestions(
     if (
       typeof query !== 'string' ||
       query.length > MAX_CATALOGUE_SEARCH_QUERY_LENGTH ||
-      /[\u0000-\u001f\u007f]/u.test(query)
+      [...query].some((character) => {
+        const code = character.charCodeAt(0);
+        return code < 0x20 || code === 0x7f;
+      })
     ) {
       res.status(400).json({ error: 'Provide a search query of at most 80 characters.' });
       return;
