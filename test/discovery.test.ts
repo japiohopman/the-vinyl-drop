@@ -461,6 +461,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
         photos: [
           {
             id: 'photo-1',
+            role: 'front_cover',
             listingId: mockPublishedListing.id,
             storagePath: 'assets/broken-photo.webp',
             publicUrl: '/assets/broken-photo.webp',
@@ -471,6 +472,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
           },
           {
             id: 'photo-2',
+            role: 'back_cover',
             listingId: mockPublishedListing.id,
             storagePath: 'assets/back-photo.webp',
             publicUrl: '/assets/back-photo.webp',
