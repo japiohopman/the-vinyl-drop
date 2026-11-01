@@ -10,7 +10,7 @@ import { chromium, type Browser } from 'playwright';
 const delay=(ms:number):Promise<void>=>new Promise(resolve=>setTimeout(resolve,ms));
 
 async function verifyPerformance():Promise<void>{
- const pg=new PGlite({extensions:{pg_trgm,unaccent}});
+ const pg=new PGlite({extensions:{pg_trgm:pg_trgm as never,unaccent:unaccent as never}});
  try{
   await pg.exec(`
    CREATE SCHEMA extensions;
