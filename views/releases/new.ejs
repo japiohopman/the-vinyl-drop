@@ -60,9 +60,17 @@
         <legend>Catalogue artwork (optional)</legend>
         <div class="discogs-cover-preview" data-discogs-cover-preview hidden>
           <img src="" alt="Discogs catalogue artwork preview" loading="lazy" referrerpolicy="no-referrer" />
-          <p>Catalogue artwork found on Discogs</p>
+          <p data-discogs-cover-preview-status>Discogs catalogue artwork found.</p>
         </div>
-        <p class="custom-release-artwork-copy">This artwork represents the release edition. Photos of your physical copy are added in the next step.</p>
+        <div class="release-cover-override-preview" data-release-cover-override-preview hidden>
+          <img src="" alt="Preview of your replacement catalogue artwork" data-release-cover-override-image />
+          <div>
+            <strong>Your replacement artwork</strong>
+            <p>This image will replace the Discogs catalogue cover for this release.</p>
+            <button type="button" class="btn btn-outline btn-sm" data-clear-release-cover-override>Use Discogs artwork instead</button>
+          </div>
+        </div>
+        <p class="custom-release-artwork-copy">Use the Discogs release artwork by default, or replace it here with your own catalogue image. Photos of the exact physical copy are added in the next step.</p>
         <p id="releaseCoverArtDescription" class="custom-release-file-description">Upload artwork if the Discogs image is missing or incorrect (JPEG, PNG, WebP; up to 5MB).</p>
         <div class="custom-release-file-picker">
           <input id="releaseCoverArt" type="file" name="coverArt" accept="image/jpeg,image/png,image/webp" class="custom-release-file-input" aria-describedby="releaseCoverArtDescription releaseCoverArtFilename" />
