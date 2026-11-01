@@ -1577,24 +1577,30 @@ describe('Mobile Dig app-like viewport', () => {
       const siteHeader = document.querySelector('.site-header') as HTMLElement | null;
       const explorer = document.querySelector('.dig-explorer') as HTMLElement | null;
       if (!stage || !meta || !price || !listingLink || !filterIcon || !siteHeader || !explorer) return null;
-      const rootStyles = getComputedStyle(document.documentElement);
       const expectedColors = document.createElement('div');
-      expectedColors.style.backgroundColor = 'color-mix(in srgb, var(--color-paper) 82%, transparent)';
-      expectedColors.style.borderTopColor = 'color-mix(in srgb, var(--color-rust) 76%, transparent)';
-      expectedColors.style.borderBottomColor = 'color-mix(in srgb, var(--color-border) 14%, transparent)';
-      expectedColors.style.color = 'color-mix(in srgb, var(--color-paper) 92%, transparent)';
       document.body.appendChild(expectedColors);
-      const expectedColorStyles = getComputedStyle(expectedColors);
-      const expected = {
-        explorerBackground: rootStyles.getPropertyValue('--color-surface-hover').trim(),
-        metaBackground: expectedColorStyles.backgroundColor,
-        metaBorderTopColor: expectedColorStyles.borderTopColor,
-        siteHeaderBackground: expectedColorStyles.color,
-        siteHeaderBorderBottomColor: expectedColorStyles.borderBottomColor,
-      };
+      expectedColors.style.backgroundColor = 'var(--color-surface-hover)';
+      const expectedExplorerBackground = getComputedStyle(expectedColors).backgroundColor;
+      expectedColors.style.backgroundColor = 'color-mix(in srgb, var(--color-paper) 82%, transparent)';
+      const expectedMetaBackground = getComputedStyle(expectedColors).backgroundColor;
+      expectedColors.style.borderTopColor = 'color-mix(in srgb, var(--color-rust) 76%, transparent)';
+      const expectedMetaBorderTopColor = getComputedStyle(expectedColors).borderTopColor;
+      expectedColors.style.backgroundColor = 'color-mix(in srgb, var(--color-paper) 92%, transparent)';
+      const expectedSiteHeaderBackground = getComputedStyle(expectedColors).backgroundColor;
+      expectedColors.style.borderBottomColor = 'color-mix(in srgb, var(--color-border) 14%, transparent)';
+      const expectedSiteHeaderBorderBottomColor = getComputedStyle(expectedColors).borderBottomColor;
       expectedColors.remove();
       return {
-        ...expected,
+        explorerBackground: getComputedStyle(explorer).backgroundColor,
+        expectedExplorerBackground,
+        metaBackground: getComputedStyle(meta).backgroundColor,
+        expectedMetaBackground,
+        metaBorderTopColor: getComputedStyle(meta).borderTopColor,
+        expectedMetaBorderTopColor,
+        siteHeaderBackground: getComputedStyle(siteHeader).backgroundColor,
+        expectedSiteHeaderBackground,
+        siteHeaderBorderBottomColor: getComputedStyle(siteHeader).borderBottomColor,
+        expectedSiteHeaderBorderBottomColor,
         pseudoContent: getComputedStyle(stage, '::before').content,
         pseudoDisplay: getComputedStyle(stage, '::before').display,
         pseudoShadow: getComputedStyle(stage, '::before').boxShadow,
@@ -1613,15 +1619,15 @@ describe('Mobile Dig app-like viewport', () => {
     expect(visualTreatment!.pseudoContent).toBe('none');
     expect(visualTreatment!.pseudoDisplay).toBe('none');
     expect(visualTreatment!.pseudoShadow).toBe('none');
-    expect(visualTreatment!.explorerBackground).not.toBe('');
-    expect(visualTreatment!.metaBackground).not.toBe('');
+    expect(visualTreatment!.explorerBackground).toBe(visualTreatment!.expectedExplorerBackground);
+    expect(visualTreatment!.metaBackground).toBe(visualTreatment!.expectedMetaBackground);
     expect(visualTreatment!.metaBackdropFilter).toContain('blur(12px)');
     expect(visualTreatment!.metaBorderTopWidth).toBe('2px');
-    expect(visualTreatment!.metaBorderTopColor).not.toBe('');
-    expect(visualTreatment!.siteHeaderBackground).not.toBe('');
+    expect(visualTreatment!.metaBorderTopColor).toBe(visualTreatment!.expectedMetaBorderTopColor);
+    expect(visualTreatment!.siteHeaderBackground).toBe(visualTreatment!.expectedSiteHeaderBackground);
     expect(visualTreatment!.siteHeaderBackdropFilter).toBe('none');
     expect(visualTreatment!.siteHeaderBorderBottomWidth).toBe('1px');
-    expect(visualTreatment!.siteHeaderBorderBottomColor).not.toBe('');
+    expect(visualTreatment!.siteHeaderBorderBottomColor).toBe(visualTreatment!.expectedSiteHeaderBorderBottomColor);
     expect(visualTreatment!.priceBackgroundImage).toContain('/assets/UI/price_tag.svg');
     expect(visualTreatment!.listingLabel).toContain('Open listing for');
     expect(visualTreatment!.listingText).toBe('');
