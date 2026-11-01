@@ -34,6 +34,15 @@ function cssLinks(html: string): string[] {
     .filter((href) => href.startsWith('/css/'));
 }
 
+function routeCssLinks(html: string): string[] {
+  const links = cssLinks(html);
+  const themeLinks = links.filter((href) => href === '/css/themes.css');
+  if (themeLinks.length !== 1 || links[links.length - 1] !== '/css/themes.css') {
+    throw new Error('Every route must load the shared theme token layer exactly once, after its route stylesheets.');
+  }
+  return links.filter((href) => href !== '/css/themes.css');
+}
+
 function fileContent(filename: string): Buffer {
   return fs.readFileSync(path.join(cssDirectory, filename));
 }
@@ -59,21 +68,21 @@ const sharedBundles = [
 
 describe('Route-specific CSS bundles (#252)', () => {
   it('loads only each route’s feature bundles and preserves original stylesheet order', async () => {
-    const home = cssLinks(await renderLayout('/'));
-    const dig = cssLinks(await renderLayout('/dig'));
-    const browse = cssLinks(await renderLayout('/browse'));
-    const browseDig = cssLinks(await renderLayout('/browse/dig'));
-    const myListings = cssLinks(await renderLayout('/listings'));
-    const listingDetail = cssLinks(await renderLayout('/listings/example-listing'));
-    const listingComments = cssLinks(await renderLayout('/listings/example-listing/comments'));
-    const activity = cssLinks(await renderLayout('/activity'));
-    const selectRelease = cssLinks(await renderLayout('/listings/new'));
-    const dropNew = cssLinks(await renderLayout('/drop/new'));
-    const listingCreate = cssLinks(await renderLayout('/listings/create'));
-    const listingEdit = cssLinks(await renderLayout('/listings/example-listing/edit'));
-    const profile = cssLinks(await renderLayout('/profile'));
-    const publicProfile = cssLinks(await renderLayout('/profiles/crate_digger'));
-    const profileEdit = cssLinks(await renderLayout('/profile/edit'));
+    const home = routeCssLinks(await renderLayout('/'));
+    const dig = routeCssLinks(await renderLayout('/dig'));
+    const browse = routeCssLinks(await renderLayout('/browse'));
+    const browseDig = routeCssLinks(await renderLayout('/browse/dig'));
+    const myListings = routeCssLinks(await renderLayout('/listings'));
+    const listingDetail = routeCssLinks(await renderLayout('/listings/example-listing'));
+    const listingComments = routeCssLinks(await renderLayout('/listings/example-listing/comments'));
+    const activity = routeCssLinks(await renderLayout('/activity'));
+    const selectRelease = routeCssLinks(await renderLayout('/listings/new'));
+    const dropNew = routeCssLinks(await renderLayout('/drop/new'));
+    const listingCreate = routeCssLinks(await renderLayout('/listings/create'));
+    const listingEdit = routeCssLinks(await renderLayout('/listings/example-listing/edit'));
+    const profile = routeCssLinks(await renderLayout('/profile'));
+    const publicProfile = routeCssLinks(await renderLayout('/profiles/crate_digger'));
+    const profileEdit = routeCssLinks(await renderLayout('/profile/edit'));
 
     expect(home).toEqual([
       ...sharedBundles.map((name) => `/css/${name}`),
@@ -197,7 +206,7 @@ describe('Route-specific CSS bundles (#252)', () => {
       .update(reconstructed)
       .digest('hex');
     // Update this snapshot when intentionally changing the reconstructed shared stylesheet.
-    expect(gitBlobSha).toBe('ed0f3da5d4c07e3b246dbc818f11e0a596df11e4');
+    expect(gitBlobSha).toBe('68f37ff757dd96550f05706139e0b3250f9c7202');
   });
 
   it('reports reproducible raw/gzip sizes and validates savings per route', () => {
