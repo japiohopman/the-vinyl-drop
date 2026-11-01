@@ -438,18 +438,18 @@
     font-weight: 700;
   }
 
-  .dig-crate-filter-field input,
+  .dig-crate-filter-field input:not([type="checkbox"]):not([type="radio"]):not(.form-control),
   .dig-crate-filter-field select {
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
     min-height: 44px;
-    padding: var(--space-2) var(--space-3);
-    border: 1px solid rgba(21, 21, 21, 0.18);
-    border-radius: 5px;
+    border: var(--border-thick);
+    border-radius: var(--radius-sm);
     color: var(--color-ink);
-    background: rgba(255, 253, 248, 0.88);
+    background: var(--color-white);
     font: inherit;
+    padding: var(--space-2) var(--space-3);
   }
 
   .dig-crate-filter-fieldset {

@@ -213,7 +213,10 @@
 
       <div class="dig-crate-filter-field">
         <label for="dig-filter-search">Search records</label>
-        <input id="dig-filter-search" type="search" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
+        <div class="form-search-control">
+          <%- include('../partials/icon', { name: 'search', size: '1rem', ariaHidden: true }) %>
+          <input id="dig-filter-search" class="form-control" type="search" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
+        </div>
       </div>
 
       <fieldset class="dig-crate-filter-fieldset">

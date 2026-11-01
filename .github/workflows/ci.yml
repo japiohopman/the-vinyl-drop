@@ -63,6 +63,20 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Capture Issue #292 responsive browser evidence
+        env:
+          UI_EVIDENCE_DIR: artifacts/issue-292
+        run: npm run test:ui-evidence
+
+      - name: Upload Issue #292 browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-292-playwright-evidence
+          path: artifacts/issue-292/
+          if-no-files-found: warn
+          retention-days: 14
+
   production-preflight-windows:
     runs-on: windows-latest
     steps:
