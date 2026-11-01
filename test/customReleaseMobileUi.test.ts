@@ -429,9 +429,31 @@ describe('Custom release mobile navigation and artwork picker', () => {
       });
     });
     await page.addScriptTag({ content: discogsLookupScript });
-    await page.evaluate(
-      '() => { const form = document.querySelector("form[data-discogs-lookup-form]"); if (!form) throw new Error("DROP form not found"); document.addEventListener("submit", event => { if (event.target !== form) return; event.preventDefault(); form.setAttribute("data-test-submit-count", String(Number(form.getAttribute("data-test-submit-count") || "0") + 1)); }, true); }'
-    );
+    await page.addScriptTag({
+      content: `
+        (() => {
+          const form = document.querySelector('form[data-discogs-lookup-form]');
+          if (!form) throw new Error('DROP form not found');
+          const invalidFields = Array.from(form.querySelectorAll(':invalid'))
+            .map((field) => field.id || field.name || field.tagName);
+          if (invalidFields.length > 0) {
+            form.setAttribute('data-test-invalid-fields', invalidFields.join(','));
+          }
+          // This test is about the asynchronous Discogs submit lifecycle.
+          // Assert native validity above, then keep browser validation out of
+          // the event-observation path so the test measures our submit handler.
+          form.noValidate = true;
+          document.addEventListener('submit', (event) => {
+            if (event.target !== form) return;
+            event.preventDefault();
+            form.setAttribute(
+              'data-test-submit-count',
+              String(Number(form.getAttribute('data-test-submit-count') || '0') + 1)
+            );
+          }, true);
+        })();
+      `,
+    });
 
     await page.locator('#releaseArtist').fill('Snoop Dogg');
     await page.locator('#releaseTitle').fill('Doggystyle');
@@ -442,6 +464,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
       { timeout: 3000 }
     );
     expect(await page.locator('.custom-release-submit').isEnabled()).toBe(true);
+    expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-invalid-fields')).toBeNull();
 
     await page.locator('.custom-release-submit').click();
     expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-submit-count')).toBe('1');
