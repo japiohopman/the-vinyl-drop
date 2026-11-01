@@ -223,6 +223,7 @@ describe('My Listings Artwork Thumbnails (#146)', () => {
             {
               publicUrl: 'https://broken-seller-storage.invalid/seller-shot.jpg',
               altText: 'Original 1973 sleeve',
+              role: 'front_cover',
             },
           ],
         },
