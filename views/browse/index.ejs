@@ -83,7 +83,10 @@
       <% if (typeof responsiveDig === 'undefined' || !responsiveDig) { %>
         <div class="browse-keyword-control">
           <label for="search-q">Search keyword</label>
-          <input type="search" id="search-q" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
+          <div class="form-search-control">
+            <%- include('../partials/icon', { name: 'search', size: '1rem', ariaHidden: true }) %>
+            <input type="search" id="search-q" name="q" class="form-control" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
+          </div>
         </div>
         <button type="submit" class="btn btn-primary browse-search-submit">Search</button>
       <% } else { %>
