@@ -225,6 +225,36 @@
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
 }
+.release-reference-artwork {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+}
+.release-reference-artwork img {
+  display: block;
+  flex: 0 0 88px;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  background: var(--color-white);
+}
+.release-reference-artwork strong {
+  display: block;
+  font-family: var(--font-heading);
+  font-size: var(--font-size-sm);
+}
+.release-reference-artwork p {
+  margin: var(--space-1) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
 .photos-section {
   min-width: 0;
   margin-bottom: var(--space-5);
@@ -686,6 +716,16 @@
   .edit-listing-header .edit-listing-preview-link {
     padding: var(--space-2) !important;
     font-size: var(--font-size-xs);
+  }
+  .release-reference-artwork {
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-2);
+  }
+  .release-reference-artwork img {
+    flex-basis: 72px;
+    width: 72px;
+    height: 72px;
   }
   .cover-photo-slots {
     gap: var(--space-2);
