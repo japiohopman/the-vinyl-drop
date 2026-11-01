@@ -281,7 +281,6 @@ async function run(): Promise<void> {
       for (const viewport of viewports) {
         const page = await browser.newPage({ viewport });
         try {
-          await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
           await page.setContent(surface.html, { waitUntil: 'networkidle', timeout: 15000 });
 
           const dimensions = await page.evaluate(() => ({
@@ -313,7 +312,15 @@ async function run(): Promise<void> {
               assert.ok(state.paddingLeft >= 40, `${surface.name} search text is too close to the search icon at ${viewport.width}px: ${state.paddingLeft}px`);
               assert.ok(state.accessibleName, `${surface.name} search control has no programmatic label`);
 
-              await search.focus();
+              let reachedByKeyboard = false;
+              for (let tab = 0; tab < 60; tab += 1) {
+                await page.keyboard.press('Tab');
+                if (await search.evaluate((element) => element === document.activeElement)) {
+                  reachedByKeyboard = true;
+                  break;
+                }
+              }
+              assert.ok(reachedByKeyboard, `${surface.name} search control is not reachable by keyboard at ${viewport.width}px`);
               const outlineWidth = await search.evaluate((element) => parseFloat(getComputedStyle(element).outlineWidth));
               assert.ok(outlineWidth >= 3, `${surface.name} search control has no visible keyboard focus at ${viewport.width}px`);
             }
