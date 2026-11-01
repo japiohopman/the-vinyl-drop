@@ -469,6 +469,10 @@
   min-width: 0;
 }
 
+.browse-page-container .listing-card-footer {
+  flex-wrap: wrap;
+}
+
 .browse-page-container .listing-card-seller,
 .browse-page-container .listing-card-location {
   display: inline-flex;
@@ -477,6 +481,11 @@
   min-width: 0;
   line-height: var(--line-height-base);
   white-space: nowrap;
+}
+
+.browse-page-container .listing-card-seller {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .browse-page-container .listing-card-location {
