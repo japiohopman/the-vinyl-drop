@@ -421,7 +421,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('class="browse-quick-filter-row"');
       expect(res.text).toContain('class="browse-results-summary"');
       expect(res.text).toContain('class="listing-list"');
-      expect(res.text).toContain('8');
+      expect(res.text).toContain('class="browse-active-filter-count">8</strong>');
       expect(res.text).toContain('active filters');
       expect(res.text).toContain('aria-label="List view"');
       expect(res.text).toContain('q=Coltrane&amp;genre=Jazz&amp;condition=VG%2B&amp;minPrice=10&amp;maxPrice=50&amp;sort=price_asc&amp;format=lp&amp;whiteLabel=1&amp;page=2&amp;view=grid');
