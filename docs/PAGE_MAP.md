@@ -2,6 +2,8 @@
 
 This document records the route/view architecture verified against the application source on 2 November 2026. It is the source of truth for actual routes, rendered EJS views, access context and application-vs-host error ownership.
 
+Visual references and maintenance rules: [UI Visual Reference Library](./verification/UI_VISUAL_REFERENCE.md). Proposed information-page and error-page visual concepts: [Branded Status and Information Page Direction](./design/working/branded-status-and-information-page-direction.md).
+
 ## Interaction Design Contracts
 
 Canonical UI interaction contracts and specification notes:
