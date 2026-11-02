@@ -5,6 +5,7 @@ import {
   isKnownGenreInput,
   normalizeCanonicalGenres,
   resolveCountry,
+  resolveReleaseCountryMetadata,
 } from '../src/domain/releaseMetadata';
 import { normalizeVinylFormatCharacteristics } from '../src/domain/releaseFormat';
 
@@ -15,6 +16,21 @@ describe('controlled Release metadata', () => {
     expect(resolveCountry('USA')).toMatchObject({ code: 'US', label: 'United States' });
     expect(resolveCountry('Netherlands')).toMatchObject({ code: 'NL', label: 'Netherlands' });
     expect(resolveCountry('Atlantis')).toBeNull();
+  });
+
+  it('preserves original country source text while storing a canonical ISO code', () => {
+    expect(resolveReleaseCountryMetadata('UK', 'GB')).toEqual({
+      country: 'UK',
+      countryCode: 'GB',
+    });
+    expect(resolveReleaseCountryMetadata('Yugoslavia', undefined)).toEqual({
+      country: 'Yugoslavia',
+      countryCode: null,
+    });
+    expect(resolveReleaseCountryMetadata(undefined, 'GB')).toEqual({
+      country: 'United Kingdom',
+      countryCode: 'GB',
+    });
   });
 
   it('uses one genre vocabulary and maps known provider variants', () => {

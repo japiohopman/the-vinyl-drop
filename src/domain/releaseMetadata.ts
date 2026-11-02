@@ -76,6 +76,21 @@ export function resolveCountry(value: string | null | undefined): CountryOption 
   return countryByName.get(normalized) || null;
 }
 
+/**
+ * Resolve the structured ISO code without overwriting the readable source value.
+ * Discogs aliases and historical labels remain visible in the original country field.
+ */
+export function resolveReleaseCountryMetadata(
+  sourceCountry: string | null | undefined,
+  submittedCountryCode: string | null | undefined
+): { country: string | null; countryCode: string | null } {
+  const resolved = resolveCountry(submittedCountryCode || sourceCountry);
+  return {
+    country: sourceCountry || resolved?.label || null,
+    countryCode: resolved?.code || null,
+  };
+}
+
 export const RELEASE_GENRES = [
   'Blues',
   'Brass & Military',
