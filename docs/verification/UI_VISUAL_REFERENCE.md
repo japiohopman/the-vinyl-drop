@@ -77,7 +77,7 @@ The CI workflow captures representative screens with synthetic fixtures and stor
 | Desktop and responsive Browse (Issue #293) | [`scripts/generate-issue-293-evidence.ts`](../../scripts/generate-issue-293-evidence.ts), invoked by `npm run test:browse-evidence` | Browse; 360×800, 430×932, 768×1024, 1024×900, 1280×900 and 1440×1000. | `issue-293-browse-playwright-evidence` |
 | Options and six themes (Issue #300) | [`test/optionsPage.test.ts`](../../test/optionsPage.test.ts), run by the CI workflow with `OPTIONS_EVIDENCE_DIR` set | Six themes at 390px mobile and 1280px desktop (12 full-page captures). | `issue-300-options-playwright-evidence` |
 
-The workflow configuration is [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). Artifact names and retention are defined there; when that workflow changes, update this table in the same PR. CI artifact filenames are evidence outputs, not committed baseline filenames.
+The workflow configuration is [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). Artifact names and retention are defined there; when that workflow changes, update this table in the same PR. CI artifact filenames are evidence outputs, not committed baseline filenames. The Issue #300 Options screenshot test temporarily moves the fixed mobile bottom navigation to the end of the document for a legible full-page capture. Those captures therefore do not represent the normal fixed-nav position and should not be used as a navigation baseline.
 
 ## UI pull request checklist
 
