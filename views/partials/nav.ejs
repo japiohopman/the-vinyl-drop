@@ -161,6 +161,12 @@
                   <span class="mobile-you-action-label">My Listings</span>
                 </a>
               </li>
+              <li>
+                <a href="/options" class="mobile-you-action-link mobile-you-options-link"<%- activePath === '/options' ? ' aria-current="page"' : '' %>>
+                  <%- include('./icon', { name: 'cog', size: '1.25rem', className: 'mobile-you-action-icon', ariaHidden: true }) %>
+                  <span class="mobile-you-action-label">Options &amp; Appearance</span>
+                </a>
+              </li>
               <% if (isMessagingEnabled) { %>
                 <li>
                   <button type="button" class="mobile-you-action-link messaging-widget-trigger" data-messaging-widget-trigger aria-controls="messaging-floating-window" aria-expanded="false" aria-haspopup="dialog" aria-label="Open Messages and Saved People">
@@ -176,6 +182,10 @@
           <div class="mobile-you-auth-actions">
             <a href="/auth/login" class="btn btn-primary btn-lg mobile-auth-btn">SIGN IN</a>
             <a href="/auth/signup" class="btn btn-outline btn-lg mobile-auth-btn">CREATE ACCOUNT</a>
+            <a href="/options" class="mobile-you-action-link mobile-you-options-link"<%- activePath === '/options' ? ' aria-current="page"' : '' %>>
+              <%- include('./icon', { name: 'cog', size: '1.25rem', className: 'mobile-you-action-icon', ariaHidden: true }) %>
+              <span class="mobile-you-action-label">Options &amp; Appearance</span>
+            </a>
           </div>
         <% } %>
 
@@ -200,7 +210,6 @@
             <li><a href="/terms">Terms</a></li>
             <li><a href="/privacy">Privacy</a></li>
             <li><a href="/contact">Contact</a></li>
-            <li><a href="/options">Options &amp; Appearance</a></li>
           </ul>
         </nav>
       </div>
