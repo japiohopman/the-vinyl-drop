@@ -29,6 +29,11 @@ Examples (conventions only; do not create these files without a reviewed capture
 
 Use lowercase kebab-case. Include the theme when theme changes are relevant; use `default` only when the state has a clear default. If the actual screenshot dimensions are unknown, do not invent them.
 
+
+## Owner-confirmed discovery pair
+
+For the current discovery UI, use the **Browse desktop** reference linked in the central index (the existing historical file currently remains at `docs/verification/desktop_browse_list_1280x800.png`) and the **Dig mobile** reference in `dig/` as the paired desktop/mobile references. Do not require both route names at both viewport sizes. When a current Browse desktop capture replaces the historical one, store it in `browse/` and update the central index. This pairing may change only when a future issue explicitly separates the two experiences.
+
 ## Required metadata
 
 Every promoted baseline must have a row in [`../UI_VISUAL_REFERENCE.md`](../UI_VISUAL_REFERENCE.md) recording:
