@@ -220,7 +220,7 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
       expect(res.text).toContain('activity-icon-badge');
       expect(res.text).toContain('Play YouTube preview for Rumours by Fleetwood Mac');
       expect(res.text).toContain('data-video-id="abcdefghijk"');
-      expect(res.text).toContain('/js/youtube-preview.js');
+      expect(res.text).toContain('/js/activity-youtube-preview.js');
       expect(res.text).not.toContain('youtube-nocookie.com/embed/abcdefghijk');
       expect(res.text).not.toContain('🏷️');
       expect(res.text).not.toContain('💬');
