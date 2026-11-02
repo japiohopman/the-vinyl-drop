@@ -41,15 +41,15 @@ The desktop/mobile pairing is intentionally **Browse on desktop + Dig on mobile*
 
 The former duplicate `menu/` files have been removed; `navigation/` is the single canonical home for the desktop and mobile YOU-menu references. The two zero-byte Dig placeholders were removed rather than retained as fake screenshots. `home/` and `browse/` now contain README instructions describing their expected canonical filenames.
 
-### Remaining owner screenshot intake
+### Remaining owner screenshot intake — core marketplace batch (#307)
 
-Only one visual surface remains without a usable current reference pair:
+Within the original core marketplace batch, one visual surface remains without a usable current reference pair:
 
 1. **Home:** the existing `home/home_desktop.png` on `main` is a zero-byte placeholder, so it is not usable, and no Home mobile image is present. Jaap indicated Home was already prepared locally, but no valid Home image is currently visible in this PR's changed-file list. If that capture exists under another path, link/identify it; otherwise add one desktop and one mobile Home capture under `home/`.
 
 Browse desktop is covered by the existing historical [1280×800 Browse list reference](./desktop_browse_list_1280x800.png); Dig mobile is the paired mobile reference. No extra desktop Dig or mobile Browse capture is required.
 
-All other requested surfaces have received usable screenshot files. The listing-creation and messaging names retain some original spelling inconsistencies to avoid unnecessary binary churn; the index links to the exact canonical files. Long fixed-navigation screenshots remain useful as contextual references, but not as exact uninterrupted full-page layout goldens.
+All other surfaces from the original #307 marketplace screenshot request have received usable screenshot files. The separate `information/` and `errors/` capture families introduced by #310 are tracked in the section below and still need their own representative captures. The listing-creation and messaging names retain some original spelling inconsistencies to avoid unnecessary binary churn; the index links to the exact canonical files. Long fixed-navigation screenshots remain useful as contextual references, but not as exact uninterrupted full-page layout goldens.
 
 ## Full-screen inventory and branded status pages — Issue #310
 
