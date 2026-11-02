@@ -68,7 +68,7 @@ export class DiscogsMetadataProvider implements MetadataProvider {
    * release details, then from its master when the individual release has none.
    */
   async getReleaseArtwork(externalId: string): Promise<string | undefined> {
-    if (!/^\\d{1,15}$/.test(externalId)) return undefined;
+    if (!/^\d{1,15}$/.test(externalId)) return undefined;
 
     const release = await this.fetchArtworkDetails(`https://api.discogs.com/releases/${externalId}`);
     if (!release) return undefined;
