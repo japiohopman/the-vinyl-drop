@@ -6,13 +6,13 @@ This folder is the canonical visual reference location for the public informatio
 
 | Page | Route | EJS source | Reference files |
 | --- | --- | --- | --- |
-| Terms of Use | `/terms` | `views/info/terms.ejs` | `terms-desktop.png`, `terms-mobile.png` |
-| Installation | `/install` | `views/info/install.ejs` | `install-desktop.png`, `install-mobile.png` |
-| Privacy Notice | `/privacy` | `views/info/privacy.ejs` | `privacy-desktop.png`, `privacy-mobile.png` |
-| Community Rules | `/community-rules` | `views/info/community-rules.ejs` | `community-rules-desktop.png`, `community-rules-mobile.png` |
-| Contact | `/contact` | `views/info/contact.ejs` | `contact-desktop.png`, `contact-mobile.png` |
+| Terms of Use | `/terms` | `views/info/terms.ejs` | [`terms_desktop.png`](../menu/terms_desktop.png), [`terms_mobliel.png`](../menu/terms_mobliel.png) |
+| Installation | `/install` | `views/info/install.ejs` | [`install_desktop.png`](../menu/install_desktop.png), [`install_mobiel.png`](../menu/install_mobiel.png) |
+| Privacy Notice | `/privacy` | `views/info/privacy.ejs` | [`privacy_desktop.png`](../menu/privacy_desktop.png), [`Privacy_mobiel.png`](../menu/Privacy_mobiel.png) |
+| Community Rules | `/community-rules` | `views/info/community-rules.ejs` | [`rules_desktop.png`](../menu/rules_desktop.png), [`rules_mobiel.png`](../menu/rules_mobiel.png) |
+| Contact | `/contact` | `views/info/contact.ejs` | [`contact_desktop.png`](../menu/contact_desktop.png), [`contact_mobiel.png`](../menu/contact_mobiel.png) |
 
-There are currently no committed baselines in this folder. Add one desktop and one mobile capture for each page where the responsive layout differs. Capture the default page plus a meaningful inline form state only where it adds useful reference value (Contact validation/success, for example).
+The existing desktop and mobile captures are committed under the sibling `menu/` folder and are linked above without renaming. They cover all five pages in this inventory. The `information/` folder remains the page-family index and capture guidance; do not duplicate the images into a second folder. The Contact validation/success state remains optional unless that interaction is specifically changed.
 
 ## Capture and update rules
 
@@ -25,4 +25,4 @@ There are currently no committed baselines in this folder. Add one desktop and o
 
 ## Filename and metadata convention
 
-Use the filenames in the table above. The central index records route and state metadata. Keep source assets in `public/`; screenshots remain references only.
+Preserve the exact filenames and case shown in the table (including the existing `terms_mobliel.png` and `Privacy_mobiel.png` spellings). The central index records route and state metadata. Keep source assets in `public/`; screenshots remain references only.
