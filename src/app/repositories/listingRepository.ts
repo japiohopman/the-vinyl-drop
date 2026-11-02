@@ -7,6 +7,7 @@ import { releases, Release } from '../../db/schema/releases';
 import { profiles, Profile } from '../../db/schema/profiles';
 import { listingPhotos } from '../../db/schema/listingPhotos';
 import { getVinylFormatPostgresPattern, VinylFormatFilter, WHITE_LABEL_POSTGRES_PATTERN } from '../../domain/releaseFormat';
+import { getCanonicalGenreSearchTerms } from '../../domain/releaseMetadata';
 
 type DbInstance = ReturnType<typeof getDb>;
 
