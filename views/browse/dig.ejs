@@ -242,7 +242,7 @@
         <label for="dig-filter-genre">Genre</label>
         <select id="dig-filter-genre" name="genre">
           <option value="">All genres</option>
-          <% (Array.isArray(genreOptions) ? genreOptions : []).forEach(function(genre) { %>
+          <% (typeof genreOptions !== 'undefined' && Array.isArray(genreOptions) ? genreOptions : []).forEach(function(genre) { %>
             <option value="<%= genre %>" <%= filters.genre === genre ? 'selected' : '' %>><%= genre %></option>
           <% }); %>
         </select>
