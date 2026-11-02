@@ -67,6 +67,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     formatCharacteristics: ['12-inch'],
     barcode: null,
     genre: 'Jazz',
+    canonicalGenres: ['Jazz'],
     coverArtUrl: null,
     youtubeVideoId: null,
     externalSource: null,
