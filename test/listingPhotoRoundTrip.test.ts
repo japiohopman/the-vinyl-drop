@@ -230,6 +230,26 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(previewAfterArtwork.text).toContain('Release catalogue artwork · reference image');
     expect(previewAfterArtwork.text).toContain('data:image/webp;base64,');
 
+    const unavailableRestore = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({}),
+    } as Response);
+    let unavailableResponse;
+    try {
+      unavailableResponse = await supertest(app)
+        .post(`/listings/${listingId}/release-artwork/restore-discogs`)
+        .set('Origin', new URL(config.APP_BASE_URL).origin);
+    } finally {
+      unavailableRestore.mockRestore();
+    }
+    expect(unavailableResponse?.status).toBe(302);
+    expect(unavailableResponse?.headers.location).toContain('releaseArtworkRestoreError=unavailable');
+    const retainedArtwork = await database.query<{ cover_art_url: string | null }>(
+      `SELECT cover_art_url FROM public.releases WHERE id = '${releaseId}'`
+    );
+    expect(retainedArtwork.rows[0].cover_art_url).toMatch(/^data:image\/webp;base64,/);
+
     const restoreFetch = jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       status: 200,
