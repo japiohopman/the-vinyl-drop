@@ -53,7 +53,7 @@ All other requested surfaces have received usable screenshot files. The listing-
 
 ## Full-screen inventory and branded status pages — Issue #310
 
-The source-audited route/view catalogue is maintained in [`docs/PAGE_MAP.md`](../../PAGE_MAP.md). Screen-specific error and information-page concepts are in [`branded-status-and-information-page-direction.md`](../../design/working/branded-status-and-information-page-direction.md).
+The source-audited route/view catalogue is maintained in [`docs/PAGE_MAP.md`](../PAGE_MAP.md). Screen-specific error and information-page concepts are in [`branded-status-and-information-page-direction.md`](../design/working/branded-status-and-information-page-direction.md).
 
 ### Information pages — reference captures pending
 
