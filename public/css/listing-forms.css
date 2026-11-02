@@ -212,6 +212,9 @@
   white-space: normal;
 }
 @media (max-width: 767px) {
+  .release-artwork-file-mobile-label { display: inline; }
+  .release-artwork-file-desktop-label { display: none; }
+
   .discogs-cover-preview {
     grid-template-columns: 104px minmax(0, 1fr);
     gap: var(--space-2);
@@ -381,22 +384,22 @@
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
-.release-artwork-file-input {
+.release-artwork-upload-form .release-artwork-file-help {
   display: block;
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  font: inherit;
-  font-size: var(--font-size-xs);
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-3xs);
+  line-height: 1.45;
 }
-.release-artwork-file-help,
+.release-artwork-file-picker { margin-top: var(--space-1); }
 .release-artwork-file-name {
   display: block;
   color: var(--color-ink-muted);
   font-size: var(--font-size-3xs);
   overflow-wrap: anywhere;
 }
+.release-artwork-file-mobile-label { display: none; }
+.release-artwork-file-desktop-label { display: inline; }
 .release-artwork-save-button { min-height: 44px; }
 .release-artwork-upload-form .release-cover-override-preview {
   width: 100%;
