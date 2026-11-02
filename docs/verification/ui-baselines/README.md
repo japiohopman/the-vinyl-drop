@@ -6,14 +6,16 @@ This folder contains only a small set of reviewed, privacy-safe screenshots that
 
 Use one folder per product surface:
 
+- `navigation/`
+- `home/`
 - `browse/`
 - `dig/`
-- `drop/`
 - `listing-detail/`
+- `listing-creation/`
+- `profiles/`
 - `activity/`
-- `profile/`
+- `messaging/`
 - `options/`
-- `navigation/`
 
 Use this filename pattern:
 
