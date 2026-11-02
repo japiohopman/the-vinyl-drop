@@ -246,7 +246,7 @@ describe('Seller cover photo HTTP round trip', () => {
       ok: false,
       status: 503,
       json: async () => ({}),
-    } as Response);
+    } as unknown as Awaited<ReturnType<typeof fetch>>);
     let unavailableResponse;
     try {
       unavailableResponse = await supertest(app)
@@ -274,7 +274,7 @@ describe('Seller cover photo HTTP round trip', () => {
           { resource_url: 'https://i.discogs.com/original-kind-of-blue.jpg' },
         ],
       }),
-    } as Response);
+    } as unknown as Awaited<ReturnType<typeof fetch>>);
     let restoreResponse;
     try {
       restoreResponse = await supertest(app)
