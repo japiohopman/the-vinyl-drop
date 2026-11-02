@@ -11,10 +11,6 @@
   var coverPreviewImage = coverPreview ? coverPreview.querySelector('img') : null;
   var coverPreviewPlaceholder = coverPreview ? coverPreview.querySelector('[data-discogs-artwork-placeholder]') : null;
   var coverPreviewStatus = coverPreview ? coverPreview.querySelector('[data-discogs-cover-preview-status]') : null;
-  var manualArtworkInput = form.querySelector('#releaseCoverArt');
-  var manualArtworkFilename = form.querySelector('#releaseCoverArtFilename');
-  var manualArtworkPreview = form.querySelector('[data-release-cover-override-preview]');
-  var manualArtworkPreviewImage = manualArtworkPreview ? manualArtworkPreview.querySelector('[data-release-cover-override-image]') : null;
   var debounceTimer = null;
   var activeController = null;
   var debounceMs = 450;
@@ -81,13 +77,6 @@
     );
   }
 
-  function clearManualArtworkForNewRelease() {
-    if (!manualArtworkInput || !manualArtworkInput.files || manualArtworkInput.files.length === 0) return;
-    manualArtworkInput.value = '';
-    if (manualArtworkFilename) manualArtworkFilename.textContent = 'No file selected';
-    if (manualArtworkPreviewImage) manualArtworkPreviewImage.removeAttribute('src');
-    if (manualArtworkPreview) manualArtworkPreview.hidden = true;
-  }
 
   function clearPreviousAutomaticValues() {
     Object.keys(fieldMap).forEach(function (key) {
@@ -190,11 +179,11 @@
   function scheduleLookup() {
     if (debounceTimer !== null) window.clearTimeout(debounceTimer);
     if (activeController) activeController.abort();
-    clearManualArtworkForNewRelease();
     lookupSequence += 1;
     var sequence = lookupSequence;
     setLookupPending(true);
     setStatus('Waiting for artist and title…', 'idle');
+    setCoverPreviewMessage('Waiting for the release lookup…', 'idle');
     debounceTimer = window.setTimeout(function () {
       debounceTimer = null;
       lookup(sequence);
