@@ -316,14 +316,13 @@ export async function postUpdateReleaseArtwork(req: Request, res: Response, next
       throw new ValidationError('Choose one catalogue artwork image to upload.');
     }
 
-    let artworkDataUrl: string;
+    let processedArtwork: Awaited<ReturnType<typeof processAndValidateImage>>;
     try {
-      const processed = await processAndValidateImage(files[0].buffer, files[0].mimetype);
-      artworkDataUrl = `data:image/webp;base64,${processed.buffer.toString('base64')}`;
+      processedArtwork = await processAndValidateImage(files[0].buffer, files[0].mimetype);
     } catch {
       throw new ValidationError('Choose a valid JPEG, PNG or WebP catalogue artwork image.');
     }
-    await updateReleaseArtworkForListing(listingId, req.user.id, artworkDataUrl);
+    await updateReleaseArtworkForListing(listingId, req.user.id, processedArtwork, { req });
     setFlashCookie(res, 'success', 'Release artwork updated. It is shared by listings of this release.');
     return res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {
@@ -355,7 +354,7 @@ export async function postRestoreDiscogsArtwork(req: Request, res: Response, nex
   if (!req.user) return res.redirect('/auth/login');
 
   try {
-    await restoreDiscogsArtworkForListing(listingId, req.user.id);
+    await restoreDiscogsArtworkForListing(listingId, req.user.id, { req });
     setFlashCookie(res, 'success', 'Original Discogs release artwork restored.');
     return res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {

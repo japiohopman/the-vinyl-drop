@@ -1,4 +1,6 @@
+import crypto from 'crypto';
 import { getDb } from '../../db';
+import { config } from '../../config/env';
 import { Release } from '../../db/schema/releases';
 import { releaseSchema, ReleaseInput } from '../../validators/release';
 import {
@@ -11,9 +13,100 @@ import { findListingById } from '../repositories/listingRepository';
 import { findPhysicalCopyById } from '../repositories/physicalCopyRepository';
 import { normalizeYouTubeVideoId } from '../../validators/youtubePreview';
 import { getDiscogsReleaseArtwork } from './discogsService';
+import { ProcessedImage } from '../utils/imageProcessor';
+import {
+  deleteListingPhotoFromStorage,
+  getPhotoPublicUrl,
+  StorageOptions,
+  uploadListingPhotoToStorage,
+} from './storageService';
+import { recordOrphanedStorageObject } from '../repositories/orphanRepository';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
 
 type DbInstance = ReturnType<typeof getDb>;
+
+type StoredReleaseArtwork = { storagePath: string; ownerListingId: string };
+
+function getStoredReleaseArtwork(url: string | null): StoredReleaseArtwork | null {
+  if (!url) return null;
+
+  let storagePath: string | null = null;
+  if (config.NODE_ENV === 'test' && url.startsWith('/mock-storage/')) {
+    storagePath = url.slice('/mock-storage/'.length);
+  } else if (config.SUPABASE_URL) {
+    const publicBucketPrefix = config.SUPABASE_URL.replace(/\/+$/, '') +
+      '/storage/v1/object/public/listing-photos/';
+    if (url.startsWith(publicBucketPrefix)) {
+      storagePath = url.slice(publicBucketPrefix.length);
+    }
+  }
+
+  if (!storagePath) return null;
+  const match = /^listings\/([0-9a-f-]{36})\/release-artwork-([0-9a-f-]{36})\.webp$/i.exec(storagePath);
+  if (!match) return null;
+  return { storagePath, ownerListingId: match[1] };
+}
+
+async function recordReleaseArtworkOrphan(
+  listingId: string,
+  storagePath: string,
+  reason: string,
+  dbOverride?: DbInstance
+): Promise<void> {
+  try {
+    await recordOrphanedStorageObject({ listingId, storagePath, reason }, dbOverride);
+  } catch {
+    console.error(JSON.stringify({
+      event: 'release_artwork_storage_orphan_unresolved',
+      listingId,
+      storagePath,
+      reason,
+    }));
+  }
+}
+
+async function removeReleaseArtworkObject(
+  listingId: string,
+  storagePath: string,
+  storageOptions: StorageOptions | undefined,
+  dbOverride: DbInstance | undefined,
+  reason: string
+): Promise<void> {
+  try {
+    await deleteListingPhotoFromStorage(storagePath, storageOptions);
+  } catch {
+    await recordReleaseArtworkOrphan(listingId, storagePath, reason, dbOverride);
+  }
+}
+
+/** Remove a superseded upload only when the current listing owner can manage its Storage folder. */
+async function cleanUpSupersededReleaseArtwork(
+  previousArtworkUrl: string | null,
+  currentListingId: string,
+  storageOptions?: StorageOptions,
+  dbOverride?: DbInstance
+): Promise<void> {
+  const previous = getStoredReleaseArtwork(previousArtworkUrl);
+  if (!previous) return;
+
+  if (previous.ownerListingId !== currentListingId) {
+    await recordReleaseArtworkOrphan(
+      currentListingId,
+      previous.storagePath,
+      'RELEASE_ARTWORK_SUPERSEDED_OBJECT_REQUIRES_ORIGINAL_OWNER_CLEANUP',
+      dbOverride
+    );
+    return;
+  }
+
+  await removeReleaseArtworkObject(
+    currentListingId,
+    previous.storagePath,
+    storageOptions,
+    dbOverride,
+    'RELEASE_ARTWORK_SUPERSEDED_STORAGE_DELETE_FAILED'
+  );
+}
 
 export async function getReleaseById(id: string, dbOverride?: DbInstance): Promise<Release | null> {
   return findReleaseById(id, dbOverride);
@@ -51,6 +144,7 @@ export async function updateReleaseYouTubePreviewForListing(
 export async function restoreDiscogsArtworkForListing(
   listingId: string,
   requestingUserId: string,
+  storageOptions?: StorageOptions,
   dbOverride?: DbInstance
 ): Promise<Release> {
   const listing = await findListingById(listingId, dbOverride);
@@ -80,18 +174,27 @@ export async function restoreDiscogsArtworkForListing(
 
   const updatedRelease = await updateReleaseCoverArtUrl(release.id, discogsArtworkUrl, dbOverride);
   if (!updatedRelease) throw new NotFoundError('Associated release not found');
+  await cleanUpSupersededReleaseArtwork(release.coverArtUrl, listingId, storageOptions, dbOverride);
   return updatedRelease;
 }
 
 export async function updateReleaseArtworkForListing(
   listingId: string,
   requestingUserId: string,
-  submittedArtwork: unknown,
+  submittedArtwork: ProcessedImage,
+  storageOptions?: StorageOptions,
   dbOverride?: DbInstance
 ): Promise<Release> {
   if (
-    typeof submittedArtwork !== 'string' ||
-    !/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(submittedArtwork)
+    !submittedArtwork ||
+    !Buffer.isBuffer(submittedArtwork.buffer) ||
+    submittedArtwork.buffer.length === 0 ||
+    submittedArtwork.contentType !== 'image/webp' ||
+    submittedArtwork.extension !== 'webp' ||
+    !Number.isFinite(submittedArtwork.width) ||
+    !Number.isFinite(submittedArtwork.height) ||
+    submittedArtwork.width < 1 ||
+    submittedArtwork.height < 1
   ) {
     throw new ValidationError('Choose a valid processed catalogue artwork image.');
   }
@@ -107,8 +210,42 @@ export async function updateReleaseArtworkForListing(
   const release = await findReleaseById(physicalCopy.releaseId, dbOverride);
   if (!release) throw new NotFoundError('Associated release not found');
 
-  const updatedRelease = await updateReleaseCoverArtUrl(release.id, submittedArtwork, dbOverride);
-  if (!updatedRelease) throw new NotFoundError('Associated release not found');
+  const storagePath = await uploadListingPhotoToStorage({
+    listingId,
+    photoId: 'release-artwork-' + crypto.randomUUID(),
+    buffer: submittedArtwork.buffer,
+    contentType: submittedArtwork.contentType,
+    extension: submittedArtwork.extension,
+    options: storageOptions,
+  });
+  const artworkUrl = getPhotoPublicUrl(storagePath);
+
+  let updatedRelease: Release | null;
+  try {
+    updatedRelease = await updateReleaseCoverArtUrl(release.id, artworkUrl, dbOverride);
+  } catch (error) {
+    await removeReleaseArtworkObject(
+      listingId,
+      storagePath,
+      storageOptions,
+      dbOverride,
+      'RELEASE_ARTWORK_UPLOAD_DB_UPDATE_FAILED_STORAGE_DELETE_FAILED'
+    );
+    throw error;
+  }
+
+  if (!updatedRelease) {
+    await removeReleaseArtworkObject(
+      listingId,
+      storagePath,
+      storageOptions,
+      dbOverride,
+      'RELEASE_ARTWORK_UPLOAD_DB_UPDATE_MISSING_STORAGE_DELETE_FAILED'
+    );
+    throw new NotFoundError('Associated release not found');
+  }
+
+  await cleanUpSupersededReleaseArtwork(release.coverArtUrl, listingId, storageOptions, dbOverride);
   return updatedRelease;
 }
 

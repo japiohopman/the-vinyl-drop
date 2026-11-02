@@ -14,7 +14,7 @@ import { validateSameOrigin } from '../src/app/middleware/csrf';
 import { multipartUploadHandler } from '../src/app/middleware/upload';
 import { findPhotosByListingId } from '../src/app/repositories/listingPhotoRepository';
 import { searchDigListings } from '../src/app/services/listingService';
-import { clearInMemoryStorage } from '../src/app/services/storageService';
+import { clearInMemoryStorage, downloadListingPhotoFromStorage } from '../src/app/services/storageService';
 import { config } from '../src/config/env';
 
 const sellerId = '11111111-1111-4111-8111-111111111111';
@@ -224,7 +224,171 @@ describe('Seller cover photo HTTP round trip', () => {
       `SELECT cover_art_url FROM public.releases WHERE id = '${releaseId}'`
     );
     expect(storedArtwork.rows).toHaveLength(1);
-    expect(storedArtwork.rows[0].cover_art_url).toMatch(/^data:image\/webp;base64,/);
+    expect(storedArtwork.rows[0].cover_art_url).toMatch(new RegExp('^/mock-storage/listings/' + listingId + '/release-artwork-[0-9a-f-]{36}\\.webp
+    expect(await findPhotosByListingId(listingId)).toHaveLength(0);
+
+    const editorAfterArtwork = await supertest(app).get(`/listings/${listingId}/edit`);
+    expect(editorAfterArtwork.status).toBe(200);
+    expect(editorAfterArtwork.text).toContain('Current release artwork');
+    expect(editorAfterArtwork.text).toContain(storedArtworkUrl);
+    expect(editorAfterArtwork.text).toContain('Use original Discogs artwork');
+
+    const digAfterArtwork = await searchDigListings({ q: 'Kind of Blue' });
+    expect(digAfterArtwork.items[0].frontArtwork.sourceKind).toBe('catalogue_artwork');
+    expect(digAfterArtwork.items[0].frontArtwork.src).toBe(storedArtworkUrl);
+
+    const previewAfterArtwork = await supertest(app).get(`/listings/${listingId}/preview`);
+    expect(previewAfterArtwork.status).toBe(200);
+    expect(previewAfterArtwork.text).toContain('Release catalogue artwork · reference image');
+    expect(previewAfterArtwork.text).toContain(storedArtworkUrl);
+
+    const unavailableRestore = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 503,
+      json: async () => ({}),
+    } as unknown as Awaited<ReturnType<typeof fetch>>);
+    let unavailableResponse;
+    try {
+      unavailableResponse = await supertest(app)
+        .post(`/listings/${listingId}/release-artwork/restore-discogs`)
+        .set('Origin', new URL(config.APP_BASE_URL).origin);
+    } finally {
+      unavailableRestore.mockRestore();
+    }
+    expect(unavailableResponse?.status).toBe(302);
+    expect(unavailableResponse?.headers.location).toContain('releaseArtworkRestoreError=unavailable');
+    const restoreErrorEditor = await supertest(app).get(`/listings/${listingId}/edit?releaseArtworkRestoreError=unavailable`);
+    expect(restoreErrorEditor.status).toBe(200);
+    expect(restoreErrorEditor.text).toContain('Your current release artwork has not changed.');
+    const retainedArtwork = await database.query<{ cover_art_url: string | null }>(
+      `SELECT cover_art_url FROM public.releases WHERE id = '${releaseId}'`
+    );
+    expect(retainedArtwork.rows[0].cover_art_url).toBe(storedArtworkUrl);
+
+    const restoreFetch = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        images: [
+          { resource_url: 'http://not-discogs.example/unsafe.jpg' },
+          { resource_url: 'https://i.discogs.com/original-kind-of-blue.jpg' },
+        ],
+      }),
+    } as unknown as Awaited<ReturnType<typeof fetch>>);
+    let restoreResponse;
+    try {
+      restoreResponse = await supertest(app)
+        .post(`/listings/${listingId}/release-artwork/restore-discogs`)
+        .set('Origin', new URL(config.APP_BASE_URL).origin);
+    } finally {
+      restoreFetch.mockRestore();
+    }
+
+    expect(restoreResponse?.status).toBe(302);
+    expect(restoreResponse?.headers.location).toBe(`/listings/${listingId}/edit`);
+    const restoredArtwork = await database.query<{ cover_art_url: string | null }>(
+      `SELECT cover_art_url FROM public.releases WHERE id = '${releaseId}'`
+    );
+    expect(restoredArtwork.rows[0].cover_art_url).toBe('https://i.discogs.com/original-kind-of-blue.jpg');
+    await expect(downloadListingPhotoFromStorage(storedArtworkPath)).rejects.toThrow('Listing photo was not found in test storage.');
+    expect(await findPhotosByListingId(listingId)).toHaveLength(0);
+
+    const restoredDig = await searchDigListings({ q: 'Kind of Blue' });
+    expect(restoredDig.items[0].frontArtwork.sourceKind).toBe('catalogue_artwork');
+    expect(restoredDig.items[0].frontArtwork.src).toBe('https://i.discogs.com/original-kind-of-blue.jpg');
+    const restoredPreview = await supertest(app).get(`/listings/${listingId}/preview`);
+    expect(restoredPreview.status).toBe(200);
+    expect(restoredPreview.text).toContain('https://i.discogs.com/original-kind-of-blue.jpg');
+
+    const releaseForm = await supertest(app).get('/releases/new');
+    expect(releaseForm.status).toBe(200);
+    expect(releaseForm.text).toContain('data-discogs-cover-preview');
+    expect(releaseForm.text).not.toContain('name="coverArt"');
+    expect(releaseForm.text).not.toContain('Catalogue artwork replacement');
+    expect(releaseForm.text).toContain('name="coverArtUrl"');
+  });
+
+  it('persists each submitted role and renders those exact stored photos in Dig', async () => {
+    const frontImage = await sharp({
+      create: { width: 128, height: 128, channels: 3, background: { r: 185, g: 40, b: 60 } },
+    }).jpeg().toBuffer();
+    const backImage = await sharp({
+      create: { width: 128, height: 128, channels: 3, background: { r: 30, g: 80, b: 155 } },
+    }).jpeg().toBuffer();
+
+    // Deliberately append role/altText after the file part to cover multipart field ordering.
+    const frontResponse = await supertest(app)
+      .post(`/listings/${listingId}/photos`)
+      .set('Origin', new URL(config.APP_BASE_URL).origin)
+      .attach('photo', frontImage, { filename: 'physical-front.jpg', contentType: 'image/jpeg' })
+      .field('role', 'front_cover')
+      .field('altText', '');
+
+    expect(frontResponse.status).toBe(302);
+    expect(frontResponse.headers.location).toBe(`/listings/${listingId}/edit`);
+
+    const backResponse = await supertest(app)
+      .post(`/listings/${listingId}/photos`)
+      .set('Origin', new URL(config.APP_BASE_URL).origin)
+      .attach('photo', backImage, { filename: 'physical-back.jpg', contentType: 'image/jpeg' })
+      .field('role', 'back_cover')
+      .field('altText', '');
+
+    expect(backResponse.status).toBe(302);
+    expect(backResponse.headers.location).toBe(`/listings/${listingId}/edit`);
+
+    const storedPhotos = await findPhotosByListingId(listingId);
+    const front = storedPhotos.find((photo) => photo.role === 'front_cover');
+    const back = storedPhotos.find((photo) => photo.role === 'back_cover');
+
+    expect(front).toBeDefined();
+    expect(back).toBeDefined();
+    expect(front?.altText).toBe('Front cover of the record sleeve');
+    expect(back?.altText).toBe('Back cover of the record sleeve');
+    expect(front?.storagePath).toBeTruthy();
+    expect(back?.storagePath).toBeTruthy();
+    expect(front?.storagePath).not.toBe(back?.storagePath);
+
+    const listingPhotoForm = await supertest(app).get(`/listings/${listingId}/edit`);
+    expect(listingPhotoForm.status).toBe(200);
+    expect(listingPhotoForm.text).toContain('Front of your copy');
+    expect(listingPhotoForm.text).toContain('Back of your copy');
+    expect(listingPhotoForm.text).toContain('Release artwork');
+    expect(listingPhotoForm.text).toContain('https://i.discogs.com/original-kind-of-blue.jpg');
+    expect(listingPhotoForm.text).toContain('default front image when you do not add a front photo of your copy');
+    expect(listingPhotoForm.text).toContain('Use original Discogs artwork');
+    expect(listingPhotoForm.text).toContain('Additional photos');
+    expect(listingPhotoForm.text).toContain('Photo help');
+    expect(listingPhotoForm.text).toContain('Choose photo');
+    expect(listingPhotoForm.text).toContain('square-cover-cropper');
+    expect(listingPhotoForm.text).not.toContain('Photos of this physical copy');
+    expect(listingPhotoForm.text).not.toContain('Alt-tekst');
+    expect(listingPhotoForm.text).toContain('name="photo"');
+    expect(listingPhotoForm.text).toContain('name="role"');
+
+    const digResults = await searchDigListings({ q: 'Kind of Blue' });
+    expect(digResults.items).toHaveLength(1);
+    expect(digResults.items[0].frontArtwork.sourceKind).toBe('seller_front');
+    expect(digResults.items[0].frontArtwork.src).toBe(`/mock-storage/${front?.storagePath}`);
+    expect(digResults.items[0].backArtwork?.sourceKind).toBe('seller_back');
+    expect(digResults.items[0].backArtwork?.src).toBe(`/mock-storage/${back?.storagePath}`);
+
+    const digResponse = await supertest(app).get('/browse/dig?q=Kind+of+Blue');
+    expect(digResponse.status).toBe(200);
+    expect(digResponse.text).toContain(`/mock-storage/${front?.storagePath}`);
+    expect(digResponse.text).toContain(`/mock-storage/${back?.storagePath}`);
+    expect(digResponse.text).not.toContain('https://catalog.example/miles.jpg');
+    expect(digResponse.text).not.toContain('https://i.discogs.com/original-kind-of-blue.jpg');
+    expect(digResponse.text).not.toContain('Front cover not photographed');
+    expect(digResponse.text).not.toContain('Back cover not photographed');
+  });
+});
+));
+    const storedArtworkUrl = storedArtwork.rows[0].cover_art_url!;
+    const storedArtworkPath = storedArtworkUrl.replace(/^\/mock-storage\//, '');
+    const storedArtworkBuffer = await downloadListingPhotoFromStorage(storedArtworkPath);
+    expect(storedArtworkBuffer.length).toBeGreaterThan(0);
+    expect((await sharp(storedArtworkBuffer).metadata()).format).toBe('webp');
     expect(await findPhotosByListingId(listingId)).toHaveLength(0);
 
     const editorAfterArtwork = await supertest(app).get(`/listings/${listingId}/edit`);
