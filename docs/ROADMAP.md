@@ -81,7 +81,7 @@ Deliverables:
 Governing Issue: `#13`.
 Status: **COMPLETED** (merged to `main`).
 
-## Phase 5 Closeout — Documentation and Contract Alignment (Current Phase)
+## Phase 5 Closeout — Documentation and Contract Alignment
 
 Deliverables:
 - Truthful alignment of product, domain, persistence, route, page, roadmap, workflow, security, and operational documentation with actual Phase 5 merged codebase state;
@@ -89,7 +89,7 @@ Deliverables:
 - Elimination of stale route and implementation references across all docs.
 
 Governing Issue: `#39`.
-Status: **IN PROGRESS** (current active branch).
+Status: **COMPLETED** (Issue #39 closed on 8 October 2026). Live implementation and release status is recorded in GitHub Issues and pull requests, not in this phase history.
 
 ---
 
@@ -110,31 +110,29 @@ Planned scope:
 - Release barcode scanner / matrix number identification assistance;
 - Additional catalog metadata fields without breaking canonical release structure.
 
-### Phase 6 — Community & Social Engagement (Future)
+### Phase 6 — Community & Social Engagement (Future work)
 
 Planned scope:
-- Member favorites and saved listings;
 - Public seller wantlists;
-- Community activity feed route (`/activity`);
 - Seller trust and community reputation signals;
 - Notification hooks (in-app alerts for listing updates and comment replies).
 
 *Note: Listing comments and public profiles are already fully implemented as part of Phase 5 Core Discovery.*
 
-### Phase 7 — Trading & Private Communication (Future)
+### Phase 7 — Trading & Private Communication (Future work)
 
 Planned scope:
 - Structured trade proposal workflow;
-- Private buyer/seller messaging threads (`/messages`);
+- Private buyer/seller messaging is implemented in the application but remains feature-gated by `MESSAGING_ENABLED`;
 - Direct offer negotiation;
 - Trade lifecycle completion.
 
-### Phase 8 — Moderation & Production Hardening (Future)
+### Phase 8 — Moderation & Production Hardening (Future work)
 
 Planned scope:
 - Content reporting mechanisms for listings, comments, and profiles;
 - Administrative moderation tools;
-- API rate limiting and upload throttling;
+- Shared application request rate limits are implemented; hosted activation remains separately gated by target-runtime verification and owner approval;
 - Automated image abuse and payload inspection hardening;
 - Disaster recovery, backup procedures, and uptime observability;
 - Production deployment hardening and security audit gate.
