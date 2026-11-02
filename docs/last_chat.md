@@ -1,7 +1,3 @@
-> **Historical snapshot — not current project status**
->
-> This file is preserved for conversation-history traceability. Its issue counts, pilot readiness statements, deployment state, routes and implementation claims describe an earlier point in the project and may be superseded. Do not use it to select work, close Issues, change access controls or determine release readiness. Check current GitHub Issues/PRs, workflow runs, source code and environment evidence instead.
-
   Reviewing the identified issues, I can confirm that only one requires manual staging intervention before launch: t...
   Goed nieuws: je kunt de pilot van 5 personen vandaag al direct starten.
 

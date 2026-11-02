@@ -1,12 +1,12 @@
 # Production Deployment — The Vinyl Drop
 
 **Governing Issue:** [#278](https://github.com/japiohopman/the-vinyl-drop/issues/278)  
-**Status:** The production service is live at the owner-confirmed canonical apex domain with SSL. Production confirmation/recovery email, Google sign-in and the password-check hook have been exercised/configured by the owner. Public launch remains gated on provider-level signup-state verification, complete DB/Storage smoke coverage, dependency-audit triage, backup/recovery readiness, the unresolved `www` decision and the owner's final release decision.  
-**Last checked:** 31 October 2026.
+**Status (2 November 2026):** The production service is live on the canonical apex domain. Read-only browser checks confirmed the apex loads, `www` redirects to the apex, and `/health` returns `status: ok`. Public launch remains gated on provider-level signup-state verification, complete authenticated DB/Storage smoke coverage, dependency-audit triage, backup/recovery readiness, production rate-limit runtime verification, legal/privacy readiness and the owner's final release decision. Production is deliberately behind `main`; Auto-Deploy remains off.  
+**Last checked:** 2 November 2026.
 
 ## 1. Owner-approved target and safety boundaries
 
-The approved canonical public origin is **`https://thevinyldrop.nl`**. Jaap reports that the apex custom domain is attached to the production Render service and SSL is live. The `www.thevinyldrop.nl` alias/redirect behavior remains unverified and is not included in the canonical redirect allowlist. Treat the apex attachment and SSL as owner-confirmed observations, not as an independently repeated DNS/TLS audit.
+The approved canonical public origin is **`https://thevinyldrop.nl`**. On 2 November 2026, read-only browser checks confirmed that the apex page loads over HTTPS and `https://www.thevinyldrop.nl/` redirects to the non-www apex. This is an HTTP/browser observation, not a complete DNS, certificate-chain or external redirect audit.
 
 The owner accepted the Free-plan availability, quota and backup limitations for the current five-person cohort. This is acceptance of Free-plan risk only; it is not approval for paid spend or for opening public registration.
 
@@ -61,9 +61,9 @@ Do not run the production migration helper again unless a new migration is inten
 | Health check path | `/health` |
 | Auto-Deploy | Off |
 
-Render reported the deployment as **Live / succeeded** at 31 October 2026, 19:41 UTC. The logs show `npm run start`, `node dist/server.js`, and `The Vinyl Drop listening on port 10000 [production]`. The deployment's TypeScript build completed successfully. At 19:45 UTC on 31 October 2026, Jaap manually opened `https://the-vinyl-drop.onrender.com/health` and received `status: ok`, timestamp `2026-10-31T19:45:24.541Z`, and uptime `253.147793256` seconds. This confirms the public health endpoint responds successfully. It is a process-health check only; DB-backed reads/writes, Auth, Storage and full application smoke tests remain pending.
+Render's current production service remains on PR #286 commit `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d`; Auto-Deploy is off. On 2 November 2026, a read-only browser check opened `https://the-vinyl-drop.onrender.com/health` and received `{ "status": "ok" }` (timestamp `2026-11-02T08:13:43.757Z`). The same check confirmed the canonical apex loads and `www` redirects to it. Public route fetches also loaded Browse, Dig, Activity, Install, Terms, Privacy, Community Rules, Contact, Sign-up and Sign-in. These are unauthenticated page-load checks only; they do not prove authenticated DB reads/writes, OAuth callbacks, email delivery, seller photo Storage operations or the production application's rate-limit DB-role/client-IP behavior.
 
-Jaap reports that the apex custom domain `https://thevinyldrop.nl` is attached to this service and SSL is live. The `onrender.com` hostname remains the underlying Render service hostname. The `www` alias and its redirect behavior have not been verified. Auto-Deploy is intentionally disabled so a later push to `main` does not silently deploy to production; future deployments require an explicit manual action.
+Jaap reports that the apex custom domain `https://thevinyldrop.nl` is attached to this service and SSL is live. The `onrender.com` hostname remains the underlying Render service hostname. The `www` alias redirects to the canonical apex, as observed on 2 November 2026. Auto-Deploy is intentionally disabled so a later push to `main` does not silently deploy to production; future deployments require an explicit manual action.
 
 The chosen Render Free plan shares a 750-instance-hour monthly workspace allowance with the other Free services in the same workspace. Free services can spin down after inactivity, have cold starts and do not provide a production SLA. Supabase Free has finite quotas and requires a manual backup process. These limitations were explicitly accepted for the current small cohort; no paid upgrade is authorized.
 
@@ -95,7 +95,7 @@ The successful startup log confirms the app recognized `NODE_ENV=production`; it
 ## 5. Remaining launch gates
 
 1. **Provider-level signup control:** Jaap must read the production Supabase Auth provider setting **Allow new users to sign up** and confirm it is OFF before the runbook may describe registration as closed. Do not change it as part of this documentation/implementation PR. Keep the application invite-only flag and private allowlist in place.
-2. **Canonical `www` behavior:** the apex domain and SSL are owner-confirmed live. Decide whether `www.thevinyldrop.nl` should redirect to the apex, then verify its DNS, TLS and HTTP redirect before adding it to any allowlist. Do not change DNS in this PR.
+2. **Canonical domain:** the apex HTTPS page and `www` → apex redirect were observed in a read-only browser check on 2 November 2026. Any further DNS/TLS hardening or redirect-allowlist change remains a separate reviewed action; no DNS or provider setting was changed by this check.
 3. **Complete production smoke coverage:** verify DB-backed reads/writes, authenticated session boundaries, listing creation/editing and seller-owned physical-photo Storage upload/read behavior against production. The existing process-health check and owner-reported account/listing/email/Google tests are useful partial evidence, not a substitute for complete DB/Storage verification. Discogs catalogue artwork is tracked separately in [#288](https://github.com/japiohopman/the-vinyl-drop/issues/288).
 4. **Dependency security review:** the successful deployment's `npm ci --include=dev` audit summary reported 44 findings (4 low, 37 moderate, 2 high, 1 critical). Inspect the full `npm audit` report and classify production/runtime exposure before public registration. Do not run `npm audit fix --force` as a deployment workaround.
 5. **Backups and recovery:** define and record manual database export and Storage object backup procedures for Supabase Free. A backup/restore exercise is still required before general availability.

@@ -33,7 +33,7 @@ The workstream sequence for UI implementation is:
 - [#124](https://github.com/japiohopman/the-vinyl-drop/issues/124) — Responsive navigation and `YOU` account surface.
 - [#125](https://github.com/japiohopman/the-vinyl-drop/issues/125) — Reusable success toasts and persistent actionable error banners.
 - [#126](https://github.com/japiohopman/the-vinyl-drop/issues/126) — Desktop floating messaging window and truthful unread indicator (gated on [#49](https://github.com/japiohopman/the-vinyl-drop/issues/49) and [#119](https://github.com/japiohopman/the-vinyl-drop/issues/119)).
-- [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — First-party website PWA installation and sharing experience; implementation is merged, with remaining platform acceptance tracked in the Issue.
+- [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — Future PWA / mobile-shell context (not in current scope).
 
 ## Brand
 
@@ -211,15 +211,13 @@ Prioritizes listing information in logical hierarchy:
 7. seller's physical copy description;
 8. authenticated public comment thread for buyer-seller inquiries.
 
-## Seller DROP and physical-copy photo flow
+## Sell flow (`/drop/new` -> `/listings/create` -> `/listings/:id/photos` -> `/listings/:id/preview`)
 
-The current flow keeps shared release artwork separate from photographs of the seller's exact physical copy:
-1. **Find or create the release:** `GET /drop/new` renders the Discogs-assisted custom release form (`views/releases/new.ejs`). The lookup is an authenticated `GET /releases/lookup-metadata`; the release form submits to `POST /releases/new`. Discogs catalogue artwork is stored on the Release, with a clearly labelled manual catalogue-artwork replacement path.
-2. **Describe the physical copy:** `GET /listings/create` renders the condition, price/trade and copy-description form; `POST /listings` creates the listing.
-3. **Manage actual-copy photos:** `GET /listings/:id/edit` renders `views/listings/edit.ejs`, including the front/back photo slots together. Photo upload, role, delete and reorder are POST actions from this editor; there is no standalone `GET /listings/:id/photos` page.
-4. **Preview and publish:** `GET /listings/:id/preview` renders the seller's draft before the separate publish action.
-
-**Artwork rules:** a seller's explicit `front_cover` photo takes precedence for the front; otherwise the Release's catalogue artwork is the front image/reference. The reverse face uses the seller's `back_cover` photo only; never duplicate the catalogue front as the back. Catalogue artwork is not a seller-uploaded Storage object or `listing_photos` row.
+Mobile-first multi-step workflow:
+1. **Find or create release:** Search existing releases or import/enter canonical release metadata (`/drop/new`).
+2. **Describe physical copy:** Enter media condition, sleeve condition, price/trade intent, and notes (`/listings/create`).
+3. **Upload photos:** Stream upload up to 5 photos with server-side validation and Sharp processing (`/listings/:id/photos`).
+4. **Preview & publish:** Review draft listing before transitioning to published status (`/listings/:id/preview`).
 
 Form fields preserve user input on validation errors using structured Zod error view models (`FormViewModel`).
 
@@ -229,7 +227,7 @@ The public profile is a compact introduction to a digger, not a listing feed:
 - avatar, display name, @handle, optional location/website, concise bio and member-since metadata;
 - a prominent Crate entry using the shared `cardboard-box-closed` icon and a count of published active records;
 - `Edit Profile` appears only to the profile owner;
-- private messaging routes and entry points exist in source but remain hidden/disabled until the `MESSAGING_ENABLED` release gate is separately approved.
+- messaging actions are not shown until direct user-to-user messaging is implemented and enabled.
 
 ## Public Crate (`/profiles/:username/crate`)
 
