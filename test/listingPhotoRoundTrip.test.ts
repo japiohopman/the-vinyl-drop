@@ -161,7 +161,7 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(initialEditor.text).toContain('shared by listings of this same release');
     expect(initialEditor.text).toContain('Use original Discogs artwork');
     expect(initialEditor.text).toContain('name="coverArt"');
-    expect(initialEditor.text).toContain('Photos of your actual copy');
+    expect(initialEditor.text).toContain('Optional photos of your actual copy');
 
     await database.exec(`UPDATE public.releases SET cover_art_url = NULL WHERE id = '${releaseId}'`);
     const noArtworkEditor = await supertest(app).get(`/listings/${listingId}/edit`);

@@ -1083,3 +1083,10 @@
   line-height: 1.45;
 }
 .release-artwork-restore-form .btn { min-height: 44px; }
+
+
+/* Keep the mobile artwork picker labels visible after the base display rules. */
+@media (max-width: 767px) {
+  .release-artwork-file-mobile-label { display: inline; }
+  .release-artwork-file-desktop-label { display: none; }
+}
