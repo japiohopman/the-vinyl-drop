@@ -215,14 +215,15 @@ Prioritizes listing information in logical hierarchy:
 
 ## Sell flow: + DROP, catalogue artwork and the physical copy
 
-The primary journey separates the catalogue release from the seller's individual copy:
+The primary journey separates the catalogue release from the seller's individual copy. Never ask the seller to upload the same-looking front image on two different steps:
 
-1. **Find or create the release:** `GET /drop/new` opens the Discogs-assisted release form (also available at `GET /releases/new`). `GET /releases/lookup-metadata` retrieves a confident catalogue match. The selected release metadata and catalogue cover are submitted through `POST /releases/new` and saved on the Release.
+1. **Find or create the release:** `GET /drop/new` opens the Discogs-assisted release form (also available at `GET /releases/new`). `GET /releases/lookup-metadata` retrieves a confident catalogue match. The selected metadata and Discogs `coverArtUrl` are submitted through `POST /releases/new` and saved on the Release. The DROP form reserves a persistent square artwork preview for idle, searching, matched, no-image and provider-error states; it does not ask for a separate catalogue upload.
 2. **Create the physical copy and listing:** The seller selects an existing release, then enters media/sleeve condition, price or trade intent, and notes through the listing creation flow (`GET /listings/new`, `GET /listings/create`, `POST /listings`).
-3. **Manage photos in the editor:** `GET /listings/:id/edit` renders the seller's edit screen. Photo upload is a `POST /listings/:id/photos` action, with related POST actions for assigning `front_cover` / `back_cover` roles, deletion and ordering. There is no separate GET photo-management page.
-4. **Preview and publish:** `GET /listings/:id/preview` presents the draft before the seller explicitly publishes it.
+3. **Manage release artwork in the editor:** `GET /listings/:id/edit` always presents a clearly labelled release-artwork area, including an empty state when the release has no cover. Its optional `POST /listings/:id/release-artwork` action adds or replaces the shared `releases.cover_art_url` image. It is release metadata shared by listings of the same release, not an uploaded photo of this seller's copy.
+4. **Manage physical-copy photos in the same editor:** The adjacent Photos section contains the optional `front_cover` and `back_cover` slots for the exact copy being sold, plus additional photo roles. Uploads use `POST /listings/:id/photos`, with related POST actions for assigning roles, deletion and ordering. Seller photos remain Storage objects referenced by `listing_photos`. The seller's front photo takes priority on that listing; otherwise the release catalogue art supplies the front. The back face uses only the seller's back photo.
+5. **Preview and publish:** `GET /listings/:id/preview` presents the draft before the seller explicitly publishes it.
 
-The image boundary is intentional: Discogs catalogue artwork is stored as release metadata; photographs of the exact physical copy remain seller-owned Storage objects referenced by `listing_photos`. A seller front-cover photo overrides the catalogue image. The back face uses only the seller's back-cover photo. Form validation uses structured Zod error view models (`FormViewModel`).
+The image boundary is intentional: release catalogue artwork is stored on the shared Release; physical-copy photographs are seller-owned listing photos. Neither should be presented or persisted as the other. Form validation uses structured Zod error view models (`FormViewModel`).
 
 ## Public profile and Crate (`/profiles/:username`)
 
