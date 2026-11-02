@@ -13,7 +13,6 @@ import profileRoutes from './profileRoutes';
 import listingRoutes from './listingRoutes';
 import releaseRoutes from './releaseRoutes';
 import messagingRoutes from './messagingRoutes';
-import { postStagingDiagnostics } from '../controllers/stagingDiagnosticsController';
 import { getCatalogueSuggestions } from '../controllers/catalogueSearchController';
 
 const router = Router();
@@ -44,7 +43,6 @@ router.get('/drop/new', requireAuth, getCreateCustomReleasePage);
 router.get('/design-system', getDesignSystemPage);
 router.post('/design-system/demo', postDesignSystemDemo);
 
-router.post('/_internal/staging/diagnostics', postStagingDiagnostics);
 
 router.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
