@@ -189,13 +189,16 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(await findPhotosByListingId(listingId)).toHaveLength(0);
 
     const restoreDeniedFetch = jest.spyOn(global, 'fetch');
-    const restoreDenied = await supertest(app)
-      .post(`/listings/${listingId}/release-artwork/restore-discogs`)
-      .set('Origin', new URL(config.APP_BASE_URL).origin)
-      .set('x-test-user', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
-    expect(restoreDenied.status).toBe(403);
-    expect(restoreDeniedFetch).not.toHaveBeenCalled();
-    restoreDeniedFetch.mockRestore();
+    try {
+      const restoreDenied = await supertest(app)
+        .post(`/listings/${listingId}/release-artwork/restore-discogs`)
+        .set('Origin', new URL(config.APP_BASE_URL).origin)
+        .set('x-test-user', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+      expect(restoreDenied.status).toBe(403);
+      expect(restoreDeniedFetch).not.toHaveBeenCalled();
+    } finally {
+      restoreDeniedFetch.mockRestore();
+    }
 
     const invalidImage = await supertest(app)
       .post(`/listings/${listingId}/release-artwork`)
