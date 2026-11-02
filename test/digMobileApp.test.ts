@@ -469,6 +469,33 @@ describe('Mobile Dig app-like viewport', () => {
     await dispatchTouchPointer('pointerup', pointerId, startX + deltaX, startY + deltaY, true);
   }
 
+  it('honors the independent haptic feedback preference without blocking Dig gestures', async () => {
+    await loadPage(375, 812);
+    await page.evaluate(() => (
+      window as Window & {
+        VinylDropPreferences?: { set(key: string, value: boolean): boolean };
+      }
+    ).VinylDropPreferences?.set('hapticFeedbackEnabled', false));
+    await mockDigVibration();
+
+    await swipeActiveByTouch(-110, 0, 1001);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(true);
+    expect(await readDigVibrationCalls()).toEqual([]);
+
+    await page.evaluate(() => (
+      window as Window & {
+        VinylDropPreferences?: { set(key: string, value: boolean): boolean };
+      }
+    ).VinylDropPreferences?.set('hapticFeedbackEnabled', true));
+    await swipeActiveByTouch(110, 0, 1002);
+    expect(await page.locator('[data-dig-slide].is-active [data-dig-sleeve-card]').evaluate((card) =>
+      card.classList.contains('is-flipped')
+    )).toBe(false);
+    expect(await readDigVibrationCalls()).toEqual([10]);
+  });
+
   it('requests one subtle haptic pulse for a committed touch flip and record change', async () => {
     await loadPage(375, 812);
     await mockDigVibration();
@@ -1548,40 +1575,59 @@ describe('Mobile Dig app-like viewport', () => {
       const listingLink = document.querySelector('[data-dig-slide].is-active .dig-listing-link') as HTMLAnchorElement | null;
       const filterIcon = document.querySelector('[data-dig-filter-open] img') as HTMLImageElement | null;
       const siteHeader = document.querySelector('.site-header') as HTMLElement | null;
-      if (!stage || !meta || !price || !listingLink || !filterIcon || !siteHeader) return null;
+      const explorer = document.querySelector('.dig-explorer') as HTMLElement | null;
+      if (!stage || !meta || !price || !listingLink || !filterIcon || !siteHeader || !explorer) return null;
+      const expectedColors = document.createElement('div');
+      document.body.appendChild(expectedColors);
+      expectedColors.style.backgroundColor = 'var(--color-surface-hover)';
+      const expectedExplorerBackground = getComputedStyle(expectedColors).backgroundColor;
+      expectedColors.style.backgroundColor = 'color-mix(in srgb, var(--color-paper) 82%, transparent)';
+      const expectedMetaBackground = getComputedStyle(expectedColors).backgroundColor;
+      expectedColors.style.borderTopColor = 'color-mix(in srgb, var(--color-rust) 76%, transparent)';
+      const expectedMetaBorderTopColor = getComputedStyle(expectedColors).borderTopColor;
+      expectedColors.style.backgroundColor = 'color-mix(in srgb, var(--color-paper) 92%, transparent)';
+      const expectedSiteHeaderBackground = getComputedStyle(expectedColors).backgroundColor;
+      expectedColors.style.borderBottomColor = 'color-mix(in srgb, var(--color-border) 14%, transparent)';
+      const expectedSiteHeaderBorderBottomColor = getComputedStyle(expectedColors).borderBottomColor;
+      expectedColors.remove();
       return {
+        explorerBackground: getComputedStyle(explorer).backgroundColor,
+        expectedExplorerBackground,
+        metaBackground: getComputedStyle(meta).backgroundColor,
+        expectedMetaBackground,
+        metaBorderTopColor: getComputedStyle(meta).borderTopColor,
+        expectedMetaBorderTopColor,
+        siteHeaderBackground: getComputedStyle(siteHeader).backgroundColor,
+        expectedSiteHeaderBackground,
+        siteHeaderBorderBottomColor: getComputedStyle(siteHeader).borderBottomColor,
+        expectedSiteHeaderBorderBottomColor,
         pseudoContent: getComputedStyle(stage, '::before').content,
         pseudoDisplay: getComputedStyle(stage, '::before').display,
         pseudoShadow: getComputedStyle(stage, '::before').boxShadow,
-        explorerBackground: getComputedStyle(document.querySelector('.dig-explorer')!).backgroundColor,
-        metaBackground: getComputedStyle(meta).backgroundColor,
         metaBackdropFilter: getComputedStyle(meta).getPropertyValue('backdrop-filter'),
         metaBorderTopWidth: getComputedStyle(meta).borderTopWidth,
-        metaBorderTopColor: getComputedStyle(meta).borderTopColor,
         priceBackgroundImage: getComputedStyle(price).backgroundImage,
         listingLabel: listingLink.getAttribute('aria-label'),
         listingText: listingLink.textContent?.trim(),
         listingIcon: listingLink.querySelector('img')?.getAttribute('src'),
         filterIcon: filterIcon.getAttribute('src'),
-        siteHeaderBackground: getComputedStyle(siteHeader).backgroundColor,
         siteHeaderBackdropFilter: getComputedStyle(siteHeader).getPropertyValue('backdrop-filter'),
         siteHeaderBorderBottomWidth: getComputedStyle(siteHeader).borderBottomWidth,
-        siteHeaderBorderBottomColor: getComputedStyle(siteHeader).borderBottomColor,
       };
     });
     expect(visualTreatment).not.toBeNull();
     expect(visualTreatment!.pseudoContent).toBe('none');
     expect(visualTreatment!.pseudoDisplay).toBe('none');
     expect(visualTreatment!.pseudoShadow).toBe('none');
-    expect(visualTreatment!.explorerBackground).toBe('rgb(232, 225, 213)');
-    expect(visualTreatment!.metaBackground).toBe('rgba(243, 239, 231, 0.82)');
+    expect(visualTreatment!.explorerBackground).toBe(visualTreatment!.expectedExplorerBackground);
+    expect(visualTreatment!.metaBackground).toBe(visualTreatment!.expectedMetaBackground);
     expect(visualTreatment!.metaBackdropFilter).toContain('blur(12px)');
     expect(visualTreatment!.metaBorderTopWidth).toBe('2px');
-    expect(visualTreatment!.metaBorderTopColor).toBe('rgba(246, 15, 75, 0.76)');
-    expect(visualTreatment!.siteHeaderBackground).toBe('rgba(243, 239, 231, 0.92)');
+    expect(visualTreatment!.metaBorderTopColor).toBe(visualTreatment!.expectedMetaBorderTopColor);
+    expect(visualTreatment!.siteHeaderBackground).toBe(visualTreatment!.expectedSiteHeaderBackground);
     expect(visualTreatment!.siteHeaderBackdropFilter).toBe('none');
     expect(visualTreatment!.siteHeaderBorderBottomWidth).toBe('1px');
-    expect(visualTreatment!.siteHeaderBorderBottomColor).toBe('rgba(21, 21, 21, 0.14)');
+    expect(visualTreatment!.siteHeaderBorderBottomColor).toBe(visualTreatment!.expectedSiteHeaderBorderBottomColor);
     expect(visualTreatment!.priceBackgroundImage).toContain('/assets/UI/price_tag.svg');
     expect(visualTreatment!.listingLabel).toContain('Open listing for');
     expect(visualTreatment!.listingText).toBe('');

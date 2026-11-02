@@ -138,6 +138,9 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('+ DROP');
     expect(html).toContain('ACTIVITY');
     expect(html).toContain('SIGN IN');
+    expect(html).toContain('class="nav-link nav-link-options"');
+    expect(html).toContain('href="/options"');
+    expect(html).toContain('href="/options" class="mobile-you-action-link mobile-you-options-link"');
     expect(html).toContain('id="mobile-you-surface"');
     expect(html).toContain('<span>ME</span>');
     expect(html).toContain('aria-label="Me"');
@@ -169,6 +172,9 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
     expect(html).toContain('View Profile');
     expect(html).toContain('Edit Profile');
     expect(html).toContain('My Listings');
+    expect(html).toContain('href="/options" class="desktop-you-menu-item">Options &amp; Appearance</a>');
+    expect(html).toContain('href="/options" class="mobile-you-action-link mobile-you-options-link">');
+    expect(html).toContain('Options &amp; Appearance</span>');
     expect(html).toContain('/auth/logout');
     expect(html).toContain('LOG OUT');
     expect(html).not.toContain('class="mobile-you-email"');
@@ -948,7 +954,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
         expect(presentation.documentWidth).toBeLessThanOrEqual(presentation.viewportWidth);
         expect(presentation.panelLeft).toBeGreaterThanOrEqual(0);
         expect(presentation.panelRight).toBeLessThanOrEqual(presentation.viewportWidth);
-        expect(await page.locator('.mobile-you-action-icon').count()).toBe(3);
+        expect(await page.locator('.mobile-you-action-icon').count()).toBe(4);
       }
 
       await page.setViewportSize({ width: 375, height: 812 });
@@ -1015,6 +1021,7 @@ describe('Navigation Partial View Rendering & Script Interactions (views/partial
       await page.click('#mobile-you-trigger');
 
       expect(await isElementVisible('#mobile-you-main-view')).toBe(true);
+      expect(await page.locator('#mobile-you-main-view .mobile-you-options-link').isVisible()).toBe(true);
       expect(await isElementVisible('#mobile-you-about-view')).toBe(false);
 
       await page.click('#mobile-you-about-trigger');

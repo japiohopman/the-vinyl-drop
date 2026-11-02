@@ -13,9 +13,9 @@
 .custom-release-errors {
   margin-bottom: var(--space-3);
   padding: var(--space-3);
-  border: 1px solid #ef4444;
-  background: #fee2e2;
-  color: #991b1b;
+  border: 1px solid var(--color-error-border);
+  background: var(--color-error-bg);
+  color: var(--color-ink);
   overflow-wrap: anywhere;
 }
 .custom-release-form {

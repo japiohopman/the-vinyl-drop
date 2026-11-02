@@ -1,0 +1,102 @@
+<section class="options-page" aria-labelledby="options-title" data-options-page>
+  <header class="options-intro">
+    <p class="options-kicker">MAKE IT YOURS</p>
+    <h1 id="options-title">Options</h1>
+    <p class="options-lede">Set the feel of The Vinyl Drop on this device. Your choices stay in this browser — they are not attached to your account or shared with other devices.</p>
+  </header>
+
+  <div class="options-layout">
+    <section class="options-panel" aria-labelledby="options-feel-title">
+      <div class="options-panel-heading">
+        <p class="options-section-kicker">SOUND &amp; INTERACTION</p>
+        <h2 id="options-feel-title">The little details</h2>
+      </div>
+
+      <div class="options-setting-row">
+        <div class="options-setting-copy">
+          <h3 id="options-sound-label">Sound effects</h3>
+          <p id="options-sound-description">Small, quiet sounds during the Dig experience.</p>
+        </div>
+        <label class="options-toggle" for="options-sound">
+          <input id="options-sound" type="checkbox" aria-labelledby="options-sound-label" aria-describedby="options-sound-description" data-preference="soundEffectsEnabled">
+          <span data-preference-state aria-hidden="true">On</span>
+        </label>
+      </div>
+
+      <div class="options-setting-row" data-haptics-setting hidden>
+        <div class="options-setting-copy">
+          <h3 id="options-haptics-label">Haptic feedback</h3>
+          <p id="options-haptics-description">A subtle vibration after a committed touch gesture, on supported devices.</p>
+        </div>
+        <label class="options-toggle" for="options-haptics">
+          <input id="options-haptics" type="checkbox" aria-labelledby="options-haptics-label" aria-describedby="options-haptics-description" data-preference="hapticFeedbackEnabled">
+          <span data-preference-state aria-hidden="true">On</span>
+        </label>
+      </div>
+      <p class="options-capability-note" data-haptics-unavailable hidden>Haptic feedback is not available in this browser. Dig remains fully usable.</p>
+
+      <div class="options-setting-row">
+        <div class="options-setting-copy">
+          <h3 id="options-tutorials-label">Gesture tips</h3>
+          <p id="options-tutorials-description">Show optional guidance when an in-app guide is available. You can still replay a guide manually.</p>
+        </div>
+        <label class="options-toggle" for="options-tutorials">
+          <input id="options-tutorials" type="checkbox" aria-labelledby="options-tutorials-label" aria-describedby="options-tutorials-description" data-preference="tutorialsEnabled">
+          <span data-preference-state aria-hidden="true">On</span>
+        </label>
+      </div>
+    </section>
+
+    <fieldset class="options-panel options-appearance" aria-describedby="options-appearance-description">
+      <legend class="options-panel-legend">Appearance</legend>
+      <p class="options-appearance-description" id="options-appearance-description">Choose a palette. The preview and the whole page update straight away.</p>
+      <div class="options-theme-grid">
+        <label class="options-theme-option">
+          <input type="radio" name="theme" value="record-shop" data-theme-choice>
+          <span class="options-theme-choice">
+            <span class="options-theme-copy"><strong>Record Shop</strong><small>Original paper and infrared</small></span>
+            <span class="theme-swatch" data-theme="record-shop" aria-hidden="true"><span class="theme-swatch-paper"></span><span class="theme-swatch-ink"></span><span class="theme-swatch-accent"></span><span class="theme-swatch-highlight"></span></span>
+          </span>
+        </label>
+        <label class="options-theme-option">
+          <input type="radio" name="theme" value="blue-note" data-theme-choice>
+          <span class="options-theme-choice">
+            <span class="options-theme-copy"><strong>Blue Note</strong><small>Cool catalogue blues</small></span>
+            <span class="theme-swatch" data-theme="blue-note" aria-hidden="true"><span class="theme-swatch-paper"></span><span class="theme-swatch-ink"></span><span class="theme-swatch-accent"></span><span class="theme-swatch-highlight"></span></span>
+          </span>
+        </label>
+        <label class="options-theme-option">
+          <input type="radio" name="theme" value="soul-45" data-theme-choice>
+          <span class="options-theme-choice">
+            <span class="options-theme-copy"><strong>Soul 45</strong><small>Warm sleeve colours</small></span>
+            <span class="theme-swatch" data-theme="soul-45" aria-hidden="true"><span class="theme-swatch-paper"></span><span class="theme-swatch-ink"></span><span class="theme-swatch-accent"></span><span class="theme-swatch-highlight"></span></span>
+          </span>
+        </label>
+        <label class="options-theme-option">
+          <input type="radio" name="theme" value="mint-press" data-theme-choice>
+          <span class="options-theme-choice">
+            <span class="options-theme-copy"><strong>Mint Press</strong><small>Pressing-room greens</small></span>
+            <span class="theme-swatch" data-theme="mint-press" aria-hidden="true"><span class="theme-swatch-paper"></span><span class="theme-swatch-ink"></span><span class="theme-swatch-accent"></span><span class="theme-swatch-highlight"></span></span>
+          </span>
+        </label>
+        <label class="options-theme-option">
+          <input type="radio" name="theme" value="midnight-groove" data-theme-choice>
+          <span class="options-theme-choice">
+            <span class="options-theme-copy"><strong>Midnight Groove</strong><small>Low-light listening</small></span>
+            <span class="theme-swatch" data-theme="midnight-groove" aria-hidden="true"><span class="theme-swatch-paper"></span><span class="theme-swatch-ink"></span><span class="theme-swatch-accent"></span><span class="theme-swatch-highlight"></span></span>
+          </span>
+        </label>
+        <label class="options-theme-option">
+          <input type="radio" name="theme" value="purple-haze" data-theme-choice>
+          <span class="options-theme-choice">
+            <span class="options-theme-copy"><strong>Purple Haze</strong><small>Deep crate-digging violets</small></span>
+            <span class="theme-swatch" data-theme="purple-haze" aria-hidden="true"><span class="theme-swatch-paper"></span><span class="theme-swatch-ink"></span><span class="theme-swatch-accent"></span><span class="theme-swatch-highlight"></span></span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+  </div>
+
+  <p class="options-storage-note">Preferences are stored in this browser on this device. When browser storage is unavailable, changes remain active for the current page only.</p>
+  <p class="options-status" data-options-status role="status" aria-live="polite" aria-atomic="true"></p>
+</section>
