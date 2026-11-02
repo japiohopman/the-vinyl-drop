@@ -157,6 +157,7 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
       genre?: string;
       country?: string;
       coverArtUrl?: string;
+      discogsExternalId?: string;
     }> = {
       values: {
         format: 'LP',
@@ -182,7 +183,7 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
       discogsExternalId: submittedDiscogsExternalId,
     } = req.body;
     const discogsExternalId =
-      typeof submittedDiscogsExternalId === 'string' && /^\\d{1,15}$/.test(submittedDiscogsExternalId)
+      typeof submittedDiscogsExternalId === 'string' && /^\d{1,15}$/.test(submittedDiscogsExternalId)
         ? submittedDiscogsExternalId
         : undefined;
 
