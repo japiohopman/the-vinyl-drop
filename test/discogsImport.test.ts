@@ -114,6 +114,37 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
       });
     });
 
+    it('enriches a confident album match from Discogs release details when search results omit artwork', async () => {
+      const artworkUrl = 'https://i.discogs.com/release-detail-cover.jpg';
+      jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([{
+        id: 'discogs:213409',
+        providerName: 'discogs',
+        externalId: '213409',
+        artist: 'Daft Punk',
+        title: 'Discovery',
+        matchScore: 0,
+        matchedEvidence: [],
+        provenance: { provider: 'discogs', externalId: '213409', fetchedAt: '2026-01-01T00:00:00.000Z' },
+      }]);
+      const artworkLookup = jest.spyOn(DiscogsMetadataProvider.prototype, 'getReleaseArtwork').mockResolvedValue(artworkUrl);
+
+      const response = await supertest(app)
+        .get('/releases/lookup-metadata')
+        .query({ artist: 'Daft Punk', title: 'Discovery' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        found: true,
+        matchType: 'release',
+        metadata: {
+          coverArtUrl: artworkUrl,
+          discogsExternalId: '213409',
+        },
+      });
+      expect(artworkLookup).toHaveBeenCalledWith('213409');
+    });
+
     it('returns no match unless both artist and title match confidently', async () => {
       jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([{
         id: 'discogs:456',
@@ -235,6 +266,42 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
         { artist: 'James Brown', title: 'Sex Machine' },
         { artist: 'James Brown', track: 'Sex Machine' },
       ]);
+    });
+
+    it('enriches a confident track match from Discogs release details when search results omit artwork', async () => {
+      const artworkUrl = 'https://i.discogs.com/track-release-cover.jpg';
+      jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockImplementation(async (query) => {
+        if (query.track) {
+          return [{
+            id: 'discogs:990',
+            providerName: 'discogs',
+            externalId: '990',
+            artist: 'James Brown',
+            title: 'Different Release Album',
+            matchScore: 0,
+            matchedEvidence: [],
+            provenance: { provider: 'discogs', externalId: '990', fetchedAt: '2026-01-01T00:00:00.000Z' },
+          }];
+        }
+        return [];
+      });
+      const artworkLookup = jest.spyOn(DiscogsMetadataProvider.prototype, 'getReleaseArtwork').mockResolvedValue(artworkUrl);
+
+      const response = await supertest(app)
+        .get('/releases/lookup-metadata')
+        .query({ artist: 'James Brown', title: 'Sex Machine' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        found: true,
+        matchType: 'track',
+        metadata: {
+          coverArtUrl: artworkUrl,
+          discogsExternalId: '990',
+        },
+      });
+      expect(artworkLookup).toHaveBeenCalledWith('990');
     });
 
     it('prefers a matching track result that includes catalogue artwork over an earlier image-less result', async () => {
@@ -487,5 +554,42 @@ describe('Discogs metadata provider free-text lookup (Issue #190)', () => {
       genre: 'Funk, Soul',
       coverArtUrl: 'https://i.discogs.com/example-cover.jpg',
     });
+  it('reads a primary image from release details when the search result image fields are empty', async () => {
+    const artworkUrl = 'https://i.discogs.com/release-detail-cover.jpg';
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        images: [{ type: 'primary', resource_url: artworkUrl }],
+        thumb: '',
+        master_id: 26647,
+      }),
+    } as Response);
+
+    const provider = new DiscogsMetadataProvider({ timeoutMs: 1000, throwOnError: true });
+    await expect(provider.getReleaseArtwork('213409')).resolves.toBe(artworkUrl);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(String(fetchSpy.mock.calls[0][0])).toBe('https://api.discogs.com/releases/213409');
+  });
+
+  it('falls back to master artwork when the selected release has no images', async () => {
+    const artworkUrl = 'https://i.discogs.com/master-cover.jpg';
+    const fetchSpy = jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ images: [], master_id: 26647 }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ images: [{ type: 'primary', uri: artworkUrl }] }),
+      } as Response);
+
+    const provider = new DiscogsMetadataProvider({ timeoutMs: 1000, throwOnError: true });
+    await expect(provider.getReleaseArtwork('213409')).resolves.toBe(artworkUrl);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(String(fetchSpy.mock.calls[1][0])).toBe('https://api.discogs.com/masters/26647');
+  });
+
   });
 });
