@@ -64,7 +64,7 @@ export async function restoreDiscogsArtworkForListing(
   const release = await findReleaseById(physicalCopy.releaseId, dbOverride);
   if (!release) throw new NotFoundError('Associated release not found');
 
-  if (release.externalSource !== 'discogs' || !release.externalId || !/^\\d{1,15}$/.test(release.externalId)) {
+  if (release.externalSource !== 'discogs' || !release.externalId || !/^\d{1,15}$/.test(release.externalId)) {
     throw new ValidationError('This release has no saved Discogs source artwork to restore.');
   }
 
