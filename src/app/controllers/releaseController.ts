@@ -8,7 +8,7 @@ import { processAndValidateImage } from '../utils/imageProcessor';
 import { DiscogsMetadataProvider } from '../services/metadata/discogsProvider';
 import { CandidateRelease } from '../services/metadata/types';
 import { COUNTRY_OPTIONS, RELEASE_GENRES, resolveCountry } from '../../domain/releaseMetadata';
-import { VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
+import { normalizeVinylFormatCharacteristics, VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
 
 function normalizeLookupText(value: string): string {
   return value
@@ -44,17 +44,12 @@ function hasConfidentTextMatch(query: string, candidate: string | undefined, max
     queryPhrase.endsWith(candidatePhrase);
 }
 
-/** Only auto-fill album results when both artist and release title match closely. */
-function chooseConfidentDiscogsMatch(
-  candidates: CandidateRelease[],
-  artist: string,
-  title: string
-): CandidateRelease | null {
+/** Return all confident album matches in a stable, relevance-first order. */
+function findConfidentDiscogsMatches(candidates: CandidateRelease[], artist: string, title: string): CandidateRelease[] {
   const matched = candidates.filter((candidate) =>
     hasConfidentTextMatch(artist, candidate.artist, 1) &&
     hasConfidentTextMatch(title, candidate.title, 2)
   );
-
   matched.sort((a, b) => {
     const score = (candidate: CandidateRelease) =>
       (normalizeLookupText(candidate.artist) === normalizeLookupText(artist) ? 2 : 0) +
@@ -63,7 +58,7 @@ function chooseConfidentDiscogsMatch(
     if (confidenceDifference !== 0) return confidenceDifference;
     return Number(Boolean(b.coverArtUrl)) - Number(Boolean(a.coverArtUrl));
   });
-  return matched[0] || null;
+  return matched.slice(0, 8);
 }
 
 /**
@@ -73,24 +68,42 @@ function chooseConfidentDiscogsMatch(
  * evidence for the track title. Comparing the query to candidate.title incorrectly
  * rejects songs that appear on an album with a different title.
  */
-function chooseConfidentTrackMatch(
-  candidates: CandidateRelease[],
-  artist: string
-): CandidateRelease | null {
-  const matched = candidates.filter((candidate) =>
-    hasConfidentTextMatch(artist, candidate.artist, 1)
-  );
+function findConfidentTrackMatches(candidates: CandidateRelease[], artist: string): CandidateRelease[] {
+  const matched = candidates.filter((candidate) => hasConfidentTextMatch(artist, candidate.artist, 1));
+  matched.sort((a, b) => Number(Boolean(b.coverArtUrl)) - Number(Boolean(a.coverArtUrl)));
+  return matched.slice(0, 8);
+}
 
-  // Track search results describe containing releases. Keep the strict artist
-  // match, but prefer a result with actual catalogue artwork so the form can
-  // show the cover rather than silently selecting an image-less first result.
-  return matched.find((candidate) => Boolean(candidate.coverArtUrl)) || matched[0] || null;
+function isUnambiguousVinylFormat(format: string | undefined): boolean {
+  if (!format) return false;
+  const tokens = format.split(',').map((token) => token.trim().toLowerCase());
+  const hasVinyl = tokens.includes('vinyl');
+  const hasOtherMedia = tokens.some((token) =>
+    ['cd', 'cassette', 'file', 'digital', 'dvd', 'blu-ray', 'sacd', 'minidisc', 'shellac', 'reel-to-reel', 'dat'].includes(token)
+  );
+  return hasVinyl && !hasOtherMedia;
+}
+
+function toDiscogsCandidateMetadata(candidate: CandidateRelease): Record<string, unknown> {
+  const formatCharacteristics = candidate.formatCharacteristics || normalizeVinylFormatCharacteristics(candidate.format);
+  return {
+    label: candidate.label || '',
+    catalogueNumber: candidate.catalogueNumber || '',
+    releaseYear: candidate.releaseYear ? String(candidate.releaseYear) : '',
+    format: candidate.format || '',
+    formatCharacteristics,
+    barcode: candidate.barcode || '',
+    country: candidate.country || '',
+    countryCode: resolveCountry(candidate.country)?.code || '',
+    genre: candidate.genre || '',
+    coverArtUrl: candidate.coverArtUrl || '',
+    discogsExternalId: candidate.externalId,
+  };
 }
 
 export async function getDiscogsMetadataLookup(req: Request, res: Response, _next: NextFunction): Promise<void> {
   const artist = typeof req.query.artist === 'string' ? req.query.artist.trim() : '';
   const title = typeof req.query.title === 'string' ? req.query.title.trim() : '';
-
   if (artist.length < 2 || title.length < 2 || artist.length > 120 || title.length > 160) {
     res.status(400).json({ error: 'Enter an artist and title within the supported length.' });
     return;
@@ -99,57 +112,51 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
   try {
     const provider = new DiscogsMetadataProvider({ timeoutMs: 5000, throwOnError: true });
     const releaseCandidates = await provider.searchCandidates({ artist, title });
-    let match = chooseConfidentDiscogsMatch(releaseCandidates, artist, title);
+    let candidates = findConfidentDiscogsMatches(releaseCandidates, artist, title);
     let matchType: 'release' | 'track' = 'release';
 
-    if (!match) {
-      // The input title may be a song on a release rather than the release/album title.
+    if (candidates.length === 0) {
       const trackCandidates = await provider.searchCandidates({ artist, track: title });
-      match = chooseConfidentTrackMatch(trackCandidates, artist);
+      candidates = findConfidentTrackMatches(trackCandidates, artist);
       matchType = 'track';
     }
-
-    if (!match) {
-      // Some valid releases are omitted by Discogs' structured filters. Try one
-      // broad query as a final candidate source, while keeping the same strict
-      // normalized artist/title confidence rule before auto-filling.
+    if (candidates.length === 0) {
       const broadCandidates = await provider.searchCandidates({ ocrText: `${artist} ${title}` });
-      match = chooseConfidentDiscogsMatch(broadCandidates, artist, title);
+      candidates = findConfidentDiscogsMatches(broadCandidates, artist, title);
       matchType = 'release';
     }
-
-    if (!match) {
+    if (candidates.length === 0) {
       res.setHeader('Cache-Control', 'no-store');
       res.status(200).json({ found: false });
       return;
     }
 
-    if (!match.coverArtUrl) {
-      const detailedArtwork = await provider.getReleaseArtwork(match.externalId);
-      if (detailedArtwork) {
-        match = { ...match, coverArtUrl: detailedArtwork };
-      }
+    // Only one explicitly identified vinyl edition may be auto-filled. Multiple,
+    // non-vinyl or unspecified formats always require an affirmative seller choice.
+    const selectionRequired = candidates.length > 1 || !isUnambiguousVinylFormat(candidates[0].format);
+    // Artwork enrichment is still tied to the candidate's own Discogs release ID.
+    if (candidates.length === 1 && !candidates[0].coverArtUrl) {
+      const artwork = await provider.getReleaseArtwork(candidates[0].externalId);
+      if (artwork) candidates[0] = { ...candidates[0], coverArtUrl: artwork };
     }
+
+    const candidatePayload = candidates.map((candidate) => ({
+      artist: candidate.artist,
+      title: candidate.title,
+      formatLabel: candidate.format || 'Format not supplied by Discogs',
+      hasArtwork: Boolean(candidate.coverArtUrl),
+      metadata: toDiscogsCandidateMetadata(candidate),
+    }));
 
     res.setHeader('Cache-Control', 'no-store');
     res.status(200).json({
       found: true,
       matchType,
-      metadata: {
-        label: match.label || '',
-        catalogueNumber: match.catalogueNumber || '',
-        releaseYear: match.releaseYear ? String(match.releaseYear) : '',
-        format: match.format || '',
-        barcode: match.barcode || '',
-        country: match.country || '',
-        countryCode: resolveCountry(match.country)?.code || '',
-        genre: match.genre || '',
-        coverArtUrl: match.coverArtUrl || '',
-        discogsExternalId: match.externalId,
-      },
+      selectionRequired,
+      candidates: candidatePayload,
+      metadata: toDiscogsCandidateMetadata(candidates[0]),
     });
   } catch {
-    // Fail closed for this lookup but keep manual release entry available.
     res.status(503).json({ error: 'Discogs lookup is temporarily unavailable.' });
   }
 }

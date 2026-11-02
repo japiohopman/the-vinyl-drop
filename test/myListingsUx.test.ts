@@ -174,6 +174,40 @@ describe('My Listings UX (#219)', () => {
     expect(hiddenHtml).not.toContain('action="/listings/listing-hidden-sold/dismiss"');
   });
 
+  it('exposes permanent delete only for archived listings and requires a named confirmation', async () => {
+    const html = await renderListings();
+    const archivedStart = html.indexOf('data-listing-id="listing-archived"');
+    const archivedEnd = html.indexOf('</article>', archivedStart);
+    const archivedCard = html.slice(archivedStart, archivedEnd);
+    expect(archivedCard).toContain('action="/listings/listing-archived/delete" method="POST"');
+    expect(archivedCard).toContain('Delete permanently');
+    expect(archivedCard).toContain('data-permanent-delete-listing');
+
+    for (const id of ['listing-draft', 'listing-published', 'listing-sold', 'listing-traded']) {
+      const start = html.indexOf(`data-listing-id="${id}"`);
+      const end = html.indexOf('</article>', start);
+      expect(html.slice(start, end)).not.toContain('data-permanent-delete-listing');
+    }
+
+    const hiddenArchived = await renderListings([makeListing('listing-hidden-archived', 'archived')], true);
+    expect(hiddenArchived).toContain('action="/listings/listing-hidden-archived/delete" method="POST"');
+    expect(hiddenArchived).toContain('action="/listings/listing-hidden-archived/restore-dismissed" method="POST"');
+
+    const confirmationPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await confirmationPage.setContent(documentHtml(await renderHeader('/listings'), html));
+    let confirmation = '';
+    confirmationPage.once('dialog', async (dialog) => {
+      confirmation = dialog.message();
+      await dialog.dismiss();
+    });
+    await confirmationPage.locator('form[data-permanent-delete-listing] button[type="submit"]').click();
+    expect(confirmation).toContain('Test Artist — Archived Album');
+    expect(confirmation).toContain('cannot be undone');
+    expect(confirmation).toContain('shared release catalogue record will remain');
+    await confirmationPage.close();
+    await page.close();
+  });
+
   it('has no horizontal overflow and wraps actions cleanly from narrow phones to desktop', async () => {
     const page = await browser.newPage();
     // The view contract is layout and navigation; prevent sample artwork requests.
