@@ -291,6 +291,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(releaseHtml).not.toContain('name="coverArt"');
     expect(releaseHtml).not.toContain('Catalogue artwork replacement');
     expect(releaseHtml).toContain('name="coverArtUrl"');
+    expect(releaseHtml).not.toContain('<img src=""');
+    expect(releaseHtml).toContain('alt="Discogs catalogue artwork preview" loading="eager" decoding="async"');
 
     for (const width of [360, 375, 430, 1024, 1280]) {
       await page.setViewportSize({ width, height: 820 });
