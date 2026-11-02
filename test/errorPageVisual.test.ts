@@ -73,10 +73,11 @@ describe('Branded 404 and 5xx error pages (#315)', () => {
 
     for (const route of routes) {
       for (const width of viewports) {
-        const page = await browser.newPage({
+        const context = await browser.newContext({
           viewport: { width, height: width < 768 ? 844 : 900 },
           deviceScaleFactor: 1,
         });
+        const page = await context.newPage();
         try {
           const response = await page.goto(`${baseUrl}${route.path}`, { waitUntil: 'networkidle' });
           expect(response?.status()).toBe(route.status);
@@ -115,7 +116,7 @@ describe('Branded 404 and 5xx error pages (#315)', () => {
             expect(accessibility.violations).toEqual([]);
           }
         } finally {
-          await page.close();
+          await context.close();
         }
       }
     }
