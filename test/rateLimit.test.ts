@@ -6,7 +6,8 @@ import {
   getRateLimitClientIp,
   RateLimitRule,
   setRateLimitStoreForTests,
-} from '../src/app/services/rateLimitService';
+ } from '../src/app/services/rateLimitService';
+import { createProductionRateLimitProbeHandler } from '../src/app/controllers/infoController';
 
 describe('shared rate-limit middleware', () => {
   beforeEach(() => {
@@ -171,3 +172,25 @@ describe('shared rate-limit middleware', () => {
     expect(response.text).not.toContain('database password');
   });
 });
+
+describe('temporary production probe', () => {
+  it('returns only pass/fail for valid database and client identity checks', async () => {
+    const token = 'x'.repeat(40);
+    const checkDatabase = jest.fn().mockResolvedValue(undefined);
+    const app = express();
+    app.post('/_internal/production/rate-limit-diagnostics', createProductionRateLimitProbeHandler({
+      nodeEnv: 'production',
+      token,
+      checkDatabase,
+      resolveClientIp: jest.fn().mockReturnValue('203.0.113.10'),
+    }));
+    const response = await request(app).post('/_internal/production/rate-limit-diagnostics')
+      .set('X-Production-Rate-Limit-Diagnostic-Token', token);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ database: 'pass', clientIpHeader: 'pass' });
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(checkDatabase).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(response.body)).not.toContain('203.0.113.10');
+  });
+});
+
