@@ -293,7 +293,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(releaseHtml).toContain('name="coverArtUrl"');
     const previewImageTag = releaseHtml.match(/<img[^>]*alt="Discogs catalogue artwork preview"[^>]*>/)?.[0] ?? '';
     expect(previewImageTag).not.toBe('');
-    expect(previewImageTag).not.toMatch(/\\ssrc=/);
+    expect(previewImageTag).not.toMatch(/\ssrc=/);
     expect(previewImageTag).toContain('loading="eager"');
     expect(previewImageTag).toContain('decoding="async"');
 
