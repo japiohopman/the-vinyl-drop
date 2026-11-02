@@ -291,6 +291,11 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(releaseHtml).not.toContain('name="coverArt"');
     expect(releaseHtml).not.toContain('Catalogue artwork replacement');
     expect(releaseHtml).toContain('name="coverArtUrl"');
+    const previewImageTag = releaseHtml.match(/<img[^>]*alt="Discogs catalogue artwork preview"[^>]*>/)?.[0] ?? '';
+    expect(previewImageTag).not.toBe('');
+    expect(previewImageTag).not.toMatch(/\ssrc=/);
+    expect(previewImageTag).toContain('loading="eager"');
+    expect(previewImageTag).toContain('decoding="async"');
 
     for (const width of [360, 375, 430, 1024, 1280]) {
       await page.setViewportSize({ width, height: 820 });
@@ -298,6 +303,18 @@ describe('Custom release mobile navigation and artwork picker', () => {
       expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
       expect(await page.locator('[data-discogs-artwork-placeholder]').isVisible()).toBe(true);
       expect(await page.locator('[data-discogs-cover-preview-status]').textContent()).toContain('confident Discogs match');
+      const artworkFrame = await page.locator('[data-discogs-cover-frame]').boundingBox();
+      expect(artworkFrame).not.toBeNull();
+      if (artworkFrame) {
+        const expectedFrameWidth = width >= 768 ? 224 : 120;
+        expect(Math.abs(artworkFrame.width - expectedFrameWidth)).toBeLessThanOrEqual(2);
+        expect(Math.abs(artworkFrame.width - artworkFrame.height)).toBeLessThanOrEqual(1);
+      }
+      const primaryColumnCount = await page.evaluate(() => {
+        const grid = document.querySelector('.custom-release-primary-fields');
+        return grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0;
+      });
+      expect(primaryColumnCount).toBe(width >= 768 ? 2 : 1);
       const dimensions = await page.evaluate(() => ({
         viewport: window.innerWidth,
         document: document.documentElement.scrollWidth,
@@ -332,6 +349,13 @@ describe('Custom release mobile navigation and artwork picker', () => {
       await page.setViewportSize({ width, height: 820 });
       await page.setContent(documentHtml(headerHtml, editHtml));
       expect(await page.locator('.release-artwork-editor').isVisible()).toBe(true);
+      const releaseArtworkFrame = await page.locator('.release-artwork-preview-frame').boundingBox();
+      expect(releaseArtworkFrame).not.toBeNull();
+      if (releaseArtworkFrame) {
+        const expectedFrameWidth = width >= 768 ? 192 : 104;
+        expect(Math.abs(releaseArtworkFrame.width - expectedFrameWidth)).toBeLessThanOrEqual(2);
+        expect(Math.abs(releaseArtworkFrame.width - releaseArtworkFrame.height)).toBeLessThanOrEqual(1);
+      }
       expect(await page.locator('.release-artwork-preview-frame img').getAttribute('src')).toBe('https://i.discogs.com/doggystyle.jpg');
       expect(await page.locator('.cover-photo-slots').isVisible()).toBe(true);
       expect(await page.locator('.release-artwork-restore-form button').isVisible()).toBe(true);
@@ -427,12 +451,29 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('#releaseMetadataDetails [data-discogs-cover-preview]').count()).toBe(0);
     expect(await page.locator('[data-discogs-cover-preview] img').getAttribute('src')).toBe('https://i.discogs.com/example-cover.jpg');
 
-    const dimensions = await page.evaluate(() => ({
+    const mobileDimensions = await page.evaluate(() => ({
       document: document.documentElement.scrollWidth,
       body: document.body.scrollWidth
     }));
-    expect(dimensions.document).toBeLessThanOrEqual(376);
-    expect(dimensions.body).toBeLessThanOrEqual(376);
+    expect(mobileDimensions.document).toBeLessThanOrEqual(376);
+    expect(mobileDimensions.body).toBeLessThanOrEqual(376);
+
+    await page.setViewportSize({ width: 1280, height: 820 });
+    const desktopArtworkFrame = await page.locator('[data-discogs-cover-frame]').boundingBox();
+    expect(desktopArtworkFrame).not.toBeNull();
+    if (desktopArtworkFrame) expect(Math.abs(desktopArtworkFrame.width - 224)).toBeLessThanOrEqual(2);
+    expect(await page.locator('[data-discogs-cover-preview] img').isVisible()).toBe(true);
+    const desktopPrimaryColumnCount = await page.evaluate(() => {
+      const grid = document.querySelector('.custom-release-primary-fields');
+      return grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0;
+    });
+    expect(desktopPrimaryColumnCount).toBe(2);
+    const desktopDimensions = await page.evaluate(() => ({
+      document: document.documentElement.scrollWidth,
+      body: document.body.scrollWidth
+    }));
+    expect(desktopDimensions.document).toBeLessThanOrEqual(1281);
+    expect(desktopDimensions.body).toBeLessThanOrEqual(1281);
   });
 
   it('shows an explicit state when a confident Discogs match has no artwork URL', async () => {

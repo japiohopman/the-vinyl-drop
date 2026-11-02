@@ -51,6 +51,7 @@
   gap: var(--space-3);
   min-width: 0;
 }
+
 .custom-release-field {
   display: flex;
   flex-direction: column;
@@ -175,6 +176,24 @@
 }
 .discogs-cover-preview[data-state="found"] .discogs-cover-preview-kicker { color: var(--color-deep-green); }
 .discogs-cover-preview[data-state="error"] .discogs-cover-preview-kicker { color: var(--color-rust-accessible); }
+/* Give the selected release artwork a proper editorial presence on desktop. */
+@media (min-width: 768px) {
+  .custom-release-primary-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .discogs-cover-preview {
+    grid-template-columns: 224px minmax(0, 1fr);
+    gap: var(--space-4);
+    padding: var(--space-4) 0;
+  }
+  .discogs-cover-preview-frame {
+    width: 224px;
+  }
+  .discogs-cover-preview-copy p {
+    max-width: 42rem;
+    font-size: var(--font-size-sm);
+  }
+}
 .release-cover-override-preview {
   display: flex;
   align-items: center;
@@ -216,11 +235,11 @@
   .release-artwork-file-desktop-label { display: none; }
 
   .discogs-cover-preview {
-    grid-template-columns: 104px minmax(0, 1fr);
+    grid-template-columns: 120px minmax(0, 1fr);
     gap: var(--space-2);
   }
   .discogs-cover-preview-frame {
-    width: 104px;
+    width: 120px;
   }
   .custom-release-page {
     margin: var(--space-3) auto !important;
@@ -290,7 +309,7 @@
 }
 .release-artwork-editor {
   display: grid;
-  grid-template-columns: 144px minmax(0, 1fr);
+  grid-template-columns: 192px minmax(0, 1fr);
   align-items: start;
   gap: var(--space-4);
   min-width: 0;
@@ -302,7 +321,7 @@
 .release-artwork-preview-frame {
   display: grid;
   place-items: center;
-  width: 144px;
+  width: 192px;
   aspect-ratio: 1;
   overflow: hidden;
   border: 1px solid var(--color-border-subtle);
