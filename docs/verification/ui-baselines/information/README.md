@@ -21,7 +21,7 @@ There are currently no committed baselines in this folder. Add one desktop and o
 - Preserve legal and policy content verbatim. This folder is a visual reference, not authority to rewrite Terms, Privacy Notice, Community Rules or age/access wording.
 - Long documents should be captured at a representative initial viewport; use additional focused captures only when a unique interaction or navigation pattern needs documenting. Do not store every scroll position.
 - Use the same page shell and spacing system as other reference screens. Do not treat the documents as standalone HTML microsites.
-- When a page's layout is intentionally changed, update its existing canonical reference in the same PR and update the row in [`../UI_VISUAL_REFERENCE.md`](../UI_VISUAL_REFERENCE.md).
+- When a page's layout is intentionally changed, update its existing canonical reference in the same PR and update the row in [`../../UI_VISUAL_REFERENCE.md`](../../UI_VISUAL_REFERENCE.md).
 
 ## Filename and metadata convention
 
