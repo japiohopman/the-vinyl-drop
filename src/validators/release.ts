@@ -47,7 +47,7 @@ export const releaseSchema = z.object({
       message: 'Country label and country code must refer to the same country.',
     });
   }
-  if (data.genre && !isKnownGenreInput(data.genre)) {
+  if (data.genre && !isKnownGenreInput(data.genre) && !hasDiscogsSource) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['genre'],
