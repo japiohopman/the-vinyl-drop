@@ -404,3 +404,31 @@ export async function hasExplicitWhiteLabelInventory(dbOverride?: DbInstance): P
     .where(and(eq(listings.status, 'published'), sql`${releases.label} ~* ${WHITE_LABEL_POSTGRES_PATTERN}`));
   return Number(result[0]?.total || 0) > 0;
 }
+
+
+/** Delete only an archived listing that is still owned by the requesting seller. */
+export async function deleteArchivedListingByOwner(
+  id: string,
+  sellerId: string,
+  dbOverride?: DbInstance
+): Promise<Listing | null> {
+  const db = dbOverride || getDb();
+  const results = await db.delete(listings).where(and(
+    eq(listings.id, id),
+    eq(listings.sellerId, sellerId),
+    eq(listings.status, 'archived')
+  )).returning();
+  return results[0] || null;
+}
+
+/** Count the remaining listings attached to a physical copy before cleaning it up. */
+export async function countListingsByPhysicalCopyId(
+  physicalCopyId: string,
+  dbOverride?: DbInstance
+): Promise<number> {
+  const db = dbOverride || getDb();
+  const results = await db.select({ total: count() })
+    .from(listings)
+    .where(eq(listings.physicalCopyId, physicalCopyId));
+  return Number(results[0]?.total || 0);
+}

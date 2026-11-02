@@ -44,6 +44,20 @@ export function getVinylFormatPostgresPattern(filter: VinylFormatFilter): string
 
 /** Persist only format characteristics explicitly identified by the source text. */
 export function normalizeVinylFormatCharacteristics(format: string | null | undefined): VinylFormatFilter[] {
+  if (typeof format !== 'string' || !format.trim()) return [];
+
+  // Discogs uses "Album" for CD and cassette editions too. Do not interpret
+  // that generic token as an LP when the source explicitly identifies another
+  // medium and does not also identify vinyl.
+  const tokens = format.split(',').map((token) => token.trim().toLowerCase());
+  const hasExplicitVinyl = tokens.includes('vinyl');
+  const nonVinylMedia = new Set([
+    'cd', 'cassette', 'file', 'digital', 'dvd', 'blu-ray', 'sacd',
+    'minidisc', 'shellac', 'reel-to-reel', 'dat',
+  ]);
+  const hasNonVinylMedium = tokens.some((token) => nonVinylMedia.has(token));
+  if (hasNonVinylMedium && !hasExplicitVinyl) return [];
+
   return VINYL_FORMAT_FILTERS
     .filter((filter) => matchesVinylFormatFilter(format, filter.value))
     .map((filter) => filter.value);

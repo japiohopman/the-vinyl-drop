@@ -50,6 +50,8 @@ describe('controlled Release metadata', () => {
     expect(normalizeVinylFormatCharacteristics('Vinyl, LP, 12", Album')).toEqual(['lp', '12-inch']);
     expect(normalizeVinylFormatCharacteristics('Vinyl, Single, 45 RPM')).toEqual([]);
     expect(normalizeVinylFormatCharacteristics('Vinyl, 7 inch, Single')).toEqual(['7-inch']);
+    expect(normalizeVinylFormatCharacteristics('CD, Album, Reissue')).toEqual([]);
+    expect(normalizeVinylFormatCharacteristics('Cassette, Album')).toEqual([]);
   });
 
   it('rejects invalid manual country and genre values and mismatched country pairs', () => {

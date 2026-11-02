@@ -16,6 +16,7 @@ import {
   archiveListing,
   dismissCompletedListing,
   restoreCompletedListing,
+  permanentlyDeleteArchivedListing,
   transitionListingStatus,
 } from '../services/listingService';
 import { getListingComments, addComment } from '../services/commentService';
@@ -596,6 +597,17 @@ export async function postUnpublishListing(req: Request, res: Response, next: Ne
   try {
     if (!req.user) return res.redirect('/auth/login');
     await transitionListingStatus(req.params.id, req.user.id, 'draft');
+    return res.redirect('/listings');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function postDeleteArchivedListing(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return res.redirect('/auth/login');
+    const deleted = await permanentlyDeleteArchivedListing(req.params.id, req.user.id, undefined, { req });
+    setFlashCookie(res, 'success', deleted ? 'Archived listing deleted permanently.' : 'This listing was already removed.');
     return res.redirect('/listings');
   } catch (error) {
     next(error);

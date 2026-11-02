@@ -119,3 +119,32 @@ export function getPhotoPublicUrl(storagePath: string): string {
 export function clearInMemoryStorage(): void {
   inMemoryStorage.clear();
 }
+
+
+/** Restore a removed processed listing photo when a permanent delete transaction fails. */
+export async function restoreListingPhotoToStorage(
+  storagePath: string,
+  buffer: Buffer,
+  options?: StorageOptions
+): Promise<void> {
+  const extension = storagePath.split('.').pop()?.toLowerCase();
+  const contentType = extension === 'png'
+    ? 'image/png'
+    : extension === 'jpg' || extension === 'jpeg'
+      ? 'image/jpeg'
+      : 'image/webp';
+
+  if (config.NODE_ENV === 'test') {
+    inMemoryStorage.set(storagePath, { buffer: Buffer.from(buffer), contentType });
+    return;
+  }
+
+  const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
+  const { error } = await supabase.storage.from(BUCKET_NAME).upload(storagePath, buffer, {
+    contentType,
+    upsert: true,
+  });
+  if (error) {
+    throw new Error(`Supabase Storage restoration failed: ${error.message}`);
+  }
+}

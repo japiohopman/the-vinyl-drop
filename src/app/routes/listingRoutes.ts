@@ -23,6 +23,7 @@ import {
   getPreviewListingPage,
   postPublishListing,
   postArchiveListing,
+  postDeleteArchivedListing,
   postDismissCompletedListing,
   postRestoreCompletedListing,
   postUnpublishListing,
@@ -68,6 +69,7 @@ router.post('/:id/photos/reorder', requireAuth, validateSameOrigin, postReorderP
 router.post('/:id/publish', requireAuth, validateSameOrigin, postPublishListing);
 router.post('/:id/unpublish', requireAuth, validateSameOrigin, postUnpublishListing);
 router.post('/:id/archive', requireAuth, validateSameOrigin, postArchiveListing);
+router.post('/:id/delete', requireAuth, validateSameOrigin, postDeleteArchivedListing);
 router.post('/:id/dismiss', requireAuth, validateSameOrigin, postDismissCompletedListing);
 router.post('/:id/restore-dismissed', requireAuth, validateSameOrigin, postRestoreCompletedListing);
 

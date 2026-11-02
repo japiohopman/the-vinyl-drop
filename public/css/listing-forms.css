@@ -1141,3 +1141,73 @@
     overflow-wrap: anywhere;
   }
 }
+
+
+/* Discogs editions stay explicit: each touch-friendly choice shows its provider format before selection. */
+.discogs-candidate-picker {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+.discogs-candidate-picker[hidden] {
+  display: none;
+}
+.discogs-candidate-option {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  min-height: 76px;
+  padding: 0.75rem;
+  border: 1px solid var(--border-subtle, #c7c7c7);
+  border-radius: 0.65rem;
+  background: var(--surface-raised, #fff);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.discogs-candidate-option:hover,
+.discogs-candidate-option:focus-visible {
+  border-color: var(--color-accent, currentColor);
+}
+.discogs-candidate-option:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.discogs-candidate-option img,
+.discogs-candidate-no-artwork {
+  display: grid;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  place-items: center;
+  background: var(--surface-muted, #eee);
+  font-size: 0.65rem;
+  text-align: center;
+}
+.discogs-candidate-option-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+.discogs-candidate-option-copy strong,
+.discogs-candidate-option-copy small {
+  overflow-wrap: anywhere;
+}
+.discogs-candidate-format {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+@media (max-width: 480px) {
+  .discogs-candidate-option {
+    align-items: flex-start;
+    padding: 0.65rem;
+  }
+  .discogs-candidate-option img,
+  .discogs-candidate-no-artwork {
+    flex-basis: 48px;
+    width: 48px;
+    height: 48px;
+  }
+}

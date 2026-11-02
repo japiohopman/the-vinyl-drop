@@ -5,6 +5,7 @@ import path from 'path';
 import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 import { LISTING_PHOTO_ROLE_GUIDANCE, LISTING_PHOTO_ROLE_LABELS, LISTING_PHOTO_ROLES, NEW_LISTING_PHOTO_ROLES } from '../src/domain/listingPhotoRole';
+import { VINYL_FORMAT_FILTERS } from '../src/domain/releaseFormat';
 
 // The project test tsconfig omits DOM libs; these globals are only referenced
 // inside functions serialized and executed by Playwright in a browser page.
@@ -71,6 +72,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
         fieldErrors: {},
         generalErrors: [],
       },
+      formatCharacteristicOptions: VINYL_FORMAT_FILTERS,
     }, { filename: releasePath }) as unknown as Promise<string>;
   }
 
@@ -402,6 +404,13 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.setViewportSize({ width: 375, height: 800 });
     await page.setContent(documentHtml(headerHtml, releaseHtml));
     let lookupRequests = 0;
+    await page.route('https://i.discogs.com/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="#fff"/></svg>',
+      });
+    });
     await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
       lookupRequests += 1;
       await route.fulfill({
@@ -712,6 +721,132 @@ describe('Custom release mobile navigation and artwork picker', () => {
     }));
     expect(dimensions.document).toBeLessThanOrEqual(321);
     expect(dimensions.body).toBeLessThanOrEqual(321);
+  });
+
+  it('requires the seller to choose a Discogs edition and keeps each edition linked to its own format and artwork', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+    const candidates = [
+      {
+        artist: 'Daft Punk',
+        title: 'Discovery',
+        formatLabel: 'Vinyl, LP, Album',
+        metadata: {
+          label: 'Virgin',
+          catalogueNumber: 'V 2940',
+          releaseYear: '2001',
+          format: 'Vinyl, LP, Album',
+          formatCharacteristics: ['lp'],
+          coverArtUrl: 'https://i.discogs.com/discovery-vinyl.jpg',
+          discogsExternalId: '101',
+        },
+      },
+      {
+        artist: 'Daft Punk',
+        title: 'Discovery',
+        formatLabel: 'CD, Album, Reissue',
+        metadata: {
+          label: 'Virgin',
+          catalogueNumber: 'CDVX 2940',
+          releaseYear: '2001',
+          format: 'CD, Album, Reissue',
+          formatCharacteristics: [],
+          coverArtUrl: '',
+          discogsExternalId: '202',
+        },
+      },
+    ];
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          found: true,
+          matchType: 'release',
+          selectionRequired: true,
+          candidates,
+          metadata: candidates[0].metadata,
+        }),
+      });
+    });
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Daft Punk');
+    await page.locator('#releaseTitle').fill('Discovery');
+    await page.waitForFunction(
+      () => document.querySelector('[data-discogs-candidates] button') !== null,
+      undefined,
+      { timeout: 3000 }
+    );
+
+    const choices = page.locator('[data-discogs-candidates] button');
+    expect(await choices.count()).toBe(2);
+    expect(await choices.nth(0).innerText()).toContain('Format: Vinyl, LP, Album');
+    expect(await choices.nth(0).innerText()).toContain('Recognized vinyl: LP');
+    expect(await choices.nth(1).innerText()).toContain('Format: CD, Album, Reissue');
+    expect(await choices.nth(1).innerText()).toContain('No catalogue artwork');
+
+    // Keyboard selection of the CD edition must not borrow the vinyl edition's image.
+    await choices.nth(1).focus();
+    await choices.nth(1).press('Enter');
+    expect(await page.locator('#discogsExternalId').inputValue()).toBe('202');
+    expect(await page.locator('[data-discogs-field="format"]').inputValue()).toBe('CD, Album, Reissue');
+    expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('');
+    expect(await page.locator('[data-discogs-cover-preview] img').getAttribute('src')).toBeNull();
+    expect(await page.locator('[data-discogs-candidates]').isHidden()).toBe(true);
+  });
+
+  it('supports touch selection of a vinyl Discogs edition and applies its own artwork and characteristics', async () => {
+    const touchContext = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    const touchPage = await touchContext.newPage();
+    try {
+      await touchPage.setContent(documentHtml(await renderHeader('/drop/new'), await renderReleasePage()));
+      await touchPage.route('http://localhost/releases/lookup-metadata**', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            found: true,
+            matchType: 'release',
+            selectionRequired: true,
+            candidates: [{
+              artist: 'Daft Punk',
+              title: 'Discovery',
+              formatLabel: 'Vinyl, LP, 12-inch',
+              metadata: {
+                label: 'Virgin',
+                catalogueNumber: 'V 2940',
+                releaseYear: '2001',
+                format: 'Vinyl, LP, 12-inch',
+                formatCharacteristics: ['lp', '12-inch'],
+                coverArtUrl: 'https://i.discogs.com/discovery-vinyl.jpg',
+                discogsExternalId: '101',
+              },
+            }],
+          }),
+        });
+      });
+      await touchPage.addScriptTag({ content: discogsLookupScript });
+      await touchPage.locator('#releaseArtist').fill('Daft Punk');
+      await touchPage.locator('#releaseTitle').fill('Discovery');
+      await touchPage.waitForFunction(
+        () => document.querySelector('[data-discogs-candidates] button') !== null,
+        undefined,
+        { timeout: 3000 }
+      );
+      await touchPage.locator('[data-discogs-candidates] button').tap();
+
+      expect(await touchPage.locator('#discogsExternalId').inputValue()).toBe('101');
+      expect(await touchPage.locator('#discogsCoverArtUrl').inputValue()).toBe('https://i.discogs.com/discovery-vinyl.jpg');
+      expect(await touchPage.locator('[name="formatCharacteristics"][value="lp"]').isChecked()).toBe(true);
+      expect(await touchPage.locator('[name="formatCharacteristics"][value="12-inch"]').isChecked()).toBe(true);
+    } finally {
+      await touchContext.close();
+    }
   });
 
   it('prevents horizontal overflow and stacks metadata fields at narrow viewport sizes', async () => {

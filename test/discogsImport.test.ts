@@ -114,6 +114,73 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
       });
     });
 
+    it('returns linked edition candidates and requires an explicit choice when Discogs finds vinyl and CD pressings', async () => {
+      const search = jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([
+        {
+          id: 'discogs:202',
+          providerName: 'discogs',
+          externalId: '202',
+          artist: 'Daft Punk',
+          title: 'Discovery',
+          label: 'Virgin',
+          catalogueNumber: 'CDVX 2940',
+          releaseYear: 2001,
+          format: 'CD, Album, Reissue',
+          matchScore: 0,
+          matchedEvidence: [],
+          provenance: { provider: 'discogs', externalId: '202', fetchedAt: '2026-01-01T00:00:00.000Z' },
+        },
+        {
+          id: 'discogs:101',
+          providerName: 'discogs',
+          externalId: '101',
+          artist: 'Daft Punk',
+          title: 'Discovery',
+          label: 'Virgin',
+          catalogueNumber: 'V 2940',
+          releaseYear: 2001,
+          format: 'Vinyl, LP, Album',
+          coverArtUrl: 'https://i.discogs.com/discovery-vinyl.jpg',
+          matchScore: 0,
+          matchedEvidence: [],
+          provenance: { provider: 'discogs', externalId: '101', fetchedAt: '2026-01-01T00:00:00.000Z' },
+        },
+      ]);
+      const artworkLookup = jest.spyOn(DiscogsMetadataProvider.prototype, 'getReleaseArtwork');
+
+      const response = await supertest(app)
+        .get('/releases/lookup-metadata')
+        .query({ artist: 'Daft Punk', title: 'Discovery' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body.selectionRequired).toBe(true);
+      expect(response.body.candidates).toHaveLength(2);
+      expect(response.body.candidates[0]).toMatchObject({
+        formatLabel: 'Vinyl, LP, Album',
+        hasArtwork: true,
+        metadata: {
+          discogsExternalId: '101',
+          format: 'Vinyl, LP, Album',
+          coverArtUrl: 'https://i.discogs.com/discovery-vinyl.jpg',
+          formatCharacteristics: ['lp'],
+        },
+      });
+      expect(response.body.candidates[1]).toMatchObject({
+        formatLabel: 'CD, Album, Reissue',
+        hasArtwork: false,
+        metadata: {
+          discogsExternalId: '202',
+          format: 'CD, Album, Reissue',
+          coverArtUrl: '',
+          formatCharacteristics: [],
+        },
+      });
+      expect(response.body.candidates[1].metadata.coverArtUrl).not.toBe(response.body.candidates[0].metadata.coverArtUrl);
+      expect(artworkLookup).not.toHaveBeenCalled();
+      expect(search).toHaveBeenCalledTimes(1);
+    });
+
     it('enriches a confident album match from Discogs release details when search results omit artwork', async () => {
       const artworkUrl = 'https://i.discogs.com/release-detail-cover.jpg';
       jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([{
