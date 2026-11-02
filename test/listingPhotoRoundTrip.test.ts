@@ -335,8 +335,9 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(listingPhotoForm.text).toContain('Front of your copy');
     expect(listingPhotoForm.text).toContain('Back of your copy');
     expect(listingPhotoForm.text).toContain('Release artwork');
-    expect(listingPhotoForm.text).toContain('data:image/webp;base64,');
+    expect(listingPhotoForm.text).toContain('https://i.discogs.com/original-kind-of-blue.jpg');
     expect(listingPhotoForm.text).toContain('default front image when you do not add a front photo of your copy');
+    expect(listingPhotoForm.text).toContain('Use original Discogs artwork');
     expect(listingPhotoForm.text).toContain('Additional photos');
     expect(listingPhotoForm.text).toContain('Photo help');
     expect(listingPhotoForm.text).toContain('Choose photo');
@@ -358,6 +359,7 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(digResponse.text).toContain(`/mock-storage/${front?.storagePath}`);
     expect(digResponse.text).toContain(`/mock-storage/${back?.storagePath}`);
     expect(digResponse.text).not.toContain('https://catalog.example/miles.jpg');
+    expect(digResponse.text).not.toContain('https://i.discogs.com/original-kind-of-blue.jpg');
     expect(digResponse.text).not.toContain('Front cover not photographed');
     expect(digResponse.text).not.toContain('Back cover not photographed');
   });
