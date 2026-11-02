@@ -95,14 +95,14 @@
 }
 
 .status-page-action-primary {
-  border-color: var(--color-rust);
-  background: var(--color-rust);
+  border-color: var(--color-rust-accessible);
+  background: var(--color-rust-accessible);
   color: var(--color-white);
 }
 
 .status-page-action-primary:hover {
-  border-color: var(--color-rust-hover);
-  background: var(--color-rust-hover);
+  border-color: var(--color-deep-green);
+  background: var(--color-deep-green);
   color: var(--color-white);
 }
 
