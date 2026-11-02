@@ -32,7 +32,7 @@ Use lowercase kebab-case. Include the theme when theme changes are relevant; use
 
 ## Owner-confirmed discovery pair
 
-For the current discovery UI, use the **Browse desktop** reference in `browse/` and the **Dig mobile** reference in `dig/` as the paired desktop/mobile references. Do not require both route names at both viewport sizes. This pairing may change only when a future issue explicitly separates the two experiences.
+For the current discovery UI, use the **Browse desktop** reference linked in the central index (the existing historical file currently remains at `docs/verification/desktop_browse_list_1280x800.png`) and the **Dig mobile** reference in `dig/` as the paired desktop/mobile references. Do not require both route names at both viewport sizes. When a current Browse desktop capture replaces the historical one, store it in `browse/` and update the central index. This pairing may change only when a future issue explicitly separates the two experiences.
 
 ## Required metadata
 
