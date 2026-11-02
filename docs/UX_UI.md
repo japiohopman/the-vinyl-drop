@@ -15,6 +15,10 @@ It explicitly does not look like:
 
 The record cover photography and structured release metadata provide the primary visual character.
 
+## Full Screen and Status-Page Inventory
+
+The full source-audited route and view map is maintained in [`docs/PAGE_MAP.md`](./PAGE_MAP.md). The visual reference register is [`docs/verification/UI_VISUAL_REFERENCE.md`](./verification/UI_VISUAL_REFERENCE.md), including `information/` and `errors/` groups. Branded error direction (404 empty sleeve, 500 paused turntable) is documented separately at [`docs/design/working/branded-status-and-information-page-direction.md`](./design/working/branded-status-and-information-page-direction.md). UI issues must distinguish an actual Express-rendered page from text/JSON rate-limit responses or host-owned gateway/protocol errors.
+
 ## Canonical Visual Reference Library
 
 The current desktop/mobile screen references, baseline update rules and UI issue linking convention are maintained in [`docs/verification/UI_VISUAL_REFERENCE.md`](./verification/UI_VISUAL_REFERENCE.md). UI issues and PRs must link the relevant surface row/image there and update that same reference when an intentional visual change is accepted.

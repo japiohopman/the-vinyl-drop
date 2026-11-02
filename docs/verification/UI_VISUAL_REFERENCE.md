@@ -6,9 +6,11 @@ This directory is the durable visual reference library for The Vinyl Drop. It se
 
 | Need | Location | Authority |
 | --- | --- | --- |
-| Approved screen appearance | [`ui-baselines/`](./ui-baselines/README.md) | Only reviewed, privacy-safe screenshots listed in the baseline register are visual baselines. |
+| Approved screen appearance | [`ui-baselines/`](./ui-baselines/README.md) | Only reviewed, staging/test-account screenshots listed in the baseline register are visual references. |
 | Original icons, artwork and illustrations | [Visual Asset Catalogue](./VISUAL_ASSET_CATALOGUE.md) | The original file in `public/` is the production source of truth. |
-| Temporary responsive/browser evidence | GitHub Actions artifacts listed below | Diagnostic evidence only; not a replacement for an approved baseline. |
+| Information pages | [`ui-baselines/information/`](./ui-baselines/information/README.md) | Terms, Installation, Privacy Notice, Community Rules and Contact; desktop/mobile captures are still to be added. |
+| Branded error and failure states | [`ui-baselines/errors/`](./ui-baselines/errors/README.md) | Actual Express-owned 400/404/500 templates and non-page status responses; do not invent host-owned 505 pages. |
+| Temporary responsive/browser evidence | GitHub Actions artifacts listed below | Diagnostic evidence only; not a replacement for a reviewed visual reference. |
 | Older committed screenshots and video | Legacy evidence register below | Historical context until content, provenance and synthetic-data safety are reviewed. |
 
 ## Approved baseline register
@@ -23,31 +25,63 @@ Jaap confirms these images were captured on staging with test accounts and conta
 
 The desktop/mobile pairing is intentionally **Browse on desktop + Dig on mobile**. Do not request a desktop Dig or mobile Browse capture for this same discovery experience unless a future issue introduces a distinct design that needs its own reference.
 
-| Surface | Reference image | Viewport | Route / state | Capture metadata |
+| Surface | Reference image | Viewport | Route / state | Theme | Capture metadata |
 | --- | --- | ---: | --- | --- |
-| Activity | [Desktop](./ui-baselines/activity/ACTIVITY_desktop.png) · [Mobile](./ui-baselines/activity/ACTIVITY_mobiel.png) | 1497×5423 · 412×7138 | Activity feed; populated community state | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
-| Discovery — desktop | [Existing Browse list reference](./desktop_browse_list_1280x800.png) | 1280×800 | Browse (`/browse`); list view with filters | Existing committed legacy capture, retained as historical desktop reference; it predates this supplied batch, so use as context and replace only when a current intended Browse redesign is approved |
-| Discovery — mobile | [Dig mobile](./ui-baselines/dig/dig_mobiel.png) | 412×691 | Dig / crate experience; record card visible | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
+| Activity | [Desktop](./ui-baselines/activity/ACTIVITY_desktop.png) · [Mobile](./ui-baselines/activity/ACTIVITY_mobiel.png) | 1497×5423 · 412×7138 | Activity feed; populated community state | Not recorded | Manual staging capture, 2 Nov 2026; deployed application SHA not recorded |
+| Discovery — desktop | [Existing Browse list reference](./desktop_browse_list_1280x800.png) | 1280×800 | Browse (`/browse`); list view with filters | Not recorded | Legacy capture; capture method, date and deployed application SHA not recorded. Retain as historical context until a current replacement is reviewed |
+| Discovery — mobile | [Dig mobile](./ui-baselines/dig/dig_mobiel.png) | 412×691 | Dig / crate experience; record card visible | Not recorded | Manual staging capture, 2 Nov 2026; deployed application SHA not recorded |
 | Home | **Pending:** `home/home-desktop.png` · `home/home-mobile.png` | — | Home / `/` | An older `home/home_desktop.png` placeholder on `main` is zero bytes; no valid Home capture is present in this PR |
-| Listing creation | [Desktop step 1](./ui-baselines/listing-creation/desktop_craetion_1.png) · [Desktop step 2](./ui-baselines/listing-creation/desktop_cration_screen2.png) · [Desktop step 3](./ui-baselines/listing-creation/desktop_creation_2.png) · [Desktop edit/photos](./ui-baselines/listing-creation/desktop_creation_screen3.png) · [Desktop finish](./ui-baselines/listing-creation/desktop_creation_finish.png) | 1497px wide | + DROP / release and listing creation flow | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
-| Listing creation — mobile | [Mobile step 1](./ui-baselines/listing-creation/mobiel_creatoin_screen1.png) · [Mobile step 2](./ui-baselines/listing-creation/mobiel_creation_screen2.png) · [Mobile step 3](./ui-baselines/listing-creation/mobiel_creation_screen3.png) · [Mobile finish](./ui-baselines/listing-creation/mobiel_creation_finesh.png) | 412px wide | + DROP / release and listing creation flow | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
-| Listing detail | [Desktop](./ui-baselines/listing-detail/album_listing_desktop.png) · [Mobile](./ui-baselines/listing-detail/album_listing_mobiel.png) | 1497×1245 · 412×1170 | Listing detail; album artwork, record/price/seller context | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
-| Navigation / YOU | [Desktop](./ui-baselines/navigation/menu_desktop.png) · [Mobile](./ui-baselines/navigation/menu_mobiel.png) | 1497×923 · 412×725 | Signed-in account menu; direct Options entry | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
-| Messaging | [Desktop conversations](./ui-baselines/messaging/massaging_desktop.png) · [Mobile conversations](./ui-baselines/messaging/massaging_mobile.png) · [Mobile People](./ui-baselines/messaging/masseging_mobile_people.png) | 1497×1573 · 412×1970 | Floating Messages panel; Conversations and People states | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
-| Options | [Desktop](./ui-baselines/options/desktop_options.png) · [Mobile](./ui-baselines/options/mobiel_options.png) | 1497×1573 · 412×1970 | `/options`; Sound & Interaction and all six Appearance themes, Record Shop selected | Staging, 2 Nov 2026; exact deployed app SHA not recorded. Mobile full-page capture shows the fixed bottom nav at its viewport position across the long capture; use as a surface reference, not a continuous scroll-layout golden |
-| Profiles | [Desktop](./ui-baselines/profiles/profiel_desktop.png) · [Mobile](./ui-baselines/profiles/profiel_mobiel.png) | 1497×923 · 412×725 | Profile header, identity, bio and Crate entry | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
+| Listing creation | [Desktop step 1](./ui-baselines/listing-creation/desktop_craetion_1.png) · [Desktop step 2](./ui-baselines/listing-creation/desktop_cration_screen2.png) · [Desktop step 3](./ui-baselines/listing-creation/desktop_creation_2.png) · [Desktop edit/photos](./ui-baselines/listing-creation/desktop_creation_screen3.png) · [Desktop finish](./ui-baselines/listing-creation/desktop_creation_finish.png) | 1497px wide | + DROP / release and listing creation flow | Not recorded | Manual staging capture, 2 Nov 2026; deployed application SHA not recorded |
+| Listing creation — mobile | [Mobile step 1](./ui-baselines/listing-creation/mobiel_creatoin_screen1.png) · [Mobile step 2](./ui-baselines/listing-creation/mobiel_creation_screen2.png) · [Mobile step 3](./ui-baselines/listing-creation/mobiel_creation_screen3.png) · [Mobile finish](./ui-baselines/listing-creation/mobiel_creation_finesh.png) | 412px wide | + DROP / release and listing creation flow | Not recorded | Manual staging capture, 2 Nov 2026; deployed application SHA not recorded |
+| Listing detail | [Desktop](./ui-baselines/listing-detail/album_listing_desktop.png) · [Mobile](./ui-baselines/listing-detail/album_listing_mobiel.png) | 1497×1245 · 412×1170 | Listing detail; album artwork, record/price/seller context | Not recorded | Manual staging capture, 2 Nov 2026; deployed application SHA not recorded |
+| Navigation / YOU | [Desktop](./ui-baselines/navigation/menu_desktop.png) · [Mobile](./ui-baselines/navigation/menu_mobiel.png) | 1497×923 · 412×725 | Signed-in account menu; direct Options entry | Not recorded | Manual staging capture, 2 Nov 2026; deployed application SHA not recorded |
+| Messaging | [Desktop conversations](./ui-baselines/messaging/massaging_desktop.png) · [Mobile conversations](./ui-baselines/messaging/massaging_mobile.png) · [Mobile People](./ui-baselines/messaging/masseging_mobile_people.png) | 1497×1573 · 412×1970 | Floating Messages panel; Conversations and People states | Not recorded | Manual staging capture, 2 Nov 2026; deployed application SHA not recorded |
+| Options | [Desktop](./ui-baselines/options/desktop_options.png) · [Mobile](./ui-baselines/options/mobiel_options.png) | 1497×1573 · 412×1970 | `/options`; Sound & Interaction and all six Appearance themes, Record Shop selected | Record Shop selected | Manual staging capture, 2 Nov 2026; deployed application SHA not recorded. Mobile full-page capture shows the fixed bottom nav at its viewport position across the long capture; use as a surface reference, not a continuous scroll-layout golden |
+| Profiles | [Desktop](./ui-baselines/profiles/profiel_desktop.png) · [Mobile](./ui-baselines/profiles/profiel_mobiel.png) | 1497×923 · 412×725 | Profile header, identity, bio and Crate entry | Not recorded | Manual staging capture, 2 Nov 2026; deployed application SHA not recorded |
 
 The former duplicate `menu/` files have been removed; `navigation/` is the single canonical home for the desktop and mobile YOU-menu references. The two zero-byte Dig placeholders were removed rather than retained as fake screenshots. `home/` and `browse/` now contain README instructions describing their expected canonical filenames.
 
-### Remaining owner screenshot intake
+### Remaining owner screenshot intake — core marketplace batch (#307)
 
-Only one visual surface remains without a usable current reference pair:
+Within the original core marketplace batch, one visual surface remains without a usable current reference pair:
 
 1. **Home:** the existing `home/home_desktop.png` on `main` is a zero-byte placeholder, so it is not usable, and no Home mobile image is present. Jaap indicated Home was already prepared locally, but no valid Home image is currently visible in this PR's changed-file list. If that capture exists under another path, link/identify it; otherwise add one desktop and one mobile Home capture under `home/`.
 
 Browse desktop is covered by the existing historical [1280×800 Browse list reference](./desktop_browse_list_1280x800.png); Dig mobile is the paired mobile reference. No extra desktop Dig or mobile Browse capture is required.
 
-All other requested surfaces have received usable screenshot files. The listing-creation and messaging names retain some original spelling inconsistencies to avoid unnecessary binary churn; the index links to the exact canonical files. Long fixed-navigation screenshots remain useful as contextual references, but not as exact uninterrupted full-page layout goldens.
+All other surfaces from the original #307 marketplace screenshot request have received usable screenshot files. The separate `information/` and `errors/` capture families introduced by #310 are tracked in the section below and still need their own representative captures. The listing-creation and messaging names retain some original spelling inconsistencies to avoid unnecessary binary churn; the index links to the exact canonical files. Long fixed-navigation screenshots remain useful as contextual references, but not as exact uninterrupted full-page layout goldens.
+
+## Full-screen inventory and branded status pages — Issue #310
+
+The source-audited route/view catalogue is maintained in [`docs/PAGE_MAP.md`](../PAGE_MAP.md). Screen-specific error and information-page concepts are in [`branded-status-and-information-page-direction.md`](../design/working/branded-status-and-information-page-direction.md).
+
+### Information pages — reference captures pending
+
+The routes and templates are confirmed, but no dedicated image baselines have been committed yet. Required references:
+
+| Page | Route | Desktop | Mobile |
+| --- | --- | --- | --- |
+| Terms of Use | `/terms` | `information/terms-desktop.png` | `information/terms-mobile.png` |
+| Installation | `/install` | `information/install-desktop.png` | `information/install-mobile.png` |
+| Privacy Notice | `/privacy` | `information/privacy-desktop.png` | `information/privacy-mobile.png` |
+| Community Rules | `/community-rules` | `information/community-rules-desktop.png` | `information/community-rules-mobile.png` |
+| Contact | `/contact` | `information/contact-desktop.png` | `information/contact-mobile.png` |
+
+These images are not prerequisites for documenting the existing route/source map, but they are required before claiming a complete visual reference set for the information family. Capture representative first-viewport states; add a separate Contact validation/success capture only when it adds useful context.
+
+### Application error templates and current response types
+
+| State | Actual application source | Reference status |
+| --- | --- | --- |
+| Generic 400 / client error | `views/errors/400.ejs` | Pending desktop/mobile capture. Inline form-validation states remain in their owning form view. |
+| 404 / not found | `views/errors/404.ejs` | Pending branded desktop/mobile capture; empty-sleeve concept is documented but not implemented. |
+| 500 / internal error | `views/errors/500.ejs` | Pending desktop/mobile capture; turntable-paused concept is documented but not implemented. |
+| 403 | Currently reuses `400.ejs` in generic error handling; some listing controller branches use `500.ejs` with status 403. | No separate 403 template; inconsistency is recorded in PAGE_MAP. |
+| 429 | Shared rate limiter emits plain text/JSON; Contact's per-email cooldown re-renders Contact. | Not a standalone HTML screenshot until an HTML response is implemented. |
+| 503 | Shared rate-limit failure emits plain text/JSON; Contact provider failure renders Contact; generic Express errors may use `500.ejs`. | No single standalone 503 screen. |
+| 502 / 504 / 505 | No dedicated application route/template; may be generated by the host/reverse proxy. | No application baseline. Only map/brand if the deployed edge supports a custom error document. |
+
+Do not trigger an actual production failure to capture an error. Use a controlled staging/test state; preserve the real HTTP status and never expose stack traces, SQL or provider diagnostics.
 
 ## How future issues and PRs must use this library
 
