@@ -52,24 +52,6 @@
   min-width: 0;
 }
 
-/* Give the selected release artwork a proper editorial presence on desktop. */
-@media (min-width: 768px) {
-  .custom-release-primary-fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .discogs-cover-preview {
-    grid-template-columns: 224px minmax(0, 1fr);
-    gap: var(--space-4);
-    padding: var(--space-4) 0;
-  }
-  .discogs-cover-preview-frame {
-    width: 224px;
-  }
-  .discogs-cover-preview-copy p {
-    max-width: 42rem;
-    font-size: var(--font-size-sm);
-  }
-}
 .custom-release-field {
   display: flex;
   flex-direction: column;
@@ -194,6 +176,24 @@
 }
 .discogs-cover-preview[data-state="found"] .discogs-cover-preview-kicker { color: var(--color-deep-green); }
 .discogs-cover-preview[data-state="error"] .discogs-cover-preview-kicker { color: var(--color-rust-accessible); }
+/* Give the selected release artwork a proper editorial presence on desktop. */
+@media (min-width: 768px) {
+  .custom-release-primary-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .discogs-cover-preview {
+    grid-template-columns: 224px minmax(0, 1fr);
+    gap: var(--space-4);
+    padding: var(--space-4) 0;
+  }
+  .discogs-cover-preview-frame {
+    width: 224px;
+  }
+  .discogs-cover-preview-copy p {
+    max-width: 42rem;
+    font-size: var(--font-size-sm);
+  }
+}
 .release-cover-override-preview {
   display: flex;
   align-items: center;
