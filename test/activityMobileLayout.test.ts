@@ -240,7 +240,9 @@ describe('Mobile Activity single-column layout', () => {
       };
     });
 
+    expect(layout.feedColumns.trim().split(/\s+/).length).toBe(2);
     expect(layout.cardColumns.trim().split(/\s+/).length).toBe(2);
+    expect(layout.artworkWidth).toBeGreaterThan(128);
     expect(layout.contentDisplay).toBe('grid');
     expect(layout.contentColumns.trim().split(/\s+/).length).toBe(2);
   });
