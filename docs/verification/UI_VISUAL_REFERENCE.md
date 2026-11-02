@@ -17,6 +17,43 @@ No existing committed capture has yet been promoted to an approved baseline. The
 
 When a screenshot is approved, add it under `ui-baselines/<surface>/`, record its route, viewport, state, theme and source commit here, and explain why the baseline represents intentional product behavior.
 
+## Owner-supplied screenshot intake — received, review pending
+
+Jaap's screenshot batch is present on this PR branch at head `fd334e6a0b022b19cd1a2d9b4bafd236589e2844`. The changed-file list contains **22 PNG paths**. A PNG-header check confirmed **21 valid PNG files and one zero-byte/empty file**. All images remain intake material, not approved baselines, until their source data, state and privacy are cleared.
+
+| Surface / submitted path | Image size (px) | Review result |
+| --- | ---: | --- |
+| Activity — [`activity/ACTIVITY_desktop.png`](./ui-baselines/activity/ACTIVITY_desktop.png) | 1497 × 5423 | Hold: feed entries expose profile/account names and listing activity; synthetic-data provenance is unconfirmed. |
+| Activity — [`activity/ACTIVITY_mobiel.png`](./ui-baselines/activity/ACTIVITY_mobiel.png) | 412 × 7138 | Hold: same live-looking feed/account content and unconfirmed fixture provenance. |
+| Dig — [`dig/dig_desktop.png`](./ui-baselines/dig/dig_desktop.png) | 0 bytes | Invalid/empty PNG. Replace with an actual desktop capture. |
+| Dig — [`dig/dig_mobiel.png`](./ui-baselines/dig/dig_mobiel.png) | 412 × 691 | Candidate only: valid image, but route/state and synthetic/demo provenance still need recording. |
+| Listing creation — [`listing-creation/desktop_craetion_1.png`](./ui-baselines/listing-creation/desktop_craetion_1.png) | 1497 × 923 | Hold: sample release/form context and seller account context need synthetic-data confirmation; filename typo. |
+| Listing creation — [`listing-creation/desktop_cration_screen2.png`](./ui-baselines/listing-creation/desktop_cration_screen2.png) | 1497 × 1420 | Hold: form state includes release metadata and seller account context; filename typo and provenance need review. |
+| Listing creation — [`listing-creation/desktop_creation_2.png`](./ui-baselines/listing-creation/desktop_creation_2.png) | 1497 × 1533 | Hold: release/listing preview content includes a seller handle; synthetic fixture not confirmed. |
+| Listing creation — [`listing-creation/desktop_creation_finish.png`](./ui-baselines/listing-creation/desktop_creation_finish.png) | 1497 × 1200 | Hold: listing completion state includes seller identity; confirm fixture or replace with anonymized data. |
+| Listing creation — [`listing-creation/desktop_creation_screen3.png`](./ui-baselines/listing-creation/desktop_creation_screen3.png) | 1497 × 2561 | Hold: seller/listing context visible and fixed navigation appears mid-capture; check capture framing. |
+| Listing creation — [`listing-creation/mobiel_creation_finesh.png`](./ui-baselines/listing-creation/mobiel_creation_finesh.png) | 412 × 1366 | Hold: seller/listing details visible; filename typo and synthetic-data provenance need review. |
+| Listing creation — [`listing-creation/mobiel_creation_screen2.png`](./ui-baselines/listing-creation/mobiel_creation_screen2.png) | 412 × 1343 | Hold: fixed mobile navigation crosses the full-page capture; verify capture framing and fixture data. |
+| Listing creation — [`listing-creation/mobiel_creation_screen3.png`](./ui-baselines/listing-creation/mobiel_creation_screen3.png) | 412 × 2387 | Hold: long page capture has fixed navigation over content and seller context; verify framing and fixture data. |
+| Listing creation — [`listing-creation/mobiel_creatoin_screen1.png`](./ui-baselines/listing-creation/mobiel_creatoin_screen1.png) | 412 × 2017 | Hold: release-entry values visible; filename typo and synthetic-data provenance need review. |
+| Listing detail — [`listing-detail/album_listing_desktop.png`](./ui-baselines/listing-detail/album_listing_desktop.png) | 1497 × 1245 | Hold: account handle is visible in the shared header; confirm listing is synthetic and anonymize the account. |
+| Listing detail — [`listing-detail/album_listing_mobiel.png`](./ui-baselines/listing-detail/album_listing_mobiel.png) | 412 × 1170 | Hold: account handle is visible in the shared header; confirm listing is synthetic and anonymize the account. |
+| Navigation — [`menu/menu_desktop.png`](./ui-baselines/menu/menu_desktop.png) | 1497 × 923 | Hold: open account menu exposes account/profile details and an email address. Do not promote or merge this image unredacted. |
+| Navigation — [`menu/menu_mobiel.png`](./ui-baselines/menu/menu_mobiel.png) | 412 × 725 | Candidate after route/theme/source provenance and synthetic background are confirmed. This is the current mobile YOU menu with direct Options entry. Folder name is `menu/`, not the planned `navigation/`. |
+| Messaging — [`messaging/massaging_desktop.png`](./ui-baselines/messaging/massaging_desktop.png) | 1497 × 1573 | Hold: private conversation previews and participant/account identifiers are visible. Replace with synthetic, non-private conversation fixtures before committing as a baseline. |
+| Messaging — [`messaging/massaging_mobile.png`](./ui-baselines/messaging/massaging_mobile.png) | 412 × 1970 | Hold: private conversation previews and participant/account identifiers are visible. Replace with synthetic fixtures. |
+| Messaging — [`messaging/masseging_mobile_people.png`](./ui-baselines/messaging/masseging_mobile_people.png) | 412 × 1970 | Hold: People view shows participant/account identifiers and an underlying profile; replace with synthetic fixtures. |
+| Profiles — [`profiles/profiel_desktop.png`](./ui-baselines/profiles/profiel_desktop.png) | 1497 × 923 | Hold: profile image/avatar, display name, username, location and bio are visible. Use a synthetic profile/avatar before baseline approval. |
+| Profiles — [`profiles/profiel_mobiel.png`](./ui-baselines/profiles/profiel_mobiel.png) | 412 × 725 | Hold: profile image/avatar, display name, username, location and bio are visible. Use a synthetic profile/avatar before baseline approval. |
+
+### Missing or mismatched surface folders
+
+The requested `home/`, `browse/`, `options/` and `navigation/` image folders are not present in the PR's changed-file list. A `menu/` folder was supplied instead; its mobile screenshot is a useful navigation candidate, but the desktop menu capture contains account details and must be replaced/redacted. The Options page is only partially visible behind a messaging overlay in one image, so it is not a clean Options baseline.
+
+The submitted root README's planned `drop/` and `profile/` names also differ from the actual `listing-creation/` and `profiles/` directories. Align these names before calling the structure final. Several filenames contain inconsistent spelling/locale; normalize them to the documented lowercase kebab-case convention when the final files are selected.
+
+**Privacy gate:** the desktop account-menu image contains an email address, messaging captures contain private conversation text/participant details, and profile/activity/listing captures expose account-linked information. Treat those as real/private unless they are replaced with clearly synthetic fixtures or redacted before merge. Do not use these unredacted files as approved references.
+
 ## Existing committed visual evidence
 
 These files already exist in `docs/verification/`; this index does not duplicate or move them.
