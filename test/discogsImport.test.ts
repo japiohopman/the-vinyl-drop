@@ -428,7 +428,9 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Add a record');
     expect(response.text).toContain('data-discogs-lookup-form');
-    expect(response.text).toContain('Use this device');
+    expect(response.text).toContain('data-discogs-cover-preview');
+    expect(response.text).not.toContain('name="coverArt"');
+    expect(response.text).not.toContain('Use this device');
     expect(response.text).toContain('Artist *');
     expect(response.text).toContain('Track or album title *');
   });
