@@ -267,7 +267,7 @@ export async function createRelease(input: ReleaseInput, dbOverride?: DbInstance
       label: data.label || null,
       catalogueNumber: data.catalogueNumber || null,
       releaseYear: data.releaseYear || null,
-      country: resolveCountry(data.countryCode || data.country)?.label || null,
+      country: resolveCountry(data.countryCode || data.country)?.label || data.country || null,
       countryCode: resolveCountry(data.countryCode || data.country)?.code || null,
       format: data.format || null,
       formatCharacteristics: data.formatCharacteristics?.length
