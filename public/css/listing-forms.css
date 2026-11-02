@@ -222,17 +222,6 @@
   .discogs-cover-preview-frame {
     width: 104px;
   }
-  .release-artwork-editor {
-    grid-template-columns: 104px minmax(0, 1fr);
-    gap: var(--space-3);
-  }
-  .release-artwork-preview-frame {
-    width: 104px;
-  }
-  .release-artwork-content h2 {
-    font-size: var(--font-size-md);
-  }
-
   .custom-release-page {
     margin: var(--space-3) auto !important;
     padding: 0 var(--space-3);
