@@ -175,6 +175,18 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(deniedStored.rows[0].cover_art_url).toBe('https://catalog.example/miles.jpg');
     expect(await findPhotosByListingId(listingId)).toHaveLength(0);
 
+    const invalidImage = await supertest(app)
+      .post(`/listings/${listingId}/release-artwork`)
+      .set('Origin', new URL(config.APP_BASE_URL).origin)
+      .attach('coverArt', Buffer.from('not an image'), { filename: 'invalid.jpg', contentType: 'image/jpeg' });
+    expect(invalidImage.status).toBe(302);
+    expect(invalidImage.headers.location).toContain('releaseArtworkError=invalid');
+    const invalidStored = await database.query<{ cover_art_url: string | null }>(
+      `SELECT cover_art_url FROM public.releases WHERE id = '${releaseId}'`
+    );
+    expect(invalidStored.rows[0].cover_art_url).toBe('https://catalog.example/miles.jpg');
+    expect(await findPhotosByListingId(listingId)).toHaveLength(0);
+
     const saved = await supertest(app)
       .post(`/listings/${listingId}/release-artwork`)
       .set('Origin', new URL(config.APP_BASE_URL).origin)
