@@ -15,6 +15,10 @@ It explicitly does not look like:
 
 The record cover photography and structured release metadata provide the primary visual character.
 
+## Canonical Visual Reference Library
+
+The current desktop/mobile screen references, baseline update rules and UI issue linking convention are maintained in [`docs/verification/UI_VISUAL_REFERENCE.md`](./verification/UI_VISUAL_REFERENCE.md). UI issues and PRs must link the relevant surface row/image there and update that same reference when an intentional visual change is accepted.
+
 ## Canonical Interaction Contract Reference
 
 The canonical, version-controlled interaction contract for navigation, account surface, SVG icons, toasts, and messaging window behavior is recorded in:
