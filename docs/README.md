@@ -11,6 +11,7 @@ This directory is the source of truth for product and architecture decisions.
 | DATA_ARCHITECTURE.md | PostgreSQL schema definitions, Drizzle ORM, migration testing, Supabase Auth & Storage architecture |
 | TECHNICAL_ARCHITECTURE.md | Application layers, Express route structure, middleware, view tree, security boundaries, testing architecture |
 | UX_UI.md | Visual direction, color tokens, typography, responsive navigation, views, accessibility standards |
+| verification/UI_VISUAL_REFERENCE.md | Approved UI screenshot baselines, historical visual evidence, Playwright artifacts and UI PR screenshot checklist |
 | email-templates/README.md | Branded Supabase Auth email templates, token-link contracts, and staging verification steps |
 | SECURITY_PRIVACY.md | Supabase Auth PKCE cookie sessions, server-side authorization, CSRF protection, input validation, upload security |
 | AGENTIC_WORKFLOW.md | Live GitHub Actions workflows (`ci`, `phase-safety-gate`, `jules-issue-dispatcher`, `jules-session-cleanup`, `chatgpt-review-relay`) |
