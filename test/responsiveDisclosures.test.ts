@@ -40,6 +40,7 @@ describe('Responsive disclosure browser behavior', () => {
         const browseHtml = await ejs.renderFile(browseTemplatePath, {
           title: 'Dig Vinyl Records',
           formatOptions: [{ value: '12-inch', label: '12-inch', description: '12-inch records' }],
+          genreOptions: ['Jazz', 'Hip Hop'],
           whiteLabelAvailable: false,
           filters: {
             q: '',
@@ -70,6 +71,7 @@ describe('Responsive disclosure browser behavior', () => {
           title: 'Dig Vinyl Records',
           listings: [],
           formatOptions: [{ value: '12-inch', label: '12-inch', description: '12-inch records' }],
+          genreOptions: ['Jazz', 'Hip Hop'],
           whiteLabelAvailable: false,
           filters: {
             q: 'De La Soul',
