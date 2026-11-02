@@ -22,6 +22,7 @@
 
     <p class="discogs-lookup-status" id="discogsLookupStatus" role="status" aria-live="polite" aria-atomic="true" data-state="idle">Enter an artist and title to check Discogs.</p>
     <input type="hidden" name="coverArtUrl" id="discogsCoverArtUrl" value="<%= form.values.coverArtUrl || '' %>" data-discogs-field="coverArtUrl" />
+    <input type="hidden" name="discogsExternalId" id="discogsExternalId" value="<%= form.values.discogsExternalId || '' %>" data-discogs-field="discogsExternalId" />
 
     <section class="discogs-cover-preview" data-discogs-cover-preview data-state="idle" aria-labelledby="discogsArtworkTitle">
       <div class="discogs-cover-preview-frame" data-discogs-cover-frame>
