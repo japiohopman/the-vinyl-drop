@@ -42,6 +42,19 @@ describe('controlled Release metadata', () => {
     expect(releaseSchema.safeParse({ ...base, country: 'Atlantis' }).success).toBe(false);
     expect(releaseSchema.safeParse({ ...base, genre: 'Rare Groove' }).success).toBe(false);
     expect(releaseSchema.safeParse({ ...base, countryCode: 'NL' }).success).toBe(false);
+
+    const providerImport = {
+      ...base,
+      country: 'Yugoslavia',
+      genre: 'Rare Groove',
+      externalSource: 'discogs',
+      externalId: '123456',
+    };
+    expect(releaseSchema.safeParse(providerImport)).toMatchObject({
+      success: true,
+      data: { country: 'Yugoslavia', genre: 'Rare Groove' },
+    });
+    expect(releaseSchema.safeParse({ ...providerImport, externalId: 'invalid' }).success).toBe(false);
     expect(releaseSchema.safeParse({ ...base, countryCode: 'GB' }).success).toBe(true);
     expect(releaseSchema.safeParse({ ...base, formatCharacteristics: ['7-inch'] }).success).toBe(true);
     expect(releaseSchema.safeParse({ ...base, formatCharacteristics: ['10-inch'] }).success).toBe(false);
