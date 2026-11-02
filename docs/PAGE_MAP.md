@@ -94,7 +94,6 @@ These endpoints are part of the route contract but are **not screenshot surfaces
 | `/releases/lookup-metadata` | GET | Authenticated Discogs lookup JSON; used within the release form. |
 | `/messages/widget/unread-count`, `/messages/widget/data`, `/messages/widget/:conversationId` | GET | Authenticated, feature-gated JSON for the embedded messaging widget. |
 | `/health` | GET | JSON health response; operational endpoint, not a visual screen. |
-| `/_internal/staging/diagnostics` | POST | Internal staging diagnostic endpoint; not a user-facing page. |
 | `/design-system/demo` | POST | Updates the design-system demo state in the existing showcase view. |
 | Auth, listing, photo, comment, favorite, release-import and messaging POST routes | POST | Mutations/redirects/JSON; validation or success feedback is normally shown in the owning existing screen, not a separate page. |
 
