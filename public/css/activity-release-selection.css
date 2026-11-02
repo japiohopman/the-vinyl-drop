@@ -219,7 +219,7 @@
 .activity-comment blockquote {
   margin: 0;
   font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal);
+  line-height: var(--line-height-base);
   overflow-wrap: anywhere;
 }
 .activity-card-footer {
