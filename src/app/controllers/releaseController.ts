@@ -124,6 +124,13 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
       return;
     }
 
+    if (!match.coverArtUrl) {
+      const detailedArtwork = await provider.getReleaseArtwork(match.externalId);
+      if (detailedArtwork) {
+        match = { ...match, coverArtUrl: detailedArtwork };
+      }
+    }
+
     res.setHeader('Cache-Control', 'no-store');
     res.status(200).json({
       found: true,
