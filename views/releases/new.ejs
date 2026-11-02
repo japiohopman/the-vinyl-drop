@@ -54,8 +54,22 @@
           <input id="releaseYear" type="number" min="1880" max="<%= new Date().getFullYear() + 1 %>" name="releaseYear" value="<%= form.values.releaseYear || '' %>" class="form-input" placeholder="Year" data-discogs-field="releaseYear" />
         </div>
         <div class="custom-release-field">
-          <label for="releaseFormat">Format</label>
+          <label for="releaseFormat">Format source details</label>
           <input id="releaseFormat" type="text" name="format" value="<%= form.values.format || 'LP' %>" maxlength="120" class="form-input" placeholder="e.g. Vinyl, LP, Album" data-discogs-field="format" />
+          <small>Original catalogue format text is retained.</small>
+        </div>
+        <div class="custom-release-field custom-release-field-full">
+          <span class="custom-release-field-label">Recognized vinyl characteristics</span>
+          <% const selectedFormatCharacteristics = Array.isArray(form.values.formatCharacteristics) ? form.values.formatCharacteristics : []; %>
+          <div role="group" aria-label="Recognized vinyl characteristics" class="custom-release-format-options">
+            <% (typeof formatCharacteristicOptions !== 'undefined' && Array.isArray(formatCharacteristicOptions) ? formatCharacteristicOptions : []).forEach(function(option) { %>
+              <label>
+                <input type="checkbox" name="formatCharacteristics" value="<%= option.value %>" <%= selectedFormatCharacteristics.includes(option.value) ? 'checked' : '' %> />
+                <span><%= option.label %> — <%= option.description %></span>
+              </label>
+            <% }); %>
+          </div>
+          <small>Only explicitly selected or clearly identified characteristics are saved. No size is guessed from “single”, RPM or “vinyl”.</small>
         </div>
         <div class="custom-release-field">
           <label for="releaseBarcode">Barcode (EAN/UPC)</label>
@@ -63,11 +77,24 @@
         </div>
         <div class="custom-release-field">
           <label for="releaseCountry">Country</label>
-          <input id="releaseCountry" type="text" name="country" value="<%= form.values.country || '' %>" maxlength="120" class="form-input" placeholder="Country" data-discogs-field="country" />
+          <input id="releaseCountry" type="text" name="country" value="<%= form.values.country || '' %>" maxlength="120" list="releaseCountryOptions" class="form-input" placeholder="Start typing a country" data-discogs-field="country" />
+          <input type="hidden" name="countryCode" value="<%= form.values.countryCode || '' %>" data-discogs-field="countryCode" />
+          <datalist id="releaseCountryOptions">
+            <% (typeof countryOptions !== 'undefined' && Array.isArray(countryOptions) ? countryOptions : []).forEach(function(country) { %>
+              <option value="<%= country.label %>"></option>
+            <% }); %>
+          </datalist>
+          <small>Choose a supported country. Discogs aliases such as UK and USA are normalized automatically.</small>
         </div>
         <div class="custom-release-field custom-release-field-full">
           <label for="releaseGenre">Genre / style</label>
-          <input id="releaseGenre" type="text" name="genre" value="<%= form.values.genre || '' %>" maxlength="160" class="form-input" placeholder="e.g. Hip Hop, Funk" data-discogs-field="genre" />
+          <input id="releaseGenre" type="text" name="genre" value="<%= form.values.genre || '' %>" maxlength="160" list="releaseGenreOptions" class="form-input" placeholder="e.g. Hip Hop, Funk / Soul" data-discogs-field="genre" />
+          <datalist id="releaseGenreOptions">
+            <% (typeof genreOptions !== 'undefined' && Array.isArray(genreOptions) ? genreOptions : []).forEach(function(genre) { %>
+              <option value="<%= genre %>"></option>
+            <% }); %>
+          </datalist>
+          <small>Use one or more values from the supported genre vocabulary. Original Discogs text is retained.</small>
         </div>
       </div>
 

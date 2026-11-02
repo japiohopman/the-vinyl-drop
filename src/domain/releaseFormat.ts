@@ -42,6 +42,13 @@ export function getVinylFormatPostgresPattern(filter: VinylFormatFilter): string
   return POSTGRES_PATTERNS[filter];
 }
 
+/** Persist only format characteristics explicitly identified by the source text. */
+export function normalizeVinylFormatCharacteristics(format: string | null | undefined): VinylFormatFilter[] {
+  return VINYL_FORMAT_FILTERS
+    .filter((filter) => matchesVinylFormatFilter(format, filter.value))
+    .map((filter) => filter.value);
+}
+
 export const WHITE_LABEL_POSTGRES_PATTERN =
   '(^|[^[:alnum:]])white[[:space:]_-]+label([^[:alnum:]]|$)';
 

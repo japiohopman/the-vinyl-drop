@@ -1,6 +1,8 @@
 import { getDb } from '../../db';
 import { releases, Release } from '../../db/schema/releases';
 import { eq, or, ilike } from 'drizzle-orm';
+import { normalizeCanonicalGenres, resolveCountry } from '../../domain/releaseMetadata';
+import { normalizeVinylFormatCharacteristics } from '../../domain/releaseFormat';
 
 export interface DiscogsSearchResult {
   id: number;
@@ -222,7 +224,7 @@ export async function importDiscogsRelease(discogsId: number): Promise<Release> 
   const artistName = data.artists?.[0]?.name.replace(/\s*\(\d+\)$/, '') || 'Unknown Artist';
   const labelName = data.labels?.[0]?.name || null;
   const catalogueNumber = data.labels?.[0]?.catno || null;
-  const formatName = data.formats?.[0]?.name || 'LP';
+  const formatName = data.formats?.map((format) => [format.name, ...(format.descriptions || [])].filter(Boolean).join(', ')).join(', ') || null;
   const barcode = data.identifiers?.find((i) => i.type === 'Barcode')?.value || null;
   const genreStr = data.genres?.join(', ') || null;
   const coverArtUrl = data.images?.[0]?.resource_url || data.images?.[0]?.uri || data.thumb || null;
@@ -236,9 +238,12 @@ export async function importDiscogsRelease(discogsId: number): Promise<Release> 
       catalogueNumber,
       releaseYear: data.year || null,
       country: data.country || null,
+      countryCode: resolveCountry(data.country)?.code || null,
       format: formatName,
+      formatCharacteristics: normalizeVinylFormatCharacteristics(formatName),
       barcode,
       genre: genreStr,
+      canonicalGenres: normalizeCanonicalGenres(data.genres || []),
       coverArtUrl,
       externalSource: 'discogs',
       externalId: String(discogsId),

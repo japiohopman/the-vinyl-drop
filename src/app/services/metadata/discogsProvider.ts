@@ -1,4 +1,6 @@
 import { CandidateRelease, IdentificationQuery, MetadataProvider } from './types';
+import { normalizeCanonicalGenres, resolveCountry } from '../../../domain/releaseMetadata';
+import { normalizeVinylFormatCharacteristics } from '../../../domain/releaseFormat';
 
 export class DiscogsMetadataProvider implements MetadataProvider {
   readonly name = 'discogs';
@@ -133,9 +135,12 @@ export class DiscogsMetadataProvider implements MetadataProvider {
             catalogueNumber: item.catno || query.catalogueNumber,
             releaseYear: validYear,
             country: item.country,
+            countryCode: resolveCountry(item.country)?.code,
             format: formatStr,
+            formatCharacteristics: normalizeVinylFormatCharacteristics(formatStr),
             barcode: barcodeStr || query.barcode,
             genre: genreStr,
+            canonicalGenres: normalizeCanonicalGenres(item.genre || []),
             coverArtUrl: item.cover_image || item.thumb,
             sourceUrl,
             matchScore: 0,

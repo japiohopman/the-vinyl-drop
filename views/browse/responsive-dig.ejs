@@ -72,7 +72,8 @@
     <%- include('./index', {
       title,
       listings,
-      formatOptions,
+      formatOptions: typeof formatOptions !== 'undefined' ? formatOptions : [],
+      genreOptions: typeof genreOptions !== 'undefined' ? genreOptions : [],
       whiteLabelAvailable,
       filters,
       pagination,
@@ -89,6 +90,7 @@
       hasMore,
       filters,
       formatOptions,
+      genreOptions: typeof genreOptions !== 'undefined' && Array.isArray(genreOptions) ? genreOptions : [],
       whiteLabelAvailable,
       errorMessage
     }) %>

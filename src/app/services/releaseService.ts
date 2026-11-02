@@ -12,6 +12,8 @@ import {
 import { findListingById } from '../repositories/listingRepository';
 import { findPhysicalCopyById } from '../repositories/physicalCopyRepository';
 import { normalizeYouTubeVideoId } from '../../validators/youtubePreview';
+import { normalizeCanonicalGenres, resolveReleaseCountryMetadata } from '../../domain/releaseMetadata';
+import { normalizeVinylFormatCharacteristics } from '../../domain/releaseFormat';
 import { getDiscogsReleaseArtwork } from './discogsService';
 import { ProcessedImage } from '../utils/imageProcessor';
 import {
@@ -257,6 +259,7 @@ export async function createRelease(input: ReleaseInput, dbOverride?: DbInstance
   }
 
   const data = parseResult.data;
+  const countryMetadata = resolveReleaseCountryMetadata(data.country, data.countryCode);
 
   return createReleaseInRepo(
     {
@@ -265,10 +268,15 @@ export async function createRelease(input: ReleaseInput, dbOverride?: DbInstance
       label: data.label || null,
       catalogueNumber: data.catalogueNumber || null,
       releaseYear: data.releaseYear || null,
-      country: data.country || null,
+      country: countryMetadata.country,
+      countryCode: countryMetadata.countryCode,
       format: data.format || null,
+      formatCharacteristics: data.formatCharacteristics?.length
+        ? data.formatCharacteristics
+        : normalizeVinylFormatCharacteristics(data.format),
       barcode: data.barcode || null,
       genre: data.genre || null,
+      canonicalGenres: normalizeCanonicalGenres(data.genre),
       coverArtUrl: data.coverArtUrl || null,
       externalSource: data.externalSource || null,
       externalId: data.externalId || null,

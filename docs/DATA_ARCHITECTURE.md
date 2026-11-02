@@ -47,7 +47,10 @@ Columns:
 - `country`: `text` (Nullable).
 - `format`: `text` (Nullable).
 - `barcode`: `text` (Nullable).
-- `genre`: `text` (Nullable).
+- `genre`: `text` (Nullable; original provider/manual value retained).
+- `country_code`: `text` (Nullable ISO 3166-1 alpha-2 code; `country` remains the readable label/source value).
+- `canonical_genres`: `text[]` (Recognized normalized genre tags; `genre` remains intact).
+- `format_characteristics`: `text[]` (Explicit LP / 12-inch / 7-inch characteristics; `format` remains intact).
 - `coverArtUrl`: `text` (Nullable).
 - `youtubeVideoId`: `text` (Nullable, 11-character validated YouTube video ID shared by the release).
 - `externalSource`: `text` (Nullable).

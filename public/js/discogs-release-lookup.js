@@ -19,7 +19,7 @@
   var submitAfterLookup = false;
   var fieldMap = {
     label: 'label', catalogueNumber: 'catalogueNumber', releaseYear: 'releaseYear',
-    format: 'format', barcode: 'barcode', country: 'country', genre: 'genre', coverArtUrl: 'coverArtUrl',
+    format: 'format', barcode: 'barcode', country: 'country', countryCode: 'countryCode', genre: 'genre', coverArtUrl: 'coverArtUrl',
     discogsExternalId: 'discogsExternalId'
   };
 
@@ -92,7 +92,16 @@
   Object.keys(fieldMap).forEach(function (key) {
     var field = getField(key);
     if (!field) return;
-    field.addEventListener('input', function () { field.dataset.userEdited = 'true'; });
+    field.addEventListener('input', function () {
+      field.dataset.userEdited = 'true';
+      if (key === 'country') {
+        var countryCodeField = getField('countryCode');
+        if (countryCodeField) {
+          countryCodeField.value = '';
+          delete countryCodeField.dataset.discogsFilled;
+        }
+      }
+    });
   });
 
   function applyMetadata(metadata) {

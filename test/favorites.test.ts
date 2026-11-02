@@ -53,6 +53,7 @@ describe('Favorites / Saved Listings Contract (Issue #41)', () => {
       '0014_add_listing_photo_roles.sql',
       '0015_dismiss_completed_listings.sql',
       '0018_add_release_youtube_preview.sql',
+      '0021_release_metadata_vocabulary.sql',
     ];
 
     for (const file of migrationFiles) {

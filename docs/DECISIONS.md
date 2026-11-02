@@ -87,3 +87,12 @@
 **Reason:** Ensures deterministic execution, rigorous automated verification, PR safety enforcement, and human oversight.
 
 **Consequence:** Automation stops at READY FOR HUMAN REVIEW status. Humans perform all branch merges to `main`.
+
+
+## ADR-012 — Preservation-first controlled Release metadata
+
+**Decision:** Keep the existing human-readable `country`, `genre`, and `format` fields as source/display values. Add nullable ISO 3166-1 alpha-2 country codes and normalized genre / explicit vinyl-format characteristic arrays.
+
+**Reason:** Providers may return unfamiliar, historical, or more detailed values. Normalization must improve validation and filtering without discarding source evidence or guessing physical dimensions.
+
+**Consequence:** Manual entry accepts supported countries and genres (including documented aliases). Discogs ingestion preserves raw values and derives only recognized canonical values. Existing rows remain readable and searchable through legacy-field fallbacks. The additive migration sets empty arrays for existing rows and performs no backfill or data rewrite.

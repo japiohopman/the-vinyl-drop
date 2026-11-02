@@ -123,6 +123,7 @@ describe('Mobile Dig app-like viewport', () => {
       hasMore: false,
       filters,
       listings: [],
+      genreOptions: ['Hip Hop', 'Jazz'],
       formatOptions: [
         { value: 'LP', label: 'LP', description: 'Long-play records' },
         { value: '12-inch', label: '12-inch', description: '12-inch records' },

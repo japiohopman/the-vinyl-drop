@@ -15,6 +15,7 @@ import {
   VINYL_FORMAT_FILTERS,
   WHITE_LABEL_POSTGRES_PATTERN,
 } from '../src/domain/releaseFormat';
+import { getCanonicalGenreSearchTerms } from '../src/domain/releaseMetadata';
 
 describe('Browse vinyl format filters — metadata semantics', () => {
   it('parses repeated query values, removes duplicates, and ignores unknown values', () => {
@@ -62,6 +63,31 @@ describe('Browse vinyl format filters — metadata semantics', () => {
         const result = await database.query<{ matches: boolean }>(
           'SELECT $1::text ~* $2::text AS matches',
           [item.format, getVinylFormatPostgresPattern(item.filter)]
+        );
+        expect(result.rows[0]?.matches).toBe(item.expected);
+      }
+    } finally {
+      await database.close();
+    }
+  });
+
+  it('matches legacy genre punctuation and aliases without matching partial words', async () => {
+    const database = new PGlite();
+    try {
+      const terms = getCanonicalGenreSearchTerms('Funk / Soul');
+      expect(terms).toEqual(expect.arrayContaining(['funk soul', 'funk and soul', 'funk', 'soul']));
+
+      const examples = [
+        { genre: 'Funk, Soul', pattern: '% funk soul %', expected: true },
+        { genre: 'Funk & Soul', pattern: '% funk and soul %', expected: true },
+        { genre: 'Funkadelic', pattern: '% funk %', expected: false },
+        { genre: 'Hip-Hop', pattern: '% hip hop %', expected: true },
+      ];
+
+      for (const item of examples) {
+        const result = await database.query<{ matches: boolean }>(
+          "SELECT (' ' || regexp_replace(regexp_replace(lower($1::text), '&', ' and ', 'g'), '[^a-z0-9]+', ' ', 'g') || ' ') LIKE $2::text AS matches",
+          [item.genre, item.pattern]
         );
         expect(result.rows[0]?.matches).toBe(item.expected);
       }
@@ -157,6 +183,8 @@ describe('Browse format filters — repository query integration', () => {
     expect(where.params).toContain(getVinylFormatPostgresPattern('lp'));
     expect(where.params).toContain(getVinylFormatPostgresPattern('12-inch'));
     expect(where.params).toContain(WHITE_LABEL_POSTGRES_PATTERN);
+    expect(where.sql).toContain('regexp_replace');
     expect(where.params).toContain('%Hip Hop%');
+    expect(where.params).toContain('% hip hop %');
   });
 });
