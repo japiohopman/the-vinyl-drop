@@ -188,6 +188,15 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(deniedStored.rows[0].cover_art_url).toBe('https://catalog.example/miles.jpg');
     expect(await findPhotosByListingId(listingId)).toHaveLength(0);
 
+    const restoreDeniedFetch = jest.spyOn(global, 'fetch');
+    const restoreDenied = await supertest(app)
+      .post(`/listings/${listingId}/release-artwork/restore-discogs`)
+      .set('Origin', new URL(config.APP_BASE_URL).origin)
+      .set('x-test-user', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    expect(restoreDenied.status).toBe(403);
+    expect(restoreDeniedFetch).not.toHaveBeenCalled();
+    restoreDeniedFetch.mockRestore();
+
     const invalidImage = await supertest(app)
       .post(`/listings/${listingId}/release-artwork`)
       .set('Origin', new URL(config.APP_BASE_URL).origin)
@@ -245,6 +254,9 @@ describe('Seller cover photo HTTP round trip', () => {
     }
     expect(unavailableResponse?.status).toBe(302);
     expect(unavailableResponse?.headers.location).toContain('releaseArtworkRestoreError=unavailable');
+    const restoreErrorEditor = await supertest(app).get(`/listings/${listingId}/edit?releaseArtworkRestoreError=unavailable`);
+    expect(restoreErrorEditor.status).toBe(200);
+    expect(restoreErrorEditor.text).toContain('Your current release artwork has not changed.');
     const retainedArtwork = await database.query<{ cover_art_url: string | null }>(
       `SELECT cover_art_url FROM public.releases WHERE id = '${releaseId}'`
     );
