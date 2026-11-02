@@ -93,9 +93,10 @@ export async function getCreateListingPage(req: Request, res: Response, next: Ne
     const release = await findReleaseById(releaseId);
     if (!release) {
       res.status(404);
-      return renderWithLayout(res, 'errors/500', {
-        title: '404 Not Found',
-        message: 'Selected release was not found.',
+      return renderWithLayout(res, 'errors/404', {
+        title: '404 - Page Not Found',
+        message: 'The selected release was not found.',
+        isStatusPage: true,
       });
     }
 
@@ -161,9 +162,10 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
 
     if (!details) {
       res.status(404);
-      return renderWithLayout(res, 'errors/500', {
-        title: '404 Not Found',
-        message: 'Listing not found.',
+      return renderWithLayout(res, 'errors/404', {
+        title: '404 - Page Not Found',
+        message: 'The requested listing could not be found.',
+        isStatusPage: true,
       });
     }
 
@@ -426,9 +428,10 @@ export async function getPreviewListingPage(req: Request, res: Response, next: N
 
     if (!details) {
       res.status(404);
-      return renderWithLayout(res, 'errors/500', {
-        title: '404 Not Found',
-        message: 'Listing not found.',
+      return renderWithLayout(res, 'errors/404', {
+        title: '404 - Page Not Found',
+        message: 'The requested listing could not be found.',
+        isStatusPage: true,
       });
     }
 
