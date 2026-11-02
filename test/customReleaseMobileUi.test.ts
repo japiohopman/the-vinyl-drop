@@ -404,6 +404,13 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.setViewportSize({ width: 375, height: 800 });
     await page.setContent(documentHtml(headerHtml, releaseHtml));
     let lookupRequests = 0;
+    await page.route('https://i.discogs.com/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="#fff"/></svg>',
+      });
+    });
     await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
       lookupRequests += 1;
       await route.fulfill({
