@@ -18,6 +18,47 @@ export interface DiscogsSearchResult {
   genre?: string[];
 }
 
+/** Fetch the original catalogue cover for a previously matched Discogs release. */
+export async function getDiscogsReleaseArtwork(discogsId: string): Promise<string | null> {
+  if (!/^\d{1,15}$/.test(discogsId)) {
+    throw new Error('Invalid Discogs release ID');
+  }
+
+  const discogsToken = process.env.DISCOGS_API_TOKEN;
+  const headers: Record<string, string> = {
+    'User-Agent': 'TheVinylDrop/1.0.0 (+https://thevinyldrop.nl)',
+  };
+  if (discogsToken) headers.Authorization = `Discogs token=${discogsToken}`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(`https://api.discogs.com/releases/${discogsId}`, {
+      headers,
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Discogs artwork lookup failed with HTTP ${response.status}`);
+
+    const data = await response.json() as {
+      images?: Array<{ resource_url?: string; uri?: string }>;
+      thumb?: string;
+    };
+    const candidate = data.images?.[0]?.resource_url || data.images?.[0]?.uri || data.thumb || null;
+    if (!candidate) return null;
+
+    let url: URL;
+    try {
+      url = new URL(candidate);
+    } catch {
+      return null;
+    }
+    if (url.protocol !== 'https:' || !url.hostname.toLowerCase().endsWith('.discogs.com')) return null;
+    return url.toString();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Search local database first, then query Discogs API
  */
