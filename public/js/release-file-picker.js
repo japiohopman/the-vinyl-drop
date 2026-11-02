@@ -11,7 +11,7 @@
   function clearOverride() {
     previewSequence += 1;
     input.value = '';
-    fileName.textContent = 'No file selected';
+    fileName.textContent = 'No replacement selected';
     if (overrideImage) overrideImage.removeAttribute('src');
     if (overridePreview) overridePreview.hidden = true;
   }
@@ -20,7 +20,7 @@
     const selectedFiles = Array.from(input.files || []);
     fileName.textContent = selectedFiles.length
       ? selectedFiles.map((file) => file.name).join(', ')
-      : 'No file selected';
+      : 'No replacement selected';
 
     previewSequence += 1;
     const currentSequence = previewSequence;
