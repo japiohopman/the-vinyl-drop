@@ -116,6 +116,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
         artist: 'Snoop Dogg',
         releaseYear: 1993,
         coverArtUrl: 'https://i.discogs.com/doggystyle.jpg',
+        externalSource: 'discogs',
+        externalId: '123456',
         youtubeVideoId: null,
       },
       physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
@@ -319,6 +321,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
     });
     expect(editHtml).toContain('class="release-artwork-editor"');
     expect(editHtml).toContain('shared by listings of this same release');
+    expect(editHtml).toContain('Use original Discogs artwork');
+    expect(editHtml).toContain('/release-artwork/restore-discogs');
     expect(editHtml).toContain('name="coverArt"');
     expect(editHtml).toContain('Front of your copy');
     expect(editHtml).toContain('Back of your copy');
