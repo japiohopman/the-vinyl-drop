@@ -212,8 +212,8 @@ describe('Mobile Activity single-column layout', () => {
     expect(await videoPreview.count()).toBe(1);
     expect(await playButton.isVisible()).toBe(true);
     expect(await frame.locator('iframe').count()).toBe(0);
-    expect(await page.locator('.activity-card').nth(1).locator('[data-youtube-preview]').count()).toBe(0);
-    expect(await page.locator('.activity-card').nth(2).locator('[data-youtube-preview]').count()).toBe(0);
+    expect(await page.locator('.activity-card').nth(1).locator('[data-activity-youtube-preview]').count()).toBe(0);
+    expect(await page.locator('.activity-card').nth(2).locator('[data-activity-youtube-preview]').count()).toBe(0);
     await playButton.click();
     const player = frame.locator('iframe');
     expect(await player.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/abcdefghijk?playsinline=1');
