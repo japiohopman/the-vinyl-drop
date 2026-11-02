@@ -33,7 +33,7 @@ export const releaseSchema = z.object({
       message: 'Choose a valid ISO 3166-1 country code.',
     });
   }
-  if (data.country && !countryFromLabel) {
+  if (data.country && !countryFromLabel && !hasDiscogsSource) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['country'],
