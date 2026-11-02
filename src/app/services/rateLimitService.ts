@@ -160,6 +160,15 @@ export async function incrementRateLimitBucketWithClient(
   return Number(rows[0].hit_count);
 }
 
+/**
+ * Temporary read-only check used by the owner-approved Issue #89 production probe.
+ * Uses the same PostgreSQL connection as shared rate-limit middleware.
+ */
+export async function verifyRateLimitDatabaseAccess(): Promise<void> {
+  if (!queryClient) throw new Error('Rate-limit database connection is unavailable.');
+  await queryClient.unsafe('SELECT 1 FROM private.rate_limit_buckets LIMIT 0');
+}
+
 async function incrementBucket(bucket: RateLimitBucket): Promise<number> {
   if (testStore) return testStore.increment(bucket);
   if (!queryClient) throw new Error('Rate-limit database connection is unavailable.');
