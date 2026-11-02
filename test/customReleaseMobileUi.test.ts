@@ -343,6 +343,12 @@ describe('Custom release mobile navigation and artwork picker', () => {
       await page.setViewportSize({ width, height: 820 });
       await page.setContent(documentHtml(headerHtml, editHtml));
       expect(await page.locator('.release-artwork-editor').isVisible()).toBe(true);
+      const releaseArtworkFrame = await page.locator('.release-artwork-preview-frame').boundingBox();
+      expect(releaseArtworkFrame).not.toBeNull();
+      if (releaseArtworkFrame) {
+        expect(releaseArtworkFrame.width).toBeGreaterThanOrEqual(width >= 768 ? 192 : 104);
+        expect(Math.abs(releaseArtworkFrame.width - releaseArtworkFrame.height)).toBeLessThanOrEqual(1);
+      }
       expect(await page.locator('.release-artwork-preview-frame img').getAttribute('src')).toBe('https://i.discogs.com/doggystyle.jpg');
       expect(await page.locator('.cover-photo-slots').isVisible()).toBe(true);
       expect(await page.locator('.release-artwork-restore-form button').isVisible()).toBe(true);
