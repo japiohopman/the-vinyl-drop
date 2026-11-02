@@ -298,6 +298,17 @@ describe('Custom release mobile navigation and artwork picker', () => {
       expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
       expect(await page.locator('[data-discogs-artwork-placeholder]').isVisible()).toBe(true);
       expect(await page.locator('[data-discogs-cover-preview-status]').textContent()).toContain('confident Discogs match');
+      const artworkFrame = await page.locator('[data-discogs-cover-frame]').boundingBox();
+      expect(artworkFrame).not.toBeNull();
+      if (artworkFrame) {
+        expect(artworkFrame.width).toBeGreaterThanOrEqual(width >= 768 ? 224 : 120);
+        expect(Math.abs(artworkFrame.width - artworkFrame.height)).toBeLessThanOrEqual(1);
+      }
+      const primaryColumnCount = await page.evaluate(() => {
+        const grid = document.querySelector('.custom-release-primary-fields');
+        return grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0;
+      });
+      expect(primaryColumnCount).toBe(width >= 768 ? 2 : 1);
       const dimensions = await page.evaluate(() => ({
         viewport: window.innerWidth,
         document: document.documentElement.scrollWidth,
@@ -426,6 +437,17 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
     expect(await page.locator('#releaseMetadataDetails [data-discogs-cover-preview]').count()).toBe(0);
     expect(await page.locator('[data-discogs-cover-preview] img').getAttribute('src')).toBe('https://i.discogs.com/example-cover.jpg');
+
+    await page.setViewportSize({ width: 1280, height: 820 });
+    const desktopArtworkFrame = await page.locator('[data-discogs-cover-frame]').boundingBox();
+    expect(desktopArtworkFrame).not.toBeNull();
+    if (desktopArtworkFrame) expect(desktopArtworkFrame.width).toBeGreaterThanOrEqual(224);
+    expect(await page.locator('[data-discogs-cover-preview] img').isVisible()).toBe(true);
+    const desktopPrimaryColumnCount = await page.evaluate(() => {
+      const grid = document.querySelector('.custom-release-primary-fields');
+      return grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0;
+    });
+    expect(desktopPrimaryColumnCount).toBe(2);
 
     const dimensions = await page.evaluate(() => ({
       document: document.documentElement.scrollWidth,
