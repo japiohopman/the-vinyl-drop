@@ -6,7 +6,7 @@ import supertest from 'supertest';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { setOverrideDb } from '../src/db';
-import { getEditListingPage, getPreviewListingPage, postUploadPhoto, postUpdateReleaseArtwork } from '../src/app/controllers/listingController';
+import { getEditListingPage, getPreviewListingPage, postUploadPhoto, postUpdateReleaseArtwork, postRestoreDiscogsArtwork } from '../src/app/controllers/listingController';
 import { getDigBrowsePage } from '../src/app/controllers/browseController';
 import { getCreateCustomReleasePage, postCreateCustomRelease } from '../src/app/controllers/releaseController';
 import { errorHandler } from '../src/app/middleware/errorHandler';
@@ -56,8 +56,8 @@ describe('Seller cover photo HTTP round trip', () => {
     await database.exec(`
       INSERT INTO public.profiles (id, username, display_name)
       VALUES ('${sellerId}', 'round_trip_seller', 'Round Trip Seller');
-      INSERT INTO public.releases (id, artist, title, cover_art_url)
-      VALUES ('${releaseId}', 'Miles Davis', 'Kind of Blue', 'https://catalog.example/miles.jpg');
+      INSERT INTO public.releases (id, artist, title, cover_art_url, external_source, external_id)
+      VALUES ('${releaseId}', 'Miles Davis', 'Kind of Blue', 'https://catalog.example/miles.jpg', 'discogs', '123456');
       INSERT INTO public.physical_copies (id, release_id, owner_id, media_condition, sleeve_condition)
       VALUES ('${copyId}', '${releaseId}', '${sellerId}', 'NM', 'VG+');
       INSERT INTO public.listings (id, physical_copy_id, seller_id, price, status)
@@ -94,6 +94,12 @@ describe('Seller cover photo HTTP round trip', () => {
       postUpdateReleaseArtwork
     );
     app.post(
+      '/listings/:id/release-artwork/restore-discogs',
+      authenticateTestSeller,
+      validateSameOrigin,
+      postRestoreDiscogsArtwork
+    );
+    app.post(
       '/listings/:id/photos',
       authenticateTestSeller,
       validateSameOrigin,
@@ -122,18 +128,23 @@ describe('Seller cover photo HTTP round trip', () => {
       .field('artist', 'Snoop Dogg')
       .field('title', 'Doggystyle')
       .field('format', 'LP')
-      .field('coverArtUrl', coverArtUrl);
+      .field('coverArtUrl', coverArtUrl)
+      .field('discogsExternalId', '234567');
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toMatch(/^\/listings\/create\?releaseId=/);
     const releaseIdFromRedirect = response.headers.location.match(/releaseId=([0-9a-f-]+)/i)?.[1];
     expect(releaseIdFromRedirect).toBeTruthy();
 
-    const stored = await database.query<{ cover_art_url: string | null }>(
-      `SELECT cover_art_url FROM public.releases WHERE id = '${releaseIdFromRedirect}'`
+    const stored = await database.query<{ cover_art_url: string | null; external_source: string | null; external_id: string | null }>(
+      `SELECT cover_art_url, external_source, external_id FROM public.releases WHERE id = '${releaseIdFromRedirect}'`
     );
     expect(stored.rows).toHaveLength(1);
-    expect(stored.rows[0].cover_art_url).toBe(coverArtUrl);
+    expect(stored.rows[0]).toMatchObject({
+      cover_art_url: coverArtUrl,
+      external_source: 'discogs',
+      external_id: '234567',
+    });
   });
 
   it('keeps release artwork separate from seller photo records and restricts artwork edits to the listing owner', async () => {
@@ -148,6 +159,7 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(initialEditor.text).toContain('class="release-artwork-editor"');
     expect(initialEditor.text).toContain('https://catalog.example/miles.jpg');
     expect(initialEditor.text).toContain('shared by listings of this same release');
+    expect(initialEditor.text).toContain('Use original Discogs artwork');
     expect(initialEditor.text).toContain('name="coverArt"');
     expect(initialEditor.text).toContain('Photos of your actual copy');
 
@@ -207,6 +219,7 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(editorAfterArtwork.status).toBe(200);
     expect(editorAfterArtwork.text).toContain('Current release artwork');
     expect(editorAfterArtwork.text).toContain('data:image/webp;base64,');
+    expect(editorAfterArtwork.text).toContain('Use original Discogs artwork');
 
     const digAfterArtwork = await searchDigListings({ q: 'Kind of Blue' });
     expect(digAfterArtwork.items[0].frontArtwork.sourceKind).toBe('catalogue_artwork');
@@ -216,6 +229,37 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(previewAfterArtwork.status).toBe(200);
     expect(previewAfterArtwork.text).toContain('Release catalogue artwork · reference image');
     expect(previewAfterArtwork.text).toContain('data:image/webp;base64,');
+
+    const restoreFetch = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        images: [{ resource_url: 'https://i.discogs.com/original-kind-of-blue.jpg' }],
+      }),
+    } as Response);
+    let restoreResponse;
+    try {
+      restoreResponse = await supertest(app)
+        .post(`/listings/${listingId}/release-artwork/restore-discogs`)
+        .set('Origin', new URL(config.APP_BASE_URL).origin);
+    } finally {
+      restoreFetch.mockRestore();
+    }
+
+    expect(restoreResponse?.status).toBe(302);
+    expect(restoreResponse?.headers.location).toBe(`/listings/${listingId}/edit`);
+    const restoredArtwork = await database.query<{ cover_art_url: string | null }>(
+      `SELECT cover_art_url FROM public.releases WHERE id = '${releaseId}'`
+    );
+    expect(restoredArtwork.rows[0].cover_art_url).toBe('https://i.discogs.com/original-kind-of-blue.jpg');
+    expect(await findPhotosByListingId(listingId)).toHaveLength(0);
+
+    const restoredDig = await searchDigListings({ q: 'Kind of Blue' });
+    expect(restoredDig.items[0].frontArtwork.sourceKind).toBe('catalogue_artwork');
+    expect(restoredDig.items[0].frontArtwork.src).toBe('https://i.discogs.com/original-kind-of-blue.jpg');
+    const restoredPreview = await supertest(app).get(`/listings/${listingId}/preview`);
+    expect(restoredPreview.status).toBe(200);
+    expect(restoredPreview.text).toContain('https://i.discogs.com/original-kind-of-blue.jpg');
 
     const releaseForm = await supertest(app).get('/releases/new');
     expect(releaseForm.status).toBe(200);
