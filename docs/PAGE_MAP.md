@@ -1,6 +1,6 @@
 # Application Page and Route Map
 
-This document records the exact route and view architecture implemented in the application as of Phase 7, as well as canonical links to proposed interaction contracts.
+This document records the route/view architecture verified against the application source on 2 November 2026. It is the source of truth for actual routes, rendered EJS views, access context and application-vs-host error ownership.
 
 ## Interaction Design Contracts
 
@@ -29,7 +29,7 @@ The central screenshot register and visual update process live in [`docs/verific
 | Dig (responsive) | `GET /dig` | `browseController.getResponsiveDigPage` | `views/browse/responsive-dig.ejs` | Public; desktop grid/list and mobile crate/deck interaction share one route and normalized search/filter state. |
 | Dig (alternate template route) | `GET /browse/dig` | `browseController.getDigBrowsePage` | `views/browse/dig.ejs` | Public; separate Dig template route retained in route registration. Do not assume it is an alias for `/dig`. |
 | Activity | `GET /activity` | `activityController.getActivityPage` | `views/activity/index.ejs` | Public; populated and empty feed states. On feed-load failure the same view is rendered with a safe inline error at HTTP 500. |
-| Listing detail | `GET /listings/:id` | `listingController.getListingDetailPage` | `views/listings/show.ejs` | Public; release, physical copy, photos, seller, comments and viewer/favorite states. Unknown/unavailable listing renders the 404 view. |
+| Listing detail | `GET /listings/:id` | `listingController.getListingDetailPage` | `views/listings/show.ejs` | Public; release, physical copy, photos, seller, comments and viewer/favorite states. Unknown/unavailable listing renders the 404 view here; some seller workflow missing-resource/ownership branches currently render the shared 500 template while preserving HTTP 404/403 (see the error ownership matrix). |
 | Listing comments | `GET /listings/:id/comments` | `listingController.getListingCommentsPage` | `views/listings/comments.ejs` | Public; dedicated comments page/state. Unknown/unavailable listing renders the 404 view. |
 | Public profile | `GET /profiles/:username` | `profileController.getPublicProfile` | `views/profiles/show.ejs` | Public; compact profile, owner vs visitor actions and empty/present profile details. |
 | Public Crate | `GET /profiles/:username/crate` | `profileController.getPublicProfileCrate` | `views/profiles/crate.ejs` | Public; paginated published listing grid; owner and visitor empty states differ. |
@@ -234,4 +234,4 @@ Request processing adheres strictly to the following architecture:
 
 5. **Error Boundary (`src/app/middleware/errorHandler.ts`):**
    - Unhandled controller errors propagate to `errorHandler.ts`.
-   - Renders `errors/500.ejs` with 500 status code for HTML requests, or returns 500 JSON error for API requests.
+   - Renders `errors/500.ejs` for HTML requests while preserving the effective HTTP 5xx status, or returns safe JSON/text output for non-HTML clients. The template title may say 500 even when an app-forwarded status is 502/503/504/505.
