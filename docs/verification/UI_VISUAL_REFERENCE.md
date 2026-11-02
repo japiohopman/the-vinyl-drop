@@ -19,6 +19,12 @@ No existing committed capture has yet been promoted to an approved baseline. The
 
 When a screenshot is approved, add it under `ui-baselines/<surface>/`, record its route, viewport, state, theme and source commit here, and explain why the baseline represents intentional product behavior.
 
+## Branded error screens — Issue #315
+
+The Express-owned 404 and 5xx fallbacks now use the Vinyl Drop visual system: an empty sleeve for 404 and a paused turntable for 5xx. The actual HTTP status remains intact; the 5xx retry link is rendered only for safe GET requests and uses the path without query data.
+
+Automated Playwright captures are generated at 390×844 (mobile) and 1280×900 (desktop) and uploaded as the temporary CI artifact `issue-315-error-pages-playwright-evidence`. CI evidence is diagnostic, not an approved staging baseline. Jaap's manual review of the deployed 404/5xx pages and capture of the deployed application SHA remain pending; do not promote the CI images as owner-approved baselines.
+
 ## Owner-supplied visual reference set — staging, 2 November 2026
 
 Jaap confirms these images were captured on staging with test accounts and contain no sensitive or production data. They are the owner-supplied visual reference point for future UI issues. They document intended visual direction and states; they are **not** automatic pixel-perfect regression goldens.

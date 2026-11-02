@@ -259,6 +259,9 @@ export async function getGoogleOAuth(req: Request, res: Response, next: NextFunc
     renderWithLayout(res, 'errors/500', {
       title: 'OAuth Error',
       message: errMessage,
+      statusCode: 500,
+      retryHref: req.method === 'GET' ? req.path : null,
+      isStatusPage: true,
     }, next);
   }
 }

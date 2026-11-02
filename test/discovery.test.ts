@@ -601,7 +601,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       const res = await request(app).get(`/listings/${mockDraftListing.id}`);
 
       expect(res.status).toBe(404);
-      expect(res.text).toContain('404 - Page Not Found');
+      expect(res.text).toContain("This record isn't here.");
+      expect(res.text).toContain('href="/browse">Browse records</a>');
     });
   });
 
@@ -704,7 +705,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
         .send({ content: 'Is this draft listing available?' });
 
       expect(res.status).toBe(404);
-      expect(res.text).toContain('404 - Page Not Found');
+      expect(res.text).toContain("This record isn't here.");
+      expect(res.text).toContain('href="/browse">Browse records</a>');
     });
   });
 

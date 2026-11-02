@@ -7,8 +7,8 @@ This folder maps actual application-handled error templates and failure states. 
 | Reference | Actual source | Current behavior |
 | --- | --- | --- |
 | `400-desktop.png` / `400-mobile.png` | `views/errors/400.ejs` | Generic HTML response for application-handled 4xx statuses other than 404; includes a status-specific heading/message. Many validation problems instead stay inline in their owning form. |
-| `404-desktop.png` / `404-mobile.png` | `views/errors/404.ejs` | Unknown route, unavailable listing/profile, and the HTML messaging-disabled guard. |
-| `500-desktop.png` / `500-mobile.png` | `views/errors/500.ejs` | Generic HTML presentation for errors reaching Express as 5xx, including app-forwarded 503/502/504/505 statuses; the HTTP status may remain different from the generic “500” title. |
+| `404-desktop.png` / `404-mobile.png` | `views/errors/404.ejs` | Branded “Not in this crate” recovery page for unknown routes, unavailable listing/profile and the HTML messaging-disabled guard. It uses the original empty-sleeve SVG, Browse and Home links, and retains HTTP 404. |
+| `500-desktop.png` / `500-mobile.png` | `views/errors/500.ejs` | Branded “We hit a skip” recovery page for Express-handled 5xx responses, including forwarded 502/503/504 statuses. The actual numeric status is shown and retained. A same-path retry is available only for GET requests and omits query data. |
 
 ## Failure states that are not separate branded HTML pages today
 
@@ -23,7 +23,7 @@ This folder maps actual application-handled error templates and failure states. 
 
 ## Visual direction notes
 
-The design concepts for 404 and 500 are recorded in [`../../../design/working/branded-status-and-information-page-direction.md`](../../../design/working/branded-status-and-information-page-direction.md). The generic EJS fallback templates already exist, but the new branded empty-sleeve 404 and paused-turntable 500 designs are intentionally deferred to a separate UI implementation issue. Their screenshots should be captured only after those designs are implemented; this mapping PR does not trigger faults or modify the templates.
+The design concepts for 404 and 500 are recorded in [`../../../design/working/branded-status-and-information-page-direction.md`](../../../design/working/branded-status-and-information-page-direction.md). The branded empty-sleeve 404 and paused-turntable 5xx templates are implemented under [Issue #315](https://github.com/japiohopman/the-vinyl-drop/issues/315). Original editable artwork lives in `public/assets/UI/error-empty-sleeve.svg` and `public/assets/UI/error-paused-turntable.svg`. The automated UI test produces mobile (390×844) and desktop (1280×900) Playwright screenshots in the temporary GitHub Actions artifact `issue-315-error-pages-playwright-evidence`. These are diagnostic CI captures, not owner-approved staging baselines. Record manual staging screenshots and the deployed app SHA only after Jaap reviews the deployed pages; until then, no permanent baseline is approved.
 
 The central reference index is [UI Visual Reference](../../UI_VISUAL_REFERENCE.md). Update its error-state rows when a template or response behavior changes.
 

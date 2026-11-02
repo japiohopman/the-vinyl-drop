@@ -35,6 +35,52 @@ describe('Centralized Error Handler Middleware', () => {
     expect(consoleErrorSpy).toHaveBeenCalled();
   });
 
+
+  it('preserves a forwarded 503 status and offers a same-path GET retry without query data', async () => {
+    const app = express();
+    app.set('views', './views');
+    app.set('view engine', 'ejs');
+
+    app.get('/retry', (_req: Request, _res: Response, next: NextFunction) => {
+      const error = new Error('secret provider token must not be rendered') as Error & { statusCode?: number };
+      error.statusCode = 503;
+      next(error);
+    });
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .get('/retry?access_token=private-value')
+      .set('Accept', 'text/html');
+
+    expect(response.status).toBe(503);
+    expect(response.text).toContain('data-status-code="503"');
+    expect(response.text).toContain('href="/retry">Try again</a>');
+    expect(response.text).not.toContain('access_token');
+    expect(response.text).not.toContain('private-value');
+    expect(response.text).not.toContain('secret provider token');
+  });
+
+  it('does not offer a retry link for an unsafe POST request', async () => {
+    const app = express();
+    app.set('views', './views');
+    app.set('view engine', 'ejs');
+
+    app.post('/submit', (_req: Request, _res: Response, next: NextFunction) => {
+      next(new Error('private submission detail'));
+    });
+    app.use(errorHandler);
+
+    const response = await request(app)
+      .post('/submit?csrf=must-not-appear')
+      .set('Accept', 'text/html');
+
+    expect(response.status).toBe(500);
+    expect(response.text).not.toContain('>Try again</a>');
+    expect(response.text).not.toContain('csrf=');
+    expect(response.text).not.toContain('private submission detail');
+    expect(response.text).toContain('href="/browse">Browse records</a>');
+  });
+
   it('should return 500 JSON when an unexpected error occurs and JSON is accepted', async () => {
     const app = express();
 

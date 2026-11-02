@@ -12,6 +12,7 @@ export function messagingFeatureGuard(req: Request, res: Response, next: NextFun
       return renderWithLayout(res, 'errors/404', {
         title: '404 - Page Not Found',
         message: 'The requested page could not be found.',
+        isStatusPage: true,
       });
     }
     res.status(404).json({ error: 'Messaging feature disabled' });

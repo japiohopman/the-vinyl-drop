@@ -75,6 +75,9 @@
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-crate.css') : '/css/dig-mobile-crate.css' %>">
   <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/themes.css') : '/css/themes.css' %>">
+  <% if (typeof isStatusPage !== 'undefined' && isStatusPage) { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/error-pages.css') : '/css/error-pages.css' %>">
+  <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/options') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/options.css') : '/css/options.css' %>">
     <script src="/js/options.js" defer></script>

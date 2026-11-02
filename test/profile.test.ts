@@ -100,7 +100,8 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       const res = await request(app).get('/profiles/nonexistent_user_profile_123');
 
       expect(res.status).toBe(404);
-      expect(res.text).toContain('404 - Page Not Found');
+      expect(res.text).toContain("This record isn't here.");
+      expect(res.text).toContain('href="/browse">Browse records</a>');
     });
 
     it('GET /profiles/:username should render external website URL safely when present', async () => {

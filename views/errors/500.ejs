@@ -1,5 +1,43 @@
+<% if (typeof isStatusPage === 'undefined' || !isStatusPage) { %>
 <section class="error-section">
   <h1>500 - Server Error</h1>
   <p>Something went wrong on our end. Please try again later.</p>
   <a href="/" class="btn">Back to Home</a>
 </section>
+<% } else { %>
+<%
+  const safeStatusCode = Number.isInteger(statusCode) && statusCode >= 500 && statusCode <= 599
+    ? statusCode
+    : 500;
+  const safeRetryHref = typeof retryHref === 'string' &&
+    retryHref.startsWith('/') &&
+    !retryHref.startsWith('//') &&
+    !retryHref.includes(String.fromCharCode(92)) &&
+    !retryHref.includes('?') &&
+    !retryHref.includes('#')
+      ? retryHref
+      : null;
+%>
+<section class="status-page status-page-500" aria-labelledby="status-page-title" data-status-code="<%= safeStatusCode %>">
+  <div class="status-page-inner">
+    <div class="status-page-artwork" aria-hidden="true">
+      <img src="/assets/UI/error-paused-turntable.svg" alt="" width="480" height="360" fetchpriority="high">
+    </div>
+
+    <div class="status-page-copy">
+      <p class="status-page-eyebrow">A QUICK PAUSE <span aria-hidden="true">/</span> <%= safeStatusCode %></p>
+      <h1 id="status-page-title">We hit a skip.</h1>
+      <p class="status-page-description">
+        Something interrupted the spin. Your request couldn't be completed. Please try again in a moment.
+      </p>
+      <nav class="status-page-actions" aria-label="Recovery options">
+        <% if (safeRetryHref) { %>
+          <a class="status-page-action status-page-action-primary" href="<%= safeRetryHref %>">Try again</a>
+        <% } %>
+        <a class="status-page-action status-page-action-secondary" href="/browse">Browse records</a>
+        <a class="status-page-home-link" href="/">Back to Home</a>
+      </nav>
+    </div>
+  </div>
+</section>
+<% } %>
