@@ -72,7 +72,8 @@
     <%- include('./index', {
       title,
       listings,
-      formatOptions,
+      formatOptions: typeof formatOptions !== 'undefined' ? formatOptions : [],
+      genreOptions: typeof genreOptions !== 'undefined' ? genreOptions : [],
       whiteLabelAvailable,
       filters,
       pagination,

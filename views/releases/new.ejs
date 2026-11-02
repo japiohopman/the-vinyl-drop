@@ -62,7 +62,7 @@
           <span class="custom-release-field-label">Recognized vinyl characteristics</span>
           <% const selectedFormatCharacteristics = Array.isArray(form.values.formatCharacteristics) ? form.values.formatCharacteristics : []; %>
           <div role="group" aria-label="Recognized vinyl characteristics" class="custom-release-format-options">
-            <% (Array.isArray(formatCharacteristicOptions) ? formatCharacteristicOptions : []).forEach(function(option) { %>
+            <% (typeof formatCharacteristicOptions !== 'undefined' && Array.isArray(formatCharacteristicOptions) ? formatCharacteristicOptions : []).forEach(function(option) { %>
               <label>
                 <input type="checkbox" name="formatCharacteristics" value="<%= option.value %>" <%= selectedFormatCharacteristics.includes(option.value) ? 'checked' : '' %> />
                 <span><%= option.label %> — <%= option.description %></span>
@@ -90,7 +90,7 @@
           <label for="releaseGenre">Genre / style</label>
           <input id="releaseGenre" type="text" name="genre" value="<%= form.values.genre || '' %>" maxlength="160" list="releaseGenreOptions" class="form-input" placeholder="e.g. Hip Hop, Funk / Soul" data-discogs-field="genre" />
           <datalist id="releaseGenreOptions">
-            <% (Array.isArray(genreOptions) ? genreOptions : []).forEach(function(genre) { %>
+            <% (typeof genreOptions !== 'undefined' && Array.isArray(genreOptions) ? genreOptions : []).forEach(function(genre) { %>
               <option value="<%= genre %>"></option>
             <% }); %>
           </datalist>

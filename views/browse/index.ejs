@@ -84,7 +84,7 @@
           <fieldset class="browse-format-quick-filters">
             <legend>Dig by format</legend>
             <div class="browse-format-chip-row">
-              <% (formatOptions || []).forEach(function(option) { const selected = selectedFormats.includes(option.value); const iconPath = browseFormatIconPaths[String(option.value).toLowerCase()]; %>
+              <% (typeof formatOptions !== 'undefined' && Array.isArray(formatOptions) ? formatOptions : []).forEach(function(option) { const selected = selectedFormats.includes(option.value); const iconPath = browseFormatIconPaths[String(option.value).toLowerCase()]; %>
                 <button type="submit" name="formatToggle" value="<%= option.value %>" class="browse-format-chip <%= selected ? 'is-selected' : '' %>" aria-pressed="<%= selected ? 'true' : 'false' %>" title="<%= option.description %>">
                   <% if (iconPath) { %><img class="browse-format-icon" src="<%= iconPath %>" width="26" height="26" alt="" aria-hidden="true" loading="lazy"><% } %>
                   <span><%= option.label %></span>
@@ -102,7 +102,7 @@
               <label for="filter-genre">Genre</label>
               <select id="filter-genre" name="genre" class="form-control">
                 <option value="">All Genres</option>
-                <% const genres = Array.isArray(genreOptions) ? genreOptions : []; %>
+                <% const genres = typeof genreOptions !== 'undefined' && Array.isArray(genreOptions) ? genreOptions : []; %>
                 <% genres.forEach(function(g) { %>
                   <option value="<%= g %>" <%= filters.genre === g ? 'selected' : '' %>><%= g %></option>
                 <% }); %>
