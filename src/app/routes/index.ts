@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getHomePage } from '../controllers/homeController';
 import { getBrowsePage, getSearchPage, getDigBrowsePage, getResponsiveDigPage } from '../controllers/browseController';
 import { getActivityPage } from '../controllers/activityController';
-import { getContactPage, postContactMessage, getCommunityRulesPage, getPrivacyNoticePage, getTermsOfUsePage, getInstallPage, getOptionsPage } from '../controllers/infoController';
+import { getContactPage, postContactMessage, getCommunityRulesPage, getPrivacyNoticePage, getTermsOfUsePage, getInstallPage, getOptionsPage, postProductionRateLimitDiagnostics } from '../controllers/infoController';
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
 import { requireAuth } from '../middleware/auth';
 import { validateSameOrigin } from '../middleware/csrf';
@@ -14,7 +14,6 @@ import listingRoutes from './listingRoutes';
 import releaseRoutes from './releaseRoutes';
 import messagingRoutes from './messagingRoutes';
 import { getCatalogueSuggestions } from '../controllers/catalogueSearchController';
-import { postProductionRateLimitDiagnostics } from '../controllers/productionRateLimitDiagnosticsController';
 
 const router = Router();
 
@@ -44,6 +43,8 @@ router.get('/drop/new', requireAuth, getCreateCustomReleasePage);
 router.get('/design-system', getDesignSystemPage);
 router.post('/design-system/demo', postDesignSystemDemo);
 
+
+router.post('/_internal/production/rate-limit-diagnostics', postProductionRateLimitDiagnostics);
 
 router.post('/_internal/production/rate-limit-diagnostics', postProductionRateLimitDiagnostics);
 
