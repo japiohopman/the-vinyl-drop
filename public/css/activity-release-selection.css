@@ -278,6 +278,7 @@
   cursor: pointer;
 }
 .activity-youtube-load:hover { background: var(--color-ink); color: var(--color-white); }
+.activity-youtube-load[hidden] { display: none !important; }
 .activity-youtube-load:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
 .activity-play-glyph { color: var(--color-rust-accessible); font-size: var(--font-size-sm); }
 .activity-youtube-load:hover .activity-play-glyph { color: inherit; }
@@ -415,7 +416,7 @@
   .activity-card {
     position: relative;
     display: grid;
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: 96px minmax(0, 1fr);
     gap: var(--space-3);
     padding: var(--space-3);
   }
@@ -423,7 +424,8 @@
   .activity-artwork-link {
     grid-column: 1;
     grid-row: 1;
-    width: 64px;
+    width: 96px;
+    max-width: 96px;
     margin-bottom: 0;
   }
 
