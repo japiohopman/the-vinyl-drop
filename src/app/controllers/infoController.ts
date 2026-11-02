@@ -1,9 +1,79 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { timingSafeEqual } from 'crypto';
+import { config } from '../../config/env';
+import { getRateLimitClientIp, verifyRateLimitDatabaseAccess } from '../services/rateLimitService';
 import { createHmac, randomBytes } from 'crypto';
 import { z } from 'zod';
 import { renderWithLayout } from '../utils/render';
 import { TERMS_VERSION } from '../services/registrationConsent';
 import { sendContactMessage } from '../services/contactMessageService';
+
+/**
+ * Temporary, production-only diagnostics for the owner-approved Issue #89 runtime probe.
+ * Returns pass/fail only and never exposes the client IP, database identity or errors.
+ */
+export interface ProductionRateLimitProbeDependencies {
+  nodeEnv: string;
+  token: string;
+  checkDatabase: () => Promise<void>;
+  resolveClientIp: (req: Request, environment: 'production') => string | null;
+}
+
+function matchesProductionProbeToken(expected: string, supplied: string | undefined): boolean {
+  if (!supplied) return false;
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+  const suppliedBuffer = Buffer.from(supplied, 'utf8');
+  return expectedBuffer.length === suppliedBuffer.length
+    && timingSafeEqual(expectedBuffer, suppliedBuffer);
+}
+
+export function createProductionRateLimitProbeHandler(
+  dependencies: ProductionRateLimitProbeDependencies,
+): RequestHandler {
+  return (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+
+    void (async () => {
+      const suppliedToken = req.headers['x-production-rate-limit-diagnostic-token'];
+      if (
+        dependencies.nodeEnv !== 'production'
+        || !dependencies.token
+        || typeof suppliedToken !== 'string'
+        || !matchesProductionProbeToken(dependencies.token, suppliedToken)
+      ) {
+        res.status(404).end();
+        return;
+      }
+
+      const clientIpPresent = dependencies.resolveClientIp(req, 'production') !== null;
+      let databaseAccess = false;
+      try {
+        await dependencies.checkDatabase();
+        databaseAccess = true;
+      } catch {
+        // Keep database errors and connection details out of the response.
+      }
+
+      res.status(clientIpPresent && databaseAccess ? 200 : 503).json({
+        database: databaseAccess ? 'pass' : 'fail',
+        clientIpHeader: clientIpPresent ? 'pass' : 'fail',
+      });
+    })().catch(() => {
+      if (!res.headersSent) {
+        res.status(503).json({ database: 'fail', clientIpHeader: 'fail' });
+      }
+    });
+  };
+}
+
+export const postProductionRateLimitDiagnostics = createProductionRateLimitProbeHandler({
+  nodeEnv: config.NODE_ENV,
+  token: config.PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN,
+  checkDatabase: verifyRateLimitDatabaseAccess,
+  resolveClientIp: getRateLimitClientIp,
+});
 
 const CONTACT_EMAIL = 'yepyouknowhim@gmail.com';
 const CONTACT_COOLDOWN_MS = 60_000;
