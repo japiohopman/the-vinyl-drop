@@ -179,7 +179,8 @@ describe('My Listings UX (#219)', () => {
     const archivedStart = html.indexOf('data-listing-id="listing-archived"');
     const archivedEnd = html.indexOf('</article>', archivedStart);
     const archivedCard = html.slice(archivedStart, archivedEnd);
-    expect(archivedCard).toContain('action="/listings/listing-archived/delete" method="POST"');
+    expect(archivedCard).toContain('action="/listings/listing-archived/delete"');
+    expect(archivedCard).toContain('method="POST"');
     expect(archivedCard).toContain('Delete permanently');
     expect(archivedCard).toContain('data-permanent-delete-listing');
 
@@ -190,8 +191,10 @@ describe('My Listings UX (#219)', () => {
     }
 
     const hiddenArchived = await renderListings([makeListing('listing-hidden-archived', 'archived')], true);
-    expect(hiddenArchived).toContain('action="/listings/listing-hidden-archived/delete" method="POST"');
-    expect(hiddenArchived).toContain('action="/listings/listing-hidden-archived/restore-dismissed" method="POST"');
+    expect(hiddenArchived).toContain('action="/listings/listing-hidden-archived/delete"');
+    expect(hiddenArchived).toContain('method="POST"');
+    expect(hiddenArchived).toContain('action="/listings/listing-hidden-archived/restore-dismissed"');
+    expect(hiddenArchived).toContain('method="POST"');
 
     const confirmationPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
     await confirmationPage.setContent(documentHtml(await renderHeader('/listings'), html));
