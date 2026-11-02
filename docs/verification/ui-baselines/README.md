@@ -16,7 +16,8 @@ Use one folder per product surface:
 - `activity/`
 - `messaging/`
 - `options/`
-- `information/` — Terms, Installation, Privacy Notice, Community Rules and Contact
+- `information/` — canonical page-family index and maintenance guide for Terms, Installation, Privacy Notice, Community Rules and Contact
+- `menu/` — existing owner-supplied desktop/mobile screenshots for those information pages; preserve their original filenames and link them from `information/`
 - `errors/` — generic 400, 404 and 500 application templates plus documented response-only statuses
 
 Use this filename pattern:
@@ -29,7 +30,7 @@ Examples (conventions only; do not create these files without a reviewed capture
 - `listing-detail-default-1280x900-record-shop.png`
 - `options-blue-note-390x844-blue-note.png`
 
-Use lowercase kebab-case. Include the theme when theme changes are relevant; use `default` only when the state has a clear default. If the actual screenshot dimensions are unknown, do not invent them.
+Use lowercase kebab-case for new files. Existing owner-supplied legacy files (including Dutch/mobile spelling and filename-case variations in `menu/`) keep their exact names; do not rename or duplicate them merely to normalize naming. Include the theme when theme changes are relevant; use `default` only when the state has a clear default. If the actual screenshot dimensions are unknown, do not invent them.
 
 
 ## Owner-confirmed discovery pair
