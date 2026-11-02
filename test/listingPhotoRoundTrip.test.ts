@@ -225,11 +225,7 @@ describe('Seller cover photo HTTP round trip', () => {
     );
     expect(storedArtwork.rows).toHaveLength(1);
     const storedArtworkUrl = storedArtwork.rows[0].cover_art_url!;
-    expect(storedArtworkUrl).toMatch(new RegExp('^/mock-storage/listings/' + listingId + '/release-artwork-[0-9a-f-]{36}[.]webp$'));
-    const storedArtworkPath = storedArtworkUrl.replace('/mock-storage/', '');
-    const storedArtworkBuffer = await downloadListingPhotoFromStorage(storedArtworkPath);
-    expect(storedArtworkBuffer.length).toBeGreaterThan(0);
-    expect((await sharp(storedArtworkBuffer).metadata()).format).toBe('webp');
+    expect(storedArtworkUrl).toMatch(new RegExp('^/mock-storage/listings/' + listingId + '/release-artwork-[0-9a-f-]{36}[.]webp
     expect(await findPhotosByListingId(listingId)).toHaveLength(0);
 
     const editorAfterArtwork = await supertest(app).get(`/listings/${listingId}/edit`);
@@ -389,8 +385,7 @@ describe('Seller cover photo HTTP round trip', () => {
   });
 });
 ));
-    const storedArtworkUrl = storedArtwork.rows[0].cover_art_url!;
-    const storedArtworkPath = storedArtworkUrl.replace(/^\/mock-storage\//, '');
+    const storedArtworkPath = storedArtworkUrl.replace('/mock-storage/', '');
     const storedArtworkBuffer = await downloadListingPhotoFromStorage(storedArtworkPath);
     expect(storedArtworkBuffer.length).toBeGreaterThan(0);
     expect((await sharp(storedArtworkBuffer).metadata()).format).toBe('webp');
