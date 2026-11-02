@@ -30,6 +30,20 @@ export async function updateReleaseYouTubeVideoId(
   return results[0] || null;
 }
 
+export async function updateReleaseCoverArtUrl(
+  id: string,
+  coverArtUrl: string | null,
+  dbOverride?: DbInstance
+): Promise<Release | null> {
+  const db = dbOverride || getDb();
+  const results = await db
+    .update(releases)
+    .set({ coverArtUrl, updatedAt: new Date() })
+    .where(eq(releases.id, id))
+    .returning();
+  return results[0] || null;
+}
+
 export async function listReleases(limit = 50, dbOverride?: DbInstance): Promise<Release[]> {
   const db = dbOverride || getDb();
   return db.select().from(releases).limit(limit);

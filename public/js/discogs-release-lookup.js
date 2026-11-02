@@ -9,11 +9,8 @@
   var metadataDetails = document.getElementById('releaseMetadataDetails');
   var coverPreview = form.querySelector('[data-discogs-cover-preview]');
   var coverPreviewImage = coverPreview ? coverPreview.querySelector('img') : null;
+  var coverPreviewPlaceholder = coverPreview ? coverPreview.querySelector('[data-discogs-artwork-placeholder]') : null;
   var coverPreviewStatus = coverPreview ? coverPreview.querySelector('[data-discogs-cover-preview-status]') : null;
-  var manualArtworkInput = form.querySelector('#releaseCoverArt');
-  var manualArtworkFilename = form.querySelector('#releaseCoverArtFilename');
-  var manualArtworkPreview = form.querySelector('[data-release-cover-override-preview]');
-  var manualArtworkPreviewImage = manualArtworkPreview ? manualArtworkPreview.querySelector('[data-release-cover-override-image]') : null;
   var debounceTimer = null;
   var activeController = null;
   var debounceMs = 450;
@@ -22,7 +19,8 @@
   var submitAfterLookup = false;
   var fieldMap = {
     label: 'label', catalogueNumber: 'catalogueNumber', releaseYear: 'releaseYear',
-    format: 'format', barcode: 'barcode', country: 'country', genre: 'genre', coverArtUrl: 'coverArtUrl'
+    format: 'format', barcode: 'barcode', country: 'country', genre: 'genre', coverArtUrl: 'coverArtUrl',
+    discogsExternalId: 'discogsExternalId'
   };
 
   function setStatus(message, state) {
@@ -40,44 +38,46 @@
     return key === 'coverArtUrl' ? coverArtUrlInput : form.querySelector('[data-discogs-field="' + key + '"]');
   }
 
+  function setCoverPreviewMessage(message, state) {
+    if (!coverPreview) return;
+    coverPreview.dataset.state = state || 'idle';
+    if (coverPreviewStatus) coverPreviewStatus.textContent = message;
+  }
+
   function updateCoverPreview(value, hasMatch) {
     if (!coverPreview || !coverPreviewImage) return;
+
     if (typeof value === 'string' && /^https:\/\//i.test(value)) {
-      coverPreview.hidden = false;
+      coverPreview.dataset.state = 'found';
+      if (coverPreviewPlaceholder) coverPreviewPlaceholder.hidden = true;
       coverPreviewImage.hidden = false;
       if (coverPreviewStatus) coverPreviewStatus.textContent = 'Discogs catalogue artwork found.';
       coverPreviewImage.onload = function () {
-        if (coverPreviewStatus && coverPreviewImage.getAttribute('src') === value) {
-          coverPreviewStatus.textContent = 'Discogs catalogue artwork found.';
+        if (coverPreviewImage.getAttribute('src') === value) {
+          setCoverPreviewMessage('Discogs catalogue artwork found.', 'found');
         }
       };
       coverPreviewImage.onerror = function () {
         if (coverPreviewImage.getAttribute('src') !== value) return;
         coverPreviewImage.hidden = true;
-        if (coverPreviewStatus) {
-          coverPreviewStatus.textContent = 'Discogs found the release, but its artwork could not be loaded. You can use your own artwork below.';
-        }
+        if (coverPreviewPlaceholder) coverPreviewPlaceholder.hidden = false;
+        setCoverPreviewMessage('Discogs returned artwork, but the image could not be loaded. You can add a replacement in Edit listing.', 'error');
       };
       coverPreviewImage.src = value;
-    } else {
-      coverPreviewImage.removeAttribute('src');
-      coverPreviewImage.hidden = true;
-      coverPreview.hidden = !hasMatch;
-      if (coverPreviewStatus) {
-        coverPreviewStatus.textContent = hasMatch
-          ? 'Discogs matched this release, but no catalogue artwork is available. You can add your own artwork in Release details.'
-          : '';
-      }
+      return;
     }
+
+    coverPreviewImage.removeAttribute('src');
+    coverPreviewImage.hidden = true;
+    if (coverPreviewPlaceholder) coverPreviewPlaceholder.hidden = false;
+    setCoverPreviewMessage(
+      hasMatch
+        ? 'Discogs found the release, but no catalogue artwork is available. You can add release artwork later in Edit listing.'
+        : 'Artwork will appear here after a confident Discogs match. You can add or replace release artwork later in Edit listing.',
+      hasMatch ? 'missing' : 'idle'
+    );
   }
 
-  function clearManualArtworkForNewRelease() {
-    if (!manualArtworkInput || !manualArtworkInput.files || manualArtworkInput.files.length === 0) return;
-    manualArtworkInput.value = '';
-    if (manualArtworkFilename) manualArtworkFilename.textContent = 'No file selected';
-    if (manualArtworkPreviewImage) manualArtworkPreviewImage.removeAttribute('src');
-    if (manualArtworkPreview) manualArtworkPreview.hidden = true;
-  }
 
   function clearPreviousAutomaticValues() {
     Object.keys(fieldMap).forEach(function (key) {
@@ -122,6 +122,7 @@
 
     activeController = new AbortController();
     setStatus('Checking Discogs…', 'searching');
+    setCoverPreviewMessage('Looking for release artwork…', 'searching');
     try {
       var params = new URLSearchParams({ artist: artist, title: title });
       var response = await fetch('/releases/lookup-metadata?' + params.toString(), {
@@ -133,11 +134,13 @@
       if (response.status === 400) {
         if (metadataDetails) metadataDetails.open = true;
         setStatus('Check the artist and title, then try again.', 'error');
+        setCoverPreviewMessage('Check the artist and title to look up release artwork.', 'error');
         return;
       }
       if (response.status === 503 || !response.ok) {
         if (metadataDetails) metadataDetails.open = true;
         setStatus('Discogs is temporarily unavailable. You can still enter the details manually.', 'error');
+        setCoverPreviewMessage('Discogs is temporarily unavailable. You can add release artwork later in Edit listing.', 'error');
         return;
       }
       var result = await response.json();
@@ -152,11 +155,13 @@
       } else {
         if (metadataDetails) metadataDetails.open = true;
         setStatus('No confident match found. You can enter the release details manually.', 'empty');
+        setCoverPreviewMessage('No release artwork yet. You can add it later in Edit listing.', 'empty');
       }
     } catch (error) {
       if (error && error.name === 'AbortError') return;
       if (metadataDetails) metadataDetails.open = true;
       setStatus('Discogs is temporarily unavailable. You can still enter the details manually.', 'error');
+      setCoverPreviewMessage('Discogs is temporarily unavailable. You can add release artwork later in Edit listing.', 'error');
     } finally {
       finishLookup(sequence);
     }
@@ -175,11 +180,11 @@
   function scheduleLookup() {
     if (debounceTimer !== null) window.clearTimeout(debounceTimer);
     if (activeController) activeController.abort();
-    clearManualArtworkForNewRelease();
     lookupSequence += 1;
     var sequence = lookupSequence;
     setLookupPending(true);
     setStatus('Waiting for artist and title…', 'idle');
+    setCoverPreviewMessage('Waiting for the release lookup…', 'idle');
     debounceTimer = window.setTimeout(function () {
       debounceTimer = null;
       lookup(sequence);

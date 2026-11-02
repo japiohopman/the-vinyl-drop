@@ -9,15 +9,60 @@
       <h2><%= release.title %></h2>
       <p>by <%= release.artist %><% if (release.releaseYear) { %> · <%= release.releaseYear %><% } %></p>
     </div>
-    <% if (release.coverArtUrl) { %>
-      <section class="release-reference-artwork" aria-label="Release catalogue artwork reference">
-        <img data-artwork-image src="<%= release.coverArtUrl %>" alt="Catalogue artwork for <%= release.title %> by <%= release.artist %>; reference image, not a photo of your copy" />
-        <div>
-          <strong>Release artwork</strong>
-          <p>This is the catalogue image for the release. It already supplies the Dig front until you add a photo of your actual copy.</p>
+    <section class="release-artwork-editor" aria-labelledby="releaseArtworkHeading">
+      <div class="release-artwork-preview-column">
+        <div class="release-artwork-preview-frame">
+          <% if (release.coverArtUrl) { %>
+            <img data-artwork-image src="<%= release.coverArtUrl %>" alt="Catalogue artwork for <%= release.title %> by <%= release.artist %>; release reference, not a photo of your physical copy" />
+          <% } else { %>
+            <div class="release-artwork-empty-state" data-release-artwork-empty>
+              <%- include('../partials/icon', { name: 'photo-camera', size: '2rem', ariaHidden: true }) %>
+              <span>No release artwork yet</span>
+            </div>
+          <% } %>
         </div>
-      </section>
-    <% } %>
+        <span class="release-artwork-current-label"><%= release.coverArtUrl ? 'Current release artwork' : 'Artwork not added' %></span>
+      </div>
+      <div class="release-artwork-content">
+        <span class="release-artwork-kicker">RELEASE ARTWORK</span>
+        <h2 id="releaseArtworkHeading">Catalogue artwork</h2>
+        <p class="release-artwork-description">This is the default front image for the release. A photo of your actual front cover takes priority on your listing; the back image is always a photo of your copy.</p>
+        <p class="release-artwork-shared-note">Release artwork is shared by listings of this same release.</p>
+        <% if (typeof releaseArtworkError !== 'undefined' && releaseArtworkError) { %>
+          <p class="release-artwork-error" role="alert">That image could not be saved. Choose a valid JPEG, PNG or WebP image up to 5 MiB and try again.</p>
+        <% } %>
+        <% if (typeof releaseArtworkRestoreError !== 'undefined' && releaseArtworkRestoreError) { %>
+          <p class="release-artwork-error" role="alert">Discogs artwork could not be restored. Your current release artwork has not changed.</p>
+        <% } %>
+        <form action="/listings/<%= encodeURIComponent(listing.id) %>/release-artwork" method="POST" enctype="multipart/form-data" class="release-artwork-upload-form">
+          <p id="releaseCoverArtHelp" class="release-artwork-file-help">Add a new catalogue image or replace the current one. JPEG, PNG or WebP · max 5 MiB.</p>
+          <div class="custom-release-file-picker release-artwork-file-picker">
+            <input type="file" id="releaseCoverArt" name="coverArt" accept="image/jpeg,image/png,image/webp" class="custom-release-file-input" aria-describedby="releaseCoverArtHelp releaseCoverArtFilename" required />
+            <label for="releaseCoverArt" class="btn btn-outline custom-release-file-trigger">
+              <%- include('../partials/icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>
+              <span class="release-artwork-file-mobile-label">Use this device</span>
+              <span class="release-artwork-file-desktop-label">Choose file</span>
+            </label>
+            <span id="releaseCoverArtFilename" class="custom-release-file-name release-artwork-file-name" role="status" aria-live="polite">No replacement selected</span>
+          </div>
+          <div class="release-cover-override-preview" data-release-cover-override-preview hidden>
+            <img src="" alt="Preview of selected replacement catalogue artwork" data-release-cover-override-image />
+            <div>
+              <strong>Selected replacement</strong>
+              <p>This replaces the shared release artwork when saved.</p>
+              <button type="button" class="btn btn-outline btn-sm" data-clear-release-cover-override>Clear selection</button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-md release-artwork-save-button">Save release artwork</button>
+        </form>
+        <% if (release.externalSource === 'discogs' && release.externalId) { %>
+          <form action="/listings/<%= encodeURIComponent(listing.id) %>/release-artwork/restore-discogs" method="POST" class="release-artwork-restore-form">
+            <p>Discogs is still saved as the original catalogue source for this release.</p>
+            <button type="submit" class="btn btn-outline btn-md">Use original Discogs artwork</button>
+          </form>
+        <% } %>
+      </div>
+    </section>
 
     <%- include('../partials/form-errors', {
       errors: form.generalErrors.length > 0
@@ -53,7 +98,7 @@
       <div class="photo-section-header">
         <div>
           <h2>Photos</h2>
-          <p>Optional photos of the exact copy you are selling. <% if (release.coverArtUrl) { %>The release artwork above already supplies the Dig front until you add your own front photo.<% } else { %>No catalogue artwork is available yet; add a front photo to show the sleeve in Dig.<% } %></p>
+          <p>Optional photos of your actual copy. Add them only when you want to show its sleeve, record or condition. Release artwork above supplies the default front image when you do not add a front photo of your copy.</p>
         </div>
         <button type="button" class="btn btn-outline btn-sm photo-help-trigger" data-open-photo-help>
           <span class="photo-help-mark" aria-hidden="true">?</span>
@@ -318,5 +363,6 @@
       </div>
     </form>
   </div>
+  <script src="/js/release-file-picker.js" defer></script>
   <script src="/js/square-photo-cropper.js" defer></script>
 </div>

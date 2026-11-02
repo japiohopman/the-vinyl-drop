@@ -20,7 +20,12 @@ import {
 } from '../services/listingService';
 import { getListingComments, addComment } from '../services/commentService';
 import { isListingFavorited } from '../services/favoriteService';
-import { updateReleaseYouTubePreviewForListing } from '../services/releaseService';
+import {
+  updateReleaseYouTubePreviewForListing,
+  updateReleaseArtworkForListing,
+  restoreDiscogsArtworkForListing,
+} from '../services/releaseService';
+import { processAndValidateImage } from '../utils/imageProcessor';
 import { formatPrice } from '../view-models/listingCardViewModel';
 import { FormViewModel } from '../view-models/formViewModel';
 import { parsePriceEurToCents } from '../../validators/listing';
@@ -203,6 +208,8 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
       photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
       photoError: typeof req.query.photoError === 'string' ? req.query.photoError : '',
       youtubePreviewError: req.query.youtubePreviewError === 'invalid',
+      releaseArtworkError: req.query.releaseArtworkError === 'invalid',
+      releaseArtworkRestoreError: req.query.releaseArtworkRestoreError === 'unavailable',
     });
   } catch (error) {
     next(error);
@@ -278,6 +285,81 @@ export async function postUpdateReleaseYouTubePreview(req: Request, res: Respons
   } catch (error) {
     if (error instanceof ValidationError) {
       return res.redirect(`/listings/${listingId}/edit?youtubePreviewError=invalid`);
+    }
+    if (error instanceof NotFoundError) {
+      res.status(404);
+      return renderWithLayout(res, 'errors/404', {
+        title: 'Listing Not Found',
+        message: 'The listing or its associated release was not found.',
+        isStatusPage: true,
+      }, next);
+    }
+    if (error instanceof AuthorizationError) {
+      res.status(403);
+      return renderWithLayout(res, 'errors/500', {
+        title: '403 Forbidden',
+        message: 'You are not authorized to edit this listing.',
+      }, next);
+    }
+    return next(error);
+  }
+}
+
+/** Updates shared release-level catalogue artwork; it never creates a seller photo row. */
+export async function postUpdateReleaseArtwork(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const listingId = req.params.id;
+  if (!req.user) return res.redirect('/auth/login');
+
+  try {
+    const files = req.files || [];
+    if (files.length !== 1 || files[0].fieldname !== 'coverArt') {
+      throw new ValidationError('Choose one catalogue artwork image to upload.');
+    }
+
+    let processedArtwork: Awaited<ReturnType<typeof processAndValidateImage>>;
+    try {
+      processedArtwork = await processAndValidateImage(files[0].buffer, files[0].mimetype);
+    } catch {
+      throw new ValidationError('Choose a valid JPEG, PNG or WebP catalogue artwork image.');
+    }
+    await updateReleaseArtworkForListing(listingId, req.user.id, processedArtwork, { req });
+    setFlashCookie(res, 'success', 'Release artwork updated. It is shared by listings of this release.');
+    return res.redirect(`/listings/${listingId}/edit`);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return res.redirect(`/listings/${listingId}/edit?releaseArtworkError=invalid`);
+    }
+    if (error instanceof NotFoundError) {
+      res.status(404);
+      return renderWithLayout(res, 'errors/404', {
+        title: 'Listing Not Found',
+        message: 'The listing or its associated release was not found.',
+        isStatusPage: true,
+      }, next);
+    }
+    if (error instanceof AuthorizationError) {
+      res.status(403);
+      return renderWithLayout(res, 'errors/500', {
+        title: '403 Forbidden',
+        message: 'You are not authorized to edit this listing.',
+      }, next);
+    }
+    return next(error);
+  }
+}
+
+/** Restores the original Discogs catalogue image without creating a seller photo. */
+export async function postRestoreDiscogsArtwork(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const listingId = req.params.id;
+  if (!req.user) return res.redirect('/auth/login');
+
+  try {
+    await restoreDiscogsArtworkForListing(listingId, req.user.id, { req });
+    setFlashCookie(res, 'success', 'Original Discogs release artwork restored.');
+    return res.redirect(`/listings/${listingId}/edit`);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return res.redirect(`/listings/${listingId}/edit?releaseArtworkRestoreError=unavailable`);
     }
     if (error instanceof NotFoundError) {
       res.status(404);

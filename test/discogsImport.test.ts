@@ -105,6 +105,7 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
           format: 'Vinyl, LP, Album',
           genre: 'Funk, Soul',
           coverArtUrl: 'https://i.discogs.com/example-cover.jpg',
+          discogsExternalId: '123',
         },
       });
       expect(DiscogsMetadataProvider.prototype.searchCandidates).toHaveBeenCalledWith({
@@ -227,6 +228,7 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
           releaseYear: '1971',
           country: 'US',
           coverArtUrl: 'https://i.discogs.com/album-cover.jpg',
+          discogsExternalId: '990',
         },
       });
       expect(calls).toEqual([
@@ -428,7 +430,9 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Add a record');
     expect(response.text).toContain('data-discogs-lookup-form');
-    expect(response.text).toContain('Use this device');
+    expect(response.text).toContain('data-discogs-cover-preview');
+    expect(response.text).not.toContain('name="coverArt"');
+    expect(response.text).not.toContain('Use this device');
     expect(response.text).toContain('Artist *');
     expect(response.text).toContain('Track or album title *');
   });
