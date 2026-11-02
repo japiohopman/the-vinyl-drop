@@ -25,7 +25,7 @@ This folder maps actual application-handled error templates and failure states. 
 
 The design concepts for 404 and 500 are recorded in [`../../../design/working/branded-status-and-information-page-direction.md`](../../../design/working/branded-status-and-information-page-direction.md). They are proposed visual direction only; the current templates remain unchanged.
 
-The central reference index is [\`UI_VISUAL_REFERENCE.md\`](../../UI_VISUAL_REFERENCE.md). Update its error-state rows when a template or response behavior changes.
+The central reference index is [UI Visual Reference](../../UI_VISUAL_REFERENCE.md). Update its error-state rows when a template or response behavior changes.
 
 ## Capture and update rules
 
