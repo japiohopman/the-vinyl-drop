@@ -1090,3 +1090,35 @@
   .release-artwork-file-mobile-label { display: inline; }
   .release-artwork-file-desktop-label { display: none; }
 }
+
+/* Prevent long catalogue-artwork controls from widening the mobile editor grid. */
+@media (max-width: 767px) {
+  .release-artwork-upload-form,
+  .release-artwork-restore-form {
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+  }
+  .release-artwork-upload-form .btn,
+  .release-artwork-restore-form .btn {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    text-align: center;
+  }
+  .release-artwork-file-picker,
+  .release-artwork-file-picker .custom-release-file-trigger,
+  .release-artwork-file-name {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .release-artwork-file-picker .custom-release-file-trigger {
+    white-space: normal;
+  }
+  .release-artwork-file-name {
+    overflow-wrap: anywhere;
+  }
+}

@@ -224,7 +224,12 @@ describe('Seller cover photo HTTP round trip', () => {
       `SELECT cover_art_url FROM public.releases WHERE id = '${releaseId}'`
     );
     expect(storedArtwork.rows).toHaveLength(1);
-    expect(storedArtwork.rows[0].cover_art_url).toMatch(new RegExp('^/mock-storage/listings/' + listingId + '/release-artwork-[0-9a-f-]{36}\\.webp
+    const storedArtworkUrl = storedArtwork.rows[0].cover_art_url!;
+    expect(storedArtworkUrl).toMatch(new RegExp('^/mock-storage/listings/' + listingId + '/release-artwork-[0-9a-f-]{36}[.]webp$'));
+    const storedArtworkPath = storedArtworkUrl.replace('/mock-storage/', '');
+    const storedArtworkBuffer = await downloadListingPhotoFromStorage(storedArtworkPath);
+    expect(storedArtworkBuffer.length).toBeGreaterThan(0);
+    expect((await sharp(storedArtworkBuffer).metadata()).format).toBe('webp');
     expect(await findPhotosByListingId(listingId)).toHaveLength(0);
 
     const editorAfterArtwork = await supertest(app).get(`/listings/${listingId}/edit`);
