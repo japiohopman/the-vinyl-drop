@@ -8,6 +8,8 @@ import AxeBuilder from '@axe-core/playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 import { errorHandler, notFoundHandler } from '../src/app/middleware/errorHandler';
 
+jest.setTimeout(120_000);
+
 describe('Branded 404 and 5xx error pages (#315)', () => {
   let browser: Browser;
   let server: Server;

@@ -284,6 +284,7 @@ export async function postUpdateReleaseYouTubePreview(req: Request, res: Respons
       return renderWithLayout(res, 'errors/404', {
         title: 'Listing Not Found',
         message: 'The listing or its associated release was not found.',
+        isStatusPage: true,
       }, next);
     }
     if (error instanceof AuthorizationError) {
