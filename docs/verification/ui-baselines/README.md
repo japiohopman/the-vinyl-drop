@@ -16,6 +16,8 @@ Use one folder per product surface:
 - `activity/`
 - `messaging/`
 - `options/`
+- `information/` — Terms, Installation, Privacy Notice, Community Rules and Contact
+- `errors/` — generic 400, 404 and 500 application templates plus documented response-only statuses
 
 Use this filename pattern:
 
