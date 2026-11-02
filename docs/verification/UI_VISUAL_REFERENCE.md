@@ -8,7 +8,7 @@ This directory is the durable visual reference library for The Vinyl Drop. It se
 | --- | --- | --- |
 | Approved screen appearance | [`ui-baselines/`](./ui-baselines/README.md) | Only reviewed, staging/test-account screenshots listed in the baseline register are visual references. |
 | Original icons, artwork and illustrations | [Visual Asset Catalogue](./VISUAL_ASSET_CATALOGUE.md) | The original file in `public/` is the production source of truth. |
-| Information pages | [`ui-baselines/information/`](./ui-baselines/information/README.md) | Terms, Installation, Privacy Notice, Community Rules and Contact; desktop/mobile captures are still to be added. |
+| Information pages | [`ui-baselines/information/`](./ui-baselines/information/README.md) | Terms, Installation, Privacy Notice, Community Rules and Contact; desktop/mobile references are linked from the existing `ui-baselines/menu/` files. |
 | Branded error and failure states | [`ui-baselines/errors/`](./ui-baselines/errors/README.md) | Actual Express-owned 400/404/500 templates and non-page status responses; do not invent host-owned 505 pages. |
 | Temporary responsive/browser evidence | GitHub Actions artifacts listed below | Diagnostic evidence only; not a replacement for a reviewed visual reference. |
 | Older committed screenshots and video | Legacy evidence register below | Historical context until content, provenance and synthetic-data safety are reviewed. |
@@ -41,47 +41,43 @@ The desktop/mobile pairing is intentionally **Browse on desktop + Dig on mobile*
 
 The former duplicate `menu/` files have been removed; `navigation/` is the single canonical home for the desktop and mobile YOU-menu references. The two zero-byte Dig placeholders were removed rather than retained as fake screenshots. `home/` and `browse/` now contain README instructions describing their expected canonical filenames.
 
-### Remaining owner screenshot intake — core marketplace batch (#307)
+### Owner screenshot intake — core marketplace and information pages (#307 / #310)
 
-Within the original core marketplace batch, one visual surface remains without a usable current reference pair:
+The Home desktop/mobile pair is present under `home/`. The information-page desktop/mobile references are present under `menu/` and linked below. No additional image intake is required for these shipped page families. Browse desktop is covered by the existing historical [1280×800 Browse list reference](./desktop_browse_list_1280x800.png); Dig mobile is the paired mobile reference. No extra desktop Dig or mobile Browse capture is required.
 
-1. **Home:** the existing `home/home_desktop.png` on `main` is a zero-byte placeholder, so it is not usable, and no Home mobile image is present. Jaap indicated Home was already prepared locally, but no valid Home image is currently visible in this PR's changed-file list. If that capture exists under another path, link/identify it; otherwise add one desktop and one mobile Home capture under `home/`.
-
-Browse desktop is covered by the existing historical [1280×800 Browse list reference](./desktop_browse_list_1280x800.png); Dig mobile is the paired mobile reference. No extra desktop Dig or mobile Browse capture is required.
-
-All other surfaces from the original #307 marketplace screenshot request have received usable screenshot files. The separate `information/` and `errors/` capture families introduced by #310 are tracked in the section below and still need their own representative captures. The listing-creation and messaging names retain some original spelling inconsistencies to avoid unnecessary binary churn; the index links to the exact canonical files. Long fixed-navigation screenshots remain useful as contextual references, but not as exact uninterrupted full-page layout goldens.
+All other surfaces from the original #307 marketplace screenshot request have usable screenshot files. The listing-creation and messaging names retain some original spelling inconsistencies to avoid unnecessary binary churn; the index links to the exact canonical files. Long fixed-navigation screenshots remain useful as contextual references, but not as exact uninterrupted full-page layout goldens.
 
 ## Full-screen inventory and branded status pages — Issue #310
 
 The source-audited route/view catalogue is maintained in [`docs/PAGE_MAP.md`](../PAGE_MAP.md). Screen-specific error and information-page concepts are in [`branded-status-and-information-page-direction.md`](../design/working/branded-status-and-information-page-direction.md).
 
-### Information pages — reference captures pending
+### Information pages — existing desktop/mobile references
 
-The routes and templates are confirmed, but no dedicated image baselines have been committed yet. Required references:
+The information-page captures already exist in `ui-baselines/menu/`. They are linked from the canonical information-page index; filenames are preserved exactly:
 
 | Page | Route | Desktop | Mobile |
 | --- | --- | --- | --- |
-| Terms of Use | `/terms` | `information/terms-desktop.png` | `information/terms-mobile.png` |
-| Installation | `/install` | `information/install-desktop.png` | `information/install-mobile.png` |
-| Privacy Notice | `/privacy` | `information/privacy-desktop.png` | `information/privacy-mobile.png` |
-| Community Rules | `/community-rules` | `information/community-rules-desktop.png` | `information/community-rules-mobile.png` |
-| Contact | `/contact` | `information/contact-desktop.png` | `information/contact-mobile.png` |
+| Terms of Use | `/terms` | [terms_desktop.png](./ui-baselines/menu/terms_desktop.png) | [terms_mobliel.png](./ui-baselines/menu/terms_mobliel.png) |
+| Installation | `/install` | [install_desktop.png](./ui-baselines/menu/install_desktop.png) | [install_mobiel.png](./ui-baselines/menu/install_mobiel.png) |
+| Privacy Notice | `/privacy` | [privacy_desktop.png](./ui-baselines/menu/privacy_desktop.png) | [Privacy_mobiel.png](./ui-baselines/menu/Privacy_mobiel.png) |
+| Community Rules | `/community-rules` | [rules_desktop.png](./ui-baselines/menu/rules_desktop.png) | [rules_mobiel.png](./ui-baselines/menu/rules_mobiel.png) |
+| Contact | `/contact` | [contact_desktop.png](./ui-baselines/menu/contact_desktop.png) | [contact_mobiel.png](./ui-baselines/menu/contact_mobiel.png) |
 
-These images are not prerequisites for documenting the existing route/source map, but they are required before claiming a complete visual reference set for the information family. Capture representative first-viewport states; add a separate Contact validation/success capture only when it adds useful context.
+These existing image files are the current information-family references. Capture metadata not present in the source is marked `not recorded`; do not infer a viewport, theme or deployed SHA from filenames. Add a separate Contact validation/success capture only if that interaction is changed.
 
 ### Application error templates and current response types
 
 | State | Actual application source | Reference status |
 | --- | --- | --- |
 | Generic 400 / client error | `views/errors/400.ejs` | Pending desktop/mobile capture. Inline form-validation states remain in their owning form view. |
-| 404 / not found | `views/errors/404.ejs` | Pending branded desktop/mobile capture; empty-sleeve concept is documented but not implemented. |
-| 500 / internal error | `views/errors/500.ejs` | Pending desktop/mobile capture; turntable-paused concept is documented but not implemented. |
+| 404 / not found | `views/errors/404.ejs` | Existing minimal fallback is source-mapped; new branded empty-sleeve page and screenshots are deferred to a separate implementation issue. |
+| 500 / internal error | `views/errors/500.ejs` | Existing minimal fallback is source-mapped; new branded paused-turntable page and screenshots are deferred to a separate implementation issue. |
 | 403 | Currently reuses `400.ejs` in generic error handling; some listing controller branches use `500.ejs` with status 403. | No separate 403 template; inconsistency is recorded in PAGE_MAP. |
 | 429 | Shared rate limiter emits plain text/JSON; Contact's per-email cooldown re-renders Contact. | Not a standalone HTML screenshot until an HTML response is implemented. |
 | 503 | Shared rate-limit failure emits plain text/JSON; Contact provider failure renders Contact; generic Express errors may use `500.ejs`. | No single standalone 503 screen. |
 | 502 / 504 / 505 | No dedicated application route/template; may be generated by the host/reverse proxy. | No application baseline. Only map/brand if the deployed edge supports a custom error document. |
 
-Do not trigger an actual production failure to capture an error. Use a controlled staging/test state; preserve the real HTTP status and never expose stack traces, SQL or provider diagnostics.
+Do not intentionally trigger a production or staging failure for a screenshot. The new branded 404/500 pages are intentionally outside this mapping PR; capture their desktop/mobile states only after the separate UI implementation exists. Preserve truthful HTTP status codes and never expose stack traces, SQL or provider diagnostics.
 
 ## How future issues and PRs must use this library
 
