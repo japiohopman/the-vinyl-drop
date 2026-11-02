@@ -21,7 +21,7 @@ describe('controlled Release metadata', () => {
     expect(RELEASE_GENRES).toContain('Folk, World & Country');
     expect(RELEASE_GENRES).toContain('Ambient');
     expect(isKnownGenreInput(RELEASE_GENRES.join(', '))).toBe(true);
-    expect(normalizeCanonicalGenres(RELEASE_GENRES)).toEqual([...RELEASE_GENRES]);
+    expect(normalizeCanonicalGenres([...RELEASE_GENRES])).toEqual([...RELEASE_GENRES]);
     expect(normalizeCanonicalGenres(['Funk', 'Soul', 'Electronic', 'Rare Groove'])).toEqual([
       'Electronic',
       'Funk / Soul',
