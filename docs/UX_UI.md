@@ -33,7 +33,7 @@ The workstream sequence for UI implementation is:
 - [#124](https://github.com/japiohopman/the-vinyl-drop/issues/124) — Responsive navigation and `YOU` account surface.
 - [#125](https://github.com/japiohopman/the-vinyl-drop/issues/125) — Reusable success toasts and persistent actionable error banners.
 - [#126](https://github.com/japiohopman/the-vinyl-drop/issues/126) — Desktop floating messaging window and truthful unread indicator (gated on [#49](https://github.com/japiohopman/the-vinyl-drop/issues/49) and [#119](https://github.com/japiohopman/the-vinyl-drop/issues/119)).
-- [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — Future PWA / mobile-shell context (not in current scope).
+- [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — Website PWA install/share experience; the install page, manifest and first-party icon/QR assets are implemented. Remaining acceptance is tracked in the Issue.
 
 ## Brand
 
@@ -187,7 +187,9 @@ Mobile Dig is a **single-card deck/discard interaction**, not a tilted or multi-
 - The front/back photo flip is a separate explicit control; horizontal browsing never flips the cover.
 - Title, artist and price fade with the active-card transition. Non-active slides remain visually hidden and inert outside the transition.
 - Reduced-motion mode removes transition motion but retains a single active sleeve, the selected record, accessible metadata and flip state.
-- Use each listing's existing seller-selected front/back photo roles and existing missing-photo placeholders. Do not add a second artwork fallback or change upload/crop behavior.
+- Front artwork priority is the seller's explicit `front_cover` photo, then the saved release catalogue cover, then the local placeholder.
+- The reverse face uses the seller's explicit `back_cover` photo only; never duplicate the Discogs front as a back image.
+- Catalogue artwork remains release metadata. It is not a seller photo and must not be stored as a `listing_photos` row.
 - The conventional desktop grid/list remains unchanged.
 
 ## Activity view (`/activity`)
@@ -202,7 +204,7 @@ Respects public visibility boundaries and excludes draft, unpublished, or delete
 ## Listing detail view (`/listings/:id`)
 
 Prioritizes listing information in logical hierarchy:
-1. listing photography and image viewer;
+1. seller's actual front-cover photograph when available, otherwise release catalogue artwork, then the local placeholder; image viewer;
 2. artist and release title;
 3. price formatted in Euros (e.g. `€34.95`) or `FOR TRADE` status;
 4. Goldmine condition badges (Media condition and Sleeve condition);
@@ -211,15 +213,16 @@ Prioritizes listing information in logical hierarchy:
 7. seller's physical copy description;
 8. authenticated public comment thread for buyer-seller inquiries.
 
-## Sell flow (`/drop/new` -> `/listings/create` -> `/listings/:id/photos` -> `/listings/:id/preview`)
+## Sell flow: + DROP, catalogue artwork and the physical copy
 
-Mobile-first multi-step workflow:
-1. **Find or create release:** Search existing releases or import/enter canonical release metadata (`/drop/new`).
-2. **Describe physical copy:** Enter media condition, sleeve condition, price/trade intent, and notes (`/listings/create`).
-3. **Upload photos:** Stream upload up to 5 photos with server-side validation and Sharp processing (`/listings/:id/photos`).
-4. **Preview & publish:** Review draft listing before transitioning to published status (`/listings/:id/preview`).
+The primary journey separates the catalogue release from the seller's individual copy:
 
-Form fields preserve user input on validation errors using structured Zod error view models (`FormViewModel`).
+1. **Find or create the release:** `GET /drop/new` opens the Discogs-assisted release form (also available at `GET /releases/new`). `GET /releases/lookup-metadata` retrieves a confident catalogue match. The selected release metadata and catalogue cover are submitted through `POST /releases/new` and saved on the Release.
+2. **Create the physical copy and listing:** The seller selects an existing release, then enters media/sleeve condition, price or trade intent, and notes through the listing creation flow (`GET /listings/new`, `GET /listings/create`, `POST /listings`).
+3. **Manage photos in the editor:** `GET /listings/:id/edit` renders the seller's edit screen. Photo upload is a `POST /listings/:id/photos` action, with related POST actions for assigning `front_cover` / `back_cover` roles, deletion and ordering. There is no separate GET photo-management page.
+4. **Preview and publish:** `GET /listings/:id/preview` presents the draft before the seller explicitly publishes it.
+
+The image boundary is intentional: Discogs catalogue artwork is stored as release metadata; photographs of the exact physical copy remain seller-owned Storage objects referenced by `listing_photos`. A seller front-cover photo overrides the catalogue image. The back face uses only the seller's back-cover photo. Form validation uses structured Zod error view models (`FormViewModel`).
 
 ## Public profile and Crate (`/profiles/:username`)
 

@@ -6,8 +6,9 @@ The Vinyl Drop is a local marketplace for people who love physical records — c
 
 Rooted in the spirit of Amsterdam Oost, it is built around real records and the people who own them. Browse what is out there, discover a copy, ask the seller a question, and arrange a local buy or trade.
 
-**🎧 [Check out The Vinyl Drop](https://the-vinyl-drop-staging.onrender.com)**  
-*Explore the current staging preview — the site is still a work in progress.*
+**[Visit The Vinyl Drop](https://thevinyldrop.nl)**
+
+The website is live on its official domain. Access remains invite-only while the private beta and public-launch checks are completed; a public website address does not mean open registration.
 
 ## Made for people who love digging
 
@@ -20,8 +21,4 @@ Rooted in the spirit of Amsterdam Oost, it is built around real records and the 
 
 Records are more than a title and a cover image. The Vinyl Drop puts the details that matter to collectors up front — from pressing information to condition — while keeping the experience personal and community-minded.
 
-Transactions are arranged directly between buyers and sellers. Built-in checkout, shipping, and payment processing are not part of the current experience.
-
----
-
-**Have a look around:** [the-vinyl-drop-staging.onrender.com](https://the-vinyl-drop-staging.onrender.com)
+Transactions are arranged directly between buyers and sellers. Built-in checkout, shipping, payment processing and escrow are not part of the current experience.

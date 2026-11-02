@@ -1,119 +1,87 @@
-# Pre-Launch Operations Strategy
+# Pre-Launch Operations
 
-This document outlines the operational decisions, infrastructure choices, policies, and readiness gates that must be established prior to opening The Vinyl Drop to a public or real-money audience.
+This document records durable operating boundaries for The Vinyl Drop. It is not a live checklist: current completion status, evidence and owner decisions belong in the linked GitHub Issues, especially [#282 — release tracker](https://github.com/japiohopman/the-vinyl-drop/issues/282).
 
-*Note on infrastructure providers: Specific service names mentioned below (e.g. Render, Vercel, Stripe, Resend, Postmark, Sentry) are candidate evaluation options only and do not constitute binding architectural decisions.*
+**Last reconciled:** 2 November 2026.
 
----
+## 1. Product and transaction model
 
-## 1. Environment Strategy
+The Vinyl Drop is a local community marketplace for physical vinyl. Buyers and sellers discover records and arrange any purchase, trade, payment and collection directly with one another.
 
-A multi-environment configuration strategy is required to isolate development, testing, and production data:
+The application does not currently provide online checkout, payment processing, seller payouts, escrow, shipping labels, carrier booking, fulfilment, automated dispute adjudication or an administrative moderation console. It also does not operate a public waitlist or marketing newsletter.
 
-- **Local Development:** Developers run local Express server instances backed by environment variables (`.env`). Database migrations are verified against in-memory PostgreSQL (`@electric-sql/pglite`) and local or dev Supabase instances.
-- **Staging / Preview Environment:** Automated preview deployments triggered on pull requests or staging branches. Backed by a dedicated staging Supabase project (isolated database, auth, and storage bucket) with seed catalog data.
-- **Production Environment:** Hardened production runtime environment backed by a dedicated production Supabase project with production SSL certificates, connection pooling, and strict secret management.
+## 2. Environments and deployment boundaries
 
----
+Staging and production are separate Render services backed by separate Supabase projects. Treat them as independent environments with separate Auth identities, database state, Storage objects and secrets.
 
-## 2. Closed Alpha & Beta Onboarding
+| Environment | Current operating model |
+| --- | --- |
+| Local / CI | Node.js + TypeScript application; tests and migration verification run in isolated environments |
+| Staging | Render staging service with its own Supabase project; merges to `main` auto-deploy here |
+| Production | Separate Render service and Supabase project; Render Auto-Deploy is off; production deployments require a separate manual owner decision |
 
-To manage initial user growth and ensure marketplace quality before public launch:
+The official production origin is `https://thevinyldrop.nl`; `www.thevinyldrop.nl` redirects to the non-www canonical origin. The staging origin is `https://the-vinyl-drop-staging.onrender.com`.
 
-- **Closed Alpha Phase:** Invite-only access restricted to local Amsterdam community record collectors and sellers. Used to validate listing creation, image upload performance, and search usability.
-- **Invite & Verification Flow:** Prospective sellers apply for an invite or receive an invite token. Account registration requires email verification before publishing listings.
-- **Closed Beta Phase:** Expanded regional rollout across select neighborhood communities.
+See [STAGING_BETA_DEPLOYMENT.md](./STAGING_BETA_DEPLOYMENT.md) and [PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md) for environment-specific procedures. A green CI run, staging deploy or successful `/health` response does not prove that production DB, Auth, Storage or user journeys are fully verified.
 
----
+## 3. Cost and availability constraints
 
-## 3. Customer Support & Complaints Handling
+Staging and production currently use Free-tier Render and Supabase resources. Free services may sleep or cold-start, have finite quotas and do not provide a production availability SLA. The production Free environment does not provide a tested automated disaster-recovery guarantee; manual export and Storage-backup procedures and a restore exercise remain release concerns.
 
-Operational channels for handling user inquiries and marketplace disputes:
+The target is to avoid additional recurring platform spend. Do not upgrade a plan, add a paid service or enable a paid external integration without a current cost/benefit check and Jaap's explicit approval.
 
-- **Support Contact Channel:** Official support email (`support@thevinyldrop.com` or candidate desk software) for account, technical, or community inquiries.
-- **Marketplace Dispute Boundary:** Because initial marketplace transactions occur directly between buyers and sellers locally, the platform acts as an information directory rather than a payment escrow agent. Clear terms must communicate the platform's non-involvement in cash handling or local meetup disputes.
-- **Code of Conduct:** Explicit community guidelines governing accurate condition grading, fair trading, and respectful communication.
+## 4. Authentication, registration and abuse prevention
 
----
+The current operating boundary is a private, invite-only beta for adults. The application and provider-level signup controls are separate. Do not treat a publicly reachable `/auth/signup` page as permission to register: private-beta checks and Supabase Auth controls remain part of the access boundary.
 
-## 4. Transactional Email Strategy
+The password-safety flow uses an application-side Have I Been Pwned range check and a Supabase Before User Created approval hook for email/password registration. The native Supabase leaked-password protection warning is a separate provider capability and is not available on the current Free plan; the application check must not be represented as the native feature.
 
-System events requiring reliable transactional email delivery:
+The shared PostgreSQL rate limiter is implemented and its controlled staging runtime probe passed on 2 November 2026 (`database: pass`, `clientIpHeader: pass`). Its temporary diagnostic endpoint/token were removed. Production application's own database-role and client-IP runtime proof remains tracked in [#89](https://github.com/japiohopman/the-vinyl-drop/issues/89).
 
-- **Core Operational Emails:** Account email verification, password reset links, security alerts, and comment notification digests.
-- **Candidate Email Providers:** Resend, Postmark, or SendGrid.
-- **Template & Domain Verification:** Domain authentication (DKIM, SPF, DMARC) configured for production sending domains.
+Keep these controls unchanged until the applicable Issues are complete and Jaap authorizes a change:
+- `BETA_INVITE_ONLY_ENABLED=true`;
+- `SHARED_RATE_LIMITS_ENABLED=false`;
+- `MESSAGING_ENABLED=false`.
 
----
+Preparation for a cohort capacity of up to 13 people is not confirmation that 13 people are on the live production allowlist. It does not authorize widening the current cohort or opening public registration. See [#279](https://github.com/japiohopman/the-vinyl-drop/issues/279), [#89](https://github.com/japiohopman/the-vinyl-drop/issues/89) and [#282](https://github.com/japiohopman/the-vinyl-drop/issues/282).
 
-## 5. Hosting & Runtime Execution
+## 5. Support, complaints and moderation
 
-The application is a Node.js / Express server-rendered web app (`dist/server.js`).
+The public [Contact page](https://thevinyldrop.nl/contact) is the supported channel for account questions, technical feedback, listing concerns, complaints and privacy requests. Its displayed contact details are authoritative; do not invent a separate `support@` address or external ticketing provider.
 
-- **Runtime Environment:** Containerized Node.js (v22 LTS) execution environment with process management (PM2 or container orchestrator).
-- **Candidate Hosting Platforms:** Render, Fly.io, Railway, AWS ECS, or Vercel.
-- **Auto-scaling & Health Monitoring:** HTTP `/health` check polling configured for automated restart on failure.
+Reports and privacy requests are handled manually by the operator. The current product does not provide an automated moderation queue, per-listing/profile in-app reporting workflow or automated moderation appeals. Keep incident notes minimal and access-controlled. Never put raw IP addresses, passwords, tokens, recovery URLs or private message contents in public Issues/PRs.
 
----
+## 6. Email and external providers
 
-## 6. Infrastructure Responsibilities (PostgreSQL / Auth / Storage)
+Supabase Auth handles credentials and account/session lifecycle. Production authentication email, recovery and Google sign-in have owner-reported smoke evidence; production Google OAuth still has its own verification gate in [#281](https://github.com/japiohopman/the-vinyl-drop/issues/281).
 
-Supabase managed services tiering and responsibilities:
+Use only providers and credentials approved for the relevant environment. A staging sender/domain check is not proof of production email delivery. Never copy provider credentials, OAuth secrets, database URLs or SMTP passwords into repository files, Issues, PRs or logs.
 
-- **PostgreSQL Database:** Production tier with Supabase connection pooling (PgBouncer/Supavisor) to support concurrent Express database client connections.
-- **Supabase Auth:** Enterprise or Pro tier configuring custom SMTP, OAuth credentials, and cookie session security limits.
-- **Supabase Storage:** `listing-photos` bucket configured with CDN caching headers, image delivery optimization, and storage quota limits.
+Optional external services are called only when the corresponding feature is used. Discogs receives catalogue lookup terms when a user requests a lookup; the privacy-enhanced YouTube player loads only after a visitor activates a preview. See [SECURITY_PRIVACY.md](./SECURITY_PRIVACY.md).
 
----
+## 7. Data handling, uploads and recovery
 
-## 7. Payments & Payout Model (Future Real-Money Operations)
+Listing photos are seller-owned physical-copy images stored through Supabase Storage. The upload pipeline enforces file/count limits, validates and processes images with Sharp, strips EXIF metadata and records role/order in the database. Release catalogue artwork remains release metadata and is not copied into seller photo storage.
 
-If online payments or automated checkout are evaluated for future phases beyond local P2P arrangements:
+Do not promise automatic deletion, a complete export/erasure feature, provider-side log expiry, point-in-time recovery or a tested full restore unless the relevant implementation/provider evidence exists. Account/privacy requests are currently handled manually; see [BETA_PRIVACY_OPERATIONS.md](./BETA_PRIVACY_OPERATIONS.md).
 
-- **Candidate Payment Provider:** Stripe Connect (Express or Custom onboarding) for buyer card processing and automated seller payouts.
-- **Fee Structure & Taxes:** Application fee collection, VAT calculation, tax invoice generation, and local regulatory compliance.
-- **Escrow & Refund Liability:** Defining buyer protection policies, dispute handling, chargeback liabilities, and seller payout holding periods.
+A production manual database export and a separate Storage-object backup/restore rehearsal remain readiness items under [#278](https://github.com/japiohopman/the-vinyl-drop/issues/278). Isolated PGlite migration tests do not substitute for a production backup or restore.
 
----
+## 8. Monitoring and health checks
 
-## 8. Shipping & Fulfillment Boundaries
+The application exposes `GET /health` as a process-level health response. A successful response confirms that the web process is responding; it does not prove database writes, Auth, Storage, mail delivery or end-to-end marketplace behavior. Render Free cold starts are expected.
 
-- **Default Operational Model:** Local pickup and meetups in designated public neighborhood spots (e.g. local record stores or community spaces).
-- **Future Shipping Option:** Optional seller-arranged shipping with tracking numbers. Platform liability boundaries must explicitly state that physical item damage during transit is the seller's/carrier's responsibility.
+Do not claim an external uptime-monitoring service, Sentry/Datadog integration, tested alert delivery or an established incident SLA unless those are separately configured and verified.
 
----
+## 9. Public-launch gates
 
-## 9. Moderation & Content Enforcement
+Current completion status and evidence are tracked in GitHub:
+- [#278](https://github.com/japiohopman/the-vinyl-drop/issues/278) — production isolation, domain, DB/Storage, backup/recovery and production smoke matrix;
+- [#279](https://github.com/japiohopman/the-vinyl-drop/issues/279) — safe public registration and abuse-prevention review;
+- [#280](https://github.com/japiohopman/the-vinyl-drop/issues/280) — privacy/legal scope, public disclosures, operator and complaint readiness;
+- [#281](https://github.com/japiohopman/the-vinyl-drop/issues/281) — separate production Google OAuth setup and verification;
+- [#89](https://github.com/japiohopman/the-vinyl-drop/issues/89) — production shared-rate-limit runtime proof and any later owner-approved activation;
+- [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — PWA installation and sharing acceptance;
+- [#282](https://github.com/japiohopman/the-vinyl-drop/issues/282) — final release decision and dependency reconciliation.
 
-Operational procedures for maintaining catalog and community safety:
-
-- **Proactive Image Inspection:** Server-side Sharp processing strips EXIF metadata and verifies image integrity.
-- **Reactive Content Reporting:** Triage workflows for user reports regarding fraudulent listings, incorrect condition grades, offensive comments, or copyright infringement.
-- **Takedown Procedure:** Takedown runbook for archiving non-compliant listings or disabling policy-violating user profiles.
-
----
-
-## 10. Disaster Recovery & Backups
-
-- **Database Backups:** Automated daily PostgreSQL logical backups and Supabase Point-in-Time Recovery (PITR) enabled in production.
-- **Storage Redundancy:** Object storage cross-region backup policies for uploaded listing photography.
-- **Disaster Recovery Runbook:** Documented procedure for restoring database snapshots and executing Drizzle migrations on a clean database instance.
-
----
-
-## 11. Observability, Logging & Alerting
-
-- **Error Monitoring:** Candidate integration with Sentry or Datadog for catching uncaught Express controller errors and client-side error spikes.
-- **Structured Server Logs:** JSON server logging capturing HTTP status codes, request latency, and database query errors without logging sensitive session tokens or personal data.
-- **Uptime Monitoring:** External uptime checks (Pingdom, Better Stack, or UptimeRobot) pinging `GET /health`.
-
----
-
-## 12. Pre-Launch Readiness Gates
-
-Before promoting the platform to production launch, all pre-launch gates must pass:
-
-1. **Security & Penetration Audit:** Independent security audit verifying Auth cookie security, CSRF same-origin enforcement, file upload isolation, and SQL injection safety.
-2. **Accessibility Audit:** Automated (`npm run test:a11y` checking WCAG 2.1 AA rules) and manual screen reader testing across phone and desktop viewports.
-3. **Load & Stress Testing:** Performance benchmarking verifying response times under simulated concurrent browse, search, and upload traffic.
-4. **Legal & Compliance Gate:** Published Terms of Service, Privacy Policy, Cookie Policy, and Community Guidelines compliant with local GDPR regulations.
+The site remains invite-only until those gates are assessed and Jaap explicitly authorizes any expansion. This document is not legal advice or an independent security audit.
