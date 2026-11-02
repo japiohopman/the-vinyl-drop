@@ -105,6 +105,7 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
           format: 'Vinyl, LP, Album',
           genre: 'Funk, Soul',
           coverArtUrl: 'https://i.discogs.com/example-cover.jpg',
+          discogsExternalId: '123',
         },
       });
       expect(DiscogsMetadataProvider.prototype.searchCandidates).toHaveBeenCalledWith({
@@ -227,6 +228,7 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
           releaseYear: '1971',
           country: 'US',
           coverArtUrl: 'https://i.discogs.com/album-cover.jpg',
+          discogsExternalId: '990',
         },
       });
       expect(calls).toEqual([
