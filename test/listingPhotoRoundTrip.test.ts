@@ -6,7 +6,7 @@ import supertest from 'supertest';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { setOverrideDb } from '../src/db';
-import { getEditListingPage, postUploadPhoto, postUpdateReleaseArtwork } from '../src/app/controllers/listingController';
+import { getEditListingPage, getPreviewListingPage, postUploadPhoto, postUpdateReleaseArtwork } from '../src/app/controllers/listingController';
 import { getDigBrowsePage } from '../src/app/controllers/browseController';
 import { getCreateCustomReleasePage, postCreateCustomRelease } from '../src/app/controllers/releaseController';
 import { errorHandler } from '../src/app/middleware/errorHandler';
@@ -101,6 +101,7 @@ describe('Seller cover photo HTTP round trip', () => {
       postUploadPhoto
     );
     app.get('/listings/:id/edit', authenticateTestSeller, getEditListingPage);
+    app.get('/listings/:id/preview', authenticateTestSeller, getPreviewListingPage);
     app.get('/releases/new', authenticateTestSeller, getCreateCustomReleasePage);
     app.post('/releases/new', authenticateTestSeller, validateSameOrigin, multipartUploadHandler, postCreateCustomRelease);
     app.get('/browse/dig', getDigBrowsePage);
@@ -206,6 +207,15 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(editorAfterArtwork.status).toBe(200);
     expect(editorAfterArtwork.text).toContain('Current release artwork');
     expect(editorAfterArtwork.text).toContain('data:image/webp;base64,');
+
+    const digAfterArtwork = await searchDigListings({ q: 'Kind of Blue' });
+    expect(digAfterArtwork.items[0].frontArtwork.sourceKind).toBe('catalogue_artwork');
+    expect(digAfterArtwork.items[0].frontArtwork.src).toMatch(/^data:image\/webp;base64,/);
+
+    const previewAfterArtwork = await supertest(app).get(`/listings/${listingId}/preview`);
+    expect(previewAfterArtwork.status).toBe(200);
+    expect(previewAfterArtwork.text).toContain('Release catalogue artwork · reference image');
+    expect(previewAfterArtwork.text).toContain('data:image/webp;base64,');
 
     const releaseForm = await supertest(app).get('/releases/new');
     expect(releaseForm.status).toBe(200);
