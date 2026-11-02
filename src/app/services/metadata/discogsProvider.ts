@@ -2,6 +2,55 @@ import { CandidateRelease, IdentificationQuery, MetadataProvider } from './types
 import { normalizeCanonicalGenres, resolveCountry } from '../../../domain/releaseMetadata';
 import { normalizeVinylFormatCharacteristics } from '../../../domain/releaseFormat';
 
+
+const DISCOGS_USER_AGENT = 'TheVinylDrop/1.0.0 (+https://thevinyldrop.nl)';
+
+interface DiscogsArtworkResponse {
+  images?: Array<{
+    type?: string;
+    resource_url?: string;
+    uri?: string;
+  }>;
+  thumb?: string;
+  master_id?: number;
+}
+
+function createDiscogsHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'User-Agent': DISCOGS_USER_AGENT,
+  };
+  const discogsToken = process.env.DISCOGS_API_TOKEN;
+  if (discogsToken) {
+    headers.Authorization = `Discogs token=${discogsToken}`;
+  }
+  return headers;
+}
+
+function getValidDiscogsArtworkUrl(data: DiscogsArtworkResponse): string | undefined {
+  const primaryImage = data.images?.find((image) => image.type?.toLowerCase() === 'primary');
+  const candidates = [
+    primaryImage?.resource_url,
+    primaryImage?.uri,
+    ...(data.images || []).flatMap((image) => [image.resource_url, image.uri]),
+    data.thumb,
+  ];
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const url = new URL(candidate);
+      const hostname = url.hostname.toLowerCase();
+      if (url.protocol === 'https:' && (hostname === 'discogs.com' || hostname.endsWith('.discogs.com'))) {
+        return url.toString();
+      }
+    } catch {
+      // Ignore malformed image candidates and continue to the next source.
+    }
+  }
+
+  return undefined;
+}
+
 export class DiscogsMetadataProvider implements MetadataProvider {
   readonly name = 'discogs';
 
@@ -12,6 +61,47 @@ export class DiscogsMetadataProvider implements MetadataProvider {
   constructor(options?: { timeoutMs?: number; throwOnError?: boolean }) {
     this.timeoutMs = options?.timeoutMs ?? 5000;
     this.throwOnError = options?.throwOnError ?? false;
+  }
+
+  /**
+   * Resolve artwork omitted by Discogs database-search results from the selected
+   * release details, then from its master when the individual release has none.
+   */
+  async getReleaseArtwork(externalId: string): Promise<string | undefined> {
+    if (!/^\\d{1,15}$/.test(externalId)) return undefined;
+
+    const release = await this.fetchArtworkDetails(`https://api.discogs.com/releases/${externalId}`);
+    if (!release) return undefined;
+
+    const releaseArtwork = getValidDiscogsArtworkUrl(release);
+    if (releaseArtwork) return releaseArtwork;
+
+    if (typeof release.master_id !== 'number' || !Number.isSafeInteger(release.master_id) || release.master_id <= 0) {
+      return undefined;
+    }
+
+    const master = await this.fetchArtworkDetails(`https://api.discogs.com/masters/${release.master_id}`);
+    return master ? getValidDiscogsArtworkUrl(master) : undefined;
+  }
+
+  private async fetchArtworkDetails(url: string): Promise<DiscogsArtworkResponse | null> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        headers: createDiscogsHeaders(),
+        signal: controller.signal,
+      });
+      if (!response.ok) return null;
+      return await response.json() as DiscogsArtworkResponse;
+    } catch (error) {
+      // Artwork is optional: a detail lookup failure must not discard a confident metadata match.
+      console.warn('Discogs artwork detail lookup unavailable:', error);
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async searchCandidates(query: IdentificationQuery): Promise<CandidateRelease[]> {
@@ -52,13 +142,7 @@ export class DiscogsMetadataProvider implements MetadataProvider {
         searchUrl.searchParams.set('q', qParts.join(' '));
       }
 
-      const discogsToken = process.env.DISCOGS_API_TOKEN;
-      const headers: Record<string, string> = {
-        'User-Agent': 'TheVinylDrop/1.0.0 (+https://the-vinyl-drop.local)',
-      };
-      if (discogsToken) {
-        headers['Authorization'] = `Discogs token=${discogsToken}`;
-      }
+      const headers = createDiscogsHeaders();
 
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.timeoutMs);
