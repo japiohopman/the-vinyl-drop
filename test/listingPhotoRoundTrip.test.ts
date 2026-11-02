@@ -269,7 +269,10 @@ describe('Seller cover photo HTTP round trip', () => {
       ok: true,
       status: 200,
       json: async () => ({
-        images: [{ resource_url: 'https://i.discogs.com/original-kind-of-blue.jpg' }],
+        images: [
+          { resource_url: 'http://not-discogs.example/unsafe.jpg' },
+          { resource_url: 'https://i.discogs.com/original-kind-of-blue.jpg' },
+        ],
       }),
     } as Response);
     let restoreResponse;
