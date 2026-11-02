@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360">
+  <defs>
+    <filter id="deck-shadow" x="-10%" y="-10%" width="130%" height="140%">
+      <feDropShadow dx="8" dy="10" stdDeviation="0" flood-color="#151515" flood-opacity=".24"/>
+    </filter>
+    <linearGradient id="deck" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#466257"/>
+      <stop offset="1" stop-color="#263b33"/>
+    </linearGradient>
+  </defs>
+  <g filter="url(#deck-shadow)" transform="rotate(-2 240 185)">
+    <rect x="36" y="51" width="408" height="260" fill="url(#deck)" stroke="#151515" stroke-width="6"/>
+    <path d="M54 69h372v224H54z" fill="none" stroke="#91a397" stroke-width="2" opacity=".7"/>
+    <circle cx="215" cy="183" r="105" fill="#151515" stroke="#d8d2c5" stroke-width="4"/>
+    <circle cx="215" cy="183" r="91" fill="none" stroke="#494949" stroke-width="2"/>
+    <circle cx="215" cy="183" r="72" fill="none" stroke="#494949" stroke-width="2"/>
+    <circle cx="215" cy="183" r="53" fill="none" stroke="#494949" stroke-width="2"/>
+    <circle cx="215" cy="183" r="34" fill="#f60f4b" stroke="#fffdf8" stroke-width="2"/>
+    <circle cx="215" cy="183" r="5" fill="#151515"/>
+    <path d="M215 159v-11m0 58v-11m-24-12h-11m70 0h-11" stroke="#fffdf8" stroke-width="1.5" opacity=".6"/>
+    <circle cx="388" cy="91" r="13" fill="#151515" stroke="#f3efe7" stroke-width="3"/>
+    <path d="M388 91 349 126 318 111" fill="none" stroke="#151515" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M388 91 349 126 318 111" fill="none" stroke="#c7c4ba" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="m318 111-11-10" stroke="#f60f4b" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="388" cy="91" r="5" fill="#f60f4b"/>
+    <rect x="73" y="272" width="92" height="7" fill="#d8d2c5" opacity=".8"/>
+    <rect x="73" y="284" width="56" height="4" fill="#f60f4b"/>
+    <circle cx="393" cy="270" r="7" fill="#f60f4b" stroke="#151515" stroke-width="2"/>
+  </g>
+  <path d="M374 35h40" stroke="#f60f4b" stroke-width="5"/>
+  <path d="M394 15v40" stroke="#f60f4b" stroke-width="5"/>
+  <text x="394" y="70" fill="#151515" font-family="Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="1.2" text-anchor="middle">PAUSE</text>
+</svg>

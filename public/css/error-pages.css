@@ -1,0 +1,176 @@
+/* Branded application-level 404 / 5xx recovery pages (Issue #315). */
+.status-page {
+  width: 100%;
+  max-width: 1080px;
+  margin: clamp(var(--space-6), 6vw, var(--space-12)) auto;
+  overflow: hidden;
+  border: var(--border-heavy);
+  background: var(--color-white);
+  box-shadow: var(--shadow-tactile);
+}
+
+.status-page-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(var(--space-5), 5vw, var(--space-12));
+  padding: clamp(var(--space-4), 5vw, var(--space-10));
+}
+
+.status-page-artwork {
+  display: flex;
+  min-width: 0;
+  min-height: 250px;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(var(--space-2), 2.5vw, var(--space-5));
+  border: var(--border-thick);
+  background: var(--color-paper);
+}
+
+.status-page-artwork img {
+  display: block;
+  width: 100%;
+  max-width: 440px;
+  max-height: 350px;
+  height: auto;
+  object-fit: contain;
+}
+
+.status-page-copy { min-width: 0; }
+
+.status-page-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  color: var(--color-rust-accessible);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.status-page-eyebrow span { color: var(--color-ink-muted); }
+
+.status-page-copy h1 {
+  max-width: 12ch;
+  margin: 0 0 var(--space-4);
+  font-size: clamp(2rem, 4.2vw, 3.5rem);
+  line-height: var(--line-height-tight);
+  overflow-wrap: anywhere;
+}
+
+.status-page-description {
+  max-width: 42ch;
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-relaxed);
+}
+
+.status-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.status-page-action {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-thick);
+  font-family: var(--font-display);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  line-height: var(--line-height-snug);
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+
+.status-page-action-primary {
+  border-color: var(--color-rust);
+  background: var(--color-rust);
+  color: var(--color-white);
+}
+
+.status-page-action-primary:hover {
+  border-color: var(--color-rust-hover);
+  background: var(--color-rust-hover);
+  color: var(--color-white);
+}
+
+.status-page-action-secondary {
+  background: var(--color-white);
+  color: var(--color-ink);
+}
+
+.status-page-action-secondary:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-ink);
+}
+
+.status-page-home-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--color-ink);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-underline-offset: 4px;
+}
+
+.status-page-home-link:hover { color: var(--color-rust-accessible); }
+
+@media (max-width: 767px) {
+  .status-page {
+    margin-top: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .status-page-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+    padding: var(--space-3);
+  }
+
+  .status-page-artwork {
+    min-height: 0;
+    aspect-ratio: 1.2 / 1;
+    padding: var(--space-2);
+  }
+
+  .status-page-artwork img { max-height: 250px; }
+
+  .status-page-copy { padding: var(--space-1) var(--space-2) var(--space-2); }
+
+  .status-page-copy h1 {
+    max-width: 14ch;
+    font-size: clamp(2rem, 9vw, 2.75rem);
+  }
+
+  .status-page-description { font-size: var(--font-size-base); }
+
+  .status-page-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-5);
+  }
+
+  .status-page-action,
+  .status-page-home-link {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-page-action { transition: none; }
+}

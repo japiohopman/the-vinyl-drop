@@ -6,7 +6,10 @@ import { ValidationError, AuthorizationError, NotFoundError } from '../services/
 export function notFoundHandler(req: Request, res: Response): void {
   res.status(404);
   if (req.accepts('html')) {
-    renderWithLayout(res, 'errors/404', { title: '404 - Page Not Found' });
+    renderWithLayout(res, 'errors/404', {
+      title: '404 - Page Not Found',
+      isStatusPage: true,
+    });
     return;
   }
   if (req.accepts('json')) {
@@ -49,6 +52,24 @@ function getGenericClientErrorMessage(statusCode: number): string {
     case 429: return 'Too Many Requests';
     default: return 'Client Error';
   }
+}
+
+function getSafeRetryHref(req: Request): string | null {
+  if (req.method.toUpperCase() !== 'GET') return null;
+
+  // req.path excludes the query string. Only return a same-origin absolute path;
+  // never copy form data, tokens, or arbitrary request headers into the retry URL.
+  const requestPath = req.path;
+  if (
+    typeof requestPath !== 'string' ||
+    !requestPath.startsWith('/') ||
+    requestPath.startsWith('//') ||
+    requestPath.includes(String.fromCharCode(92)) ||
+    Array.from(requestPath).some((character) => character.charCodeAt(0) < 32)
+  ) {
+    return null;
+  }
+  return requestPath;
 }
 
 export function errorHandler(
@@ -118,6 +139,7 @@ export function errorHandler(
         renderWithLayout(res, 'errors/404', {
           title: '404 - Page Not Found',
           message: clientMessage,
+          isStatusPage: true,
         });
       } else {
         const title =
@@ -132,7 +154,12 @@ export function errorHandler(
         });
       }
     } else {
-      renderWithLayout(res, 'errors/500', { title: '500 - Server Error' });
+      renderWithLayout(res, 'errors/500', {
+        title: `${statusCode} - Server Error`,
+        statusCode,
+        retryHref: getSafeRetryHref(req),
+        isStatusPage: true,
+      });
     }
     return;
   }
