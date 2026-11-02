@@ -24,6 +24,7 @@ export const releaseSchema = z.object({
 }).superRefine((data, context) => {
   const countryFromCode = data.countryCode ? resolveCountry(data.countryCode) : null;
   const countryFromLabel = data.country ? resolveCountry(data.country) : null;
+  const hasDiscogsSource = data.externalSource === 'discogs' && /^\d{1,15}$/.test(data.externalId || '');
 
   if (data.countryCode && !countryFromCode) {
     context.addIssue({
