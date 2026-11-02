@@ -261,7 +261,15 @@ export async function searchListings(
   // Genre filter
   if (params.genre && params.genre.trim()) {
     const genre = params.genre.trim();
-    conditions.push(or(arrayContains(releases.canonicalGenres, [genre]), ilike(releases.genre, `%${genre}%`))!);
+    const legacyGenreExpression = sql`(' ' || regexp_replace(regexp_replace(lower(coalesce(${releases.genre}, '')), '&', ' and ', 'g'), '[^a-z0-9]+', ' ', 'g') || ' ')`;
+    const legacyGenreMatches = getCanonicalGenreSearchTerms(genre).map((term) =>
+      sql`${legacyGenreExpression} LIKE ${`% ${term} %`}`
+    );
+    conditions.push(or(
+      arrayContains(releases.canonicalGenres, [genre]),
+      ilike(releases.genre, `%${genre}%`),
+      ...legacyGenreMatches
+    )!);
   }
 
   // Format quick filters use explicit terms in legacy free-text metadata. LP is
