@@ -5,6 +5,7 @@ import {
   createRelease as createReleaseInRepo,
   findReleaseById,
   updateReleaseYouTubeVideoId,
+  updateReleaseCoverArtUrl,
 } from '../repositories/releaseRepository';
 import { findListingById } from '../repositories/listingRepository';
 import { findPhysicalCopyById } from '../repositories/physicalCopyRepository';
@@ -42,6 +43,35 @@ export async function updateReleaseYouTubePreviewForListing(
   }
 
   const updatedRelease = await updateReleaseYouTubeVideoId(release.id, youtubeVideoId, dbOverride);
+  if (!updatedRelease) throw new NotFoundError('Associated release not found');
+  return updatedRelease;
+}
+
+export async function updateReleaseArtworkForListing(
+  listingId: string,
+  requestingUserId: string,
+  submittedArtwork: unknown,
+  dbOverride?: DbInstance
+): Promise<Release> {
+  if (
+    typeof submittedArtwork !== 'string' ||
+    !/^data:image\/webp;base64,[A-Za-z0-9+/]+={0,2}$/.test(submittedArtwork)
+  ) {
+    throw new ValidationError('Choose a valid processed catalogue artwork image.');
+  }
+
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) throw new NotFoundError('Listing not found');
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to update this listing release artwork');
+  }
+
+  const physicalCopy = await findPhysicalCopyById(listing.physicalCopyId, dbOverride);
+  if (!physicalCopy) throw new NotFoundError('Associated physical copy not found');
+  const release = await findReleaseById(physicalCopy.releaseId, dbOverride);
+  if (!release) throw new NotFoundError('Associated release not found');
+
+  const updatedRelease = await updateReleaseCoverArtUrl(release.id, submittedArtwork, dbOverride);
   if (!updatedRelease) throw new NotFoundError('Associated release not found');
   return updatedRelease;
 }
