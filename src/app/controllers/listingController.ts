@@ -20,7 +20,10 @@ import {
 } from '../services/listingService';
 import { getListingComments, addComment } from '../services/commentService';
 import { isListingFavorited } from '../services/favoriteService';
-import { updateReleaseYouTubePreviewForListing, updateReleaseArtworkForListing } from '../services/releaseService';
+import {
+  updateReleaseYouTubePreviewForListing,
+  updateReleaseArtworkForListing,
+} from '../services/releaseService';
 import { processAndValidateImage } from '../utils/imageProcessor';
 import { formatPrice } from '../view-models/listingCardViewModel';
 import { FormViewModel } from '../view-models/formViewModel';
@@ -311,14 +314,13 @@ export async function postUpdateReleaseArtwork(req: Request, res: Response, next
       throw new ValidationError('Choose one catalogue artwork image to upload.');
     }
 
-    let processed;
+    let artworkDataUrl: string;
     try {
-      processed = await processAndValidateImage(files[0].buffer, files[0].mimetype);
+      const processed = await processAndValidateImage(files[0].buffer, files[0].mimetype);
+      artworkDataUrl = `data:image/webp;base64,${processed.buffer.toString('base64')}`;
     } catch {
       throw new ValidationError('Choose a valid JPEG, PNG or WebP catalogue artwork image.');
     }
-
-    const artworkDataUrl = `data:image/webp;base64,${processed.buffer.toString('base64')}`;
     await updateReleaseArtworkForListing(listingId, req.user.id, artworkDataUrl);
     setFlashCookie(res, 'success', 'Release artwork updated. It is shared by listings of this release.');
     return res.redirect(`/listings/${listingId}/edit`);
