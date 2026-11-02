@@ -135,6 +135,7 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
         country: match.country || '',
         genre: match.genre || '',
         coverArtUrl: match.coverArtUrl || '',
+        discogsExternalId: match.externalId,
       },
     });
   } catch {
@@ -175,7 +176,15 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
 
 export async function postCreateCustomRelease(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { artist, title, label, catalogueNumber, releaseYear, format, barcode, genre, country, coverArtUrl: submittedCoverArtUrl } = req.body;
+    const {
+      artist, title, label, catalogueNumber, releaseYear, format, barcode, genre, country,
+      coverArtUrl: submittedCoverArtUrl,
+      discogsExternalId: submittedDiscogsExternalId,
+    } = req.body;
+    const discogsExternalId =
+      typeof submittedDiscogsExternalId === 'string' && /^\\d{1,15}$/.test(submittedDiscogsExternalId)
+        ? submittedDiscogsExternalId
+        : undefined;
 
     const parsedYear = releaseYear ? parseInt(releaseYear, 10) : undefined;
 
@@ -205,7 +214,8 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
         genre: genre || undefined,
         country: country || undefined,
         coverArtUrl,
-        externalSource: 'custom',
+        externalSource: discogsExternalId ? 'discogs' : 'custom',
+        externalId: discogsExternalId,
       });
 
       return res.redirect(`/listings/create?releaseId=${release.id}`);
