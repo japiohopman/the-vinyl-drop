@@ -310,6 +310,13 @@ describe('Custom release mobile navigation and artwork picker', () => {
   it('keeps release artwork and actual-copy photos distinct in the responsive listing editor', async () => {
     const headerHtml = await renderHeader('/listings/listing-artwork-ui-test/edit');
     const editHtml = await renderEditListingPage();
+    await page.route('https://i.discogs.com/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="#fff"/></svg>',
+      });
+    });
     expect(editHtml).toContain('class="release-artwork-editor"');
     expect(editHtml).toContain('shared by listings of this same release');
     expect(editHtml).toContain('name="coverArt"');
@@ -323,6 +330,15 @@ describe('Custom release mobile navigation and artwork picker', () => {
       expect(await page.locator('.release-artwork-editor').isVisible()).toBe(true);
       expect(await page.locator('.release-artwork-preview-frame img').getAttribute('src')).toBe('https://i.discogs.com/doggystyle.jpg');
       expect(await page.locator('.cover-photo-slots').isVisible()).toBe(true);
+      expect(await page.locator('.custom-release-file-trigger').isVisible()).toBe(true);
+      expect(await page.locator('#releaseCoverArt').getAttribute('class')).toContain('custom-release-file-input');
+      if (width < 768) {
+        expect(await page.locator('.release-artwork-file-mobile-label').isVisible()).toBe(true);
+        expect(await page.locator('.release-artwork-file-desktop-label').isVisible()).toBe(false);
+      } else {
+        expect(await page.locator('.release-artwork-file-mobile-label').isVisible()).toBe(false);
+        expect(await page.locator('.release-artwork-file-desktop-label').isVisible()).toBe(true);
+      }
       const dimensions = await page.evaluate(() => ({
         viewport: window.innerWidth,
         document: document.documentElement.scrollWidth,
