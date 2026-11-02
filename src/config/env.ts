@@ -25,6 +25,7 @@ export const envSchema = z
     }),
     SHARED_RATE_LIMITS_SECRET: z.string().optional(),
     STAGING_DIAGNOSTIC_TOKEN: z.string().min(32).optional(),
+    PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN: z.string().min(32).optional(),
     SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: z.string().optional().transform((val) => {
       if (val === undefined || val === '') return undefined;
       return val.toLowerCase() === 'true' || val === '1';
@@ -202,6 +203,7 @@ export type Env = Omit<
   | 'SHARED_RATE_LIMITS_ENABLED'
   | 'SHARED_RATE_LIMITS_SECRET'
   | 'STAGING_DIAGNOSTIC_TOKEN'
+  | 'PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN'
   | 'BETA_INVITE_ONLY_ENABLED'
   | 'BETA_ALLOWED_EMAILS'
 > & {
@@ -213,6 +215,7 @@ export type Env = Omit<
   SHARED_RATE_LIMITS_ENABLED: boolean;
   SHARED_RATE_LIMITS_SECRET: string;
   STAGING_DIAGNOSTIC_TOKEN: string;
+  PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN: string;
   BETA_INVITE_ONLY_ENABLED: boolean;
   BETA_ALLOWED_EMAILS: string;
 };
@@ -284,6 +287,7 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
     SHARED_RATE_LIMITS_ENABLED: defaultSharedRateLimitsEnabled,
     SHARED_RATE_LIMITS_SECRET: defaultSharedRateLimitsSecret,
     STAGING_DIAGNOSTIC_TOKEN: result.data.STAGING_DIAGNOSTIC_TOKEN || '',
+    PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN: result.data.PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN || '',
     BETA_INVITE_ONLY_ENABLED: defaultBetaInviteOnlyEnabled,
     BETA_ALLOWED_EMAILS: defaultBetaAllowedEmails,
   };
