@@ -13,7 +13,7 @@ Canonical UI interaction contracts and specification notes:
   - [#124](https://github.com/japiohopman/the-vinyl-drop/issues/124) — Responsive Navigation & Full-Screen `YOU` Account Overlay.
   - [#125](https://github.com/japiohopman/the-vinyl-drop/issues/125) — Server-Confirmed Success Toasts & Persistent Error Banners.
   - [#126](https://github.com/japiohopman/the-vinyl-drop/issues/126) — Desktop Floating Chat Window & Truthful Unread Indicator (Gated).
-  - [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — Future PWA / Mobile Shell Context (Out of scope for current UI implementation).
+  - [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — Installable first-party website PWA, install guidance, sharing and QR experience. Implementation is merged; remaining platform acceptance evidence is tracked in the Issue.
 
 ## Verified route and screen inventory
 

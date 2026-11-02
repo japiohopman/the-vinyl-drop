@@ -8,7 +8,7 @@ Rooted in the spirit of Amsterdam Oost, it is built around real records and the 
 
 **[Visit The Vinyl Drop](https://thevinyldrop.nl)**
 
-The website is live on its official domain. Access remains invite-only while the private beta and public-launch checks are completed; a public website address does not mean open registration.
+The website is live on its official domain. Public browse and information pages can be explored without an account; account creation and seller/member actions remain invite-only while the private beta and public-launch checks are completed.
 
 ## Made for people who love digging
 
