@@ -7,6 +7,8 @@ import { FormViewModel } from '../view-models/formViewModel';
 import { processAndValidateImage } from '../utils/imageProcessor';
 import { DiscogsMetadataProvider } from '../services/metadata/discogsProvider';
 import { CandidateRelease } from '../services/metadata/types';
+import { COUNTRY_OPTIONS, RELEASE_GENRES, resolveCountry } from '../../domain/releaseMetadata';
+import { VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
 
 function normalizeLookupText(value: string): string {
   return value
@@ -133,6 +135,7 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
         format: match.format || '',
         barcode: match.barcode || '',
         country: match.country || '',
+        countryCode: resolveCountry(match.country)?.code || '',
         genre: match.genre || '',
         coverArtUrl: match.coverArtUrl || '',
         discogsExternalId: match.externalId,
@@ -158,6 +161,8 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
       country?: string;
       coverArtUrl?: string;
       discogsExternalId?: string;
+      countryCode?: string;
+      formatCharacteristics?: string[];
     }> = {
       values: {
         format: 'LP',
@@ -169,6 +174,9 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
     renderWithLayout(res, 'releases/new', {
       title: 'Add Custom Release - The Vinyl Drop',
       form: formVm,
+      countryOptions: COUNTRY_OPTIONS,
+      genreOptions: RELEASE_GENRES,
+      formatCharacteristicOptions: VINYL_FORMAT_FILTERS,
     });
   } catch (error) {
     next(error);
@@ -178,7 +186,7 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
 export async function postCreateCustomRelease(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const {
-      artist, title, label, catalogueNumber, releaseYear, format, barcode, genre, country,
+      artist, title, label, catalogueNumber, releaseYear, format, barcode, genre, country, countryCode, formatCharacteristics,
       coverArtUrl: submittedCoverArtUrl,
       discogsExternalId: submittedDiscogsExternalId,
     } = req.body;
@@ -188,6 +196,11 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
         : undefined;
 
     const parsedYear = releaseYear ? parseInt(releaseYear, 10) : undefined;
+    const submittedFormatCharacteristics = Array.isArray(formatCharacteristics)
+      ? formatCharacteristics
+      : typeof formatCharacteristics === 'string'
+        ? [formatCharacteristics]
+        : undefined;
 
     let coverArtUrl: string | undefined =
       typeof submittedCoverArtUrl === 'string' &&
@@ -214,6 +227,8 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
         barcode: barcode || undefined,
         genre: genre || undefined,
         country: country || undefined,
+        countryCode: countryCode || undefined,
+        formatCharacteristics: submittedFormatCharacteristics,
         coverArtUrl,
         externalSource: discogsExternalId ? 'discogs' : 'custom',
         externalId: discogsExternalId,
@@ -230,6 +245,9 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
       return renderWithLayout(res, 'releases/new', {
         title: 'Add Custom Release - The Vinyl Drop',
         form: formVm,
+        countryOptions: COUNTRY_OPTIONS,
+        genreOptions: RELEASE_GENRES,
+        formatCharacteristicOptions: VINYL_FORMAT_FILTERS,
       });
     }
   } catch (error) {

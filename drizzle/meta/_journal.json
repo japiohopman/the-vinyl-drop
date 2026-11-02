@@ -148,6 +148,13 @@
       "when": 1793510400000,
       "tag": "0020_catalogue_search_trigram",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793618253000,
+      "tag": "0021_release_metadata_vocabulary",
+      "breakpoints": true
     }
   ]
 }

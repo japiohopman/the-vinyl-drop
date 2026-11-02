@@ -102,7 +102,7 @@
               <label for="filter-genre">Genre</label>
               <select id="filter-genre" name="genre" class="form-control">
                 <option value="">All Genres</option>
-                <% const genres = ['Electronic', 'Hip Hop', 'Rock', 'Jazz', 'Funk / Soul', 'Reggae', 'Ambient', 'Classical', 'Pop']; %>
+                <% const genres = Array.isArray(genreOptions) ? genreOptions : []; %>
                 <% genres.forEach(function(g) { %>
                   <option value="<%= g %>" <%= filters.genre === g ? 'selected' : '' %>><%= g %></option>
                 <% }); %>

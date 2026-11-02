@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isKnownGenreInput, resolveCountry } from '../domain/releaseMetadata';
 
 export const releaseSchema = z.object({
   artist: z.string().trim().min(1, 'Artist is required'),
@@ -13,11 +14,45 @@ export const releaseSchema = z.object({
     .optional(),
   country: z.string().trim().optional(),
   format: z.string().trim().optional(),
+  formatCharacteristics: z.array(z.enum(['lp', '12-inch', '7-inch'])).optional(),
   barcode: z.string().trim().optional(),
   genre: z.string().trim().optional(),
   coverArtUrl: z.string().trim().optional(),
   externalSource: z.string().trim().optional(),
+  countryCode: z.string().trim().optional(),
   externalId: z.string().trim().optional(),
+}).superRefine((data, context) => {
+  const countryFromCode = data.countryCode ? resolveCountry(data.countryCode) : null;
+  const countryFromLabel = data.country ? resolveCountry(data.country) : null;
+
+  if (data.countryCode && !countryFromCode) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['countryCode'],
+      message: 'Choose a valid ISO 3166-1 country code.',
+    });
+  }
+  if (data.country && !countryFromLabel) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['country'],
+      message: 'Choose a country from the supported country list.',
+    });
+  }
+  if (countryFromCode && countryFromLabel && countryFromCode.code !== countryFromLabel.code) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['country'],
+      message: 'Country label and country code must refer to the same country.',
+    });
+  }
+  if (data.genre && !isKnownGenreInput(data.genre)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['genre'],
+      message: 'Choose genres from the supported genre vocabulary.',
+    });
+  }
 });
 
 export type ReleaseInput = z.infer<typeof releaseSchema>;

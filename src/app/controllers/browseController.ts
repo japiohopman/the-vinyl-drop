@@ -3,6 +3,7 @@ import { hasExplicitWhiteLabelInventory, searchBrowseListings, searchDigListings
 import { parseVinylFormatFilters, resolveWhiteLabelFilter, toggleVinylFormatFilter, VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
 import { renderWithLayout } from '../utils/render';
 import { ConditionGrade, CONDITION_GRADES } from '../../db/schema/enums';
+import { RELEASE_GENRES, resolveCanonicalGenre } from '../../domain/releaseMetadata';
 
 function parseEuroQueryParamToCentsStrict(param?: unknown): number | undefined | null {
   if (param === undefined || param === null) return undefined;
@@ -38,7 +39,8 @@ function parsePageQueryParamStrict(param?: unknown): number | null {
 export async function getBrowsePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    const genre = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
+    const genreInput = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
+    const genre = genreInput ? (resolveCanonicalGenre(genreInput) || genreInput) : '';
     const submittedFormats = parseVinylFormatFilters(req.query.format);
     const formatToggle = typeof req.query.formatToggle === 'string'
       ? parseVinylFormatFilters(req.query.formatToggle)[0]
@@ -92,6 +94,7 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
           },
           errorMessage: 'Invalid search filter or page parameters provided.',
           formatOptions: VINYL_FORMAT_FILTERS,
+          genreOptions: RELEASE_GENRES,
           whiteLabelAvailable,
         },
         next
@@ -125,6 +128,7 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
         title: q ? `Search: "${q}" — The Vinyl Drop` : 'Browse Vinyl Records — The Vinyl Drop',
         listings: results.items,
         formatOptions: VINYL_FORMAT_FILTERS,
+          genreOptions: RELEASE_GENRES,
         whiteLabelAvailable,
         filters: {
           q,
@@ -159,7 +163,8 @@ export async function getSearchPage(req: Request, res: Response, next: NextFunct
 export async function getDigBrowsePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    const genre = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
+    const genreInput = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
+    const genre = genreInput ? (resolveCanonicalGenre(genreInput) || genreInput) : '';
     const formats = parseVinylFormatFilters(req.query.format);
     const whiteLabel = resolveWhiteLabelFilter(req.query.whiteLabel, false);
     const conditionInput = typeof req.query.condition === 'string' ? req.query.condition.trim() : '';
@@ -185,6 +190,7 @@ export async function getDigBrowsePage(req: Request, res: Response, next: NextFu
         totalCount: 0,
         hasMore: false,
         filters,
+        genreOptions: RELEASE_GENRES,
         errorMessage: 'Invalid price filter. Use a non-negative amount such as 10 or 10.50.',
       }, next);
       return;
@@ -209,6 +215,7 @@ export async function getDigBrowsePage(req: Request, res: Response, next: NextFu
       totalCount: result.totalCount,
       hasMore: result.hasMore,
       filters,
+      genreOptions: RELEASE_GENRES,
     }, next);
   } catch (error) {
     next(error);
@@ -223,7 +230,8 @@ export async function getDigBrowsePage(req: Request, res: Response, next: NextFu
 export async function getResponsiveDigPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    const genre = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
+    const genreInput = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
+    const genre = genreInput ? (resolveCanonicalGenre(genreInput) || genreInput) : '';
     const submittedFormats = parseVinylFormatFilters(req.query.format);
     const formatToggle = typeof req.query.formatToggle === 'string'
       ? parseVinylFormatFilters(req.query.formatToggle)[0]
@@ -271,6 +279,7 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
         title: 'Invalid Search Filters — The Vinyl Drop',
         listings: [],
         formatOptions: VINYL_FORMAT_FILTERS,
+          genreOptions: RELEASE_GENRES,
         whiteLabelAvailable,
         filters,
         pagination: { totalCount: 0, page: 1, limit: 12, totalPages: 1 },
@@ -305,6 +314,7 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
       title: q ? `Search: "${q}" — Dig — The Vinyl Drop` : 'Dig — The Vinyl Drop',
       listings: gridResults.items,
       formatOptions: VINYL_FORMAT_FILTERS,
+          genreOptions: RELEASE_GENRES,
       whiteLabelAvailable,
       filters,
       pagination: {
