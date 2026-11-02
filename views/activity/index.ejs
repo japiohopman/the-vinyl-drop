@@ -113,7 +113,7 @@
               <% if (typeof item.youtubeVideoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(item.youtubeVideoId)) { %>
                 <section
                   class="activity-youtube-preview"
-                  data-youtube-preview
+                  data-activity-youtube-preview
                   data-video-id="<%= item.youtubeVideoId %>"
                   data-release-title="<%= item.releaseTitle %>"
                   aria-label="Listening preview for <%= item.releaseTitle %>"
@@ -121,7 +121,7 @@
                   <button
                     type="button"
                     class="btn activity-youtube-load"
-                    data-youtube-preview-load
+                    data-activity-youtube-load
                     aria-controls="activity-youtube-frame-<%= item.id %>"
                     aria-label="Play YouTube preview for <%= item.releaseTitle %> by <%= item.releaseArtist %>"
                     aria-description="Pressing Play loads YouTube and may share basic request and device information."
@@ -132,7 +132,7 @@
                   <div
                     class="youtube-preview-frame activity-youtube-frame"
                     id="activity-youtube-frame-<%= item.id %>"
-                    data-youtube-preview-frame
+                    data-activity-youtube-frame
                     hidden
                   ></div>
                 </section>
@@ -153,7 +153,7 @@
       <% }); %>
     </ul>
     <% if (events.some(function(item) { return typeof item.youtubeVideoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(item.youtubeVideoId); })) { %>
-      <script src="/js/youtube-preview.js" defer></script>
+      <script src="/js/activity-youtube-preview.js" defer></script>
     <% } %>
   <% } else if (!error) { %>
     <div class="activity-empty-state">
