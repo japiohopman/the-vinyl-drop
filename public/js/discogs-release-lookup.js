@@ -19,7 +19,8 @@
   var submitAfterLookup = false;
   var fieldMap = {
     label: 'label', catalogueNumber: 'catalogueNumber', releaseYear: 'releaseYear',
-    format: 'format', barcode: 'barcode', country: 'country', genre: 'genre', coverArtUrl: 'coverArtUrl'
+    format: 'format', barcode: 'barcode', country: 'country', genre: 'genre', coverArtUrl: 'coverArtUrl',
+    discogsExternalId: 'discogsExternalId'
   };
 
   function setStatus(message, state) {
