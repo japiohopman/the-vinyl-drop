@@ -888,11 +888,11 @@ export async function permanentlyDeleteArchivedListing(
   try {
     const db = dbOverride || getDb();
     const deleted = await db.transaction(async (tx) => {
-      const removedListing = await deleteArchivedListingByOwner(listingId, requestingUserId, tx);
+      const removedListing = await deleteArchivedListingByOwner(listingId, requestingUserId, tx as unknown as DbInstance);
       if (!removedListing) return null;
-      const remainingListings = await countListingsByPhysicalCopyId(removedListing.physicalCopyId, tx);
+      const remainingListings = await countListingsByPhysicalCopyId(removedListing.physicalCopyId, tx as unknown as DbInstance);
       if (remainingListings === 0) {
-        await deletePhysicalCopy(removedListing.physicalCopyId, tx);
+        await deletePhysicalCopy(removedListing.physicalCopyId, tx as unknown as DbInstance);
       }
       return removedListing;
     });

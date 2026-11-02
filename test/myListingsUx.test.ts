@@ -205,7 +205,6 @@ describe('My Listings UX (#219)', () => {
     expect(confirmation).toContain('cannot be undone');
     expect(confirmation).toContain('shared release catalogue record will remain');
     await confirmationPage.close();
-    await page.close();
   });
 
   it('has no horizontal overflow and wraps actions cleanly from narrow phones to desktop', async () => {
