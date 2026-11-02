@@ -1066,3 +1066,20 @@
     font-size: var(--font-size-md);
   }
 }
+
+.release-artwork-restore-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+.release-artwork-restore-form p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-3xs);
+  line-height: 1.45;
+}
+.release-artwork-restore-form .btn { min-height: 44px; }
