@@ -26,7 +26,7 @@ The desktop/mobile pairing is intentionally **Browse on desktop + Dig on mobile*
 | Surface | Reference image | Viewport | Route / state | Capture metadata |
 | --- | --- | ---: | --- | --- |
 | Activity | [Desktop](./ui-baselines/activity/ACTIVITY_desktop.png) · [Mobile](./ui-baselines/activity/ACTIVITY_mobiel.png) | 1497×5423 · 412×7138 | Activity feed; populated community state | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
-| Discovery — desktop | **Pending:** `browse/browse-desktop.png` | — | Browse desktop view | The uploaded `browse/dig_desktop.png` was empty and has been removed; needs one valid desktop Browse capture |
+| Discovery — desktop | [Existing Browse list reference](./desktop_browse_list_1280x800.png) | 1280×800 | Browse (`/browse`); list view with filters | Existing committed legacy capture, retained as historical desktop reference; it predates this supplied batch, so use as context and replace only when a current intended Browse redesign is approved |
 | Discovery — mobile | [Dig mobile](./ui-baselines/dig/dig_mobiel.png) | 412×691 | Dig / crate experience; record card visible | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
 | Home | **Pending:** `home/home-desktop.png` · `home/home-mobile.png` | — | Home / `/` | An older `home/home_desktop.png` placeholder on `main` is zero bytes; no valid Home capture is present in this PR |
 | Listing creation | [Desktop step 1](./ui-baselines/listing-creation/desktop_craetion_1.png) · [Desktop step 2](./ui-baselines/listing-creation/desktop_cration_screen2.png) · [Desktop step 3](./ui-baselines/listing-creation/desktop_creation_2.png) · [Desktop edit/photos](./ui-baselines/listing-creation/desktop_creation_screen3.png) · [Desktop finish](./ui-baselines/listing-creation/desktop_creation_finish.png) | 1497px wide | + DROP / release and listing creation flow | Staging, 2 Nov 2026; exact deployed app SHA not recorded |
@@ -41,10 +41,11 @@ The former duplicate `menu/` files have been removed; `navigation/` is the singl
 
 ### Remaining owner screenshot intake
 
-Only two visual surfaces remain without valid image files:
+Only one visual surface remains without a usable current reference pair:
 
-1. **Home:** one desktop and one mobile capture. The existing `home/home_desktop.png` on `main` is a zero-byte placeholder, so it is not usable. The new PR currently has no valid Home PNG.
-2. **Browse desktop:** one desktop capture at the expected path `docs/verification/ui-baselines/browse/browse-desktop.png`. The mobile counterpart is already represented by the Dig mobile image; no extra mobile Browse image is needed.
+1. **Home:** the existing `home/home_desktop.png` on `main` is a zero-byte placeholder, so it is not usable, and no Home mobile image is present. Jaap indicated Home was already prepared locally, but no valid Home image is currently visible in this PR's changed-file list. If that capture exists under another path, link/identify it; otherwise add one desktop and one mobile Home capture under `home/`.
+
+Browse desktop is covered by the existing historical [1280×800 Browse list reference](./desktop_browse_list_1280x800.png); Dig mobile is the paired mobile reference. No extra desktop Dig or mobile Browse capture is required.
 
 All other requested surfaces have received usable screenshot files. The listing-creation and messaging names retain some original spelling inconsistencies to avoid unnecessary binary churn; the index links to the exact canonical files. Long fixed-navigation screenshots remain useful as contextual references, but not as exact uninterrupted full-page layout goldens.
 
