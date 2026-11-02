@@ -32,9 +32,16 @@
           <p class="release-artwork-error" role="alert">That image could not be saved. Choose a valid JPEG, PNG or WebP image up to 5 MiB and try again.</p>
         <% } %>
         <form action="/listings/<%= encodeURIComponent(listing.id) %>/release-artwork" method="POST" enctype="multipart/form-data" class="release-artwork-upload-form">
-          <input type="file" id="releaseCoverArt" name="coverArt" accept="image/jpeg,image/png,image/webp" class="release-artwork-file-input" aria-describedby="releaseCoverArtHelp releaseCoverArtFilename" required />
-          <span id="releaseCoverArtHelp" class="release-artwork-file-help">Add a new catalogue image or replace the current one. JPEG, PNG or WebP · max 5 MiB.</span>
-          <span id="releaseCoverArtFilename" class="release-artwork-file-name" role="status" aria-live="polite">No replacement selected</span>
+          <p id="releaseCoverArtHelp" class="release-artwork-file-help">Add a new catalogue image or replace the current one. JPEG, PNG or WebP · max 5 MiB.</p>
+          <div class="custom-release-file-picker release-artwork-file-picker">
+            <input type="file" id="releaseCoverArt" name="coverArt" accept="image/jpeg,image/png,image/webp" class="custom-release-file-input" aria-describedby="releaseCoverArtHelp releaseCoverArtFilename" required />
+            <label for="releaseCoverArt" class="btn btn-outline custom-release-file-trigger">
+              <%- include('../partials/icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>
+              <span class="release-artwork-file-mobile-label">Use this device</span>
+              <span class="release-artwork-file-desktop-label">Choose file</span>
+            </label>
+            <span id="releaseCoverArtFilename" class="custom-release-file-name release-artwork-file-name" role="status" aria-live="polite">No replacement selected</span>
+          </div>
           <div class="release-cover-override-preview" data-release-cover-override-preview hidden>
             <img src="" alt="Preview of selected replacement catalogue artwork" data-release-cover-override-image />
             <div>
