@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
+import { LISTING_PHOTO_ROLE_GUIDANCE, LISTING_PHOTO_ROLE_LABELS, LISTING_PHOTO_ROLES, NEW_LISTING_PHOTO_ROLES } from '../src/domain/listingPhotoRole';
 
 // The project test tsconfig omits DOM libs; these globals are only referenced
 // inside functions serialized and executed by Playwright in a browser page.
@@ -27,6 +28,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
 
   const headerPath = path.join(__dirname, '../views/partials/header.ejs');
   const releasePath = path.join(__dirname, '../views/releases/new.ejs');
+  const editListingPath = path.join(__dirname, '../views/listings/edit.ejs');
   const createListingPath = path.join(__dirname, '../views/listings/create.ejs');
   const stylesheetContent = readFullStylesheetSource();
   const pickerScript = fs.readFileSync(path.join(__dirname, '../public/js/release-file-picker.js'), 'utf8');
@@ -98,9 +100,41 @@ describe('Custom release mobile navigation and artwork picker', () => {
     }, { filename: createListingPath }) as unknown as Promise<string>;
   }
 
+  async function renderEditListingPage(): Promise<string> {
+    return ejs.renderFile(editListingPath, {
+      getIconSvg,
+      listing: {
+        id: 'listing-artwork-ui-test',
+        status: 'draft',
+        price: 2500,
+        tradeAvailable: false,
+        description: '',
+      },
+      release: {
+        id: 'release-artwork-ui-test',
+        title: 'Doggystyle',
+        artist: 'Snoop Dogg',
+        releaseYear: 1993,
+        coverArtUrl: 'https://i.discogs.com/doggystyle.jpg',
+        youtubeVideoId: null,
+      },
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
+      photos: [],
+      form: { values: {}, fieldErrors: {}, generalErrors: [] },
+      photoRoles: LISTING_PHOTO_ROLES,
+      newPhotoRoles: NEW_LISTING_PHOTO_ROLES,
+      photoRoleLabels: LISTING_PHOTO_ROLE_LABELS,
+      photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
+      photoError: '',
+      releaseArtworkError: false,
+      youtubePreviewError: false,
+    }, { filename: editListingPath }) as unknown as Promise<string>;
+  }
+
   function documentHtml(headerHtml: string, releaseHtml: string): string {
     const content = releaseHtml
       .replace('<script src="/js/release-file-picker.js" defer></script>', '')
+      .replace('<script src="/js/square-photo-cropper.js" defer></script>', '')
       .replace('<script src="/js/discogs-release-lookup.js" defer></script>', '');
     return `<!DOCTYPE html>
       <html lang="en">
@@ -249,31 +283,63 @@ describe('Custom release mobile navigation and artwork picker', () => {
     }
   });
 
-  it('provides an accessible camera action and announces the chosen artwork filename', async () => {
-    const headerHtml = await renderHeader('/releases/new');
+  it('keeps a visible Discogs artwork stage without asking for a catalogue upload on the first DROP page', async () => {
+    const headerHtml = await renderHeader('/drop/new');
     const releaseHtml = await renderReleasePage();
-    expect(releaseHtml).toContain('name="coverArt"');
-    expect(releaseHtml).toContain('accept="image/jpeg,image/png,image/webp"');
-    expect(releaseHtml).toContain('id="releaseCoverArtFilename"');
-    expect(releaseHtml).toContain('Use this device');
-    expect(releaseHtml).toContain('class="icon icon-photo-camera"');
+    expect(releaseHtml).not.toContain('name="coverArt"');
+    expect(releaseHtml).not.toContain('Catalogue artwork replacement');
+    expect(releaseHtml).toContain('name="coverArtUrl"');
 
-    await page.setViewportSize({ width: 375, height: 780 });
-    await page.setContent(documentHtml(headerHtml, releaseHtml));
-    await page.locator('#releaseMetadataDetails > summary').click();
+    for (const width of [360, 375, 430, 1024, 1280]) {
+      await page.setViewportSize({ width, height: 820 });
+      await page.setContent(documentHtml(headerHtml, releaseHtml));
+      expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
+      expect(await page.locator('[data-discogs-artwork-placeholder]').isVisible()).toBe(true);
+      expect(await page.locator('[data-discogs-cover-preview-status]').textContent()).toContain('confident Discogs match');
+      const dimensions = await page.evaluate(() => ({
+        viewport: window.innerWidth,
+        document: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth,
+      }));
+      expect(dimensions.viewport).toBe(width);
+      expect(dimensions.document).toBeLessThanOrEqual(width + 1);
+      expect(dimensions.body).toBeLessThanOrEqual(width + 1);
+    }
+  });
+
+  it('keeps release artwork and actual-copy photos distinct in the responsive listing editor', async () => {
+    const headerHtml = await renderHeader('/listings/listing-artwork-ui-test/edit');
+    const editHtml = await renderEditListingPage();
+    expect(editHtml).toContain('class="release-artwork-editor"');
+    expect(editHtml).toContain('shared by listings of this same release');
+    expect(editHtml).toContain('name="coverArt"');
+    expect(editHtml).toContain('Front of your copy');
+    expect(editHtml).toContain('Back of your copy');
+    expect(editHtml).not.toContain('Catalogue artwork replacement');
+
+    for (const width of [360, 430, 1024, 1280]) {
+      await page.setViewportSize({ width, height: 820 });
+      await page.setContent(documentHtml(headerHtml, editHtml));
+      expect(await page.locator('.release-artwork-editor').isVisible()).toBe(true);
+      expect(await page.locator('.release-artwork-preview-frame img').getAttribute('src')).toBe('https://i.discogs.com/doggystyle.jpg');
+      expect(await page.locator('.cover-photo-slots').isVisible()).toBe(true);
+      const dimensions = await page.evaluate(() => ({
+        viewport: window.innerWidth,
+        document: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth,
+      }));
+      expect(dimensions.viewport).toBe(width);
+      expect(dimensions.document).toBeLessThanOrEqual(width + 1);
+      expect(dimensions.body).toBeLessThanOrEqual(width + 1);
+    }
+
     await page.addScriptTag({ content: pickerScript });
-
-    expect(await page.locator('.custom-release-file-mobile-label').isVisible()).toBe(true);
-    expect(await page.locator('.custom-release-file-desktop-label').isVisible()).toBe(false);
-    expect(await page.locator('#releaseCoverArtFilename').getAttribute('role')).toBe('status');
-    expect(await page.locator('#releaseCoverArtFilename').textContent()).toBe('No file selected');
-
     await page.locator('#releaseCoverArt').setInputFiles({
-      name: 'test-cover.webp',
+      name: 'replacement-cover.webp',
       mimeType: 'image/webp',
       buffer: Buffer.from('fake image bytes'),
     });
-    expect(await page.locator('#releaseCoverArtFilename').textContent()).toBe('test-cover.webp');
+    expect(await page.locator('#releaseCoverArtFilename').textContent()).toBe('replacement-cover.webp');
     await page.waitForFunction(
       () => !document.querySelector('[data-release-cover-override-preview]')?.hasAttribute('hidden'),
       undefined,
@@ -282,12 +348,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('[data-release-cover-override-image]').getAttribute('src')).toMatch(/^data:image\/webp;base64,/);
     await page.locator('[data-clear-release-cover-override]').click();
     expect(await page.locator('#releaseCoverArt').inputValue()).toBe('');
-    expect(await page.locator('#releaseCoverArtFilename').textContent()).toBe('No file selected');
     expect(await page.locator('[data-release-cover-override-preview]').isHidden()).toBe(true);
-
-    await page.setViewportSize({ width: 900, height: 780 });
-    expect(await page.locator('.custom-release-file-mobile-label').isVisible()).toBe(false);
-    expect(await page.locator('.custom-release-file-desktop-label').isVisible()).toBe(true);
   });
 
   it('fills editable release metadata after a debounced confident Discogs match', async () => {
@@ -376,10 +437,12 @@ describe('Custom release mobile navigation and artwork picker', () => {
     );
     expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
     expect(await page.locator('[data-discogs-cover-preview] img').isHidden()).toBe(true);
-    expect(await page.locator('#releaseCoverArt').isEnabled()).toBe(true);
+    expect(await page.locator('[data-discogs-artwork-placeholder]').isVisible()).toBe(true);
+    expect(await page.locator('[data-discogs-cover-preview-status]').textContent()).toContain('add release artwork later in Edit listing');
+    expect(await page.locator('#releaseCoverArt').count()).toBe(0);
   });
 
-  it('explains when Discogs artwork cannot load and keeps manual replacement available', async () => {
+  it('explains when Discogs artwork cannot load and directs sellers to the listing editor', async () => {
     const releaseHtml = await renderReleasePage();
     await page.setViewportSize({ width: 375, height: 800 });
     await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
@@ -406,7 +469,9 @@ describe('Custom release mobile navigation and artwork picker', () => {
       { timeout: 3000 }
     );
     expect(await page.locator('[data-discogs-cover-preview] img').isHidden()).toBe(true);
-    expect(await page.locator('#releaseCoverArt').isEnabled()).toBe(true);
+    expect(await page.locator('[data-discogs-artwork-placeholder]').isVisible()).toBe(true);
+    expect(await page.locator('[data-discogs-cover-preview-status]').textContent()).toContain('replacement in Edit listing');
+    expect(await page.locator('#releaseCoverArt').count()).toBe(0);
   });
 
   it('waits for a pending Discogs lookup before allowing DROP form submission', async () => {
