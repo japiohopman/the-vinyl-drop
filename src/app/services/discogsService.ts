@@ -43,17 +43,24 @@ export async function getDiscogsReleaseArtwork(discogsId: string): Promise<strin
       images?: Array<{ resource_url?: string; uri?: string }>;
       thumb?: string;
     };
-    const candidate = data.images?.[0]?.resource_url || data.images?.[0]?.uri || data.thumb || null;
-    if (!candidate) return null;
+    const candidates = [
+      ...(data.images || []).flatMap((image) => [image.resource_url, image.uri]),
+      data.thumb,
+    ];
 
-    let url: URL;
-    try {
-      url = new URL(candidate);
-    } catch {
-      return null;
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      let url: URL;
+      try {
+        url = new URL(candidate);
+      } catch {
+        continue;
+      }
+      if (url.protocol === 'https:' && url.hostname.toLowerCase().endsWith('.discogs.com')) {
+        return url.toString();
+      }
     }
-    if (url.protocol !== 'https:' || !url.hostname.toLowerCase().endsWith('.discogs.com')) return null;
-    return url.toString();
+    return null;
   } finally {
     clearTimeout(timer);
   }
