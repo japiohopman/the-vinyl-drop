@@ -554,6 +554,8 @@ describe('Discogs metadata provider free-text lookup (Issue #190)', () => {
       genre: 'Funk, Soul',
       coverArtUrl: 'https://i.discogs.com/example-cover.jpg',
     });
+  });
+
   it('reads a primary image from release details when the search result image fields are empty', async () => {
     const artworkUrl = 'https://i.discogs.com/release-detail-cover.jpg';
     const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
@@ -589,7 +591,5 @@ describe('Discogs metadata provider free-text lookup (Issue #190)', () => {
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
     expect(String(fetchSpy.mock.calls[1][0])).toBe('https://api.discogs.com/masters/26647');
-  });
-
   });
 });
