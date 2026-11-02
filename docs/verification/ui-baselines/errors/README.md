@@ -23,14 +23,14 @@ This folder maps actual application-handled error templates and failure states. 
 
 ## Visual direction notes
 
-The design concepts for 404 and 500 are recorded in [`../../../design/working/branded-status-and-information-page-direction.md`](../../../design/working/branded-status-and-information-page-direction.md). They are proposed visual direction only; the current templates remain unchanged.
+The design concepts for 404 and 500 are recorded in [`../../../design/working/branded-status-and-information-page-direction.md`](../../../design/working/branded-status-and-information-page-direction.md). The minimal generic EJS fallbacks currently exist, but the new branded empty-sleeve 404 and paused-turntable 500 pages have not been implemented. Their screenshots are deliberately deferred to a separate UI implementation issue; this documentation/mapping PR does not trigger errors or change the templates.
 
 The central reference index is [UI Visual Reference](../../UI_VISUAL_REFERENCE.md). Update its error-state rows when a template or response behavior changes.
 
 ## Capture and update rules
 
-- Capture the actual current template on staging only after reaching it through a safe, reproducible test state.
-- Never force a production outage or corrupt a live request to obtain a 500 screenshot. Use a controlled test fixture/isolated test path if a reproducible capture is added later.
+- Capture branded 404/500 states only after their separate UI implementation exists and can be reached through a safe, reproducible test state.
+- Never force a production or staging outage or corrupt a live request to obtain a 500 screenshot. Use a controlled test fixture/isolated test path if a reproducible capture is added later.
 - Keep the HTTP status truthful; visual polish must not turn an error into HTTP 200.
 - Do not expose stack traces, SQL, credentials, provider internals or arbitrary exception messages.
 - Record route/state, viewport, theme, capture date and deployed app SHA when known.
