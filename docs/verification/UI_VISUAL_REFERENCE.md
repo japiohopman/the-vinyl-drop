@@ -23,9 +23,9 @@ These files already exist in `docs/verification/`; this index does not duplicate
 
 | File | What the filename/content label establishes | Missing provenance / next step |
 | --- | --- | --- |
-| [`desktop_browse_list_1280x800.png`](./desktop_browse_list_1280x800.png) | Historical desktop Browse/list capture; filename includes `1280x800`. | Verify exact route, state, theme, actual image dimensions, source commit and synthetic-data safety before promotion. |
-| [`listing_detail_context.png`](./listing_detail_context.png) | Historical listing-detail context capture. | Route variant, viewport, state, theme, source commit and synthetic-data safety are not encoded in the filename; inspect before promotion. |
-| [`mobile_menu_390x844.png`](./mobile_menu_390x844.png) | Historical mobile menu capture; filename includes `390x844`. | Verify exact route/menu state, actual image dimensions, theme, source commit and synthetic-data safety before promotion. |
+| [`desktop_browse_list_1280x800.png`](./desktop_browse_list_1280x800.png) | Visually inspected historical desktop Browse/list capture (1280×800); shows a populated listing and seller handle. | Exact route, theme and source commit are unrecorded; synthetic identity provenance is unverified. Keep historical; do not promote without confirming/redacting the account identity. |
+| [`listing_detail_context.png`](./listing_detail_context.png) | Visually inspected historical listing-detail desktop capture (1280×800), including release, price, condition and seller context. | Route variant, theme, source commit and synthetic-data provenance are unrecorded. Keep historical; verify fixture identity and current UI relevance before promotion. |
+| [`mobile_menu_390x844.png`](./mobile_menu_390x844.png) | Visually inspected mobile Browse capture (390×844) with the compact top MENU control. | It does not document the current nested YOU/Options surface. Route, state, theme and source commit are unrecorded; keep historical rather than using it as the current navigation baseline. |
 | [`phase6b_verification.webm`](./phase6b_verification.webm) | Historical Phase 6B verification recording. | Treat as a recording, not a baseline; inspect its content and provenance before sharing or reusing. |
 
 Diagnostic text files and operational traces are intentionally not catalogued as visual references. Never copy secrets, tokens, email addresses, tester identities, private account details or production data into a baseline or this index.
