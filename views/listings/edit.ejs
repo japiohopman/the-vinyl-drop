@@ -31,6 +31,9 @@
         <% if (typeof releaseArtworkError !== 'undefined' && releaseArtworkError) { %>
           <p class="release-artwork-error" role="alert">That image could not be saved. Choose a valid JPEG, PNG or WebP image up to 5 MiB and try again.</p>
         <% } %>
+        <% if (typeof releaseArtworkRestoreError !== 'undefined' && releaseArtworkRestoreError) { %>
+          <p class="release-artwork-error" role="alert">Discogs artwork could not be restored. Your current release artwork has not changed.</p>
+        <% } %>
         <form action="/listings/<%= encodeURIComponent(listing.id) %>/release-artwork" method="POST" enctype="multipart/form-data" class="release-artwork-upload-form">
           <p id="releaseCoverArtHelp" class="release-artwork-file-help">Add a new catalogue image or replace the current one. JPEG, PNG or WebP · max 5 MiB.</p>
           <div class="custom-release-file-picker release-artwork-file-picker">
@@ -52,6 +55,12 @@
           </div>
           <button type="submit" class="btn btn-primary btn-md release-artwork-save-button">Save release artwork</button>
         </form>
+        <% if (release.externalSource === 'discogs' && release.externalId) { %>
+          <form action="/listings/<%= encodeURIComponent(listing.id) %>/release-artwork/restore-discogs" method="POST" class="release-artwork-restore-form">
+            <p>Discogs is still saved as the original catalogue source for this release.</p>
+            <button type="submit" class="btn btn-outline btn-md">Use original Discogs artwork</button>
+          </form>
+        <% } %>
       </div>
     </section>
 
