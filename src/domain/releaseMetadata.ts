@@ -161,3 +161,19 @@ export function resolveCanonicalGenre(value: string | null | undefined): Release
   if (typeof value !== 'string' || !value.trim()) return null;
   return GENRE_ALIASES[normalizeTaxonomyLabel(value)] || null;
 }
+
+/**
+ * Search terms for legacy raw genre fields. These aliases are used against a
+ * punctuation-normalized SQL expression so values such as "Funk, Soul" remain
+ * searchable through the canonical "Funk / Soul" filter.
+ */
+export function getCanonicalGenreSearchTerms(value: string | null | undefined): string[] {
+  const canonical = resolveCanonicalGenre(value);
+  if (!canonical) return [];
+
+  const aliases = normalizedGenreAliases
+    .filter(([, genre]) => genre === canonical)
+    .map(([alias]) => alias);
+
+  return [...new Set([normalizeTaxonomyLabel(canonical), ...aliases])];
+}
