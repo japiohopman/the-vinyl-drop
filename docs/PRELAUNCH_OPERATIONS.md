@@ -31,7 +31,7 @@ Reports and requests are handled manually. Do not claim an automated moderation 
 
 - Supabase Auth handles identity, email confirmation and password recovery through the configured Auth email-delivery setup.
 - The Contact form uses the configured Resend delivery path.
-- Google OAuth is configured separately for each Supabase environment; staging configuration is not proof of production OAuth readiness.
+- Google OAuth must be configured and verified separately for each Supabase environment; staging configuration is not proof of production OAuth readiness.
 - Discogs and MusicBrainz are catalogue enrichment sources. Their returned metadata is not the canonical application record.
 - YouTube previews use the privacy-enhanced player only after an explicit visitor action.
 
