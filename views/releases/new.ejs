@@ -8,7 +8,7 @@
     <div class="custom-release-errors" role="alert"><%= form.generalErrors.join(', ') %></div>
   <% } %>
 
-  <form action="/releases/new" method="POST" enctype="multipart/form-data" class="card custom-release-form" data-discogs-lookup-form>
+  <form action="/releases/new" method="POST" class="card custom-release-form" data-discogs-lookup-form>
     <div class="custom-release-primary-fields">
       <div class="custom-release-field">
         <label for="releaseArtist">Artist *</label>
@@ -23,10 +23,19 @@
     <p class="discogs-lookup-status" id="discogsLookupStatus" role="status" aria-live="polite" aria-atomic="true" data-state="idle">Enter an artist and title to check Discogs.</p>
     <input type="hidden" name="coverArtUrl" id="discogsCoverArtUrl" value="<%= form.values.coverArtUrl || '' %>" data-discogs-field="coverArtUrl" />
 
-    <div class="discogs-cover-preview" data-discogs-cover-preview hidden>
-      <img src="" alt="Discogs catalogue artwork preview" loading="lazy" referrerpolicy="no-referrer" />
-      <p data-discogs-cover-preview-status>Discogs catalogue artwork found.</p>
-    </div>
+    <section class="discogs-cover-preview" data-discogs-cover-preview data-state="idle" aria-labelledby="discogsArtworkTitle">
+      <div class="discogs-cover-preview-frame" data-discogs-cover-frame>
+        <div class="discogs-artwork-placeholder" data-discogs-artwork-placeholder aria-hidden="true">
+          <%- include('../partials/icon', { name: 'photo-camera', size: '2rem', ariaHidden: true }) %>
+          <span>Artwork preview</span>
+        </div>
+        <img src="" alt="Discogs catalogue artwork preview" loading="lazy" referrerpolicy="no-referrer" hidden />
+      </div>
+      <div class="discogs-cover-preview-copy">
+        <span class="discogs-cover-preview-kicker" id="discogsArtworkTitle">RELEASE ARTWORK</span>
+        <p data-discogs-cover-preview-status>Artwork will appear here after a confident Discogs match. You can add or replace release artwork later in Edit listing.</p>
+      </div>
+    </section>
 
     <details class="custom-release-details" id="releaseMetadataDetails">
       <summary>Release details</summary>
@@ -61,32 +70,9 @@
         </div>
       </div>
 
-      <fieldset class="release-catalog-artwork">
-        <legend>Catalogue artwork replacement (optional)</legend>
-        <div class="release-cover-override-preview" data-release-cover-override-preview hidden>
-          <img src="" alt="Preview of your replacement catalogue artwork" data-release-cover-override-image />
-          <div>
-            <strong>Your replacement artwork</strong>
-            <p>This image will replace the Discogs catalogue cover for this release.</p>
-            <button type="button" class="btn btn-outline btn-sm" data-clear-release-cover-override>Use Discogs artwork instead</button>
-          </div>
-        </div>
-        <p class="custom-release-artwork-copy">Use the Discogs release artwork by default, or replace it here with your own catalogue image. Photos of the exact physical copy are added in the next step.</p>
-        <p id="releaseCoverArtDescription" class="custom-release-file-description">Upload artwork if the Discogs image is missing or incorrect (JPEG, PNG, WebP; up to 5MB).</p>
-        <div class="custom-release-file-picker">
-          <input id="releaseCoverArt" type="file" name="coverArt" accept="image/jpeg,image/png,image/webp" class="custom-release-file-input" aria-describedby="releaseCoverArtDescription releaseCoverArtFilename" />
-          <label for="releaseCoverArt" class="btn btn-outline custom-release-file-trigger">
-            <%- include('../partials/icon', { name: 'photo-camera', size: '1.25rem', ariaHidden: true }) %>
-            <span class="custom-release-file-mobile-label">Use this device</span>
-            <span class="custom-release-file-desktop-label">Choose file</span>
-          </label>
-          <span id="releaseCoverArtFilename" class="custom-release-file-name" role="status" aria-live="polite">No file selected</span>
-        </div>
-      </fieldset>
     </details>
 
     <button type="submit" class="btn btn-primary custom-release-submit">Continue to listing <span aria-hidden="true">→</span></button>
   </form>
 </div>
-<script src="/js/release-file-picker.js" defer></script>
 <script src="/js/discogs-release-lookup.js" defer></script>
