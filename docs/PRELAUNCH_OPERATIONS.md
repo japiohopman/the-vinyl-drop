@@ -53,7 +53,7 @@ Reports and privacy requests are handled manually by the operator. The current p
 
 ## 6. Email and external providers
 
-Supabase Auth handles credentials and account/session lifecycle. Production authentication email, recovery and Google sign-in have owner-reported smoke evidence; production Google OAuth still has its own verification gate in [#281](https://github.com/japiohopman/the-vinyl-drop/issues/281).
+Supabase Auth handles credentials and account/session lifecycle. Production confirmation/recovery email has owner-reported smoke evidence. The separate production Google Cloud OAuth client and production Supabase Google-provider configuration have not yet been verified as complete; keep that gate open under [#281](https://github.com/japiohopman/the-vinyl-drop/issues/281).
 
 Use only providers and credentials approved for the relevant environment. A staging sender/domain check is not proof of production email delivery. Never copy provider credentials, OAuth secrets, database URLs or SMTP passwords into repository files, Issues, PRs or logs.
 
