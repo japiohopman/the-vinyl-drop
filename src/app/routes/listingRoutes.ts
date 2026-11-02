@@ -14,6 +14,7 @@ import {
   getEditListingPage,
   postEditListing,
   postUpdateReleaseYouTubePreview,
+  postUpdateReleaseArtwork,
   postUploadPhoto,
   postDeletePhoto,
   postUpdatePhotoRole,
@@ -53,6 +54,7 @@ router.get('/:id/preview', requireAuth, getPreviewListingPage);
 router.get('/:id/edit', requireAuth, getEditListingPage);
 router.post('/:id/edit', requireAuth, validateSameOrigin, postEditListing);
 router.post('/:id/release-preview', requireAuth, validateSameOrigin, postUpdateReleaseYouTubePreview);
+router.post('/:id/release-artwork', requireAuth, validateSameOrigin, rateLimits.listingPhotoUpload, multipartUploadHandler, postUpdateReleaseArtwork);
 
 // Photo Operations
 router.post('/:id/photos', requireAuth, validateSameOrigin, rateLimits.listingPhotoUpload, multipartUploadHandler, postUploadPhoto);
