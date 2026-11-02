@@ -1,5 +1,6 @@
 import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
+import * as fs from 'fs';
 import path from 'path';
 import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
@@ -9,6 +10,7 @@ describe('Mobile Activity single-column layout', () => {
 
   const viewPath = path.join(__dirname, '../views/activity/index.ejs');
   const stylesheet = readFullStylesheetSource();
+  const youtubePreviewScript = fs.readFileSync(path.join(process.cwd(), 'public/js/activity-youtube-preview.js'), 'utf8');
 
   let browser: Browser;
   let page: Page;
@@ -47,6 +49,7 @@ describe('Mobile Activity single-column layout', () => {
           listingArtworkUrl: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
           releaseCoverArtUrl: null,
           artworkFallbackUrl: '/assets/vinyl-placeholder.svg',
+          youtubeVideoId: 'abcdefghijk',
           actorAvatarUrl: null,
           actorUsername: 'jaap',
           eventDescription: '@jaap published a drop',
@@ -63,6 +66,7 @@ describe('Mobile Activity single-column layout', () => {
           listingArtworkUrl: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
           releaseCoverArtUrl: null,
           artworkFallbackUrl: '/assets/vinyl-placeholder.svg',
+          youtubeVideoId: null,
           actorAvatarUrl: null,
           actorUsername: 'recordfan',
           eventDescription: '@recordfan commented on a drop',
@@ -79,6 +83,7 @@ describe('Mobile Activity single-column layout', () => {
           listingArtworkUrl: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=',
           releaseCoverArtUrl: null,
           artworkFallbackUrl: '/assets/vinyl-placeholder.svg',
+          youtubeVideoId: 'invalid',
           actorAvatarUrl: null,
           actorUsername: 'waxcollector',
           eventDescription: '@waxcollector saved a record',
@@ -96,7 +101,7 @@ describe('Mobile Activity single-column layout', () => {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>${stylesheet}</style>
-      </head><body><main class="main-content">${view}</main></body></html>`;
+      </head><body><main class="main-content">${view}</main><script>${youtubePreviewScript}</script></body></html>`;
   }
 
   it('keeps the artwork row compact, release details full-width, and prevents overflow', async () => {
@@ -152,7 +157,7 @@ describe('Mobile Activity single-column layout', () => {
       expect(measurements.cardColumns.trim().split(/\s+/).length).toBe(2);
       expect(measurements.contentDisplay).toBe('contents');
       expect(measurements.bodyDisplay).toBe('contents');
-      expect(measurements.artworkWidth).toBe(64);
+      expect(measurements.artworkWidth).toBe(96);
       expect(measurements.headerLeft).toBeGreaterThanOrEqual(measurements.artworkRight);
       expect(measurements.releaseLeft).toBeCloseTo(measurements.cardContentLeft, 0);
       expect(measurements.releaseRight).toBeCloseTo(measurements.cardContentRight, 0);
@@ -200,6 +205,20 @@ describe('Mobile Activity single-column layout', () => {
     );
     expect(await commentCard.locator('.activity-comment').evaluate((el) => getComputedStyle(el).marginTop)).toBe('0px');
 
+    const videoCard = page.locator('.activity-card').nth(0);
+    const videoPreview = videoCard.locator('[data-activity-youtube-preview]');
+    const playButton = videoPreview.locator('[data-activity-youtube-load]');
+    const frame = videoPreview.locator('[data-activity-youtube-frame]');
+    expect(await videoPreview.count()).toBe(1);
+    expect(await playButton.isVisible()).toBe(true);
+    expect(await frame.locator('iframe').count()).toBe(0);
+    expect(await page.locator('.activity-card').nth(1).locator('[data-activity-youtube-preview]').count()).toBe(0);
+    expect(await page.locator('.activity-card').nth(2).locator('[data-activity-youtube-preview]').count()).toBe(0);
+    await playButton.click();
+    const player = frame.locator('iframe');
+    expect(await player.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/abcdefghijk?playsinline=1');
+    expect(await playButton.isHidden()).toBe(true);
+
     const privateCard = page.locator('.activity-card').nth(2);
     await expectText(privateCard.locator('.private-badge'), 'Private to you');
     await expectText(privateCard.locator('.activity-price'), '€7.00');
@@ -213,13 +232,17 @@ describe('Mobile Activity single-column layout', () => {
     const layout = await page.locator('.activity-card').first().evaluate((card) => {
       const content = card.querySelector('.activity-card-content') as HTMLElement;
       return {
+        feedColumns: getComputedStyle(card.parentElement as HTMLElement).gridTemplateColumns,
         cardColumns: getComputedStyle(card).gridTemplateColumns,
+        artworkWidth: (card.querySelector('.activity-artwork-link') as HTMLElement).getBoundingClientRect().width,
         contentDisplay: getComputedStyle(content).display,
         contentColumns: getComputedStyle(content).gridTemplateColumns,
       };
     });
 
+    expect(layout.feedColumns.trim().split(/\s+/).length).toBe(2);
     expect(layout.cardColumns.trim().split(/\s+/).length).toBe(2);
+    expect(layout.artworkWidth).toBeGreaterThan(128);
     expect(layout.contentDisplay).toBe('grid');
     expect(layout.contentColumns.trim().split(/\s+/).length).toBe(2);
   });

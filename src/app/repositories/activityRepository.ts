@@ -24,6 +24,7 @@ export interface JoinedActivityRecord {
   releaseTitle: string;
   releaseArtist: string;
   releaseCoverArtUrl: string | null;
+  youtubeVideoId: string | null;
   listingFrontPhotoPath: string | null;
   commentId: string | null;
   commentContent: string | null;
@@ -112,6 +113,7 @@ export async function getRecentActivityEvents(
     releaseTitle: releases.title,
     releaseArtist: releases.artist,
     releaseCoverArtUrl: releases.coverArtUrl,
+    youtubeVideoId: releases.youtubeVideoId,
     listingFrontPhotoPath: listingPhotos.storagePath,
     commentId: activityEvents.commentId,
     commentContent: comments.content,

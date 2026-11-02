@@ -73,6 +73,7 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
       title: 'Rumours',
       artist: 'Fleetwood Mac',
       coverArtUrl: 'https://catalog.example/rumours.webp',
+      youtubeVideoId: 'abcdefghijk',
     }).returning();
 
     const [physicalCopy1] = await testDb.insert(physicalCopies).values({
@@ -154,6 +155,7 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
     const publishedEvent = feed.find((e) => e.eventType === 'listing.published');
     expect(publishedEvent?.listingArtworkUrl).toContain('community/rumours-front.webp');
     expect(publishedEvent?.artworkFallbackUrl).toBe('https://catalog.example/rumours.webp');
+    expect(publishedEvent?.youtubeVideoId).toBe('abcdefghijk');
 
     const favEvent = feed.find((e) => e.eventType === 'favorite.created');
     expect(favEvent).toBeDefined();
@@ -216,6 +218,10 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
       expect(res.text).toContain('community/rumours-front.webp');
       expect(res.text).toContain('activity-avatar-fallback');
       expect(res.text).toContain('activity-icon-badge');
+      expect(res.text).toContain('Play YouTube preview for Rumours by Fleetwood Mac');
+      expect(res.text).toContain('data-video-id="abcdefghijk"');
+      expect(res.text).toContain('/js/activity-youtube-preview.js');
+      expect(res.text).not.toContain('youtube-nocookie.com/embed/abcdefghijk');
       expect(res.text).not.toContain('🏷️');
       expect(res.text).not.toContain('💬');
       expect(res.text).not.toContain('❤️');

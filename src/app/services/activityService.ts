@@ -21,6 +21,7 @@ export interface ActivityItemViewModel {
   releaseTitle: string;
   releaseArtist: string;
   releaseCoverArtUrl: string | null;
+  youtubeVideoId: string | null;
   listingArtworkUrl: string;
   artworkFallbackUrl: string;
   priceFormatted: string | null;
@@ -75,6 +76,9 @@ export function formatActivityRecord(record: JoinedActivityRecord): ActivityItem
     releaseTitle: record.releaseTitle,
     releaseArtist: record.releaseArtist,
     releaseCoverArtUrl: record.releaseCoverArtUrl,
+    youtubeVideoId: typeof record.youtubeVideoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(record.youtubeVideoId)
+      ? record.youtubeVideoId
+      : null,
     listingArtworkUrl,
     artworkFallbackUrl: record.listingFrontPhotoPath ? releaseArtworkFallbackUrl : '/assets/vinyl-placeholder.svg',
     priceFormatted,
