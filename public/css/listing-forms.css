@@ -1064,4 +1064,16 @@
   }
 }
 
-
+/* Keep the later-defined release artwork panel compact on phone widths. */
+@media (max-width: 767px) {
+  .release-artwork-editor {
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+  .release-artwork-preview-frame {
+    width: 104px;
+  }
+  .release-artwork-content h2 {
+    font-size: var(--font-size-md);
+  }
+}
