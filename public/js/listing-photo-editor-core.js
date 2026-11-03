@@ -217,7 +217,7 @@
         const sourceY = (h3 * u + h4 * v + h5) / denominator;
 
         if (sourceX < 0 || sourceY < 0 ||
-            sourceX > sourceWidth - 1 || sourceY > sourceHeight - 1) {
+            sourceX > sourceWidth || sourceY > sourceHeight) {
           outputData[destinationIndex] = 255;
           outputData[destinationIndex + 1] = 255;
           outputData[destinationIndex + 2] = 255;
