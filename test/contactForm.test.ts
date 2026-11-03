@@ -253,5 +253,5 @@ describe('Contact form', () => {
     expect(response.text).toContain('We could not confirm that your message was sent');
     expect(response.text).not.toContain('provider failure');
     expect(sendMock).toHaveBeenCalledTimes(1);
-  });;
+  });
 });
