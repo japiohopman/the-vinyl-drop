@@ -182,9 +182,12 @@
 
   function clearPreview() {
     previewSequence += 1;
+    delete form.dataset.photoEditorReady;
     if (previewFrame) cancelAnimationFrame(previewFrame);
     previewFrame = 0;
     processing = false;
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton instanceof HTMLButtonElement) submitButton.disabled = false;
     previewError = false;
     cropper.hidden = true;
     selectionPreview.hidden = true;
@@ -691,11 +694,17 @@
     setStatus('Correcting perspective and preparing the full-resolution image…');
     const submitButton = form.querySelector('button[type="submit"]');
     if (submitButton instanceof HTMLButtonElement) submitButton.disabled = true;
+    const cropSequence = previewSequence;
+    const cropSource = sourceFile;
+    const cropImage = image;
+    const cropRole = roleSelect.value;
 
     createUploadFile().then((correctedFile) => {
-      if (!sourceFile || !image) return;
+      // A changed selection or closed dialog invalidates an in-flight encode.
+      if (previewSequence !== cropSequence || sourceFile !== cropSource ||
+          image !== cropImage || roleSelect.value !== cropRole) return;
       if (correctedFile.size > MAX_UPLOAD_BYTES) {
-        throw new Error('The corrected photo is larger than 5 MiB. Try a smaller source image or reduce the crop area.');
+        throw new Error('The corrected photo exceeds the 5 MiB upload limit. Choose a smaller source image; your original selection is unchanged.');
       }
       const transfer = new DataTransfer();
       transfer.items.add(correctedFile);
