@@ -1,5 +1,6 @@
 import express from 'express';
 import request from 'supertest';
+import router from '../src/app/routes';
 import {
   createProductionRateLimitDiagnosticsHandler,
   ProductionRateLimitDiagnosticsDependencies,
@@ -86,5 +87,41 @@ describe('production rate-limit runtime diagnostics', () => {
 
     expect(response.status).toBe(503);
     expect(response.body).toEqual({ database: 'pass', clientIpHeader: 'fail' });
+  });
+});
+
+const FALLBACK_HTML_BODY = '<!DOCTYPE html><html><body><h1>Fallback 404 Not Found</h1></body></html>';
+
+function buildRouterIntegrationApp() {
+  const app = express();
+  app.use('/', router);
+  app.use((_req, res) => {
+    res.status(404).type('html').send(FALLBACK_HTML_BODY);
+  });
+  return app;
+}
+
+describe('production rate-limit diagnostics router integration', () => {
+  it('returns empty 404 from the registered controller on the exact diagnostic path without running the fallback HTML handler', async () => {
+    const app = buildRouterIntegrationApp();
+
+    const response = await request(app).post('/_internal/production/rate-limit-diagnostics');
+
+    expect(response.status).toBe(404);
+    expect(response.text).toBe('');
+    expect(response.text).not.toContain(FALLBACK_HTML_BODY);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.headers['pragma']).toBe('no-cache');
+    expect(response.headers['x-robots-tag']).toBe('noindex, nofollow');
+  });
+
+  it('routes a deliberately incorrect near-miss path to the fallback HTML handler', async () => {
+    const app = buildRouterIntegrationApp();
+
+    const response = await request(app).post('/_internal/production/rate-limit-diagnostic');
+
+    expect(response.status).toBe(404);
+    expect(response.headers['content-type']).toMatch(/html/);
+    expect(response.text).toContain(FALLBACK_HTML_BODY);
   });
 });
