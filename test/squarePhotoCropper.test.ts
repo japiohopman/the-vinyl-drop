@@ -192,6 +192,25 @@ describe('Square cover photo cropper', () => {
       expect(await page.locator('#square-cover-histogram').count()).toBe(1);
       expect(await page.locator('[data-photo-adjustment="shadows"]').inputValue()).toBe('0');
 
+      await page.locator('[data-photo-editor-undo]').click();
+      expect(await page.locator('#square-cover-polygon').getAttribute('points')).toBe(polygonBeforeNudge);
+      await page.locator('[data-photo-editor-redo]').click();
+      expect(await page.locator('#square-cover-polygon').getAttribute('points')).toBe(polygonAfterNudge);
+
+      const beforeAfter = page.locator('[data-toggle-photo-before-after]');
+      await beforeAfter.click();
+      await page.waitForFunction(
+        "document.querySelector('#square-cover-result').getContext('2d').getImageData(10, 256, 1, 1).data[0] === 255",
+        undefined,
+        { timeout: 5000 }
+      );
+      await beforeAfter.click();
+      await page.waitForFunction(
+        "document.querySelector('#square-cover-result').getContext('2d').getImageData(10, 256, 1, 1).data[0] < 240",
+        undefined,
+        { timeout: 5000 }
+      );
+
       for (const width of [320, 360, 375, 414]) {
         await page.setViewportSize({ width, height: 850 });
         const layout = await page.evaluate("(() => {" +
