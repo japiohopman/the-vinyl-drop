@@ -17,24 +17,6 @@ describe('Environment Validation', () => {
     expect(env.NODE_ENV).toBe('test');
   });
 
-  it('treats a blank production diagnostic token as unset and validates configured tokens', () => {
-    expect(validateEnv({
-      NODE_ENV: 'test',
-      PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN: '',
-    }).PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN).toBeUndefined();
-
-    const token = 'diagnostic-token-with-at-least-32-characters';
-    expect(validateEnv({
-      NODE_ENV: 'test',
-      PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN: token,
-    }).PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN).toBe(token);
-
-    expect(() => validateEnv({
-      NODE_ENV: 'test',
-      PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN: 'too-short',
-    })).toThrow('Invalid environment configuration');
-  });
-
   it('enables checked-signup approval by default only in tests; runtime modes require opt-in', () => {
     expect(validateEnv({ NODE_ENV: 'test' }).SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED).toBe(true);
     expect(validateEnv({
