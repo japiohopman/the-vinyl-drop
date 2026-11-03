@@ -15,6 +15,7 @@ describe('Square cover photo cropper', () => {
 
   const viewPath = path.join(__dirname, '../views/listings/edit.ejs');
   const stylesheet = readFullStylesheetSource();
+  const corePath = path.join(__dirname, '../public/js/listing-photo-editor-core.js');
   const cropperPath = path.join(__dirname, '../public/js/square-photo-cropper.js');
   let browser: Browser;
   let page: Page;
@@ -69,10 +70,9 @@ describe('Square cover photo cropper', () => {
       photoError: '',
     }, { filename: viewPath });
 
-    const body = html.replace(
-      /<script src="\/js\/square-photo-cropper\.js" defer><\/script>/,
-      ''
-    );
+    const body = html
+      .replace('<script src="/js/listing-photo-editor-core.js" defer></script>', '')
+      .replace('<script src="/js/square-photo-cropper.js" defer></script>', '');
     await page.setContent(
       '<!doctype html><html lang="en"><head><meta charset="UTF-8">' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
@@ -80,6 +80,7 @@ describe('Square cover photo cropper', () => {
       '<body><main class="main-content">' + body + '</main></body></html>',
       { waitUntil: 'domcontentloaded', timeout: 5000 }
     );
+    await page.addScriptTag({ path: corePath });
     await page.addScriptTag({ path: cropperPath });
   }
 
@@ -158,7 +159,7 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload back of your copy');
   });
 
-  it('crops both front and back cover uploads to the exact square preview', async () => {
+  it('rectifies front and back cover uploads to the exact square preview', async () => {
     await renderEditPage();
 
     await page.evaluate("(() => {" +
@@ -179,7 +180,7 @@ describe('Square cover photo cropper', () => {
 
       expect(await page.locator('#square-cover-cropper').isVisible()).toBe(true);
       expect(await page.locator('#square-cover-title').textContent()).toBe(
-        role === 'front_cover' ? 'Square front cover crop' : 'Square back cover crop'
+        role === 'front_cover' ? 'Square front cover correction' : 'Square back cover correction'
       );
 
       for (const width of [320, 360, 375, 414]) {
@@ -213,7 +214,7 @@ describe('Square cover photo cropper', () => {
 
       await page.locator('form[action$="/photos"] button[type="submit"]').click({ timeout: 5000 });
       await page.waitForFunction(
-        `document.querySelector('form[action$="/photos"]').dataset.squareCropReady === 'true'`,
+        `document.querySelector('form[action$="/photos"]').dataset.photoEditorReady === 'true'`,
         undefined,
         { timeout: 5000 }
       );
@@ -277,7 +278,7 @@ describe('Square cover photo cropper', () => {
       'This photo cannot be previewed'
     );
     expect(
-      await page.locator('form[action$="/photos"]').getAttribute('data-square-crop-ready')
+      await page.locator('form[action$="/photos"]').getAttribute('data-photo-editor-ready')
     ).toBeNull();
   });
 
@@ -291,7 +292,7 @@ describe('Square cover photo cropper', () => {
 
     await page.locator('.listing-photo-square-warning').waitFor({ state: 'visible', timeout: 5000 });
     expect(await page.locator('.listing-photo-square-warning').textContent()).toContain(
-      'Delete it and upload it again'
+      'Upload a corrected replacement'
     );
   });
 });
