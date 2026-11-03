@@ -62,6 +62,8 @@
   const OUTPUT_DIMENSION = 1536;
   const HANDLE_LABELS = ['Top-left', 'Top-right', 'Bottom-right', 'Bottom-left'];
 
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
   let image = null;
   let objectUrl = null;
   let sourceFile = null;
