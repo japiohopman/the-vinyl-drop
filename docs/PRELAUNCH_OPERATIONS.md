@@ -2,7 +2,7 @@
 
 This document records durable operating boundaries for The Vinyl Drop. It is not a live checklist: current completion status, evidence and owner decisions belong in the linked GitHub Issues, especially [#282 — release tracker](https://github.com/japiohopman/the-vinyl-drop/issues/282).
 
-**Last reconciled:** 2 November 2026.
+**Last reconciled:** 3 November 2026.
 
 ## 1. Product and transaction model
 
@@ -36,7 +36,7 @@ The current operating boundary is a private, invite-only beta for adults. The ap
 
 The password-safety flow uses an application-side Have I Been Pwned range check and a Supabase Before User Created approval hook for email/password registration. The native Supabase leaked-password protection warning is a separate provider capability and is not available on the current Free plan; the application check must not be represented as the native feature.
 
-The shared PostgreSQL rate limiter is implemented and its controlled staging runtime probe passed on 2 November 2026 (`database: pass`, `clientIpHeader: pass`). Its temporary diagnostic endpoint/token were removed. Production application's own database-role and client-IP runtime proof remains tracked in [#89](https://github.com/japiohopman/the-vinyl-drop/issues/89).
+The shared PostgreSQL rate limiter is implemented. The staging runtime probe passed on 2 November 2026, and the production application's own database-role/client-IP runtime checks passed on 3 November 2026 (both returned `database: pass`, `clientIpHeader: pass`). The temporary diagnostics and tokens were removed; production cleanup PR #328 is merged. This validates the target connection and Cloudflare header only; it does not mean request thresholds/429 behavior were exercised in production or that the limiter is enabled. Keep `SHARED_RATE_LIMITS_ENABLED=false` until a separate owner activation decision under [#89](https://github.com/japiohopman/the-vinyl-drop/issues/89).
 
 Keep these controls unchanged until the applicable Issues are complete and Jaap authorizes a change:
 - `BETA_INVITE_ONLY_ENABLED=true`;
@@ -80,7 +80,7 @@ Current completion status and evidence are tracked in GitHub:
 - [#279](https://github.com/japiohopman/the-vinyl-drop/issues/279) — safe public registration and abuse-prevention review;
 - [#280](https://github.com/japiohopman/the-vinyl-drop/issues/280) — privacy/legal scope, public disclosures, operator and complaint readiness;
 - [#281](https://github.com/japiohopman/the-vinyl-drop/issues/281) — separate production Google OAuth setup and verification;
-- [#89](https://github.com/japiohopman/the-vinyl-drop/issues/89) — production shared-rate-limit runtime proof and any later owner-approved activation;
+- [#89](https://github.com/japiohopman/the-vinyl-drop/issues/89) — staging and production target runtime proof passed; any activation remains a separate owner decision;
 - [#52](https://github.com/japiohopman/the-vinyl-drop/issues/52) — PWA installation and sharing acceptance;
 - [#282](https://github.com/japiohopman/the-vinyl-drop/issues/282) — final release decision and dependency reconciliation.
 

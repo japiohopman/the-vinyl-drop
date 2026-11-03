@@ -1,8 +1,8 @@
 # Production Deployment — The Vinyl Drop
 
 **Governing Issue:** [#278](https://github.com/japiohopman/the-vinyl-drop/issues/278)  
-**Status:** Production is live on a separate Render/Supabase environment at the canonical apex domain. Read-only browser checks on 2 November 2026 confirmed the apex site loads, `www` redirects to the apex, and `/health` returns `status: ok`. Production still runs the older PR #286 revision; `main` and staging are newer. Public launch remains gated on provider-level signup-state verification, complete DB/Storage smoke coverage, dependency-audit triage, backup/recovery readiness, OAuth/public-access/privacy checks and the owner's final release decision.  
-**Last checked:** 2 November 2026.
+**Status:** Production is live on a separate Render/Supabase environment at the canonical apex domain. The latest read-only production checkpoint is 3 November 2026: production remains on the PR #286 baseline; the production rate-limit database-role and Cloudflare client-IP runtime checks both passed; temporary diagnostics and their token have been removed. `main` and staging are at `db1dac957e98ca3df17359fa06139b11803230d8`, while production remains on `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d`. Public release remains gated on migration compatibility, authenticated DB/Storage smoke coverage, provider-level signup state, production OAuth, dependency-audit triage, backup/recovery readiness, privacy/legal checks and Jaap's final release decision.  
+**Last checked:** 3 November 2026.
 
 ## 1. Owner-approved target and safety boundaries
 
@@ -35,6 +35,7 @@ The existing staging project `xuhzhdjmgvqzjxijmksu` remains separate and was not
 Production database provisioning and read-only verification completed on 31 October 2026:
 - All 20 repository Drizzle migrations `0000`–`0019` applied with the repository runner.
 - `drizzle.__drizzle_migrations` contains 20 rows, 20 distinct hashes, and all 20 `created_at` timestamps match the repository journal.
+- Read-only checks on 3 November confirmed production is still at migration 0019. The new migrations 0020 and 0021 are **not** applied in production. Migration 0021 adds the `country_code`, `canonical_genres` and `format_characteristics` columns expected by current `main`; apply it before deploying current `main`. Migration 0020 installs `pg_trgm` and its GIN indexes for fuzzy catalogue suggestions; application code has a tested normalized-search fallback when it is absent.
 - All 12 public application tables and all three private tables have RLS enabled.
 - The public `listing-photos` bucket is present with a 5 MiB limit and allowed MIME types `image/webp`, `image/jpeg`, and `image/png`.
 - Exactly four seller-scoped Storage object policies exist and pass the migration `0006` predicate checks.
@@ -63,7 +64,7 @@ Do not run the production migration helper again unless a new migration is inten
 
 Render reported the production deployment as **Live / succeeded** at 31 October 2026, 19:41 UTC. The logs show `npm run start`, `node dist/server.js`, and `The Vinyl Drop listening on port 10000 [production]`. The deployment's TypeScript build completed successfully. On 2 November 2026, a read-only browser check opened `https://the-vinyl-drop.onrender.com/health` after the expected Free-service wake-up and received `{"status":"ok","timestamp":"2026-11-02T08:13:43.757Z","uptime":13.49308256}`. This is a process-health check only; it does not prove DB-backed writes, Auth, Storage or full application behavior.
 
-The apex custom domain `https://thevinyldrop.nl` is attached with SSL. The `www` host was checked on 2 November and redirects to the apex URL. The `onrender.com` hostname remains the underlying Render service hostname. Auto-Deploy is intentionally disabled so a later push to `main` does not silently deploy to production; future deployments require an explicit manual action. Current `main`/staging are at merge commit `009de12885aae0ee57ddbb7202394f909d9c7dc5`; production remains on PR #286 commit `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d`.
+The apex custom domain `https://thevinyldrop.nl` is attached with SSL. The `www` host was checked on 2 November and redirects to the apex URL. The `onrender.com` hostname remains the underlying Render service hostname. Auto-Deploy is intentionally disabled so a later push to `main` does not silently deploy to production; future deployments require an explicit manual action. Current `main`/staging are at merge commit `db1dac957e98ca3df17359fa06139b11803230d8`; production remains on PR #286 commit `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d`. GitHub's comparison reports 340 commits and 196 changed files between these revisions; this is a broad integrated feature delta, not a small hotfix.
 
 The chosen Render Free plan shares a 750-instance-hour monthly workspace allowance with the other Free services in the same workspace. Free services can spin down after inactivity, have cold starts and do not provide a production SLA. Supabase Free has finite quotas and requires a manual backup process. These limitations were explicitly accepted for the current small cohort; no paid upgrade is authorized.
 
@@ -119,4 +120,24 @@ Any paid spend, DNS mutation, provider-level signup toggle and public-launch dec
 
 The following public production GET routes loaded successfully in a read-only smoke check: `/`, `/health`, `/browse`, `/dig`, `/activity`, `/install`, `/terms`, `/privacy`, `/community-rules`, `/contact`, `/auth/signup` and `/auth/login`.
 
-This confirms public page availability only. No form was submitted and no authenticated operation was attempted. Production remains on the PR #286 revision, so newer Activity and Discogs-artwork changes on `main` are not expected to appear until a separate production deployment is explicitly approved. The full DB/Auth/Storage, signup-provider, production OAuth and seller photo round-trip checks remain open in #278/#279/#281/#288.
+This confirms public page availability only. No form was submitted and no authenticated operation was attempted. Production remains on the PR #286 revision, so newer Activity and Discogs-artwork changes on `main` are not expected to appear until a separate production deployment is explicitly approved. Authenticated DB-backed writes, seller-owned physical-photo Storage round-trip, provider-level signup verification, production OAuth and backup/recovery checks remain open under #278/#279/#281/#282. The separate production application DB-role and Cloudflare client-IP checks for shared rate limits **passed on 3 November 2026**; the temporary endpoint/token were removed via merged PR #328. This does not activate rate limiting: `SHARED_RATE_LIMITS_ENABLED=false` remains in force.
+
+
+## 8. Production/main compatibility checkpoint — 3 November 2026
+
+Production currently runs commit `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d`; current `main` and staging run `db1dac957e98ca3df17359fa06139b11803230d8`. The revisions differ by 340 commits and 196 changed files. No dependency or devDependency version changed in `package.json`, and the `package-lock.json` Git blob is unchanged from the production baseline. The Render Blueprint diff is comment-only; production remains manually managed with Auto-Deploy off.
+
+### Pending migrations
+
+- **0021 — required before deploying current `main`.** Adds the three release-metadata columns referenced by the current Drizzle schema and release service. It is additive, uses empty-array defaults, preserves existing raw fields and does not backfill/rewrite existing release rows.
+- **0020 — required for full fuzzy catalogue suggestions, but not for basic startup.** Installs `pg_trgm` in the non-public `extensions` schema and creates artist/title/label GIN indexes. The catalogue-suggestions repository detects a missing extension/operator and falls back to normalized exact/prefix/contains matching. The extension is available in the production PostgreSQL installation (version 1.6) but was not installed at the 3 November read-only check.
+
+Migration 0021 was applied directly to staging through Supabase on 2 November. The staging Drizzle ledger was not reconciled with that direct migration history. Do **not** run the general `npm run db:migrate` command against staging until this is reconciled; PR #321 records this operational warning. Production has neither migration 0020 nor 0021 applied. Do not run the existing broad production migration helper or deploy current `main` until a pinned 0020/0021 plan has been reviewed and Jaap separately authorizes execution.
+
+### Shared rate-limit target verification
+
+On 3 November, the protected production runtime check returned `database: pass` and `clientIpHeader: pass`. This verifies the production application's configured PostgreSQL role can perform the bounded zero-row access check on `private.rate_limit_buckets`, and that the Cloudflare `CF-Connecting-IP` header reaches the validator. The temporary token was removed, production was restored to its baseline commit, and diagnostic source was removed through PR #328. This was not an end-to-end 429/threshold test and did not enable the limiter. Keep `SHARED_RATE_LIMITS_ENABLED=false` until a separate activation decision.
+
+### Release boundary
+
+Do not treat this checkpoint as approval to deploy, apply migrations, change provider settings, expand the allowlist, enable public signup or activate messaging. Production remains invite-only; `MESSAGING_ENABLED=false`; `SHARED_RATE_LIMITS_ENABLED=false`. The 13-person figure is capacity preparation only, not proof of 13 production allowlist entries or authorization to invite them.
