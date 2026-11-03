@@ -251,7 +251,7 @@ describe('Square cover photo cropper', () => {
         "const file = fileInput && fileInput.files && fileInput.files[0];" +
         "if (!file) throw new Error('The cropper did not replace the selected photo.');" +
         "const bitmap = await createImageBitmap(file);" +
-        "const result = { name: file.name, type: file.type, width: bitmap.width, height: bitmap.height };" +
+        "const result = { name: file.name, type: file.type, width: bitmap.width, height: bitmap.height, size: file.size };" +
         "bitmap.close();" +
         "return result;" +
       "})()") as {
@@ -259,10 +259,12 @@ describe('Square cover photo cropper', () => {
         type: string;
         width: number;
         height: number;
+        size: number;
       };
       expect(uploaded.type).toBe('image/jpeg');
-      expect(uploaded.width).toBe(1024);
-      expect(uploaded.height).toBe(1024);
+      expect(uploaded.width).toBe(1536);
+      expect(uploaded.height).toBe(1536);
+      expect(uploaded.size).toBeLessThanOrEqual(5 * 1024 * 1024);
       expect(uploaded.name).toContain(role + '-square.jpg');
     }
   });
