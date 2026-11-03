@@ -2,7 +2,13 @@ import request from 'supertest';
 import { createApp } from '../src/app';
 import { sendContactMessage } from '../src/app/services/contactMessageService';
 
-jest.mock('../src/app/services/contactMessageService', () => ({ sendContactMessage: jest.fn() }));
+jest.mock('../src/app/services/contactMessageService', () => {
+  const actual = jest.requireActual('../src/app/services/contactMessageService');
+  return {
+    ...actual,
+    sendContactMessage: jest.fn(),
+  };
+});
 jest.mock('../src/app/services/rateLimitService', () => {
   const passThrough = (_req: unknown, _res: unknown, next: () => void) => next();
   return {
