@@ -509,7 +509,7 @@
       previewError = true;
       fileInfo.textContent = file.name + ' — this image could not be previewed. Choose a JPEG, PNG or WebP file.';
       fileInfo.style.color = 'var(--color-error-border)';
-      if (coverRole) setStatus('This image cannot be previewed. Choose a JPEG, PNG or WebP file.', true);
+      if (coverRole) setStatus('This photo cannot be previewed. Choose a JPEG, PNG or WebP file.', true);
     };
     previewImage.src = currentUrl;
   }
@@ -662,7 +662,7 @@
       event.preventDefault();
       if (isCoverRole()) {
         setStatus(
-          previewError ? 'This photo cannot be processed. Choose a valid JPEG, PNG or WebP file.' :
+          previewError ? 'This photo cannot be previewed. Choose a valid JPEG, PNG or WebP file.' :
             'Choose a photo no larger than 5 MiB.',
           true
         );
