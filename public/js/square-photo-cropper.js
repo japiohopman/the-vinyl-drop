@@ -59,7 +59,7 @@
   const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
   const PREVIEW_MAX_DIMENSION = 320;
   const PROCESS_MAX_DIMENSION = 2048;
-  const OUTPUT_DIMENSION = 1024;
+  const OUTPUT_DIMENSION = 1536;
   const HANDLE_LABELS = ['Top-left', 'Top-right', 'Bottom-right', 'Bottom-left'];
 
   let image = null;
@@ -694,6 +694,9 @@
 
     createUploadFile().then((correctedFile) => {
       if (!sourceFile || !image) return;
+      if (correctedFile.size > MAX_UPLOAD_BYTES) {
+        throw new Error('The corrected photo is larger than 5 MiB. Try a smaller source image or reduce the crop area.');
+      }
       const transfer = new DataTransfer();
       transfer.items.add(correctedFile);
       fileInput.files = transfer.files;
