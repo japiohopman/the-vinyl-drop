@@ -70,12 +70,17 @@ export function createProductionRateLimitDiagnosticsHandler(
   };
 }
 
-async function checkRateLimitTableAccess(): Promise<void> {
+export async function checkRateLimitTableAccess(): Promise<void> {
   if (!queryClient) throw new Error('Database connection is unavailable.');
 
-  // No rows are read or changed. This zero-row query uses the app runtime's
-  // configured DATABASE_URL connection and proves app-role table access.
-  await queryClient.unsafe('SELECT 1 FROM private.rate_limit_buckets LIMIT 0');
+  // Keep the temporary probe bounded even if the database is waiting on DDL
+  // or another database-side condition. SET LOCAL is transaction-scoped.
+  await queryClient.begin(async (sql) => {
+    await sql.unsafe("SET LOCAL statement_timeout = '3s'");
+    // No rows are read or changed. This zero-row query uses the app runtime's
+    // configured DATABASE_URL connection and proves app-role table access.
+    await sql.unsafe('SELECT 1 FROM private.rate_limit_buckets LIMIT 0');
+  });
 }
 
 export const postProductionRateLimitDiagnostics = createProductionRateLimitDiagnosticsHandler({
