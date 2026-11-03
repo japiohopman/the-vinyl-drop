@@ -186,7 +186,9 @@ describe('Square cover photo cropper', () => {
       const topLeftHandle = page.locator('[data-corner-handle="0"]');
       const polygonBeforeNudge = await page.locator('#square-cover-polygon').getAttribute('points');
       await topLeftHandle.focus();
-      await page.keyboard.press('ArrowRight');
+      expect(await topLeftHandle.isEnabled()).toBe(true);
+      expect(await topLeftHandle.evaluate((handle) => document.activeElement === handle)).toBe(true);
+      await topLeftHandle.press('ArrowRight');
       const polygonAfterNudge = await page.locator('#square-cover-polygon').getAttribute('points');
       expect(polygonAfterNudge).not.toBe(polygonBeforeNudge);
       expect(await page.locator('#square-cover-histogram').count()).toBe(1);
