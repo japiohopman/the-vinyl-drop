@@ -400,7 +400,7 @@
     return { canvas, context, points: scaledPoints };
   }
 
-  function createUploadFile() {
+  async function createUploadFile() {
     const processingSource = buildProcessingCanvas();
     const source = processingSource.context.getImageData(
       0,
@@ -803,10 +803,22 @@
     trigger.addEventListener('click', () => closeAccessibleDialog(helpDialog));
   });
 
+  if (uploadDialog instanceof HTMLDialogElement) {
+    uploadDialog.addEventListener('cancel', () => {
+      fileInput.value = '';
+      clearPreview();
+    });
+  }
+
   [uploadDialog, helpDialog].forEach((dialog) => {
     if (!(dialog instanceof HTMLDialogElement)) return;
     dialog.addEventListener('click', (event) => {
-      if (event.target === dialog) closeAccessibleDialog(dialog);
+      if (event.target !== dialog) return;
+      closeAccessibleDialog(dialog);
+      if (dialog === uploadDialog) {
+        fileInput.value = '';
+        clearPreview();
+      }
     });
   });
 
