@@ -55,6 +55,7 @@ jobs:
         run: npm run typecheck
 
       - name: Run unit & integration tests
+        timeout-minutes: 8
         env:
           ERROR_PAGE_EVIDENCE_DIR: artifacts/issue-315
         run: npm test
