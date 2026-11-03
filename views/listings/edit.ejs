@@ -224,25 +224,118 @@
             </div>
 
             <div id="square-cover-cropper" class="square-cover-cropper" hidden>
-              <p class="square-cover-intro">
-                <strong id="square-cover-title">Square cover crop</strong>
-                <span id="square-cover-description">Keep the complete sleeve inside the square.</span>
-              </p>
-              <div class="square-cover-preview-grid">
+              <div class="square-cover-intro">
                 <div>
-                  <p>Original and crop area</p>
-                  <canvas id="square-cover-source" aria-label="Original photo with square crop area"></canvas>
+                  <strong id="square-cover-title">Square cover correction</strong>
+                  <span id="square-cover-description">Place the four corners on the sleeve edges to flatten the photo into a clean square.</span>
                 </div>
-                <div>
-                  <p>Saved square preview</p>
-                  <canvas id="square-cover-result" aria-label="Preview of the saved square photo" width="512" height="512"></canvas>
+                <span class="square-cover-editor-tag">DARKROOM / 01</span>
+              </div>
+
+              <div class="square-cover-preview-grid">
+                <div class="square-cover-source-panel">
+                  <p class="square-cover-panel-label">01 — MARK THE SLEEVE</p>
+                  <div id="square-cover-source-stage" class="square-cover-source-stage">
+                    <canvas id="square-cover-source" aria-label="Original photo with four adjustable sleeve corners"></canvas>
+                    <svg id="square-cover-overlay" class="square-cover-overlay" viewBox="0 0 1 1" aria-hidden="true">
+                      <path id="square-cover-shade" class="square-cover-shade" fill-rule="evenodd" d=""></path>
+                      <polygon id="square-cover-polygon" class="square-cover-polygon" points=""></polygon>
+                    </svg>
+                    <button type="button" class="square-cover-handle" data-corner-handle="0" aria-label="Adjust top-left sleeve corner" disabled></button>
+                    <button type="button" class="square-cover-handle" data-corner-handle="1" aria-label="Adjust top-right sleeve corner" disabled></button>
+                    <button type="button" class="square-cover-handle" data-corner-handle="2" aria-label="Adjust bottom-right sleeve corner" disabled></button>
+                    <button type="button" class="square-cover-handle" data-corner-handle="3" aria-label="Adjust bottom-left sleeve corner" disabled></button>
+                  </div>
+                  <div id="square-cover-magnifier" class="square-cover-magnifier" hidden>
+                    <canvas id="square-cover-magnifier-canvas" width="112" height="112" aria-hidden="true"></canvas>
+                    <span>2× corner detail</span>
+                  </div>
+                  <p class="square-cover-help">Drag a corner, or focus it and use the arrow keys. Hold Shift to move in larger steps.</p>
+                </div>
+
+                <div class="square-cover-result-panel">
+                  <p class="square-cover-panel-label">02 — CHECK THE RESULT</p>
+                  <canvas id="square-cover-result" aria-label="Perspective-corrected square sleeve preview" width="512" height="512"></canvas>
+                  <button type="button" class="square-cover-before-after" data-toggle-photo-before-after aria-pressed="false">Show before</button>
                 </div>
               </div>
-              <label for="square-cover-zoom">Zoom</label>
-              <input id="square-cover-zoom" type="range" min="55" max="100" value="100" step="1" />
-              <label for="square-cover-position">Position along the long edge</label>
-              <input id="square-cover-position" type="range" min="0" max="100" value="50" step="1" />
-              <p id="square-cover-status" role="status" aria-live="polite" class="square-cover-status">Review the square preview before uploading.</p>
+
+              <section class="square-cover-tone-panel" aria-labelledby="square-cover-tone-title">
+                <header class="square-cover-tone-header">
+                  <div>
+                    <p class="square-cover-panel-label">03 — DARKROOM CONTROLS</p>
+                    <h3 id="square-cover-tone-title">Light &amp; colour</h3>
+                  </div>
+                  <div class="square-cover-history-actions" aria-label="Photo edit history">
+                    <button type="button" data-photo-editor-undo disabled>Undo</button>
+                    <button type="button" data-photo-editor-redo disabled>Redo</button>
+                    <button type="button" data-photo-editor-reset>Reset</button>
+                  </div>
+                </header>
+
+                <div class="square-cover-histogram-wrap">
+                  <canvas id="square-cover-histogram" width="288" height="64" aria-label="Live image luminance histogram"></canvas>
+                  <span>SHADOWS <span aria-hidden="true">←</span> MIDTONES <span aria-hidden="true">→</span> HIGHLIGHTS</span>
+                </div>
+
+                <details class="square-cover-adjustments">
+                  <summary>Fine-tune tonal and colour controls <span>Neutral by default</span></summary>
+                  <div class="square-cover-adjustment-grid">
+                    <label class="square-cover-adjustment" for="photo-adjust-exposure">
+                      <span>Exposure</span>
+                      <output data-photo-adjustment-value="exposure">0.0 EV</output>
+                      <input id="photo-adjust-exposure" type="range" min="-100" max="100" value="0" step="1" data-photo-adjustment="exposure" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-adjust-blackPoint">
+                      <span>Black point</span>
+                      <output data-photo-adjustment-value="blackPoint">0</output>
+                      <input id="photo-adjust-blackPoint" type="range" min="0" max="60" value="0" step="1" data-photo-adjustment="blackPoint" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-adjust-shadows">
+                      <span>Shadows</span>
+                      <output data-photo-adjustment-value="shadows">0</output>
+                      <input id="photo-adjust-shadows" type="range" min="-100" max="100" value="0" step="1" data-photo-adjustment="shadows" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-adjust-contrast">
+                      <span>Contrast</span>
+                      <output data-photo-adjustment-value="contrast">0</output>
+                      <input id="photo-adjust-contrast" type="range" min="-100" max="100" value="0" step="1" data-photo-adjustment="contrast" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-adjust-highlights">
+                      <span>Highlights</span>
+                      <output data-photo-adjustment-value="highlights">0</output>
+                      <input id="photo-adjust-highlights" type="range" min="-100" max="100" value="0" step="1" data-photo-adjustment="highlights" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-adjust-whitePoint">
+                      <span>White point</span>
+                      <output data-photo-adjustment-value="whitePoint">255</output>
+                      <input id="photo-adjust-whitePoint" type="range" min="195" max="255" value="255" step="1" data-photo-adjustment="whitePoint" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-adjust-gamma">
+                      <span>Midtones / gamma</span>
+                      <output data-photo-adjustment-value="gamma">1.00</output>
+                      <input id="photo-adjust-gamma" type="range" min="50" max="200" value="100" step="1" data-photo-adjustment="gamma" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-adjust-temperature">
+                      <span>Temperature</span>
+                      <output data-photo-adjustment-value="temperature">0</output>
+                      <input id="photo-adjust-temperature" type="range" min="-100" max="100" value="0" step="1" data-photo-adjustment="temperature" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-adjust-tint">
+                      <span>Tint</span>
+                      <output data-photo-adjustment-value="tint">0</output>
+                      <input id="photo-adjust-tint" type="range" min="-100" max="100" value="0" step="1" data-photo-adjustment="tint" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-adjust-saturation">
+                      <span>Saturation</span>
+                      <output data-photo-adjustment-value="saturation">0</output>
+                      <input id="photo-adjust-saturation" type="range" min="-100" max="100" value="0" step="1" data-photo-adjustment="saturation" />
+                    </label>
+                  </div>
+                </details>
+              </section>
+
+              <p id="square-cover-status" role="status" aria-live="polite" class="square-cover-status">Place each corner on the sleeve edge before uploading.</p>
             </div>
 
             <div class="photo-upload-field">
@@ -364,5 +457,6 @@
     </form>
   </div>
   <script src="/js/release-file-picker.js" defer></script>
+  <script src="/js/listing-photo-editor-core.js" defer></script>
   <script src="/js/square-photo-cropper.js" defer></script>
 </div>
