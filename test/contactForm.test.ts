@@ -1,26 +1,19 @@
 import request from 'supertest';
 import { createApp } from '../src/app';
-import { config } from '../src/config/env';
 import { sendContactMessage } from '../src/app/services/contactMessageService';
 
 jest.mock('../src/app/services/contactMessageService', () => ({ sendContactMessage: jest.fn() }));
+jest.mock('../src/app/services/rateLimitService', () => ({
+  rateLimits: new Proxy({}, {
+    get: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  }),
+}));
 
 const app = createApp();
 const sendMock = sendContactMessage as jest.MockedFunction<typeof sendContactMessage>;
 const origin = 'http://localhost:3000';
-const originalSharedRateLimitsEnabled = config.SHARED_RATE_LIMITS_ENABLED;
 
 describe('Contact form', () => {
-  beforeAll(() => {
-    // This suite targets the contact form's per-email cooldown, not the shared per-IP limiter.
-    // Shared rate-limit middleware is covered separately in rateLimit.test.ts.
-    config.SHARED_RATE_LIMITS_ENABLED = false;
-  });
-
-  afterAll(() => {
-    config.SHARED_RATE_LIMITS_ENABLED = originalSharedRateLimitsEnabled;
-  });
-
   beforeEach(() => {
     jest.clearAllMocks();
     sendMock.mockResolvedValue(undefined);
