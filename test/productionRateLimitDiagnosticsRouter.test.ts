@@ -56,7 +56,7 @@ beforeAll(() => {
   });
 
   jest.isolateModules(() => {
-    router = (require('../src/app/routes') as { default: Router }).default;
+    router = jest.requireActual<{ default: Router }>('../src/app/routes').default;
   });
 });
 
