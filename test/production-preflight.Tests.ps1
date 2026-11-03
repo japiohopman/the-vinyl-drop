@@ -8,6 +8,8 @@ if (-not $pwsh) {
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $preflightPath = Join-Path $repositoryRoot 'check-production-db-target.ps1'
 $migrationRunnerPath = Join-Path $repositoryRoot 'run-production-migrations.ps1'
+$migrationPlanPath = Join-Path $repositoryRoot 'scripts/productionMigrationPlan.ps1'
+$journalPath = Join-Path $repositoryRoot 'drizzle/meta/_journal.json'
 $expectedProductionRef = 'anxhmlalxjvatrufcjei'
 $expectedProductionHost = 'aws-0-eu-west-1.pooler.supabase.com'
 $testPassword = 'preflight-test-password-not-a-secret'
@@ -76,12 +78,79 @@ function Invoke-PreflightCase {
     }
 }
 
+function Test-PinnedProductionMigrationPlans {
+    . $migrationPlanPath
+
+    $base = @(Get-ProductionMigrationEntries -Phase Base -JournalPath $journalPath)
+    $complete = @(Get-ProductionMigrationEntries -Phase Complete -JournalPath $journalPath)
+    $release = @(Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $journalPath)
+
+    if ($base.Count -ne 6 -or $base[0].tag -cne '0000_grey_living_tribunal' -or $base[-1].tag -cne '0005_enforce_least_privilege_rls') {
+        throw 'Base phase did not select exactly migrations 0000-0005.'
+    }
+    if ($complete.Count -ne 14 -or $complete[0].tag -cne '0006_storage_objects_rls' -or $complete[-1].tag -cne '0019_shared_rate_limit_buckets') {
+        throw 'Complete phase did not select exactly migrations 0006-0019.'
+    }
+    if ($release.Count -ne 2 -or $release[0].tag -cne '0020_catalogue_search_trigram' -or $release[1].tag -cne '0021_release_metadata_vocabulary') {
+        throw 'ReleaseCandidate phase did not select exactly migrations 0020-0021.'
+    }
+
+    $journal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
+    $journal.entries += [pscustomobject]@{
+        idx = 22
+        version = '7'
+        when = 1793700000000
+        tag = '0022_unapproved_future_migration'
+        breakpoints = $true
+    }
+
+    $futureJournalPath = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-future-journal-" + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        $journal | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $futureJournalPath
+        $futureRelease = @(Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $futureJournalPath)
+        if ($futureRelease.Count -ne 2 -or @($futureRelease | Where-Object { $_.idx -gt 21 }).Count -ne 0) {
+            throw 'ReleaseCandidate phase selected a later unapproved journal entry.'
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $futureJournalPath) {
+            Remove-Item -LiteralPath $futureJournalPath -Force
+        }
+    }
+
+    $invalidJournalPath = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-invalid-journal-" + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        $invalidJournal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
+        $invalidJournal.entries[21].tag = '0022_unexpected_migration'
+        $invalidJournal | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $invalidJournalPath
+        $threw = $false
+        try {
+            Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $invalidJournalPath | Out-Null
+        }
+        catch {
+            $threw = $true
+        }
+        if (-not $threw) {
+            throw 'ReleaseCandidate phase accepted a replaced migration 0021 entry.'
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $invalidJournalPath) {
+            Remove-Item -LiteralPath $invalidJournalPath -Force
+        }
+    }
+
+    Write-Host 'PASS: production migration phases select only their pinned index ranges and reject journal drift'
+}
+
 function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
     $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-runner-preflight-" + [guid]::NewGuid().ToString('N'))
     $locationPushed = $false
 
     try {
         New-Item -ItemType Directory -Path (Join-Path $tempRoot 'drizzle/meta') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $tempRoot 'scripts') -Force | Out-Null
+        Copy-Item -LiteralPath $migrationPlanPath -Destination (Join-Path $tempRoot 'scripts/productionMigrationPlan.ps1')
         Set-Content -LiteralPath (Join-Path $tempRoot 'package.json') -Value '{}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle.config.ts') -Value 'export default {}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle/meta/_journal.json') -Value '{}' -NoNewline
@@ -99,7 +168,7 @@ function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
         if ($output -notmatch 'lockfile-installed local drizzle-kit binary is missing') {
             throw "Migration runner did not stop with the expected actionable local-binary error. Output: $output"
         }
-        if ($output -match 'Enter the production database password|APPLY-PRODUCTION-BASE-MIGRATIONS') {
+        if ($output -match 'Enter the production database password|APPLY-PRODUCTION-BASE-MIGRATIONS-0000-0005') {
             throw 'Migration runner prompted for a production credential or confirmation before checking the local Drizzle Kit binary.'
         }
         if ($output.Contains($testPassword)) {
@@ -120,6 +189,7 @@ function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
 
 Push-Location $repositoryRoot
 try {
+    Test-PinnedProductionMigrationPlans
     Invoke-PreflightCase -Name 'approved production project with TLS' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 0
     Invoke-PreflightCase -Name 'known staging project is rejected' -ProjectRef 'xuhzhdjmgvqzjxijmksu' -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1
     Invoke-PreflightCase -Name 'valid-looking but unapproved project is rejected' -ProjectRef 'aaaaaaaaaaaaaaaaaaaa' -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1
@@ -136,5 +206,5 @@ finally {
     Pop-Location
 }
 
-Write-Host 'All production preflight regression cases passed.'
+Write-Host 'All production preflight and pinned migration-plan regression cases passed.'
 exit 0

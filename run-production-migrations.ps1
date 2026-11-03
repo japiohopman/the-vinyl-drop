@@ -1,29 +1,39 @@
 param(
-    [ValidateSet('Base', 'Complete')]
+    [ValidateSet('Base', 'Complete', 'ReleaseCandidate')]
     [string]$Phase = 'Base'
 )
 
 $ErrorActionPreference = 'Stop'
 
-# Base applies migrations 0000-0005 only. Then create the bucket and the four
-# exact Storage object policies in Supabase Dashboard. Complete applies 0006-0019.
 $projectRef = 'anxhmlalxjvatrufcjei'
 $poolerHost = 'aws-0-eu-west-1.pooler.supabase.com'
 $canonicalOrigin = 'https://thevinyldrop.nl'
-$expectedConfirmation = if ($Phase -eq 'Base') {
-    "APPLY-PRODUCTION-BASE-MIGRATIONS $projectRef"
-} else {
-    "APPLY-PRODUCTION-REMAINING-MIGRATIONS $projectRef"
+
+$phaseSettings = @{
+    Base = @{
+        Confirmation = "APPLY-PRODUCTION-BASE-MIGRATIONS-0000-0005 $projectRef"
+        Description = '0000-0005'
+    }
+    Complete = @{
+        Confirmation = "APPLY-PRODUCTION-COMPLETE-MIGRATIONS-0006-0019 $projectRef"
+        Description = '0006-0019'
+    }
+    ReleaseCandidate = @{
+        Confirmation = "APPLY-PRODUCTION-RELEASE-MIGRATIONS-0020-0021 $projectRef"
+        Description = '0020-0021'
+    }
 }
+$expectedConfirmation = $phaseSettings[$Phase].Confirmation
 
 $requiredFiles = @(
     'package.json',
     'drizzle.config.ts',
     'drizzle/meta/_journal.json',
-    'check-production-db-target.ps1'
+    'check-production-db-target.ps1',
+    'scripts/productionMigrationPlan.ps1'
 )
 foreach ($file in $requiredFiles) {
-    if (-not (Test-Path -LiteralPath (Join-Path (Get-Location) $file))) {
+    if (-not (Test-Path -LiteralPath (Join-Path (Get-Location) $file) -PathType Leaf)) {
         throw "Required file is missing. Run this script from the repository root; missing: $file"
     }
 }
@@ -32,30 +42,44 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     throw 'npm was not found. Install/use the supported Node.js environment before running migrations.'
 }
 
-# Base must use the repository's lockfile-installed Drizzle Kit, never an npx
-# registry fallback that could install an unreviewed version while DB credentials
-# are in the process environment.
+. (Join-Path (Get-Location) 'scripts/productionMigrationPlan.ps1')
+
+# Always use the lockfile-installed local Drizzle Kit. Never allow npx or a
+# registry fallback to install an unreviewed migration tool during this task.
 $drizzleKitPath = $null
-if ($Phase -eq 'Base') {
-    $binDirectory = Join-Path (Get-Location) 'node_modules/.bin'
-    $drizzleKitNames = if ($env:OS -eq 'Windows_NT') {
-        @('drizzle-kit.cmd', 'drizzle-kit.ps1', 'drizzle-kit')
-    } else {
-        @('drizzle-kit')
+$binDirectory = Join-Path (Get-Location) 'node_modules/.bin'
+$drizzleKitNames = if ($env:OS -eq 'Windows_NT') {
+    @('drizzle-kit.cmd', 'drizzle-kit.ps1', 'drizzle-kit')
+} else {
+    @('drizzle-kit')
+}
+foreach ($binaryName in $drizzleKitNames) {
+    $candidate = Join-Path $binDirectory $binaryName
+    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+        $drizzleKitPath = $candidate
+        break
     }
-    foreach ($binaryName in $drizzleKitNames) {
-        $candidate = Join-Path $binDirectory $binaryName
-        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-            $drizzleKitPath = $candidate
-            break
-        }
-    }
-    if ([string]::IsNullOrWhiteSpace($drizzleKitPath)) {
-        throw 'The lockfile-installed local drizzle-kit binary is missing. Run npm ci --include=dev from the repository root before the Base phase; no registry fallback will be used.'
+}
+if ([string]::IsNullOrWhiteSpace($drizzleKitPath)) {
+    throw 'The lockfile-installed local drizzle-kit binary is missing. Run npm ci --include=dev from the repository root; no registry fallback will be used.'
+}
+
+$journalPath = Join-Path (Get-Location) 'drizzle/meta/_journal.json'
+$migrationEntries = @(Get-ProductionMigrationEntries -Phase $Phase -JournalPath $journalPath)
+foreach ($entry in $migrationEntries) {
+    $sourceMigration = Join-Path (Get-Location) ("drizzle/" + $entry.tag + '.sql')
+    if (-not (Test-Path -LiteralPath $sourceMigration -PathType Leaf)) {
+        throw "A required pinned migration file is missing: $($entry.tag).sql"
     }
 }
 
-Write-Host "Production migration phase: $Phase"
+$tempMigrationDirectoryName = ".production-migrations-$($Phase.ToLowerInvariant())"
+$tempMigrationDirectory = Join-Path (Get-Location) $tempMigrationDirectoryName
+$tempConfigFileName = "drizzle.production-$($Phase.ToLowerInvariant()).config.ts"
+$tempConfigPath = Join-Path (Get-Location) $tempConfigFileName
+$createdTemporaryFiles = $false
+
+Write-Host "Production migration phase: $Phase ($($phaseSettings[$Phase].Description))"
 Write-Host "Project: $projectRef"
 Write-Host "Host: $poolerHost (Supabase Shared Session Pooler, port 5432; TLS required)"
 Write-Host 'The password is requested securely and is not written to .env or printed.'
@@ -105,10 +129,6 @@ foreach ($name in $environmentValues.Keys) {
     $previousValues[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
 
-$tempMigrationDirectory = Join-Path (Get-Location) '.production-migrations-base'
-$tempConfigPath = Join-Path (Get-Location) 'drizzle.production-base.config.ts'
-$createdTemporaryFiles = $false
-
 try {
     foreach ($name in $environmentValues.Keys) {
         [Environment]::SetEnvironmentVariable($name, $environmentValues[$name], 'Process')
@@ -120,7 +140,7 @@ try {
         'powershell.exe'
     }
     $enginePath = Join-Path $PSHOME $engineName
-    if (-not (Test-Path -LiteralPath $enginePath)) {
+    if (-not (Test-Path -LiteralPath $enginePath -PathType Leaf)) {
         throw 'Could not locate the PowerShell executable to run the isolated preflight process.'
     }
 
@@ -135,75 +155,65 @@ try {
         throw 'Confirmation did not match. No Drizzle migration command was started.'
     }
 
-    if ($Phase -eq 'Base') {
-        if ((Test-Path -LiteralPath $tempMigrationDirectory) -or (Test-Path -LiteralPath $tempConfigPath)) {
-            throw 'Temporary base-migration files already exist. Inspect and remove them manually before retrying.'
-        }
+    if ((Test-Path -LiteralPath $tempMigrationDirectory) -or (Test-Path -LiteralPath $tempConfigPath)) {
+        throw 'Temporary production-migration files already exist. Inspect and remove them manually before retrying.'
+    }
 
-        $journalPath = Join-Path (Get-Location) 'drizzle/meta/_journal.json'
-        $journal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
-        $baseEntries = @($journal.entries | Where-Object { [int]$_.idx -le 5 } | Sort-Object { [int]$_.idx })
-        if ($baseEntries.Count -ne 6) {
-            throw 'Expected exactly six ordered base migration entries (0000-0005); refusing to proceed.'
-        }
+    New-Item -ItemType Directory -Path $tempMigrationDirectory | Out-Null
+    $createdTemporaryFiles = $true
+    $metaDirectory = Join-Path $tempMigrationDirectory 'meta'
+    New-Item -ItemType Directory -Path $metaDirectory | Out-Null
 
-        $metaDirectory = Join-Path $tempMigrationDirectory 'meta'
-        New-Item -ItemType Directory -Path $metaDirectory -Force | Out-Null
-        $createdTemporaryFiles = $true
-        foreach ($entry in $baseEntries) {
-            $sourceMigration = Join-Path (Get-Location) ("drizzle/" + $entry.tag + '.sql')
-            if (-not (Test-Path -LiteralPath $sourceMigration)) {
-                throw "A required base migration file is missing: $($entry.tag).sql"
-            }
-            Copy-Item -LiteralPath $sourceMigration -Destination $tempMigrationDirectory
-        }
-        $journal.entries = $baseEntries
-        $journalJson = $journal | ConvertTo-Json -Depth 10
-        [System.IO.File]::WriteAllText(
-            (Join-Path $metaDirectory '_journal.json'),
-            $journalJson,
-            [System.Text.UTF8Encoding]::new($false)
-        )
+    foreach ($entry in $migrationEntries) {
+        $sourceMigration = Join-Path (Get-Location) ("drizzle/" + $entry.tag + '.sql')
+        Copy-Item -LiteralPath $sourceMigration -Destination $tempMigrationDirectory
+    }
 
-        $baseConfig = @'
+    $journal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
+    $journal.entries = @($migrationEntries)
+    $journalJson = $journal | ConvertTo-Json -Depth 10
+    [System.IO.File]::WriteAllText(
+        (Join-Path $metaDirectory '_journal.json'),
+        $journalJson,
+        [System.Text.UTF8Encoding]::new($false)
+    )
+
+    $configContent = @"
 import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
-  out: './.production-migrations-base',
+  out: './$tempMigrationDirectoryName',
   dialect: 'postgresql',
   dbCredentials: {
     url: process.env.DATABASE_DIRECT_URL || '',
   },
 });
-'@
-        [System.IO.File]::WriteAllText(
-            $tempConfigPath,
-            $baseConfig,
-            [System.Text.UTF8Encoding]::new($false)
-        )
+"@
+    [System.IO.File]::WriteAllText(
+        $tempConfigPath,
+        $configContent,
+        [System.Text.UTF8Encoding]::new($false)
+    )
 
-        try {
-            Write-Host 'Applying only base migrations 0000-0005...'
-            & $drizzleKitPath migrate --config=drizzle.production-base.config.ts
-            if ($LASTEXITCODE -ne 0) {
-                throw 'Base migration phase failed. STOP: inspect drizzle.__drizzle_migrations before any retry.'
-            }
-            Write-Host 'Base migrations 0000-0005 completed.'
+    Write-Host "Applying only pinned production migrations $($phaseSettings[$Phase].Description)..."
+    & $drizzleKitPath migrate "--config=$tempConfigFileName"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Production migration phase $Phase failed. STOP: inspect drizzle.__drizzle_migrations before any retry."
+    }
+
+    switch ($Phase) {
+        'Base' {
+            Write-Host 'Base migrations 0000-0005 completed (or were already recorded by Drizzle).'
             Write-Host 'STOP HERE. Create and verify the listing-photos bucket and all four Storage object policies before running Phase Complete.'
         }
-        finally {
-            Remove-Item -LiteralPath $tempMigrationDirectory -Recurse -Force -ErrorAction SilentlyContinue
-            Remove-Item -LiteralPath $tempConfigPath -Force -ErrorAction SilentlyContinue
+        'Complete' {
+            Write-Host 'Only migrations 0006-0019 were selected. No migration after 0019 was included in this phase.'
+            Write-Host 'Next: verify the 20-row Drizzle migration ledger, schema, RLS and Storage policies before creating or deploying the Render application service.'
         }
-    }
-    else {
-        Write-Host 'Applying the remaining repository migrations 0006-0019...'
-        npm run db:migrate
-        if ($LASTEXITCODE -ne 0) {
-            throw 'Remaining migration phase failed. STOP: earlier migration files may already have committed. Inspect drizzle.__drizzle_migrations before any retry.'
+        'ReleaseCandidate' {
+            Write-Host 'Only migrations 0020 and 0021 were selected. No later journal entry was included in this phase.'
+            Write-Host 'Next: verify the Drizzle migration ledger, pg_trgm extension/indexes, release metadata columns, RLS and Storage before any application deployment.'
         }
-        Write-Host 'All repository Drizzle migrations completed successfully.'
-        Write-Host 'Next: verify the 20-row Drizzle migration ledger, schema, RLS and Storage policies before creating or deploying the Render application service.'
     }
 }
 finally {
