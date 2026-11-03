@@ -211,6 +211,35 @@ describe('Square cover photo cropper', () => {
         { timeout: 5000 }
       );
 
+      await page.locator('.square-cover-adjustments > summary').click();
+      const exposure = page.locator('[data-photo-adjustment="exposure"]');
+      const baselineRed = await page.locator('#square-cover-result').evaluate((canvas) =>
+        (canvas as HTMLCanvasElement).getContext('2d')!.getImageData(256, 256, 1, 1).data[0]
+      );
+      await exposure.evaluate((input) => {
+        (input as HTMLInputElement).value = '25';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      await page.waitForFunction(
+        (baseline) => {
+          const canvas = document.querySelector('#square-cover-result') as HTMLCanvasElement;
+          return canvas.getContext('2d')!.getImageData(256, 256, 1, 1).data[0] > baseline + 20;
+        },
+        baselineRed,
+        { timeout: 5000 }
+      );
+      await page.locator('[data-photo-editor-reset]').click();
+      await page.waitForFunction(
+        (baseline) => {
+          const canvas = document.querySelector('#square-cover-result') as HTMLCanvasElement;
+          return Math.abs(canvas.getContext('2d')!.getImageData(256, 256, 1, 1).data[0] - baseline) <= 2;
+        },
+        baselineRed,
+        { timeout: 5000 }
+      );
+      expect(await exposure.inputValue()).toBe('0');
+
       for (const width of [320, 360, 375, 414]) {
         await page.setViewportSize({ width, height: 850 });
         const layout = await page.evaluate("(() => {" +
