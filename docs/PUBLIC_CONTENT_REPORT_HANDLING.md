@@ -8,7 +8,7 @@ This document proposes a small, human-operated process for reports about listing
 
 ## 1. Current intake design
 
-The existing /contact page continues to provide two human contact routes: direct email and a web form. The form is being extended to collect:
+The existing `/contact` page provides two human contact routes: direct email and a web form. The structured form implementation was added by PR #332, merged to `main` on 3 November 2026, and is included in the current Live staging deploy. It collects:
 
 - The category of the message.
 - The submitter's name (required for the formal illegal-content, copyright/trademark and counterfeit/fraud notice categories) and reply email address.
@@ -16,9 +16,9 @@ The existing /contact page continues to provide two human contact routes: direct
 - A factual explanation of what is reported and why.
 - A good-faith confirmation for the formal notice categories.
 
-The form uses the existing same-origin POST route, contact rate-limit middleware and Resend delivery service. It does not accept file uploads. The application does not persist a report or support-message history in PostgreSQL and does not automatically hide or remove the reported item. The service hands the message to Resend; this is not proof that it reached or was read in the operator's mailbox. The email provider and receiving mailbox have their own retention and access controls.
+The form uses the existing same-origin `POST /contact` route and the Resend delivery service. The route is wired to shared contact rate-limit middleware, but that middleware is deliberately **inactive** while `SHARED_RATE_LIMITS_ENABLED=false`; the separate activation decision remains open under #89. The form does not accept file uploads. The application does not persist a report or support-message history in PostgreSQL and does not automatically hide or remove the reported item. The service hands the message to Resend; this is not proof that it reached or was read in the operator's mailbox. The email provider and receiving mailbox have their own retention and access controls. After a valid submission, the reporter sees an on-page confirmation that the email provider accepted the hand-off. The application does not send a separate receipt email or issue a case reference to the reporter. This page response does not prove delivery to the operator's mailbox and must not be treated as a completed DSA acknowledgement process without the legal assessment under #280.
 
-**Important:** this implementation is proposed on a PR branch. It is not production evidence until it is merged, deployed through the separate release process and manually checked on the target environment.
+**Environment boundary (3 November 2026):** PR #332 is merged to `main`, and the current `main` revision containing it is Live on staging. Production remains deliberately on the older PR #286 baseline with Auto-Deploy off. No production contact-form submission or delivery test has been performed for this implementation. Treat the new form as production-verified only after the separately authorised production release and an owner-controlled end-to-end delivery check.
 
 ## 2. Scope and triage categories
 
