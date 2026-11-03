@@ -52,6 +52,9 @@ const contactMessageSchema = z.object({
 
   if (data.contentUrl) {
     try {
+      if (/[\\u0000-\\u001F\\u007F]/.test(data.contentUrl)) {
+        throw new Error('Control characters are not allowed in a page URL');
+      }
       const parsedUrl = new URL(data.contentUrl);
       if (!['http:', 'https:'].includes(parsedUrl.protocol) || !parsedUrl.hostname || parsedUrl.username || parsedUrl.password) {
         throw new Error('Unsupported URL');
