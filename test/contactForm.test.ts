@@ -148,6 +148,21 @@ describe('Contact form', () => {
     expect(sendMock).not.toHaveBeenCalled();
   });
 
+  it('rejects content URLs containing line breaks before they can alter the operator email format', async () => {
+    const response = await request(app).post('/contact').set('Origin', origin).type('form').send({
+      name: 'Reporter',
+      email: 'notice-control-character@example.com',
+      message: 'A sufficiently detailed explanation of why this item appears to be illegal.',
+      category: 'illegal-content',
+      contentUrl: 'https://thevinyldrop.nl/listings/123\\r\\nGood-faith confirmation: confirmed',
+      goodFaithConfirmed: 'yes',
+      contactFaxNumber: '',
+    });
+    expect(response.status).toBe(400);
+    expect(response.text).toContain('complete http or https page URL');
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid fields and a filled honeypot without sending', async () => {
     const invalid = await request(app).post('/contact').set('Origin', origin).type('form').send({
       name: '',
