@@ -62,9 +62,12 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     catalogueNumber: 'BLP 1577',
     releaseYear: 1957,
     country: 'US',
+    countryCode: 'US',
     format: '12" Vinyl',
+    formatCharacteristics: ['12-inch'],
     barcode: null,
     genre: 'Jazz',
+    canonicalGenres: ['Jazz'],
     coverArtUrl: null,
     youtubeVideoId: null,
     externalSource: null,
@@ -402,6 +405,47 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('q=Coltrane');
     });
 
+    it('keeps the desktop Browse hierarchy and every active filter in view and pagination links', async () => {
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [mockListingCard],
+        totalCount: 25,
+        page: 2,
+        limit: 12,
+        totalPages: 3,
+      });
+
+      const app = createApp();
+      const res = await request(app).get(
+        '/browse?q=Coltrane&genre=Jazz&condition=VG%2B&minPrice=10&maxPrice=50&sort=price_asc&format=lp&whiteLabel=1&page=2&view=list'
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('class="browse-search-row"');
+      expect(res.text).toContain('class="browse-quick-filter-row"');
+      expect(res.text).toContain('class="browse-results-summary"');
+      expect(res.text).toContain('class="listing-list"');
+      expect(res.text).toContain('class="browse-active-filter-count">8</strong>');
+      expect(res.text).toContain('active filters');
+      expect(res.text).toContain('<span class="browse-secondary-filter-status">4 active</span>');
+      expect(res.text).toContain('<details class="browse-secondary-filters" open>');
+      expect(res.text).toContain('aria-label="List view"');
+      expect(res.text).toContain('q=Coltrane&amp;genre=Jazz&amp;condition=VG%2B&amp;minPrice=10&amp;maxPrice=50&amp;sort=price_asc&amp;format=lp&amp;whiteLabel=1&amp;page=2&amp;view=grid');
+      expect(res.text).toContain('q=Coltrane&amp;genre=Jazz&amp;condition=VG%2B&amp;minPrice=10&amp;maxPrice=50&amp;sort=price_asc&amp;format=lp&amp;whiteLabel=1&amp;view=list&amp;page=3');
+      expect(listingService.searchBrowseListings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          q: 'Coltrane',
+          genre: 'Jazz',
+          condition: 'VG+',
+          minPrice: 1000,
+          maxPrice: 5000,
+          formats: ['lp'],
+          whiteLabel: true,
+          sort: 'price_asc',
+          page: 2,
+        })
+      );
+    });
+
     it('should safely fall back to grid view when invalid view parameter is provided', async () => {
       (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
         items: [mockListingCard],
@@ -461,6 +505,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
         photos: [
           {
             id: 'photo-1',
+            role: 'front_cover',
             listingId: mockPublishedListing.id,
             storagePath: 'assets/broken-photo.webp',
             publicUrl: '/assets/broken-photo.webp',
@@ -471,6 +516,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
           },
           {
             id: 'photo-2',
+            role: 'back_cover',
             listingId: mockPublishedListing.id,
             storagePath: 'assets/back-photo.webp',
             publicUrl: '/assets/back-photo.webp',
@@ -558,7 +604,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       const res = await request(app).get(`/listings/${mockDraftListing.id}`);
 
       expect(res.status).toBe(404);
-      expect(res.text).toContain('404 - Page Not Found');
+      expect(res.text).toContain("This record isn't here.");
+      expect(res.text).toContain('href="/browse">Browse records</a>');
     });
   });
 
@@ -661,7 +708,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
         .send({ content: 'Is this draft listing available?' });
 
       expect(res.status).toBe(404);
-      expect(res.text).toContain('404 - Page Not Found');
+      expect(res.text).toContain("This record isn't here.");
+      expect(res.text).toContain('href="/browse">Browse records</a>');
     });
   });
 

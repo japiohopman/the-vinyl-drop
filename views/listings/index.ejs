@@ -33,7 +33,7 @@
     <div class="my-listings-list">
       <% listings.forEach(function(item) { %>
         <%
-          const sellerPhoto = (item.photos && item.photos.length > 0) ? item.photos[0] : null;
+          const sellerPhoto = (item.photos || []).find(function(photo) { return photo.role === 'front_cover'; }) || null;
           const releaseArt = (item.release && item.release.coverArtUrl) ? item.release.coverArtUrl : null;
           const localPlaceholder = '/assets/vinyl-placeholder.svg';
 
@@ -130,6 +130,21 @@
               </form>
             <% } %>
 
+            <% if (item.status === 'archived') { %>
+              <form
+                action="/listings/<%= item.id %>/delete"
+                method="POST"
+                class="my-listings-action-form"
+                data-permanent-delete-listing
+                data-listing-title="<%= item.release.artist %> — <%= item.release.title %>"
+              >
+                <button type="submit" class="btn btn-outline btn-sm my-listings-action my-listings-action-quiet">
+                  <%- include('../partials/icon', { name: 'trash-2', size: '1rem', ariaHidden: true }) %>
+                  <span>Delete permanently</span>
+                </button>
+              </form>
+            <% } %>
+
             <% if (viewHidden) { %>
               <form action="/listings/<%= item.id %>/restore-dismissed" method="POST" class="my-listings-action-form">
                 <button type="submit" class="btn btn-primary btn-sm my-listings-action my-listings-action-primary">
@@ -185,6 +200,16 @@
       img.alt = placeholderAlt;
     }
   }
+
+  document.querySelectorAll('[data-permanent-delete-listing]').forEach(function(form) {
+    form.addEventListener('submit', function(event) {
+      var title = form.getAttribute('data-listing-title') || 'this archived listing';
+      var confirmed = window.confirm(
+        'Permanently delete "' + title + '"? This cannot be undone. All photos of this listing will be removed. The shared release catalogue record will remain.'
+      );
+      if (!confirmed) event.preventDefault();
+    });
+  });
 
   function renderMyListingsTerminalFallback(img) {
     if (!img) return;

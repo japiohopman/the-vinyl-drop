@@ -1,4 +1,5 @@
 import { PGlite } from '@electric-sql/pglite';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import fs from 'fs';
@@ -7,7 +8,7 @@ import path from 'path';
 export async function verifyMigrations(): Promise<void> {
   console.log('🔄 Verifying database migrations via Drizzle migrator against isolated in-memory PostgreSQL engine...');
 
-  const pg = new PGlite();
+  const pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
 
   // Bootstrap auth and storage schemas, auth.uid(), auth.role(), and storage.foldername() stubs for local/PGlite migration verification
   await pg.exec(`
@@ -88,6 +89,20 @@ export async function verifyMigrations(): Promise<void> {
   // Run migrations using Drizzle's official migrator
   const db = drizzle(pg);
   await migrate(db, { migrationsFolder: drizzleDir });
+
+  const catalogueExtensions = await pg.query<{ extname: string; schema_name: string }>(
+    "SELECT e.extname, n.nspname AS schema_name FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'pg_trgm' ORDER BY e.extname;"
+  );
+  if (catalogueExtensions.rows.length !== 1 || catalogueExtensions.rows.some((row) => row.schema_name !== 'extensions') ||
+      !catalogueExtensions.rows.some((row) => row.extname === 'pg_trgm')) {
+    throw new Error('The pg_trgm extension must be installed in the extensions schema');
+  }
+  const fuzzySimilarity = await pg.query<{ score: number; normalized: string }>(
+    "SELECT extensions.similarity('Prnce', 'Prince') AS score, translate(lower('Björk'), 'ö', 'o') AS normalized;"
+  );
+  if (Number(fuzzySimilarity.rows[0]?.score) < 0.3 || fuzzySimilarity.rows[0]?.normalized !== 'bjork') {
+    throw new Error('Catalogue search trigram similarity or built-in accent normalization is not functioning');
+  }
 
   // Verify migration history table recorded all migration entries
   const migrationHistory = await pg.query<{ id: number; hash: string; created_at: number }>(
@@ -299,6 +314,9 @@ export async function verifyMigrations(): Promise<void> {
     'releases_label_idx',
     'releases_cat_num_idx',
     'releases_year_idx',
+    'releases_artist_trgm_idx',
+    'releases_title_trgm_idx',
+    'releases_label_trgm_idx',
     'activity_events_actor_idx',
     'activity_events_listing_idx',
     'activity_events_type_idx',

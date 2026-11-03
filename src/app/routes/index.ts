@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { getHomePage } from '../controllers/homeController';
 import { getBrowsePage, getSearchPage, getDigBrowsePage, getResponsiveDigPage } from '../controllers/browseController';
 import { getActivityPage } from '../controllers/activityController';
-import { getContactPage, postContactMessage, getCommunityRulesPage, getPrivacyNoticePage, getTermsOfUsePage, getInstallPage } from '../controllers/infoController';
+import { getContactPage, postContactMessage, getCommunityRulesPage, getPrivacyNoticePage, getTermsOfUsePage, getInstallPage, getOptionsPage } from '../controllers/infoController';
 import { getDesignSystemPage, postDesignSystemDemo } from '../controllers/designSystemController';
 import { requireAuth } from '../middleware/auth';
 import { validateSameOrigin } from '../middleware/csrf';
@@ -13,7 +13,7 @@ import profileRoutes from './profileRoutes';
 import listingRoutes from './listingRoutes';
 import releaseRoutes from './releaseRoutes';
 import messagingRoutes from './messagingRoutes';
-import { postStagingDiagnostics } from '../controllers/stagingDiagnosticsController';
+import { getCatalogueSuggestions } from '../controllers/catalogueSearchController';
 import { postProductionRateLimitDiagnostics } from '../controllers/productionRateLimitDiagnosticsController';
 
 const router = Router();
@@ -23,9 +23,11 @@ router.get('/browse/dig', getDigBrowsePage);
 router.get('/dig', getResponsiveDigPage);
 router.get('/browse', getBrowsePage);
 router.get('/search', getSearchPage);
+router.get('/api/catalogue-suggestions', rateLimits.catalogueSuggestion, getCatalogueSuggestions);
 router.get('/activity', getActivityPage);
 router.get('/contact', getContactPage);
 router.get('/install', getInstallPage);
+router.get('/options', getOptionsPage);
 router.post('/contact', validateSameOrigin, rateLimits.contact, postContactMessage);
 router.get('/community-rules', getCommunityRulesPage);
 router.get('/terms', getTermsOfUsePage);
@@ -41,9 +43,8 @@ router.get('/drop/new', requireAuth, getCreateCustomReleasePage);
 
 router.get('/design-system', getDesignSystemPage);
 router.post('/design-system/demo', postDesignSystemDemo);
-
-router.post('/_internal/staging/diagnostics', postStagingDiagnostics);
 router.post('/_internal/production/rate-limit-diagnostics', postProductionRateLimitDiagnostics);
+
 
 router.get('/health', (req: Request, res: Response) => {
   res.status(200).json({

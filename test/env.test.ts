@@ -41,7 +41,6 @@ describe('Environment Validation', () => {
   it('keeps shared rate limits disabled in runtime environments until explicitly enabled', () => {
     expect(validateEnv({ NODE_ENV: 'test' }).SHARED_RATE_LIMITS_ENABLED).toBe(true);
     expect(validateEnv({ NODE_ENV: 'test' }).SHARED_RATE_LIMITS_SECRET.length).toBeGreaterThanOrEqual(32);
-    expect(validateEnv({ NODE_ENV: 'test' }).STAGING_DIAGNOSTIC_TOKEN).toBe('');
     expect(validateEnv({
       NODE_ENV: 'development',
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/development_db',
@@ -59,8 +58,6 @@ describe('Environment Validation', () => {
       RECOVERY_SIGNING_SECRET: 'custom-staging-recovery-secret-key-32-bytes',
     };
     expect(validateEnv(staging).SHARED_RATE_LIMITS_ENABLED).toBe(false);
-    expect(validateEnv({ ...staging, STAGING_DIAGNOSTIC_TOKEN: 'a'.repeat(32) }).STAGING_DIAGNOSTIC_TOKEN).toBe('a'.repeat(32));
-    expect(() => validateEnv({ ...staging, STAGING_DIAGNOSTIC_TOKEN: 'too-short' })).toThrow('Invalid environment configuration');
     expect(validateEnv({ ...staging, SHARED_RATE_LIMITS_ENABLED: '0' }).SHARED_RATE_LIMITS_ENABLED).toBe(false);
     expect(validateEnv({
       ...staging,
@@ -88,10 +85,30 @@ describe('Environment Validation', () => {
     expect(enabled.BETA_ALLOWED_EMAILS).toBe('Tester@One.example, second@example.com, tester@one.example');
   });
 
-  it('rejects more than five unique beta testers or malformed allowlist addresses', () => {
+  it('accepts 13 unique beta testers, deduplicates case-insensitively, and rejects 14 or malformed addresses', () => {
+    const thirteenUniqueAddresses = Array.from(
+      { length: 13 },
+      (_, index) => `tester${index + 1}@example.com`
+    ).join(',');
+    const accepted = validateEnv({
+      NODE_ENV: 'test',
+      BETA_ALLOWED_EMAILS: thirteenUniqueAddresses,
+    });
+    expect(accepted.BETA_ALLOWED_EMAILS).toBe(thirteenUniqueAddresses);
+
+    const duplicatesDoNotIncreaseTheUniqueCount = `${thirteenUniqueAddresses}, TESTER1@EXAMPLE.COM , tester2@example.com`;
+    expect(validateEnv({
+      NODE_ENV: 'test',
+      BETA_ALLOWED_EMAILS: duplicatesDoNotIncreaseTheUniqueCount,
+    }).BETA_ALLOWED_EMAILS).toBe(duplicatesDoNotIncreaseTheUniqueCount);
+
+    const fourteenUniqueAddresses = Array.from(
+      { length: 14 },
+      (_, index) => `tester${index + 1}@example.com`
+    ).join(',');
     expect(() => validateEnv({
       NODE_ENV: 'test',
-      BETA_ALLOWED_EMAILS: 'one@example.com,two@example.com,three@example.com,four@example.com,five@example.com,six@example.com',
+      BETA_ALLOWED_EMAILS: fourteenUniqueAddresses,
     })).toThrow('Invalid environment configuration');
 
     expect(() => validateEnv({
@@ -229,7 +246,7 @@ describe('Environment Validation', () => {
         SUPABASE_URL: 'https://prod-project.supabase.co',
         SUPABASE_ANON_KEY: 'prod-key',
         APP_BASE_URL: 'http://localhost:3000',
-        ALLOWED_REDIRECT_URLS: 'https://vinyldrop.com',
+        ALLOWED_REDIRECT_URLS: 'https://thevinyldrop.nl',
       })
     ).toThrow('Invalid environment configuration');
     expect(consoleErrorSpy).toHaveBeenCalled();

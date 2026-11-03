@@ -13,9 +13,9 @@
 .custom-release-errors {
   margin-bottom: var(--space-3);
   padding: var(--space-3);
-  border: 1px solid #ef4444;
-  background: #fee2e2;
-  color: #991b1b;
+  border: 1px solid var(--color-error-border);
+  background: var(--color-error-bg);
+  color: var(--color-ink);
   overflow-wrap: anywhere;
 }
 .custom-release-form {
@@ -27,12 +27,31 @@
   border: var(--border-thick);
   background: var(--color-white);
 }
+.select-release-search-form {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  min-width: 0;
+  margin-bottom: var(--space-6);
+}
+
+.select-release-search-form .form-search-control {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 430px) {
+  .select-release-search-form {
+    flex-direction: column;
+  }
+}
+
 .custom-release-primary-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   min-width: 0;
 }
+
 .custom-release-field {
   display: flex;
   flex-direction: column;
@@ -48,10 +67,6 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  min-height: 44px;
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-thick);
-  background: var(--color-white);
 }
 .custom-release-primary-fields input { font-size: var(--font-size-md); }
 .discogs-lookup-status {
@@ -105,48 +120,106 @@
 .custom-release-grid { gap: var(--space-3); padding-bottom: var(--space-3); }
 .custom-release-field-full { grid-column: 1 / -1; }
 .discogs-cover-preview {
+  display: grid;
+  grid-template-columns: 136px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-2) 0 var(--space-3);
+  border-bottom: var(--border-thin);
+}
+.discogs-cover-preview-frame {
+  display: grid;
+  place-items: center;
+  width: 136px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-paper);
+}
+.discogs-cover-preview-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--color-white);
+}
+.discogs-cover-preview-frame img[hidden] { display: none; }
+.discogs-artwork-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: 100%;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-3xs);
+  text-align: center;
+}
+.discogs-artwork-placeholder[hidden] { display: none; }
+.discogs-cover-preview-copy { min-width: 0; }
+.discogs-cover-preview-kicker {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xs);
+  letter-spacing: .08em;
+}
+.discogs-cover-preview-copy p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.discogs-cover-preview[data-state="found"] .discogs-cover-preview-kicker { color: var(--color-deep-green); }
+.discogs-cover-preview[data-state="error"] .discogs-cover-preview-kicker { color: var(--color-rust-accessible); }
+/* Give the selected release artwork a proper editorial presence on desktop. */
+@media (min-width: 768px) {
+  .custom-release-primary-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .discogs-cover-preview {
+    grid-template-columns: 224px minmax(0, 1fr);
+    gap: var(--space-4);
+    padding: var(--space-4) 0;
+  }
+  .discogs-cover-preview-frame {
+    width: 224px;
+  }
+  .discogs-cover-preview-copy p {
+    max-width: 42rem;
+    font-size: var(--font-size-sm);
+  }
+}
+.release-cover-override-preview {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
   padding: var(--space-2);
-  border: var(--border-thin);
+  border: 1px solid var(--color-deep-green);
   background: var(--color-paper);
 }
-.discogs-cover-preview[hidden] { display: none; }
-.discogs-cover-preview img {
+.release-cover-override-preview[hidden] { display: none; }
+.release-cover-override-preview > img {
   display: block;
+  flex: 0 0 72px;
   width: 72px;
   height: 72px;
-  flex: 0 0 72px;
   object-fit: contain;
   background: var(--color-white);
 }
-.discogs-cover-preview p {
-  margin: 0;
-  color: var(--color-ink-muted);
-  font-size: var(--font-size-xs);
-  overflow-wrap: anywhere;
-}
-.custom-release-artwork-copy {
-  margin: 0;
-  color: var(--color-ink-muted);
-  font-size: var(--font-size-xs);
-}
-.release-catalog-artwork {
-  margin: 0;
-  padding: var(--space-3);
-  border: var(--border-thin);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-width: 0;
-}
-.release-catalog-artwork legend {
-  padding: 0 var(--space-1);
-  font-family: var(--font-heading);
+.release-cover-override-preview strong {
+  display: block;
   font-size: var(--font-size-sm);
-  font-weight: 700;
+}
+.release-cover-override-preview p {
+  margin: var(--space-1) 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
 }
 .custom-release-submit {
   display: flex;
@@ -158,6 +231,16 @@
   white-space: normal;
 }
 @media (max-width: 767px) {
+  .release-artwork-file-mobile-label { display: inline; }
+  .release-artwork-file-desktop-label { display: none; }
+
+  .discogs-cover-preview {
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+  .discogs-cover-preview-frame {
+    width: 120px;
+  }
   .custom-release-page {
     margin: var(--space-3) auto !important;
     padding: 0 var(--space-3);
@@ -168,7 +251,6 @@
   .custom-release-form { padding: var(--space-3) !important; gap: var(--space-3); }
   .custom-release-primary-fields { gap: var(--space-3); }
   .custom-release-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
-  .custom-release-artwork-copy { font-size: var(--font-size-3xs); }
   .custom-release-submit { min-height: 48px; }
 }
 
@@ -225,6 +307,113 @@
   font-family: var(--font-mono);
   font-size: var(--font-size-xs);
 }
+.release-artwork-editor {
+  display: grid;
+  grid-template-columns: 192px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0 0 var(--space-4);
+  padding: 0 0 var(--space-4);
+  border-bottom: var(--border-thin);
+}
+.release-artwork-preview-column { min-width: 0; }
+.release-artwork-preview-frame {
+  display: grid;
+  place-items: center;
+  width: 192px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-paper);
+}
+.release-artwork-preview-frame > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--color-white);
+}
+.release-artwork-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: 100%;
+  padding: var(--space-2);
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-3xs);
+  text-align: center;
+}
+.release-artwork-current-label {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xs);
+}
+.release-artwork-content { min-width: 0; }
+.release-artwork-kicker {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xs);
+  letter-spacing: .08em;
+}
+.release-artwork-content h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-lg);
+  line-height: 1.1;
+}
+.release-artwork-description,
+.release-artwork-shared-note {
+  margin: var(--space-2) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+.release-artwork-shared-note {
+  padding-left: var(--space-2);
+  border-left: 2px solid var(--color-deep-green);
+}
+.release-artwork-error {
+  margin: var(--space-2) 0 0;
+  color: var(--color-rust-accessible);
+  font-size: var(--font-size-xs);
+}
+.release-artwork-upload-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.release-artwork-upload-form .release-artwork-file-help {
+  display: block;
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-3xs);
+  line-height: 1.45;
+}
+.release-artwork-file-picker { margin-top: var(--space-1); }
+.release-artwork-file-name {
+  display: block;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-3xs);
+  overflow-wrap: anywhere;
+}
+.release-artwork-file-mobile-label { display: none; }
+.release-artwork-file-desktop-label { display: inline; }
+.release-artwork-save-button { min-height: 44px; }
+.release-artwork-upload-form .release-cover-override-preview {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .photos-section {
   min-width: 0;
   margin-bottom: var(--space-5);
@@ -687,6 +876,16 @@
     padding: var(--space-2) !important;
     font-size: var(--font-size-xs);
   }
+  .release-reference-artwork {
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-2);
+  }
+  .release-reference-artwork img {
+    flex-basis: 72px;
+    width: 72px;
+    height: 72px;
+  }
   .cover-photo-slots {
     gap: var(--space-2);
   }
@@ -873,4 +1072,142 @@
   }
 }
 
+/* Keep the later-defined release artwork panel compact on phone widths. */
+@media (max-width: 767px) {
+  .release-artwork-editor {
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+  .release-artwork-preview-frame {
+    width: 104px;
+  }
+  .release-artwork-content h2 {
+    font-size: var(--font-size-md);
+  }
+}
 
+.release-artwork-restore-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+.release-artwork-restore-form p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-3xs);
+  line-height: 1.45;
+}
+.release-artwork-restore-form .btn { min-height: 44px; }
+
+
+/* Keep the mobile artwork picker labels visible after the base display rules. */
+@media (max-width: 767px) {
+  .release-artwork-file-mobile-label { display: inline; }
+  .release-artwork-file-desktop-label { display: none; }
+}
+
+/* Prevent long catalogue-artwork controls from widening the mobile editor grid. */
+@media (max-width: 767px) {
+  .release-artwork-upload-form,
+  .release-artwork-restore-form {
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+  }
+  .release-artwork-upload-form .btn,
+  .release-artwork-restore-form .btn {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    text-align: center;
+  }
+  .release-artwork-file-picker,
+  .release-artwork-file-picker .custom-release-file-trigger,
+  .release-artwork-file-name {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .release-artwork-file-picker .custom-release-file-trigger {
+    white-space: normal;
+  }
+  .release-artwork-file-name {
+    overflow-wrap: anywhere;
+  }
+}
+
+
+/* Discogs editions stay explicit: each touch-friendly choice shows its provider format before selection. */
+.discogs-candidate-picker {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1rem 0;
+}
+.discogs-candidate-picker[hidden] {
+  display: none;
+}
+.discogs-candidate-option {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  min-height: 76px;
+  padding: 0.75rem;
+  border: 1px solid var(--border-subtle, #c7c7c7);
+  border-radius: 0.65rem;
+  background: var(--surface-raised, #fff);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.discogs-candidate-option:hover,
+.discogs-candidate-option:focus-visible {
+  border-color: var(--color-accent, currentColor);
+}
+.discogs-candidate-option:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.discogs-candidate-option img,
+.discogs-candidate-no-artwork {
+  display: grid;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  place-items: center;
+  background: var(--surface-muted, #eee);
+  font-size: 0.65rem;
+  text-align: center;
+}
+.discogs-candidate-option-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+.discogs-candidate-option-copy strong,
+.discogs-candidate-option-copy small {
+  overflow-wrap: anywhere;
+}
+.discogs-candidate-format {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+@media (max-width: 480px) {
+  .discogs-candidate-option {
+    align-items: flex-start;
+    padding: 0.65rem;
+  }
+  .discogs-candidate-option img,
+  .discogs-candidate-no-artwork {
+    flex-basis: 48px;
+    width: 48px;
+    height: 48px;
+  }
+}

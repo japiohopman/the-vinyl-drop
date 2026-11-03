@@ -18,6 +18,7 @@ import {
   getListingWithDetails,
   dismissCompletedListing,
   restoreCompletedListing,
+  permanentlyDeleteArchivedListing,
   transitionListingStatus,
 } from '../src/app/services/listingService';
 import { ConditionGrade } from '../src/db/schema/enums';
@@ -794,6 +795,123 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
 
       // Non-seller cannot publish listing
       await expect(publishListing(listingId, otherUserId, { previewConfirmed: true })).rejects.toThrow(AuthorizationError);
+    });
+
+    it('permanently deletes an archived listing, its photos and an unshared physical copy without touching the release', async () => {
+      const archivedListing = {
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        status: 'archived',
+      };
+      const photos = [
+        { id: '60000000-0000-4000-8000-000000000001', listingId, storagePath: `listings/${listingId}/front.webp`, displayOrder: 0, altText: 'Front', role: 'front_cover' },
+        { id: '60000000-0000-4000-8000-000000000002', listingId, storagePath: `listings/${listingId}/back.webp`, displayOrder: 1, altText: 'Back', role: 'back_cover' },
+      ];
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(archivedListing);
+      (photoRepo.findPhotosByListingId as jest.Mock).mockResolvedValueOnce(photos);
+      (listingRepo.deleteArchivedListingByOwner as jest.Mock).mockResolvedValueOnce(archivedListing);
+      (listingRepo.countListingsByPhysicalCopyId as jest.Mock).mockResolvedValueOnce(0);
+      (copyRepo.deletePhysicalCopy as jest.Mock).mockResolvedValueOnce(true);
+
+      const storage = await import('../src/app/services/storageService');
+      const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
+      const remove = jest.spyOn(storage, 'deleteListingPhotoFromStorage').mockResolvedValue(true);
+
+      const result = await permanentlyDeleteArchivedListing(listingId, sellerId);
+
+      expect(result).toBe(true);
+      expect(download).toHaveBeenCalledTimes(2);
+      expect(remove).toHaveBeenCalledTimes(2);
+      expect(listingRepo.deleteArchivedListingByOwner).toHaveBeenCalledWith(listingId, sellerId, expect.any(Object));
+      expect(listingRepo.countListingsByPhysicalCopyId).toHaveBeenCalledWith(copyId, expect.any(Object));
+      expect(copyRepo.deletePhysicalCopy).toHaveBeenCalledWith(copyId, expect.any(Object));
+      download.mockRestore();
+      remove.mockRestore();
+    });
+
+    it('does not let another seller permanently delete an archived listing', async () => {
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce({
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId: otherUserId,
+        status: 'archived',
+      });
+      const storage = await import('../src/app/services/storageService');
+      const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage');
+      const remove = jest.spyOn(storage, 'deleteListingPhotoFromStorage');
+
+      await expect(permanentlyDeleteArchivedListing(listingId, sellerId)).rejects.toThrow(AuthorizationError);
+      expect(download).not.toHaveBeenCalled();
+      expect(remove).not.toHaveBeenCalled();
+      expect(listingRepo.deleteArchivedListingByOwner).not.toHaveBeenCalled();
+      download.mockRestore();
+      remove.mockRestore();
+    });
+
+    it('requires archiving before permanent deletion and treats a repeated delete as an idempotent no-op', async () => {
+      (listingRepo.findListingById as jest.Mock)
+        .mockResolvedValueOnce({ id: listingId, sellerId, physicalCopyId: copyId, status: 'published' })
+        .mockResolvedValueOnce(null);
+
+      await expect(permanentlyDeleteArchivedListing(listingId, sellerId)).rejects.toThrow(ValidationError);
+      await expect(permanentlyDeleteArchivedListing(listingId, sellerId)).resolves.toBe(false);
+      expect(listingRepo.deleteArchivedListingByOwner).not.toHaveBeenCalled();
+    });
+
+    it('keeps a physical copy when another listing still references it', async () => {
+      const archivedListing = { id: listingId, physicalCopyId: copyId, sellerId, status: 'archived' };
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(archivedListing);
+      (photoRepo.findPhotosByListingId as jest.Mock).mockResolvedValueOnce([]);
+      (listingRepo.deleteArchivedListingByOwner as jest.Mock).mockResolvedValueOnce(archivedListing);
+      (listingRepo.countListingsByPhysicalCopyId as jest.Mock).mockResolvedValueOnce(1);
+
+      await expect(permanentlyDeleteArchivedListing(listingId, sellerId)).resolves.toBe(true);
+      expect(copyRepo.deletePhysicalCopy).not.toHaveBeenCalled();
+    });
+
+    it('restores every attempted photo removal when Storage cleanup fails mid-delete', async () => {
+      const archivedListing = { id: listingId, physicalCopyId: copyId, sellerId, status: 'archived' };
+      const photos = [
+        { id: '60000000-0000-4000-8000-000000000001', listingId, storagePath: `listings/${listingId}/front.webp`, displayOrder: 0, altText: 'Front', role: 'front_cover' },
+        { id: '60000000-0000-4000-8000-000000000002', listingId, storagePath: `listings/${listingId}/back.webp`, displayOrder: 1, altText: 'Back', role: 'back_cover' },
+      ];
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(archivedListing);
+      (photoRepo.findPhotosByListingId as jest.Mock).mockResolvedValueOnce(photos);
+      const storage = await import('../src/app/services/storageService');
+      const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
+      const remove = jest.spyOn(storage, 'deleteListingPhotoFromStorage')
+        .mockResolvedValueOnce(true)
+        .mockRejectedValueOnce(new Error('Storage timeout after delete'));
+      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValue(undefined);
+
+      await expect(permanentlyDeleteArchivedListing(listingId, sellerId)).rejects.toThrow('Storage timeout after delete');
+      expect(remove).toHaveBeenCalledTimes(2);
+      expect(restore).toHaveBeenCalledTimes(2);
+      expect(listingRepo.deleteArchivedListingByOwner).not.toHaveBeenCalled();
+      download.mockRestore();
+      remove.mockRestore();
+      restore.mockRestore();
+    });
+
+    it('restores Storage objects when the database delete transaction fails', async () => {
+      const archivedListing = { id: listingId, physicalCopyId: copyId, sellerId, status: 'archived' };
+      const photo = { id: '60000000-0000-4000-8000-000000000001', listingId, storagePath: `listings/${listingId}/front.webp`, displayOrder: 0, altText: 'Front', role: 'front_cover' };
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(archivedListing);
+      (photoRepo.findPhotosByListingId as jest.Mock).mockResolvedValueOnce([photo]);
+      (listingRepo.deleteArchivedListingByOwner as jest.Mock).mockRejectedValueOnce(new Error('Database transaction failed'));
+
+      const storage = await import('../src/app/services/storageService');
+      const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
+      const remove = jest.spyOn(storage, 'deleteListingPhotoFromStorage').mockResolvedValue(true);
+      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValue(undefined);
+
+      await expect(permanentlyDeleteArchivedListing(listingId, sellerId)).rejects.toThrow('Database transaction failed');
+      expect(remove).toHaveBeenCalledTimes(1);
+      expect(restore).toHaveBeenCalledWith(photo.storagePath, Buffer.from('photo'), undefined);
+      download.mockRestore();
+      remove.mockRestore();
+      restore.mockRestore();
     });
 
     it('should transition draft listing to published and archived', async () => {

@@ -427,8 +427,8 @@ button.mobile-you-action-link.messaging-widget-trigger {
 
 .messaging-widget-message-row.is-own .messaging-widget-message {
   border-radius: 15px 15px 4px 15px;
-  border-color: rgba(246, 15, 75, 0.45);
-  background: rgba(246, 15, 75, 0.06);
+  border-color: color-mix(in srgb, var(--color-rust) 45%, transparent);
+  background: color-mix(in srgb, var(--color-rust) 6%, transparent);
 }
 
 .messaging-widget-message-body {

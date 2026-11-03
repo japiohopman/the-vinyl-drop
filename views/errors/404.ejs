@@ -1,5 +1,19 @@
-<section class="error-section">
-  <h1>404 - Page Not Found</h1>
-  <p>The record or page you were digging for doesn't exist.</p>
-  <a href="/" class="btn">Back to Home</a>
+<section class="status-page status-page-404" aria-labelledby="status-page-title">
+  <div class="status-page-inner">
+    <div class="status-page-artwork" aria-hidden="true">
+      <img src="/assets/UI/error-empty-sleeve.svg" alt="" width="480" height="360" fetchpriority="high">
+    </div>
+
+    <div class="status-page-copy">
+      <p class="status-page-eyebrow">MISSING FROM THE CRATE <span aria-hidden="true">/</span> 404</p>
+      <h1 id="status-page-title">This record isn't here.</h1>
+      <p class="status-page-description">
+        The page or listing you were digging for may have moved, sold, or slipped out of the crate.
+      </p>
+      <nav class="status-page-actions" aria-label="Page recovery options">
+        <a class="status-page-action status-page-action-primary" href="/browse">Browse records</a>
+        <a class="status-page-action status-page-action-secondary" href="/">Back to Home</a>
+      </nav>
+    </div>
+  </div>
 </section>

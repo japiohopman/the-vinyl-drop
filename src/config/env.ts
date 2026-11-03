@@ -3,6 +3,8 @@ import { z } from 'zod';
 
 dotenv.config();
 
+const MAX_BETA_ALLOWED_EMAILS = 13;
+
 export const envSchema = z
   .object({
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -24,7 +26,6 @@ export const envSchema = z
       return z.NEVER;
     }),
     SHARED_RATE_LIMITS_SECRET: z.string().optional(),
-    STAGING_DIAGNOSTIC_TOKEN: z.string().min(32).optional(),
     PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN: z.string().min(32).optional(),
     SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: z.string().optional().transform((val) => {
       if (val === undefined || val === '') return undefined;
@@ -62,11 +63,11 @@ export const envSchema = z
       ),
     ];
 
-    if (betaAllowedEmails.length > 5) {
+    if (betaAllowedEmails.length > MAX_BETA_ALLOWED_EMAILS) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['BETA_ALLOWED_EMAILS'],
-        message: 'The invite-only pilot is limited to five email addresses at most.',
+        message: `The invite-only beta supports at most ${MAX_BETA_ALLOWED_EMAILS} unique email addresses.`,
       });
     }
 
@@ -202,8 +203,6 @@ export type Env = Omit<
   | 'SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED'
   | 'SHARED_RATE_LIMITS_ENABLED'
   | 'SHARED_RATE_LIMITS_SECRET'
-  | 'STAGING_DIAGNOSTIC_TOKEN'
-  | 'PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN'
   | 'BETA_INVITE_ONLY_ENABLED'
   | 'BETA_ALLOWED_EMAILS'
 > & {
@@ -214,8 +213,6 @@ export type Env = Omit<
   SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: boolean;
   SHARED_RATE_LIMITS_ENABLED: boolean;
   SHARED_RATE_LIMITS_SECRET: string;
-  STAGING_DIAGNOSTIC_TOKEN: string;
-  PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN: string;
   BETA_INVITE_ONLY_ENABLED: boolean;
   BETA_ALLOWED_EMAILS: string;
 };
@@ -286,8 +283,6 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
     SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: defaultSignupPasswordCheckApprovalEnabled,
     SHARED_RATE_LIMITS_ENABLED: defaultSharedRateLimitsEnabled,
     SHARED_RATE_LIMITS_SECRET: defaultSharedRateLimitsSecret,
-    STAGING_DIAGNOSTIC_TOKEN: result.data.STAGING_DIAGNOSTIC_TOKEN || '',
-    PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN: result.data.PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN || '',
     BETA_INVITE_ONLY_ENABLED: defaultBetaInviteOnlyEnabled,
     BETA_ALLOWED_EMAILS: defaultBetaAllowedEmails,
   };

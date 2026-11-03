@@ -1,3 +1,8 @@
+> [!WARNING]
+> **Historical snapshot — superseded.** This file preserves a conversation from an earlier five-person pilot checkpoint. Its issue counts, release status, deployment facts and recommendations are not current. Do not use it to decide what is open, deployed, approved or safe today. Check the live [GitHub Issues](https://github.com/japiohopman/the-vinyl-drop/issues), [PRs](https://github.com/japiohopman/the-vinyl-drop/pulls), Actions and the current release tracker [#282](https://github.com/japiohopman/the-vinyl-drop/issues/282). This record is retained as historical evidence and has not been deleted.
+
+---
+
   Reviewing the identified issues, I can confirm that only one requires manual staging intervention before launch: t...
   Goed nieuws: je kunt de pilot van 5 personen vandaag al direct starten.
 

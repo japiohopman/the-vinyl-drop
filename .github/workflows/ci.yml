@@ -47,14 +47,89 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+      - name: Test production migration preflight guards
+        shell: pwsh
+        run: ./test/production-preflight.Tests.ps1
+
       - name: Run type checker
         run: npm run typecheck
 
       - name: Run unit & integration tests
+        env:
+          ERROR_PAGE_EVIDENCE_DIR: artifacts/issue-315
         run: npm test
+
+      - name: Upload Issue #315 error-page browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-315-error-pages-playwright-evidence
+          path: artifacts/issue-315/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Verify catalogue search performance and browser accessibility
+        run: npm run test:catalogue-search
 
       - name: Verify database migrations
         run: npm run db:verify
 
       - name: Build project
         run: npm run build
+
+      - name: Capture Issue #292 responsive browser evidence
+        env:
+          UI_EVIDENCE_DIR: artifacts/issue-292
+        run: npm run test:ui-evidence
+
+      - name: Upload Issue #292 browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-292-playwright-evidence
+          path: artifacts/issue-292/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Capture Issue #293 desktop Browse evidence
+        env:
+          BROWSE_EVIDENCE_DIR: artifacts/issue-293
+        run: npm run test:browse-evidence
+
+      - name: Upload Issue #293 desktop Browse evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-293-browse-playwright-evidence
+          path: artifacts/issue-293/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Capture Issue #300 Options browser evidence
+        env:
+          OPTIONS_EVIDENCE_DIR: artifacts/issue-300
+        run: npx jest test/optionsPage.test.ts --runInBand --testNamePattern="changes the whole page immediately"
+
+      - name: Upload Issue #300 Options browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-300-options-playwright-evidence
+          path: artifacts/issue-300/
+          if-no-files-found: warn
+          retention-days: 14
+
+  production-preflight-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Test production migration preflight on Windows
+        shell: pwsh
+        run: ./test/production-preflight.Tests.ps1

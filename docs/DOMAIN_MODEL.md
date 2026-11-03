@@ -50,7 +50,10 @@ Represents canonical metadata for a musical release.
   - `country` (text, optional);
   - `format` (text, optional);
   - `barcode` (text, optional);
-  - `genre` (text, optional);
+  - `genre` (text, optional; original provider/manual value retained);
+  - `countryCode` (nullable ISO 3166-1 alpha-2 code alongside readable `country`);
+  - `canonicalGenres` (known normalized genre tags alongside raw `genre`);
+  - `formatCharacteristics` (explicit format characteristics alongside raw `format`).
   - `coverArtUrl` (text, optional);
   - `youtubeVideoId` (text, optional, normalized single-video YouTube ID; shared by all listings referencing this release);
   - `externalSource` (text, optional external metadata provider, e.g. `'discogs'`);

@@ -33,7 +33,14 @@
       <input type="hidden" name="whiteLabel" value="<%= filters.whiteLabel ? '1' : '' %>">
       <input type="hidden" name="view" value="<%= currentView %>">
       <label class="dig-search-visually-hidden" for="dig-primary-search">Search records</label>
-      <input type="search" id="dig-primary-search" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #">
+      <div class="catalogue-search-autocomplete">
+        <div class="form-search-control">
+          <%- include('../partials/icon', { name: 'search', size: '1rem', ariaHidden: true }) %>
+          <input type="search" id="dig-primary-search" name="q" class="form-control" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off" data-catalogue-search-input data-suggestion-url="/api/catalogue-suggestions" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="catalogue-suggestions-dig-primary-search">
+        </div>
+        <ul id="catalogue-suggestions-dig-primary-search" class="catalogue-suggestions" role="listbox" aria-label="Catalogue suggestions" hidden></ul>
+        <p id="catalogue-suggestions-status-dig-primary-search" class="catalogue-suggestions-status" role="status" aria-live="polite"></p>
+      </div>
       <button type="submit" class="btn btn-primary">Search</button>
     </form>
 
@@ -65,7 +72,8 @@
     <%- include('./index', {
       title,
       listings,
-      formatOptions,
+      formatOptions: typeof formatOptions !== 'undefined' ? formatOptions : [],
+      genreOptions: typeof genreOptions !== 'undefined' ? genreOptions : [],
       whiteLabelAvailable,
       filters,
       pagination,
@@ -82,6 +90,7 @@
       hasMore,
       filters,
       formatOptions,
+      genreOptions: typeof genreOptions !== 'undefined' && Array.isArray(genreOptions) ? genreOptions : [],
       whiteLabelAvailable,
       errorMessage
     }) %>

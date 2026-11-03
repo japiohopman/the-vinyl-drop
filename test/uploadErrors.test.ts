@@ -68,6 +68,7 @@ describe('Listing Photo Upload Error Handling', () => {
 
     expect(response.status).toBe(500);
     expect(response.text).toContain('500 - Server Error');
-    expect(response.text).toContain('Something went wrong on our end');
+    expect(response.text).toContain('We hit a skip.');
+    expect(response.text).toContain('data-status-code="500"');
   });
 });

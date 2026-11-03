@@ -4,10 +4,12 @@
 %>
 <section id="comments" class="comment-thread-section" aria-label="Listing comments" tabindex="-1">
   <% if (!(typeof hideContext !== 'undefined' && hideContext) && typeof release !== 'undefined' && release) { %>
+    <% const contextFrontPhoto = typeof photos !== 'undefined' && photos ? photos.find(function(photo) { return photo.role === 'front_cover'; }) : null; %>
+    <% const contextArtworkUrl = contextFrontPhoto && contextFrontPhoto.publicUrl ? contextFrontPhoto.publicUrl : (release.coverArtUrl || null); %>
     <div class="comment-thread-context">
       <div class="comment-thread-artwork">
-        <% if (typeof photos !== 'undefined' && photos && photos.length > 0) { %>
-          <img src="<%= photos[0].publicUrl %>" alt="" loading="lazy">
+        <% if (contextArtworkUrl) { %>
+          <img src="<%= contextArtworkUrl %>" alt="" loading="lazy">
         <% } else { %>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
             <circle cx="12" cy="12" r="10"></circle>

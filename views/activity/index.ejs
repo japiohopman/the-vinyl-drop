@@ -1,12 +1,15 @@
- <div class="activity-container">
+<div class="activity-container">
   <header class="activity-header">
-    <h1>COMMUNITY ACTIVITY</h1>
-    <p>Recent drops, comments, and saved records across the local record shop community.</p>
+    <div>
+      <span class="activity-kicker">THE VINYL DROP / COMMUNITY</span>
+      <h1>COMMUNITY ACTIVITY</h1>
+      <p>Recent community drops, public comments and the records you've saved.</p>
+    </div>
   </header>
 
   <% if (typeof error !== 'undefined' && error) { %>
     <div class="alert alert-error" role="alert">
-      <strong>Activity Unavailable:</strong> <%= error %>
+      <strong>Activity unavailable:</strong> <%= error %>
     </div>
   <% } %>
 
@@ -41,10 +44,10 @@
               <div class="activity-card-header">
                 <div class="activity-actor-row">
                   <% if (item.actorUsername && item.eventType !== 'favorite.created') { %>
-                    <a href="/profiles/<%= encodeURIComponent(item.actorUsername) %>" style="color: inherit; text-decoration: none; display: inline-flex;" aria-label="View <%= item.actorUsername %>'s profile">
+                    <a class="activity-actor-avatar-link" href="/profiles/<%= encodeURIComponent(item.actorUsername) %>" aria-label="View <%= item.actorUsername %>'s profile">
                   <% } %>
-                  <% if (item.actorAvatarUrl) { %>
-                    <span class="activity-avatar">
+                  <span class="activity-avatar">
+                    <% if (item.actorAvatarUrl) { %>
                       <img
                         class="activity-avatar-image"
                         src="<%= item.actorAvatarUrl %>"
@@ -55,23 +58,24 @@
                         data-avatar-image
                       />
                       <span class="activity-avatar-fallback" hidden aria-hidden="true"><%= item.actorUsername ? item.actorUsername.slice(0, 1).toUpperCase() : '?' %></span>
-                    </span>
-                  <% } else { %>
-                    <span class="activity-avatar">
+                    <% } else { %>
                       <span class="activity-avatar-fallback" aria-hidden="true"><%= item.actorUsername ? item.actorUsername.slice(0, 1).toUpperCase() : '?' %></span>
-                    </span>
-                  <% } %>
+                    <% } %>
+                  </span>
                   <% if (item.actorUsername && item.eventType !== 'favorite.created') { %>
                     </a>
                   <% } %>
-                  <span class="activity-actor">
-                    <% if (item.actorUsername && item.eventType !== 'favorite.created') { %>
-                      <a href="/profiles/<%= encodeURIComponent(item.actorUsername) %>" style="color: inherit; text-decoration: underline; font-weight: 700;">@<%= item.actorUsername %></a>
-                      <%= item.eventType === 'listing.published' ? 'published a drop' : 'commented on a drop' %>
-                    <% } else { %>
-                      <%= item.eventDescription %>
-                    <% } %>
-                  </span>
+                  <div class="activity-event-copy">
+                    <span class="activity-event-label"><%= item.eventType === 'listing.published' ? 'NEW DROP' : (item.eventType === 'comment.created' ? 'COMMUNITY COMMENT' : 'SAVED RECORD') %></span>
+                    <span class="activity-actor">
+                      <% if (item.actorUsername && item.eventType !== 'favorite.created') { %>
+                        <a href="/profiles/<%= encodeURIComponent(item.actorUsername) %>">@<%= item.actorUsername %></a>
+                        <%= item.eventType === 'listing.published' ? 'published a drop' : 'commented on a drop' %>
+                      <% } else { %>
+                        <%= item.eventDescription %>
+                      <% } %>
+                    </span>
+                  </div>
                 </div>
                 <span class="activity-time"><%= item.timeAgo %></span>
               </div>
@@ -84,7 +88,10 @@
               </div>
 
               <% if (item.eventType === 'comment.created' && item.commentContent) { %>
-                <blockquote class="activity-comment"><%= item.commentContent %></blockquote>
+                <div class="activity-comment">
+                  <span class="activity-comment-label">COMMENT</span>
+                  <blockquote><%= item.commentContent %></blockquote>
+                </div>
               <% } %>
 
               <div class="activity-card-footer">
@@ -102,6 +109,34 @@
                   </span>
                 <% } %>
               </div>
+
+              <% if (typeof item.youtubeVideoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(item.youtubeVideoId)) { %>
+                <section
+                  class="activity-youtube-preview"
+                  data-activity-youtube-preview
+                  data-video-id="<%= item.youtubeVideoId %>"
+                  data-release-title="<%= item.releaseTitle %>"
+                  aria-label="Listening preview for <%= item.releaseTitle %>"
+                >
+                  <button
+                    type="button"
+                    class="btn activity-youtube-load"
+                    data-activity-youtube-load
+                    aria-controls="activity-youtube-frame-<%= item.id %>"
+                    aria-label="Play YouTube preview for <%= item.releaseTitle %> by <%= item.releaseArtist %>"
+                    aria-description="Pressing Play loads YouTube and may share basic request and device information."
+                  >
+                    <span class="activity-play-glyph" aria-hidden="true">▶</span>
+                    <span>Play preview</span>
+                  </button>
+                  <div
+                    class="youtube-preview-frame activity-youtube-frame"
+                    id="activity-youtube-frame-<%= item.id %>"
+                    data-activity-youtube-frame
+                    hidden
+                  ></div>
+                </section>
+              <% } %>
             </div>
 
             <div class="activity-icon-badge" role="img" aria-label="<%= item.eventType === 'listing.published' ? 'New drop' : (item.eventType === 'comment.created' ? 'Comment' : 'Saved record') %>">
@@ -117,13 +152,16 @@
         </li>
       <% }); %>
     </ul>
+    <% if (events.some(function(item) { return typeof item.youtubeVideoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(item.youtubeVideoId); })) { %>
+      <script src="/js/activity-youtube-preview.js" defer></script>
+    <% } %>
   <% } else if (!error) { %>
     <div class="activity-empty-state">
       <div class="activity-empty-icon" aria-hidden="true">
         <%- include('../partials/icon', { name: 'boombox', size: '3rem', ariaHidden: true }) %>
       </div>
-      <h2>No Recent Activity</h2>
-      <p>When physical vinyl drops are published, community members leave comments, or records are saved to favorites, activity will appear here.</p>
+      <h2>No recent activity</h2>
+      <p>When records are dropped, community members leave comments, or you save a record, the latest activity will show up here.</p>
       <a href="/dig" class="btn btn-primary">Explore Dig</a>
     </div>
   <% } %>

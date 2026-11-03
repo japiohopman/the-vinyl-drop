@@ -1,6 +1,8 @@
 import { getDb } from '../../db';
 import { releases, Release } from '../../db/schema/releases';
 import { eq, or, ilike } from 'drizzle-orm';
+import { normalizeCanonicalGenres, resolveCountry } from '../../domain/releaseMetadata';
+import { normalizeVinylFormatCharacteristics } from '../../domain/releaseFormat';
 
 export interface DiscogsSearchResult {
   id: number;
@@ -16,6 +18,54 @@ export interface DiscogsSearchResult {
   thumb?: string;
   country?: string;
   genre?: string[];
+}
+
+/** Fetch the original catalogue cover for a previously matched Discogs release. */
+export async function getDiscogsReleaseArtwork(discogsId: string): Promise<string | null> {
+  if (!/^\d{1,15}$/.test(discogsId)) {
+    throw new Error('Invalid Discogs release ID');
+  }
+
+  const discogsToken = process.env.DISCOGS_API_TOKEN;
+  const headers: Record<string, string> = {
+    'User-Agent': 'TheVinylDrop/1.0.0 (+https://thevinyldrop.nl)',
+  };
+  if (discogsToken) headers.Authorization = `Discogs token=${discogsToken}`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(`https://api.discogs.com/releases/${discogsId}`, {
+      headers,
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Discogs artwork lookup failed with HTTP ${response.status}`);
+
+    const data = await response.json() as {
+      images?: Array<{ resource_url?: string; uri?: string }>;
+      thumb?: string;
+    };
+    const candidates = [
+      ...(data.images || []).flatMap((image) => [image.resource_url, image.uri]),
+      data.thumb,
+    ];
+
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      let url: URL;
+      try {
+        url = new URL(candidate);
+      } catch {
+        continue;
+      }
+      if (url.protocol === 'https:' && url.hostname.toLowerCase().endsWith('.discogs.com')) {
+        return url.toString();
+      }
+    }
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -174,7 +224,7 @@ export async function importDiscogsRelease(discogsId: number): Promise<Release> 
   const artistName = data.artists?.[0]?.name.replace(/\s*\(\d+\)$/, '') || 'Unknown Artist';
   const labelName = data.labels?.[0]?.name || null;
   const catalogueNumber = data.labels?.[0]?.catno || null;
-  const formatName = data.formats?.[0]?.name || 'LP';
+  const formatName = data.formats?.map((format) => [format.name, ...(format.descriptions || [])].filter(Boolean).join(', ')).join(', ') || null;
   const barcode = data.identifiers?.find((i) => i.type === 'Barcode')?.value || null;
   const genreStr = data.genres?.join(', ') || null;
   const coverArtUrl = data.images?.[0]?.resource_url || data.images?.[0]?.uri || data.thumb || null;
@@ -188,9 +238,12 @@ export async function importDiscogsRelease(discogsId: number): Promise<Release> 
       catalogueNumber,
       releaseYear: data.year || null,
       country: data.country || null,
+      countryCode: resolveCountry(data.country)?.code || null,
       format: formatName,
+      formatCharacteristics: normalizeVinylFormatCharacteristics(formatName),
       barcode,
       genre: genreStr,
+      canonicalGenres: normalizeCanonicalGenres(data.genres || []),
       coverArtUrl,
       externalSource: 'discogs',
       externalId: String(discogsId),

@@ -33,6 +33,9 @@ const VERSIONED_CSS_ASSETS = [
   '/css/listing-interactions.css',
   '/css/listing-detail-polish.css',
   '/css/dig-mobile-crate.css',
+  '/css/themes.css',
+  '/css/error-pages.css',
+  '/css/options.css',
   '/fonts/fonts.css',
 ] as const;
 

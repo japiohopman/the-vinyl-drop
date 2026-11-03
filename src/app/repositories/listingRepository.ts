@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, lte, notInArray, or, SQL, sql } from 'drizzle-orm';
+import { and, arrayContains, asc, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, lte, notInArray, or, SQL, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { ConditionGrade, ListingStatus } from '../../db/schema/enums';
 import { Listing, NewListing, listings } from '../../db/schema/listings';
@@ -7,6 +7,7 @@ import { releases, Release } from '../../db/schema/releases';
 import { profiles, Profile } from '../../db/schema/profiles';
 import { listingPhotos } from '../../db/schema/listingPhotos';
 import { getVinylFormatPostgresPattern, VinylFormatFilter, WHITE_LABEL_POSTGRES_PATTERN } from '../../domain/releaseFormat';
+import { getCanonicalGenreSearchTerms } from '../../domain/releaseMetadata';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -55,11 +56,11 @@ async function attachPrimaryPhotoPaths(
   const photoRecords = await db
     .select()
     .from(listingPhotos)
-    .where(inArray(listingPhotos.listingId, listingIds))
-    .orderBy(
-      sql`case when ${listingPhotos.role} = 'front_cover' then 0 else 1 end`,
-      asc(listingPhotos.displayOrder)
-    );
+    .where(and(
+      inArray(listingPhotos.listingId, listingIds),
+      eq(listingPhotos.role, 'front_cover')
+    ))
+    .orderBy(asc(listingPhotos.displayOrder));
 
   const primaryPhotoMap = new Map<string, string>();
   for (const photo of photoRecords) {
@@ -260,14 +261,26 @@ export async function searchListings(
 
   // Genre filter
   if (params.genre && params.genre.trim()) {
-    conditions.push(ilike(releases.genre, `%${params.genre.trim()}%`));
+    const genre = params.genre.trim();
+    const legacyGenreExpression = sql`(' ' || regexp_replace(regexp_replace(lower(coalesce(${releases.genre}, '')), '&', ' and ', 'g'), '[^a-z0-9]+', ' ', 'g') || ' ')`;
+    const legacyGenreMatches = getCanonicalGenreSearchTerms(genre).map((term) =>
+      sql`${legacyGenreExpression} LIKE ${`% ${term} %`}`
+    );
+    conditions.push(or(
+      arrayContains(releases.canonicalGenres, [genre]),
+      ilike(releases.genre, `%${genre}%`),
+      ...legacyGenreMatches
+    )!);
   }
 
   // Format quick filters use explicit terms in legacy free-text metadata. LP is
   // an album/long-play characteristic; 12-inch and 7-inch are physical diameters.
   if (params.formats && params.formats.length > 0) {
     conditions.push(or(...params.formats.map((format) =>
-      sql`${releases.format} ~* ${getVinylFormatPostgresPattern(format)}`
+      or(
+        arrayContains(releases.formatCharacteristics, [format]),
+        sql`${releases.format} ~* ${getVinylFormatPostgresPattern(format)}`
+      )!
     ))!);
   }
 
@@ -390,4 +403,32 @@ export async function hasExplicitWhiteLabelInventory(dbOverride?: DbInstance): P
     .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
     .where(and(eq(listings.status, 'published'), sql`${releases.label} ~* ${WHITE_LABEL_POSTGRES_PATTERN}`));
   return Number(result[0]?.total || 0) > 0;
+}
+
+
+/** Delete only an archived listing that is still owned by the requesting seller. */
+export async function deleteArchivedListingByOwner(
+  id: string,
+  sellerId: string,
+  dbOverride?: DbInstance
+): Promise<Listing | null> {
+  const db = dbOverride || getDb();
+  const results = await db.delete(listings).where(and(
+    eq(listings.id, id),
+    eq(listings.sellerId, sellerId),
+    eq(listings.status, 'archived')
+  )).returning();
+  return results[0] || null;
+}
+
+/** Count the remaining listings attached to a physical copy before cleaning it up. */
+export async function countListingsByPhysicalCopyId(
+  physicalCopyId: string,
+  dbOverride?: DbInstance
+): Promise<number> {
+  const db = dbOverride || getDb();
+  const results = await db.select({ total: count() })
+    .from(listings)
+    .where(eq(listings.physicalCopyId, physicalCopyId));
+  return Number(results[0]?.total || 0);
 }

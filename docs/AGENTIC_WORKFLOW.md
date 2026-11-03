@@ -4,9 +4,9 @@
 
 The Vinyl Drop is developed using an Issue-driven agentic workflow where human engineers retain explicit architectural and merge authority:
 
-1. **Human:** defines product goals, approves strategy, writes Issue contracts, inspects pull requests, and performs final merges to `main`.
-2. **Jules:** performs automated code and documentation changes inside explicit GitHub Issue contracts on dedicated feature branches.
-3. **ChatGPT:** acts as architectural review partner, reviewing PRs, managing the `chatgpt-review` label, and writing structured continuation feedback.
+1. **Human owner:** defines product goals, approves strategy and scope, writes or approves Issue contracts, reviews the final diff, and retains merge/release authority.
+2. **Implementation contributor:** a human engineer or an explicitly selected implementation agent works only inside the Issue contract on a dedicated branch. Jules is an available dispatcher path, not an automatic default; do not dispatch an external agent unless the owner and Issue call for it.
+3. **ChatGPT:** may help with architecture, direct implementation where authorized, source review, verification planning and structured continuation feedback. The owner decides which contributor or agent is used for each task.
 
 ## Source of execution truth
 
@@ -25,10 +25,10 @@ Documentation (`docs/ROADMAP.md`, `docs/PRODUCT_VISION.md`) is architectural ref
 ## Branching & PR lifecycle
 
 1. **Branch Creation:** Implementation begins on a feature branch named after the governing issue (e.g. `feature/issue-39-phase-5-closeout-docs-...`).
-2. **Execution:** Jules completes work on the branch, following strict file modification and verification rules.
+2. **Execution:** the assigned human or implementation agent completes in-scope work on that branch, following repository instructions and the task's safety boundaries.
 3. **Review Continuation:** If review feedback identifies missing criteria or defects within the issue scope, work continues **on the same branch**.
 4. **Read-Only Memory:** `CHATGPT.md` serves as durable, read-only advisory memory across sessions. Agents must never modify or rewrite `CHATGPT.md`.
-5. **Final Merge:** Humans perform all merges to `main`. Automated agents never self-merge branches or push directly to `main`.
+5. **Final Merge:** the human owner retains final approval and merge authority. An agent must not infer merge permission from passing CI or from a prior merge in another Issue.
 
 ## Live GitHub Actions workflows
 
@@ -159,3 +159,10 @@ Specialist definitions reside in `.github/agents/`:
 - `CHATGPT.md` is strictly read-only context.
 - Stale session cleanup requires explicit confirmation token verification.
 - Review continuations stay on the original feature branch.
+
+
+## Owner-controlled environment boundary
+
+A merge to `main` normally auto-deploys the staging Render service. Production Auto-Deploy is disabled and production deployment is a separate owner-authorized action. Do not change production provider settings, DNS, OAuth, secrets, database state, beta allowlists or feature flags as part of routine PR work.
+
+The current beta remains invite-only, with `SHARED_RATE_LIMITS_ENABLED=false` and `MESSAGING_ENABLED=false`. See current Issues and the [production runbook](./PRODUCTION_DEPLOYMENT.md) before any environment action.

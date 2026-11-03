@@ -14,6 +14,8 @@ import {
   getEditListingPage,
   postEditListing,
   postUpdateReleaseYouTubePreview,
+  postUpdateReleaseArtwork,
+  postRestoreDiscogsArtwork,
   postUploadPhoto,
   postDeletePhoto,
   postUpdatePhotoRole,
@@ -21,6 +23,7 @@ import {
   getPreviewListingPage,
   postPublishListing,
   postArchiveListing,
+  postDeleteArchivedListing,
   postDismissCompletedListing,
   postRestoreCompletedListing,
   postUnpublishListing,
@@ -53,6 +56,8 @@ router.get('/:id/preview', requireAuth, getPreviewListingPage);
 router.get('/:id/edit', requireAuth, getEditListingPage);
 router.post('/:id/edit', requireAuth, validateSameOrigin, postEditListing);
 router.post('/:id/release-preview', requireAuth, validateSameOrigin, postUpdateReleaseYouTubePreview);
+router.post('/:id/release-artwork', requireAuth, validateSameOrigin, rateLimits.listingPhotoUpload, multipartUploadHandler, postUpdateReleaseArtwork);
+router.post('/:id/release-artwork/restore-discogs', requireAuth, validateSameOrigin, rateLimits.discogsMetadataLookup, postRestoreDiscogsArtwork);
 
 // Photo Operations
 router.post('/:id/photos', requireAuth, validateSameOrigin, rateLimits.listingPhotoUpload, multipartUploadHandler, postUploadPhoto);
@@ -64,6 +69,7 @@ router.post('/:id/photos/reorder', requireAuth, validateSameOrigin, postReorderP
 router.post('/:id/publish', requireAuth, validateSameOrigin, postPublishListing);
 router.post('/:id/unpublish', requireAuth, validateSameOrigin, postUnpublishListing);
 router.post('/:id/archive', requireAuth, validateSameOrigin, postArchiveListing);
+router.post('/:id/delete', requireAuth, validateSameOrigin, postDeleteArchivedListing);
 router.post('/:id/dismiss', requireAuth, validateSameOrigin, postDismissCompletedListing);
 router.post('/:id/restore-dismissed', requireAuth, validateSameOrigin, postRestoreCompletedListing);
 

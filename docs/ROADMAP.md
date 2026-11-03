@@ -81,15 +81,15 @@ Deliverables:
 Governing Issue: `#13`.
 Status: **COMPLETED** (merged to `main`).
 
-## Phase 5 Closeout — Documentation and Contract Alignment (Current Phase)
+## Phase 5 Closeout — Documentation and Contract Alignment
 
 Deliverables:
-- Truthful alignment of product, domain, persistence, route, page, roadmap, workflow, security, and operational documentation with actual Phase 5 merged codebase state;
+- Truthful alignment of product, domain, persistence, route, page, roadmap, workflow, security and operational documentation with the Phase 5 codebase;
 - Pre-launch operational requirements specification (`docs/PRELAUNCH_OPERATIONS.md`);
-- Elimination of stale route and implementation references across all docs.
+- Removal of stale route and implementation references.
 
 Governing Issue: `#39`.
-Status: **IN PROGRESS** (current active branch).
+Status: **COMPLETED** — Issue #39 was closed on 8 October 2026. This phase is historical, not the current workstream.
 
 ---
 
@@ -110,31 +110,46 @@ Planned scope:
 - Release barcode scanner / matrix number identification assistance;
 - Additional catalog metadata fields without breaking canonical release structure.
 
-### Phase 6 — Community & Social Engagement (Future)
+### Phase 6 — Community & Social Engagement (Partially Implemented)
 
-Planned scope:
-- Member favorites and saved listings;
+Already implemented:
+- Member favorites and saved-listing state;
+- The public community activity feed at `/activity`;
+- Public profiles and listing comments (delivered in Phase 5).
+
+Future boundaries:
 - Public seller wantlists;
-- Community activity feed route (`/activity`);
 - Seller trust and community reputation signals;
-- Notification hooks (in-app alerts for listing updates and comment replies).
+- Additional community discovery features.
 
-*Note: Listing comments and public profiles are already fully implemented as part of Phase 5 Core Discovery.*
+### Phase 7 — Trading & Private Communication (Partially Implemented)
 
-### Phase 7 — Trading & Private Communication (Future)
+Already implemented but feature-gated:
+- Private buyer/seller conversations, message routes and the shared messaging UI.
 
-Planned scope:
+The `MESSAGING_ENABLED` flag remains false in staging and production. Source implementation is not permission to activate the feature.
+
+Future boundaries:
 - Structured trade proposal workflow;
-- Private buyer/seller messaging threads (`/messages`);
 - Direct offer negotiation;
 - Trade lifecycle completion.
 
-### Phase 8 — Moderation & Production Hardening (Future)
+### Phase 8 — Moderation & Production Hardening (Partially Implemented)
 
-Planned scope:
-- Content reporting mechanisms for listings, comments, and profiles;
-- Administrative moderation tools;
-- API rate limiting and upload throttling;
-- Automated image abuse and payload inspection hardening;
-- Disaster recovery, backup procedures, and uptime observability;
-- Production deployment hardening and security audit gate.
+Already implemented:
+- Server-side upload validation, image processing and Storage ownership controls;
+- Shared PostgreSQL rate-limit implementation (rollout remains governed by Issue #89).
+
+Future boundaries:
+- In-app reporting and administrative moderation tools;
+- Further image-abuse and payload inspection hardening;
+- Disaster-recovery and backup/restore procedures;
+- External uptime monitoring and alerting;
+- Independent production security and performance reviews.
+
+For all phases, implementation and release status is recorded in GitHub Issues/PRs. This roadmap is architectural history and future direction, not an execution queue.
+
+
+## Current work and release status
+
+The Phase 5 closeout is complete. There is no single active phase or branch implied by this document. Current implementation work, dependencies, verification evidence and release approval are recorded in the live [GitHub Issues](https://github.com/japiohopman/the-vinyl-drop/issues), with [Issue #282](https://github.com/japiohopman/the-vinyl-drop/issues/282) acting as the public-launch release tracker.

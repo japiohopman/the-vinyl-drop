@@ -1,5 +1,6 @@
 import { readFullStylesheetSource } from './stylesheetTestHelper';
 import { PGlite } from '@electric-sql/pglite';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { drizzle } from 'drizzle-orm/pglite';
 import request from 'supertest';
 import { createApp } from '../src/app';
@@ -31,7 +32,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
   const draftListingId = '77777777-7777-4777-8777-777777777777';
 
   beforeAll(async () => {
-    pg = new PGlite();
+    pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
     await pg.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
     await pg.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
 

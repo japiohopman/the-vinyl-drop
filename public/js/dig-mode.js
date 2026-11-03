@@ -84,6 +84,7 @@
   }
 
   function requestDigHapticPulse() {
+    if (preferences && preferences.get('hapticFeedbackEnabled') === false) return;
     const vibration = navigator.vibrate;
     if (typeof vibration !== 'function') return;
 

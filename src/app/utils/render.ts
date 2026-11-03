@@ -10,6 +10,9 @@ export function renderWithLayout(
   const mergedLocals = {
     ...res.locals,
     ...locals,
+    // Every HTML 404 render uses the branded recovery-page styles, including
+    // controller-owned not-found responses that do not pass through middleware.
+    ...(view === 'errors/404' ? { isStatusPage: true } : {}),
   };
 
   res.render(view, mergedLocals, (err, bodyHtml) => {

@@ -47,6 +47,7 @@
             <a href="<%= profileUrl %>" class="desktop-you-menu-item">View Profile</a>
             <a href="/profile/edit" class="desktop-you-menu-item">Edit Profile</a>
             <a href="/listings" class="desktop-you-menu-item">My Listings</a>
+            <a href="/options" class="desktop-you-menu-item">Options &amp; Appearance</a>
             <% if (isMessagingEnabled) { %>
               <button type="button" class="desktop-you-menu-item messaging-widget-trigger" data-messaging-widget-trigger aria-controls="messaging-floating-window" aria-expanded="false" aria-haspopup="dialog">Messages &amp; People <span class="messaging-unread-badge" data-messaging-unread-count hidden aria-hidden="true"></span></button>
             <% } %>
@@ -62,6 +63,7 @@
         </div>
       </div>
     <% } else { %>
+      <a href="/options" class="nav-link nav-link-options"<%- activePath === '/options' ? ' aria-current="page"' : '' %>>OPTIONS</a>
       <a href="/auth/login" class="nav-link nav-link-signin<%= activePath.startsWith('/auth/login') ? ' active' : '' %>"<%- activePath.startsWith('/auth/login') ? ' aria-current="page"' : '' %>>SIGN IN</a>
     <% } %>
   </div>
@@ -159,6 +161,12 @@
                   <span class="mobile-you-action-label">My Listings</span>
                 </a>
               </li>
+              <li>
+                <a href="/options" class="mobile-you-action-link mobile-you-options-link"<%- activePath === '/options' ? ' aria-current="page"' : '' %>>
+                  <%- include('./icon', { name: 'cog', size: '1.25rem', className: 'mobile-you-action-icon', ariaHidden: true }) %>
+                  <span class="mobile-you-action-label">Options &amp; Appearance</span>
+                </a>
+              </li>
               <% if (isMessagingEnabled) { %>
                 <li>
                   <button type="button" class="mobile-you-action-link messaging-widget-trigger" data-messaging-widget-trigger aria-controls="messaging-floating-window" aria-expanded="false" aria-haspopup="dialog" aria-label="Open Messages and Saved People">
@@ -174,6 +182,10 @@
           <div class="mobile-you-auth-actions">
             <a href="/auth/login" class="btn btn-primary btn-lg mobile-auth-btn">SIGN IN</a>
             <a href="/auth/signup" class="btn btn-outline btn-lg mobile-auth-btn">CREATE ACCOUNT</a>
+            <a href="/options" class="mobile-you-action-link mobile-you-options-link"<%- activePath === '/options' ? ' aria-current="page"' : '' %>>
+              <%- include('./icon', { name: 'cog', size: '1.25rem', className: 'mobile-you-action-icon', ariaHidden: true }) %>
+              <span class="mobile-you-action-label">Options &amp; Appearance</span>
+            </a>
           </div>
         <% } %>
 

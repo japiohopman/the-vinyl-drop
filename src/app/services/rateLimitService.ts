@@ -382,6 +382,9 @@ export const rateLimits = {
     { name: 'listing-photo-account-hourly', windowMs: HOUR, maxHits: 5, identify: accountId, required: true },
     { name: 'listing-photo-account-daily', windowMs: DAY, maxHits: 10, identify: accountId, required: true },
   ]),
+  catalogueSuggestion: createRateLimitMiddleware([
+    { name: 'catalogue-suggestion-ip', windowMs: MINUTE, maxHits: 30, identify: ip, required: true },
+  ]),
   discogsSearch: createRateLimitMiddleware([
     { name: 'discogs-search-account', windowMs: 10 * MINUTE, maxHits: 30, identify: accountId, required: true },
   ]),

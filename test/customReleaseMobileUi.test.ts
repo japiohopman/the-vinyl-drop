@@ -4,17 +4,21 @@ import fs from 'fs';
 import path from 'path';
 import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
+import { LISTING_PHOTO_ROLE_GUIDANCE, LISTING_PHOTO_ROLE_LABELS, LISTING_PHOTO_ROLES, NEW_LISTING_PHOTO_ROLES } from '../src/domain/listingPhotoRole';
+import { VINYL_FORMAT_FILTERS } from '../src/domain/releaseFormat';
 
 // The project test tsconfig omits DOM libs; these globals are only referenced
 // inside functions serialized and executed by Playwright in a browser page.
 interface PlaywrightTestStatusElement {
   getAttribute(name: string): string | null;
+  hasAttribute(name: string): boolean;
+  textContent: string | null;
 }
 interface PlaywrightTestDocument {
   documentElement: { scrollWidth: number };
   body: { scrollWidth: number };
   getElementById(id: string): PlaywrightTestStatusElement | null;
-  querySelector(selector: string): object | null;
+  querySelector(selector: string): PlaywrightTestStatusElement | null;
 }
 declare const window: { innerWidth: number };
 declare const document: PlaywrightTestDocument;
@@ -25,6 +29,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
 
   const headerPath = path.join(__dirname, '../views/partials/header.ejs');
   const releasePath = path.join(__dirname, '../views/releases/new.ejs');
+  const editListingPath = path.join(__dirname, '../views/listings/edit.ejs');
   const createListingPath = path.join(__dirname, '../views/listings/create.ejs');
   const stylesheetContent = readFullStylesheetSource();
   const pickerScript = fs.readFileSync(path.join(__dirname, '../public/js/release-file-picker.js'), 'utf8');
@@ -67,6 +72,7 @@ describe('Custom release mobile navigation and artwork picker', () => {
         fieldErrors: {},
         generalErrors: [],
       },
+      formatCharacteristicOptions: VINYL_FORMAT_FILTERS,
     }, { filename: releasePath }) as unknown as Promise<string>;
   }
 
@@ -96,9 +102,43 @@ describe('Custom release mobile navigation and artwork picker', () => {
     }, { filename: createListingPath }) as unknown as Promise<string>;
   }
 
+  async function renderEditListingPage(): Promise<string> {
+    return ejs.renderFile(editListingPath, {
+      getIconSvg,
+      listing: {
+        id: 'listing-artwork-ui-test',
+        status: 'draft',
+        price: 2500,
+        tradeAvailable: false,
+        description: '',
+      },
+      release: {
+        id: 'release-artwork-ui-test',
+        title: 'Doggystyle',
+        artist: 'Snoop Dogg',
+        releaseYear: 1993,
+        coverArtUrl: 'https://i.discogs.com/doggystyle.jpg',
+        externalSource: 'discogs',
+        externalId: '123456',
+        youtubeVideoId: null,
+      },
+      physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG', notes: null },
+      photos: [],
+      form: { values: {}, fieldErrors: {}, generalErrors: [] },
+      photoRoles: LISTING_PHOTO_ROLES,
+      newPhotoRoles: NEW_LISTING_PHOTO_ROLES,
+      photoRoleLabels: LISTING_PHOTO_ROLE_LABELS,
+      photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
+      photoError: '',
+      releaseArtworkError: false,
+      youtubePreviewError: false,
+    }, { filename: editListingPath }) as unknown as Promise<string>;
+  }
+
   function documentHtml(headerHtml: string, releaseHtml: string): string {
     const content = releaseHtml
       .replace('<script src="/js/release-file-picker.js" defer></script>', '')
+      .replace('<script src="/js/square-photo-cropper.js" defer></script>', '')
       .replace('<script src="/js/discogs-release-lookup.js" defer></script>', '');
     return `<!DOCTYPE html>
       <html lang="en">
@@ -247,35 +287,115 @@ describe('Custom release mobile navigation and artwork picker', () => {
     }
   });
 
-  it('provides an accessible camera action and announces the chosen artwork filename', async () => {
-    const headerHtml = await renderHeader('/releases/new');
+  it('keeps a visible Discogs artwork stage without asking for a catalogue upload on the first DROP page', async () => {
+    const headerHtml = await renderHeader('/drop/new');
     const releaseHtml = await renderReleasePage();
-    expect(releaseHtml).toContain('name="coverArt"');
-    expect(releaseHtml).toContain('accept="image/jpeg,image/png,image/webp"');
-    expect(releaseHtml).toContain('id="releaseCoverArtFilename"');
-    expect(releaseHtml).toContain('Use this device');
-    expect(releaseHtml).toContain('class="icon icon-photo-camera"');
+    expect(releaseHtml).not.toContain('name="coverArt"');
+    expect(releaseHtml).not.toContain('Catalogue artwork replacement');
+    expect(releaseHtml).toContain('name="coverArtUrl"');
+    const previewImageTag = releaseHtml.match(/<img[^>]*alt="Discogs catalogue artwork preview"[^>]*>/)?.[0] ?? '';
+    expect(previewImageTag).not.toBe('');
+    expect(previewImageTag).not.toMatch(/\ssrc=/);
+    expect(previewImageTag).toContain('loading="eager"');
+    expect(previewImageTag).toContain('decoding="async"');
 
-    await page.setViewportSize({ width: 375, height: 780 });
-    await page.setContent(documentHtml(headerHtml, releaseHtml));
-    await page.locator('#releaseMetadataDetails > summary').click();
+    for (const width of [360, 375, 430, 1024, 1280]) {
+      await page.setViewportSize({ width, height: 820 });
+      await page.setContent(documentHtml(headerHtml, releaseHtml));
+      expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
+      expect(await page.locator('[data-discogs-artwork-placeholder]').isVisible()).toBe(true);
+      expect(await page.locator('[data-discogs-cover-preview-status]').textContent()).toContain('confident Discogs match');
+      const artworkFrame = await page.locator('[data-discogs-cover-frame]').boundingBox();
+      expect(artworkFrame).not.toBeNull();
+      if (artworkFrame) {
+        const expectedFrameWidth = width >= 768 ? 224 : 120;
+        expect(Math.abs(artworkFrame.width - expectedFrameWidth)).toBeLessThanOrEqual(2);
+        expect(Math.abs(artworkFrame.width - artworkFrame.height)).toBeLessThanOrEqual(1);
+      }
+      const primaryColumnCount = await page.evaluate(() => {
+        const grid = document.querySelector('.custom-release-primary-fields');
+        return grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0;
+      });
+      expect(primaryColumnCount).toBe(width >= 768 ? 2 : 1);
+      const dimensions = await page.evaluate(() => ({
+        viewport: window.innerWidth,
+        document: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth,
+      }));
+      expect(dimensions.viewport).toBe(width);
+      expect(dimensions.document).toBeLessThanOrEqual(width + 1);
+      expect(dimensions.body).toBeLessThanOrEqual(width + 1);
+    }
+  });
+
+  it('keeps release artwork and actual-copy photos distinct in the responsive listing editor', async () => {
+    const headerHtml = await renderHeader('/listings/listing-artwork-ui-test/edit');
+    const editHtml = await renderEditListingPage();
+    await page.route('https://i.discogs.com/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="#fff"/></svg>',
+      });
+    });
+    expect(editHtml).toContain('class="release-artwork-editor"');
+    expect(editHtml).toContain('shared by listings of this same release');
+    expect(editHtml).toContain('Use original Discogs artwork');
+    expect(editHtml).toContain('/release-artwork/restore-discogs');
+    expect(editHtml).toContain('name="coverArt"');
+    expect(editHtml).toContain('Front of your copy');
+    expect(editHtml).toContain('Back of your copy');
+    expect(editHtml).not.toContain('Catalogue artwork replacement');
+
+    for (const width of [360, 430, 1024, 1280]) {
+      await page.setViewportSize({ width, height: 820 });
+      await page.setContent(documentHtml(headerHtml, editHtml));
+      expect(await page.locator('.release-artwork-editor').isVisible()).toBe(true);
+      const releaseArtworkFrame = await page.locator('.release-artwork-preview-frame').boundingBox();
+      expect(releaseArtworkFrame).not.toBeNull();
+      if (releaseArtworkFrame) {
+        const expectedFrameWidth = width >= 768 ? 192 : 104;
+        expect(Math.abs(releaseArtworkFrame.width - expectedFrameWidth)).toBeLessThanOrEqual(2);
+        expect(Math.abs(releaseArtworkFrame.width - releaseArtworkFrame.height)).toBeLessThanOrEqual(1);
+      }
+      expect(await page.locator('.release-artwork-preview-frame img').getAttribute('src')).toBe('https://i.discogs.com/doggystyle.jpg');
+      expect(await page.locator('.cover-photo-slots').isVisible()).toBe(true);
+      expect(await page.locator('.release-artwork-restore-form button').isVisible()).toBe(true);
+      expect(await page.locator('.custom-release-file-trigger').isVisible()).toBe(true);
+      expect(await page.locator('#releaseCoverArt').getAttribute('class')).toContain('custom-release-file-input');
+      if (width < 768) {
+        expect(await page.locator('.release-artwork-file-mobile-label').isVisible()).toBe(true);
+        expect(await page.locator('.release-artwork-file-desktop-label').isVisible()).toBe(false);
+      } else {
+        expect(await page.locator('.release-artwork-file-mobile-label').isVisible()).toBe(false);
+        expect(await page.locator('.release-artwork-file-desktop-label').isVisible()).toBe(true);
+      }
+      const dimensions = await page.evaluate(() => ({
+        viewport: window.innerWidth,
+        document: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth,
+      }));
+      expect(dimensions.viewport).toBe(width);
+      expect(dimensions.document).toBeLessThanOrEqual(width + 1);
+      expect(dimensions.body).toBeLessThanOrEqual(width + 1);
+    }
+
     await page.addScriptTag({ content: pickerScript });
-
-    expect(await page.locator('.custom-release-file-mobile-label').isVisible()).toBe(true);
-    expect(await page.locator('.custom-release-file-desktop-label').isVisible()).toBe(false);
-    expect(await page.locator('#releaseCoverArtFilename').getAttribute('role')).toBe('status');
-    expect(await page.locator('#releaseCoverArtFilename').textContent()).toBe('No file selected');
-
     await page.locator('#releaseCoverArt').setInputFiles({
-      name: 'test-cover.webp',
+      name: 'replacement-cover.webp',
       mimeType: 'image/webp',
       buffer: Buffer.from('fake image bytes'),
     });
-    expect(await page.locator('#releaseCoverArtFilename').textContent()).toBe('test-cover.webp');
-
-    await page.setViewportSize({ width: 900, height: 780 });
-    expect(await page.locator('.custom-release-file-mobile-label').isVisible()).toBe(false);
-    expect(await page.locator('.custom-release-file-desktop-label').isVisible()).toBe(true);
+    expect(await page.locator('#releaseCoverArtFilename').textContent()).toBe('replacement-cover.webp');
+    await page.waitForFunction(
+      () => !document.querySelector('[data-release-cover-override-preview]')?.hasAttribute('hidden'),
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(await page.locator('[data-release-cover-override-image]').getAttribute('src')).toMatch(/^data:image\/webp;base64,/);
+    await page.locator('[data-clear-release-cover-override]').click();
+    expect(await page.locator('#releaseCoverArt').inputValue()).toBe('');
+    expect(await page.locator('[data-release-cover-override-preview]').isHidden()).toBe(true);
   });
 
   it('fills editable release metadata after a debounced confident Discogs match', async () => {
@@ -284,6 +404,13 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await page.setViewportSize({ width: 375, height: 800 });
     await page.setContent(documentHtml(headerHtml, releaseHtml));
     let lookupRequests = 0;
+    await page.route('https://i.discogs.com/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/svg+xml',
+        body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1" fill="#fff"/></svg>',
+      });
+    });
     await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
       lookupRequests += 1;
       await route.fulfill({
@@ -299,7 +426,8 @@ describe('Custom release mobile navigation and artwork picker', () => {
             barcode: '0123456789012',
             country: 'UK',
             genre: 'Funk, Soul',
-            coverArtUrl: 'https://i.discogs.com/example-cover.jpg'
+            coverArtUrl: 'https://i.discogs.com/example-cover.jpg',
+            discogsExternalId: '123'
           }
         })
       });
@@ -325,17 +453,168 @@ describe('Custom release mobile navigation and artwork picker', () => {
     expect(await page.locator('[name="country"]').inputValue()).toBe('UK');
     expect(await page.locator('[name="genre"]').inputValue()).toBe('Funk, Soul');
     expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('https://i.discogs.com/example-cover.jpg');
+    expect(await page.locator('#discogsExternalId').inputValue()).toBe('123');
     expect(await page.locator('#discogsLookupStatus').getAttribute('role')).toBe('status');
     expect(await page.locator('#releaseMetadataDetails').getAttribute('open')).not.toBeNull();
     expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
+    expect(await page.locator('#releaseMetadataDetails [data-discogs-cover-preview]').count()).toBe(0);
     expect(await page.locator('[data-discogs-cover-preview] img').getAttribute('src')).toBe('https://i.discogs.com/example-cover.jpg');
 
-    const dimensions = await page.evaluate(() => ({
+    const mobileDimensions = await page.evaluate(() => ({
       document: document.documentElement.scrollWidth,
       body: document.body.scrollWidth
     }));
-    expect(dimensions.document).toBeLessThanOrEqual(376);
-    expect(dimensions.body).toBeLessThanOrEqual(376);
+    expect(mobileDimensions.document).toBeLessThanOrEqual(376);
+    expect(mobileDimensions.body).toBeLessThanOrEqual(376);
+
+    await page.setViewportSize({ width: 1280, height: 820 });
+    const desktopArtworkFrame = await page.locator('[data-discogs-cover-frame]').boundingBox();
+    expect(desktopArtworkFrame).not.toBeNull();
+    if (desktopArtworkFrame) expect(Math.abs(desktopArtworkFrame.width - 224)).toBeLessThanOrEqual(2);
+    expect(await page.locator('[data-discogs-cover-preview] img').isVisible()).toBe(true);
+    const desktopPrimaryColumnCount = await page.evaluate(() => {
+      const grid = document.querySelector('.custom-release-primary-fields');
+      return grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0;
+    });
+    expect(desktopPrimaryColumnCount).toBe(2);
+    const desktopDimensions = await page.evaluate(() => ({
+      document: document.documentElement.scrollWidth,
+      body: document.body.scrollWidth
+    }));
+    expect(desktopDimensions.document).toBeLessThanOrEqual(1281);
+    expect(desktopDimensions.body).toBeLessThanOrEqual(1281);
+  });
+
+  it('shows an explicit state when a confident Discogs match has no artwork URL', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          found: true,
+          matchType: 'release',
+          metadata: { label: 'No Image Records' },
+        }),
+      });
+    });
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Local Artist');
+    await page.locator('#releaseTitle').fill('White Label');
+    await page.waitForFunction(
+      () => document.querySelector('[data-discogs-cover-preview-status]')?.textContent?.includes('no catalogue artwork is available') === true,
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(await page.locator('[data-discogs-cover-preview]').isVisible()).toBe(true);
+    expect(await page.locator('[data-discogs-cover-preview] img').isHidden()).toBe(true);
+    expect(await page.locator('[data-discogs-artwork-placeholder]').isVisible()).toBe(true);
+    expect(await page.locator('[data-discogs-cover-preview-status]').textContent()).toContain('add release artwork later in Edit listing');
+    expect(await page.locator('#releaseCoverArt').count()).toBe(0);
+  });
+
+  it('explains when Discogs artwork cannot load and directs sellers to the listing editor', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+    await page.route('https://i.discogs.com/**', async (route) => {
+      await route.fulfill({ status: 404, body: 'missing image' });
+    });
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          found: true,
+          matchType: 'release',
+          metadata: { coverArtUrl: 'https://i.discogs.com/missing-cover.jpg' },
+        }),
+      });
+    });
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Snoop Dogg');
+    await page.locator('#releaseTitle').fill('Doggystyle');
+    await page.waitForFunction(
+      () => document.querySelector('[data-discogs-cover-preview-status]')?.textContent?.includes('could not be loaded') === true,
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(await page.locator('[data-discogs-cover-preview] img').isHidden()).toBe(true);
+    expect(await page.locator('[data-discogs-artwork-placeholder]').isVisible()).toBe(true);
+    expect(await page.locator('[data-discogs-cover-preview-status]').textContent()).toContain('replacement in Edit listing');
+    expect(await page.locator('#releaseCoverArt').count()).toBe(0);
+  });
+
+  it('waits for a pending Discogs lookup before allowing DROP form submission', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+
+    let allowLookupResponse!: () => void;
+    const responseGate = new Promise<void>((resolve) => { allowLookupResponse = resolve; });
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      await responseGate;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          found: true,
+          matchType: 'release',
+          metadata: { coverArtUrl: 'https://i.discogs.com/doggystyle.jpg' },
+        }),
+      });
+    });
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Snoop Dogg');
+    await page.locator('#releaseTitle').fill('Doggystyle');
+    await page.waitForRequest((request) => request.url().includes('/releases/lookup-metadata?'));
+    await page.waitForFunction(
+      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-lookup-pending') === 'true',
+      undefined,
+      { timeout: 3000 }
+    );
+    await page.addScriptTag({
+      content: `
+        (() => {
+          const form = document.querySelector('form[data-discogs-lookup-form]');
+          if (!form) throw new Error('DROP form not found');
+          const invalidFields = Array.from(form.querySelectorAll(':invalid'))
+            .map((field) => field.id || field.name || field.tagName);
+          if (invalidFields.length > 0) {
+            form.setAttribute('data-test-invalid-fields', invalidFields.join(','));
+          }
+          // This test is about the asynchronous Discogs submit lifecycle.
+          // Assert native validity after the required values have been filled,
+          // then isolate the submit event from browser validation.
+          form.noValidate = true;
+          document.addEventListener('submit', (event) => {
+            if (event.target !== form) return;
+            event.preventDefault();
+            form.setAttribute(
+              'data-test-submit-count',
+              String(Number(form.getAttribute('data-test-submit-count') || '0') + 1)
+            );
+          }, true);
+        })();
+      `,
+    });
+    expect(await page.locator('.custom-release-submit').isEnabled()).toBe(true);
+    expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-invalid-fields')).toBeNull();
+
+    await page.locator('.custom-release-submit').click();
+    expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-submit-count')).toBe('1');
+
+    allowLookupResponse();
+
+    await page.waitForFunction(
+      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-test-submit-count') === '2',
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(await page.locator('.custom-release-submit').isEnabled()).toBe(true);
+    expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('https://i.discogs.com/doggystyle.jpg');
   });
 
   it('preserves manually corrected metadata when a later lookup runs', async () => {
@@ -442,6 +721,132 @@ describe('Custom release mobile navigation and artwork picker', () => {
     }));
     expect(dimensions.document).toBeLessThanOrEqual(321);
     expect(dimensions.body).toBeLessThanOrEqual(321);
+  });
+
+  it('requires the seller to choose a Discogs edition and keeps each edition linked to its own format and artwork', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+    const candidates = [
+      {
+        artist: 'Daft Punk',
+        title: 'Discovery',
+        formatLabel: 'Vinyl, LP, Album',
+        metadata: {
+          label: 'Virgin',
+          catalogueNumber: 'V 2940',
+          releaseYear: '2001',
+          format: 'Vinyl, LP, Album',
+          formatCharacteristics: ['lp'],
+          coverArtUrl: 'https://i.discogs.com/discovery-vinyl.jpg',
+          discogsExternalId: '101',
+        },
+      },
+      {
+        artist: 'Daft Punk',
+        title: 'Discovery',
+        formatLabel: 'CD, Album, Reissue',
+        metadata: {
+          label: 'Virgin',
+          catalogueNumber: 'CDVX 2940',
+          releaseYear: '2001',
+          format: 'CD, Album, Reissue',
+          formatCharacteristics: [],
+          coverArtUrl: '',
+          discogsExternalId: '202',
+        },
+      },
+    ];
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          found: true,
+          matchType: 'release',
+          selectionRequired: true,
+          candidates,
+          metadata: candidates[0].metadata,
+        }),
+      });
+    });
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Daft Punk');
+    await page.locator('#releaseTitle').fill('Discovery');
+    await page.waitForFunction(
+      () => document.querySelector('[data-discogs-candidates] button') !== null,
+      undefined,
+      { timeout: 3000 }
+    );
+
+    const choices = page.locator('[data-discogs-candidates] button');
+    expect(await choices.count()).toBe(2);
+    expect(await choices.nth(0).innerText()).toContain('Format: Vinyl, LP, Album');
+    expect(await choices.nth(0).innerText()).toContain('Recognized vinyl: LP');
+    expect(await choices.nth(1).innerText()).toContain('Format: CD, Album, Reissue');
+    expect(await choices.nth(1).innerText()).toContain('No catalogue artwork');
+
+    // Keyboard selection of the CD edition must not borrow the vinyl edition's image.
+    await choices.nth(1).focus();
+    await choices.nth(1).press('Enter');
+    expect(await page.locator('#discogsExternalId').inputValue()).toBe('202');
+    expect(await page.locator('[data-discogs-field="format"]').inputValue()).toBe('CD, Album, Reissue');
+    expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('');
+    expect(await page.locator('[data-discogs-cover-preview] img').getAttribute('src')).toBeNull();
+    expect(await page.locator('[data-discogs-candidates]').isHidden()).toBe(true);
+  });
+
+  it('supports touch selection of a vinyl Discogs edition and applies its own artwork and characteristics', async () => {
+    const touchContext = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    const touchPage = await touchContext.newPage();
+    try {
+      await touchPage.setContent(documentHtml(await renderHeader('/drop/new'), await renderReleasePage()));
+      await touchPage.route('http://localhost/releases/lookup-metadata**', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            found: true,
+            matchType: 'release',
+            selectionRequired: true,
+            candidates: [{
+              artist: 'Daft Punk',
+              title: 'Discovery',
+              formatLabel: 'Vinyl, LP, 12-inch',
+              metadata: {
+                label: 'Virgin',
+                catalogueNumber: 'V 2940',
+                releaseYear: '2001',
+                format: 'Vinyl, LP, 12-inch',
+                formatCharacteristics: ['lp', '12-inch'],
+                coverArtUrl: 'https://i.discogs.com/discovery-vinyl.jpg',
+                discogsExternalId: '101',
+              },
+            }],
+          }),
+        });
+      });
+      await touchPage.addScriptTag({ content: discogsLookupScript });
+      await touchPage.locator('#releaseArtist').fill('Daft Punk');
+      await touchPage.locator('#releaseTitle').fill('Discovery');
+      await touchPage.waitForFunction(
+        () => document.querySelector('[data-discogs-candidates] button') !== null,
+        undefined,
+        { timeout: 3000 }
+      );
+      await touchPage.locator('[data-discogs-candidates] button').tap();
+
+      expect(await touchPage.locator('#discogsExternalId').inputValue()).toBe('101');
+      expect(await touchPage.locator('#discogsCoverArtUrl').inputValue()).toBe('https://i.discogs.com/discovery-vinyl.jpg');
+      expect(await touchPage.locator('[name="formatCharacteristics"][value="lp"]').isChecked()).toBe(true);
+      expect(await touchPage.locator('[name="formatCharacteristics"][value="12-inch"]').isChecked()).toBe(true);
+    } finally {
+      await touchContext.close();
+    }
   });
 
   it('prevents horizontal overflow and stacks metadata fields at narrow viewport sizes', async () => {

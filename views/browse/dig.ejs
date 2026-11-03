@@ -115,7 +115,10 @@
                             <p>No seller-selected front-cover photo has been added for this copy.</p>
                           </div>
                         <% } else { %>
-                          <img class="dig-sleeve-image" src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
+                          <img class="dig-sleeve-image" data-artwork-image src="<%= item.frontArtwork.src %>" alt="<%= item.frontArtwork.altText %>" draggable="false">
+                          <% if (item.frontArtwork.sourceKind === 'catalogue_artwork') { %>
+                            <span class="dig-artwork-source-label">Discogs catalogue artwork</span>
+                          <% } %>
                         <% } %>
                       </div>
                       <div class="dig-sleeve-face dig-sleeve-face-back" aria-label="Back cover" aria-hidden="true">
@@ -210,7 +213,10 @@
 
       <div class="dig-crate-filter-field">
         <label for="dig-filter-search">Search records</label>
-        <input id="dig-filter-search" type="search" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
+        <div class="form-search-control">
+          <%- include('../partials/icon', { name: 'search', size: '1rem', ariaHidden: true }) %>
+          <input id="dig-filter-search" class="form-control" type="search" name="q" value="<%= filters.q || '' %>" placeholder="Artist, album, label, catalogue #" autocomplete="off">
+        </div>
       </div>
 
       <fieldset class="dig-crate-filter-fieldset">
@@ -236,7 +242,7 @@
         <label for="dig-filter-genre">Genre</label>
         <select id="dig-filter-genre" name="genre">
           <option value="">All genres</option>
-          <% ['Electronic', 'Hip Hop', 'Rock', 'Jazz', 'Funk / Soul', 'Reggae', 'Ambient', 'Classical', 'Pop'].forEach(function(genre) { %>
+          <% (typeof genreOptions !== 'undefined' && Array.isArray(genreOptions) ? genreOptions : []).forEach(function(genre) { %>
             <option value="<%= genre %>" <%= filters.genre === genre ? 'selected' : '' %>><%= genre %></option>
           <% }); %>
         </select>
@@ -282,7 +288,6 @@
   <% } %>
 </div>
 
-<script src="/js/user-preferences.js" defer></script>
 <script src="/js/dig-sounds.js" defer></script>
 <script src="/js/dig-state.js" defer></script>
 <script src="/js/dig-mode.js" defer></script>

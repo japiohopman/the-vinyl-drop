@@ -178,6 +178,18 @@ export function getCommunityRulesPage(req: Request, res: Response, next: NextFun
 }
 
 
+/** Public, device-local preferences; this page is deliberately not account-scoped. */
+export function getOptionsPage(req: Request, res: Response, next: NextFunction): void {
+  try {
+    res.setHeader('Cache-Control', 'no-store');
+    renderWithLayout(res, 'info/options', {
+      title: 'Options — The Vinyl Drop',
+    }, next);
+  } catch (error) {
+    next(error);
+  }
+}
+
 /** Public installation and sharing guide for the first-party website PWA. */
 export function getInstallPage(req: Request, res: Response, next: NextFunction): void {
   try {

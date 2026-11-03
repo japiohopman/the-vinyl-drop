@@ -21,6 +21,7 @@ export async function getCurrentProfile(req: Request, res: Response, next: NextF
       renderWithLayout(res, 'errors/404', {
         title: 'Profile Not Found',
         message: 'Profile record does not exist for this user.',
+        isStatusPage: true,
       }, next);
       return;
     }
@@ -65,6 +66,7 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
       renderWithLayout(res, 'errors/404', {
         title: 'Profile Not Found',
         message: `User "@${username}" was not found.`,
+        isStatusPage: true,
       }, next);
       return;
     }
@@ -186,6 +188,7 @@ export async function getEditProfilePage(req: Request, res: Response, next: Next
       renderWithLayout(res, 'errors/404', {
         title: 'Profile Not Found',
         message: 'Profile record does not exist.',
+        isStatusPage: true,
       }, next);
       return;
     }

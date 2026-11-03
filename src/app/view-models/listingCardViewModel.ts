@@ -50,13 +50,14 @@ export function buildListingCardViewModel(params: {
   sleeveCondition: string;
   imageUrl?: string;
   fallbackImageUrl?: string;
+  imageAlt?: string;
   sellerUsername?: string;
   sellerLocation?: string;
   url?: string;
 }): ListingCardViewModel {
   const isTradeOnly = params.isTrade && !params.priceMinorUnits;
   const priceFormatted = formatPrice(params.priceMinorUnits, isTradeOnly);
-  const imageAlt = buildListingImageAlt(params.title, params.artist, params.format);
+  const imageAlt = params.imageAlt || buildListingImageAlt(params.title, params.artist, params.format);
 
   return {
     id: params.id,
@@ -85,11 +86,16 @@ export function buildListingCardFromDetails(details: {
   release: { title: string; artist: string; releaseYear?: number | null; format?: string | null; coverArtUrl?: string | null };
   physicalCopy: { mediaCondition: string; sleeveCondition: string };
   seller: { username: string; location?: string | null };
-  photos?: Array<{ publicUrl: string; role?: string; displayOrder?: number }>;
+  photos?: Array<{ publicUrl: string; role?: string; displayOrder?: number; altText?: string | null }>;
 }): ListingCardViewModel {
-  const primaryPhoto = details.photos?.find((photo) => photo.role === 'front_cover') || details.photos?.[0];
+  const primaryPhoto = details.photos?.find((photo) => photo.role === 'front_cover');
   const primaryImage = primaryPhoto?.publicUrl || details.release.coverArtUrl || undefined;
   const fallbackImage = primaryPhoto ? details.release.coverArtUrl || undefined : undefined;
+  const imageAlt = primaryPhoto
+    ? primaryPhoto.altText || `Front-cover photo of the physical copy of ${details.release.title} by ${details.release.artist}`
+    : details.release.coverArtUrl
+      ? `Catalogue artwork for ${details.release.title} by ${details.release.artist}; release reference, not a photo of the physical copy`
+      : buildListingImageAlt(details.release.title, details.release.artist, details.release.format || undefined);
 
   return buildListingCardViewModel({
     id: details.listing.id,
@@ -103,6 +109,7 @@ export function buildListingCardFromDetails(details: {
     sleeveCondition: details.physicalCopy.sleeveCondition,
     imageUrl: primaryImage,
     fallbackImageUrl: fallbackImage,
+    imageAlt,
     sellerUsername: details.seller.username,
     sellerLocation: details.seller.location || undefined,
     url: `/listings/${details.listing.id}/preview`,

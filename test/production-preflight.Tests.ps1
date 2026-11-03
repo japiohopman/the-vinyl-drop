@@ -1,0 +1,140 @@
+$ErrorActionPreference = 'Stop'
+
+$pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+if (-not $pwsh) {
+    throw 'PowerShell 7 (pwsh) is required to run the production preflight regression tests.'
+}
+
+$repositoryRoot = Split-Path -Parent $PSScriptRoot
+$preflightPath = Join-Path $repositoryRoot 'check-production-db-target.ps1'
+$migrationRunnerPath = Join-Path $repositoryRoot 'run-production-migrations.ps1'
+$expectedProductionRef = 'anxhmlalxjvatrufcjei'
+$expectedProductionHost = 'aws-0-eu-west-1.pooler.supabase.com'
+$testPassword = 'preflight-test-password-not-a-secret'
+
+function Invoke-PreflightCase {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][string]$ProjectRef,
+        [Parameter(Mandatory = $true)][string]$PoolerHost,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$SslMode,
+        [Parameter(Mandatory = $true)][int]$ExpectedExitCode,
+        [string]$AppBaseUrl = 'https://thevinyldrop.nl',
+        [string]$SupabaseUrl = ''
+    )
+
+    $names = @(
+        'TVD_CONFIRM_PRODUCTION_DB_PROJECT_REF',
+        'PRODUCTION_DB_PROJECT_REF',
+        'PRODUCTION_DB_HOST',
+        'NODE_ENV',
+        'APP_BASE_URL',
+        'ALLOWED_REDIRECT_URLS',
+        'SUPABASE_URL',
+        'DATABASE_URL',
+        'DATABASE_DIRECT_URL'
+    )
+    $original = @{}
+    foreach ($item in $names) {
+        $original[$item] = [Environment]::GetEnvironmentVariable($item, 'Process')
+    }
+
+    try {
+        [Environment]::SetEnvironmentVariable('TVD_CONFIRM_PRODUCTION_DB_PROJECT_REF', $ProjectRef, 'Process')
+        [Environment]::SetEnvironmentVariable('PRODUCTION_DB_PROJECT_REF', $ProjectRef, 'Process')
+        [Environment]::SetEnvironmentVariable('PRODUCTION_DB_HOST', $PoolerHost, 'Process')
+        [Environment]::SetEnvironmentVariable('NODE_ENV', 'production', 'Process')
+        [Environment]::SetEnvironmentVariable('APP_BASE_URL', $AppBaseUrl, 'Process')
+        [Environment]::SetEnvironmentVariable('ALLOWED_REDIRECT_URLS', 'https://thevinyldrop.nl', 'Process')
+        $effectiveSupabaseUrl = if ([string]::IsNullOrWhiteSpace($SupabaseUrl)) {
+            'https://' + $ProjectRef + '.supabase.co'
+        } else {
+            $SupabaseUrl
+        }
+        [Environment]::SetEnvironmentVariable('SUPABASE_URL', $effectiveSupabaseUrl, 'Process')
+
+        $user = 'postgres.' + $ProjectRef
+        $query = if ([string]::IsNullOrWhiteSpace($SslMode)) { '' } else { '?sslmode=' + $SslMode }
+        $connection = 'postgresql://' + $user + ':' + $testPassword + '@' + $PoolerHost + ':5432/postgres' + $query
+        [Environment]::SetEnvironmentVariable('DATABASE_URL', $connection, 'Process')
+        [Environment]::SetEnvironmentVariable('DATABASE_DIRECT_URL', $connection, 'Process')
+
+        $output = & $pwsh.Source -NoProfile -File $preflightPath *>&1 | Out-String
+        $actualExitCode = $LASTEXITCODE
+        if ($actualExitCode -ne $ExpectedExitCode) {
+            throw "$Name expected exit code $ExpectedExitCode but received $actualExitCode. Output: $output"
+        }
+        if ($output.Contains($testPassword)) {
+            throw "$Name unexpectedly printed the test connection password."
+        }
+        Write-Host "PASS: $Name"
+    }
+    finally {
+        foreach ($item in $names) {
+            [Environment]::SetEnvironmentVariable($item, $original[$item], 'Process')
+        }
+    }
+}
+
+function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
+    $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-runner-preflight-" + [guid]::NewGuid().ToString('N'))
+    $locationPushed = $false
+
+    try {
+        New-Item -ItemType Directory -Path (Join-Path $tempRoot 'drizzle/meta') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $tempRoot 'package.json') -Value '{}' -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle.config.ts') -Value 'export default {}' -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle/meta/_journal.json') -Value '{}' -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot 'check-production-db-target.ps1') -Value '# test stub' -NoNewline
+        # Intentionally do not create node_modules/.bin/drizzle-kit.
+
+        Push-Location $tempRoot
+        $locationPushed = $true
+        $output = & $pwsh.Source -NoProfile -File $migrationRunnerPath -Phase Base *>&1 | Out-String
+        $actualExitCode = $LASTEXITCODE
+
+        if ($actualExitCode -eq 0) {
+            throw "Migration runner unexpectedly continued without the locked local Drizzle Kit binary. Output: $output"
+        }
+        if ($output -notmatch 'lockfile-installed local drizzle-kit binary is missing') {
+            throw "Migration runner did not stop with the expected actionable local-binary error. Output: $output"
+        }
+        if ($output -match 'Enter the production database password|APPLY-PRODUCTION-BASE-MIGRATIONS') {
+            throw 'Migration runner prompted for a production credential or confirmation before checking the local Drizzle Kit binary.'
+        }
+        if ($output.Contains($testPassword)) {
+            throw 'Migration runner unexpectedly printed a test connection password.'
+        }
+
+        Write-Host 'PASS: migration runner stops before password entry when the locked local Drizzle Kit binary is missing'
+    }
+    finally {
+        if ($locationPushed) {
+            Pop-Location
+        }
+        if (Test-Path -LiteralPath $tempRoot) {
+            Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Push-Location $repositoryRoot
+try {
+    Invoke-PreflightCase -Name 'approved production project with TLS' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 0
+    Invoke-PreflightCase -Name 'known staging project is rejected' -ProjectRef 'xuhzhdjmgvqzjxijmksu' -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1
+    Invoke-PreflightCase -Name 'valid-looking but unapproved project is rejected' -ProjectRef 'aaaaaaaaaaaaaaaaaaaa' -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1
+    Invoke-PreflightCase -Name 'unapproved pooler host is rejected' -ProjectRef $expectedProductionRef -PoolerHost 'aws-9-eu-west-1.pooler.supabase.com' -SslMode 'require' -ExpectedExitCode 1
+    Invoke-PreflightCase -Name 'TLS prefer mode is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'prefer' -ExpectedExitCode 1
+    Invoke-PreflightCase -Name 'missing TLS mode is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode '' -ExpectedExitCode 1
+    Invoke-PreflightCase -Name 'duplicate TLS modes are rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require&sslmode=disable' -ExpectedExitCode 1
+    Invoke-PreflightCase -Name 'APP_BASE_URL path is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1 -AppBaseUrl 'https://thevinyldrop.nl/wrong-prefix'
+    Invoke-PreflightCase -Name 'SUPABASE_URL port override is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1 -SupabaseUrl 'https://anxhmlalxjvatrufcjei.supabase.co:8443'
+    Invoke-PreflightCase -Name 'SUPABASE_URL path prefix is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1 -SupabaseUrl 'https://anxhmlalxjvatrufcjei.supabase.co/prefix/'
+    Test-MigrationRunnerStopsWithoutLocalDrizzleKit
+}
+finally {
+    Pop-Location
+}
+
+Write-Host 'All production preflight regression cases passed.'
+exit 0

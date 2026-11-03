@@ -1,4 +1,5 @@
 import { PGlite } from '@electric-sql/pglite';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import path from 'path';
@@ -88,7 +89,7 @@ describe('Row Level Security (RLS) & Least-Privilege Data API Access (Issue #59)
   });
 
   beforeAll(async () => {
-    pg = new PGlite();
+    pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
     await pg.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
     await pg.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
 

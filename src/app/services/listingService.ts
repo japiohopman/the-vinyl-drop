@@ -45,17 +45,21 @@ import {
   SearchListingsParams,
   updateListing as updateListingInRepo,
   updateListingStatus as updateStatusInRepo,
+  deleteArchivedListingByOwner,
+  countListingsByPhysicalCopyId,
 } from '../repositories/listingRepository';
 import {
   createPhysicalCopy,
   findPhysicalCopyById,
   updatePhysicalCopy,
+  deletePhysicalCopy,
 } from '../repositories/physicalCopyRepository';
 import { findProfileById } from '../repositories/profileRepository';
 import { findReleaseById } from '../repositories/releaseRepository';
 import { ProcessedImage, processAndValidateImage } from '../utils/imageProcessor';
 import {
   deleteListingPhotoFromStorage,
+  restoreListingPhotoToStorage,
   downloadListingPhotoFromStorage,
   getPhotoPublicUrl,
   StorageOptions,
@@ -111,6 +115,11 @@ function recordToListingCardViewModel(record: JoinedListingRecord): ListingCardV
     sleeveCondition: record.physicalCopy.sleeveCondition,
     imageUrl,
     fallbackImageUrl,
+    imageAlt: record.primaryPhotoPath
+      ? `Front-cover photo of the physical copy of ${record.release.title} by ${record.release.artist}`
+      : record.release.coverArtUrl
+        ? `Catalogue artwork for ${record.release.title} by ${record.release.artist}; release reference, not a photo of the physical copy`
+        : undefined,
     sellerUsername: record.seller.username,
     sellerLocation: record.seller.location || undefined,
     url: `/listings/${record.listing.id}`,
@@ -307,7 +316,7 @@ export async function searchDigListings(
       ...photo,
       publicUrl: getPhotoPublicUrl(photo.storagePath),
     }));
-    const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist);
+    const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist, undefined, record.release.coverArtUrl);
     const base = recordToListingCardViewModel(record);
 
     return {
@@ -811,6 +820,95 @@ export async function deletePhotoFromListing(
   );
 
   return true;
+}
+
+/**
+ * Permanently delete an owner's archived listing. Download and remove its
+ * photos first; on any failure restore removed objects and keep the listing.
+ * The canonical Release is shared catalogue data and is never deleted.
+ */
+export async function permanentlyDeleteArchivedListing(
+  listingId: string,
+  requestingUserId: string,
+  dbOverride?: DbInstance,
+  storageOptions?: StorageOptions
+): Promise<boolean> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) return false; // Idempotent repeat: it is already gone.
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to delete this listing');
+  }
+  if (listing.status !== 'archived') {
+    throw new ValidationError('Archive this listing before permanently deleting it.');
+  }
+
+  const photos = await findPhotosByListingId(listingId, dbOverride);
+  const snapshots = await Promise.all(photos.map(async (photo) => ({
+    photo,
+    buffer: await downloadListingPhotoFromStorage(photo.storagePath, storageOptions),
+  })));
+
+  const attemptedRemovals: typeof snapshots = [];
+  const restoreRemovedPhotos = async (): Promise<void> => {
+    for (const snapshot of attemptedRemovals) {
+      try {
+        await restoreListingPhotoToStorage(snapshot.photo.storagePath, snapshot.buffer, storageOptions);
+      } catch {
+        try {
+          await recordOrphanedStorageObject({
+            listingId,
+            photoId: snapshot.photo.id,
+            storagePath: snapshot.photo.storagePath,
+            reason: 'ARCHIVED_LISTING_DELETE_STORAGE_RESTORE_FAILED',
+          }, dbOverride);
+        } catch {
+          console.error(JSON.stringify({
+            event: 'storage_orphan_unresolved',
+            reason: 'ARCHIVED_LISTING_DELETE_STORAGE_RESTORE_FAILED',
+            listingId,
+            photoId: snapshot.photo.id,
+          }));
+        }
+      }
+    }
+  };
+
+  try {
+    for (const snapshot of snapshots) {
+      // A provider timeout may arrive after the object was removed, so include
+      // the current path in compensation before making the remote request.
+      attemptedRemovals.push(snapshot);
+      await deleteListingPhotoFromStorage(snapshot.photo.storagePath, storageOptions);
+    }
+  } catch (storageError) {
+    await restoreRemovedPhotos();
+    throw storageError;
+  }
+
+  try {
+    const db = dbOverride || getDb();
+    const deleted = await db.transaction(async (tx) => {
+      const removedListing = await deleteArchivedListingByOwner(listingId, requestingUserId, tx as unknown as DbInstance);
+      if (!removedListing) return null;
+      const remainingListings = await countListingsByPhysicalCopyId(removedListing.physicalCopyId, tx as unknown as DbInstance);
+      if (remainingListings === 0) {
+        await deletePhysicalCopy(removedListing.physicalCopyId, tx as unknown as DbInstance);
+      }
+      return removedListing;
+    });
+
+    if (!deleted) {
+      // A parallel delete may already have removed the listing. In that case,
+      // leave its Storage paths removed instead of restoring orphaned objects.
+      const stillExists = await findListingById(listingId, dbOverride);
+      if (stillExists) await restoreRemovedPhotos();
+      return false;
+    }
+    return true;
+  } catch (databaseError) {
+    await restoreRemovedPhotos();
+    throw databaseError;
+  }
 }
 
 export async function reorderListingPhotos(

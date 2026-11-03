@@ -24,6 +24,7 @@ async function main() {
     '0002_add_release_cover_art.sql',
     '0003_brainy_scarlet_witch.sql',
     '0004_mighty_spacker_dave.sql',
+    '0021_release_metadata_vocabulary.sql',
   ];
 
   for (const file of migrationFiles) {

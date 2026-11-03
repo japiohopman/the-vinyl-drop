@@ -46,7 +46,7 @@ export function createProductionRateLimitDiagnosticsHandler(
         return;
       }
 
-      const clientIpPresent = dependencies.resolveClientIp(req, 'production') !== null;
+      const clientIpPresent = Boolean(dependencies.resolveClientIp(req, 'production'));
       let databaseAccess = false;
 
       try {
@@ -73,14 +73,14 @@ export function createProductionRateLimitDiagnosticsHandler(
 async function checkRateLimitTableAccess(): Promise<void> {
   if (!queryClient) throw new Error('Database connection is unavailable.');
 
-  // No rows are read or changed. This is a zero-row query through the Render
-  // app's configured DATABASE_URL connection and proves app-role table access.
+  // No rows are read or changed. This zero-row query uses the app runtime's
+  // configured DATABASE_URL connection and proves app-role table access.
   await queryClient.unsafe('SELECT 1 FROM private.rate_limit_buckets LIMIT 0');
 }
 
 export const postProductionRateLimitDiagnostics = createProductionRateLimitDiagnosticsHandler({
   nodeEnv: config.NODE_ENV,
-  diagnosticToken: config.PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN,
+  diagnosticToken: config.PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN || '',
   checkDatabase: checkRateLimitTableAccess,
   resolveClientIp: getRateLimitClientIp,
 });

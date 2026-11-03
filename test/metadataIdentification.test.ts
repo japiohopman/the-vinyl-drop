@@ -166,11 +166,46 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
       expect(c.catalogueNumber).toBe('V2940');
       expect(c.releaseYear).toBe(2001);
       expect(c.country).toBe('France');
+      expect(c.countryCode).toBe('FR');
+      expect(c.format).toBe('Vinyl, LP, Album');
+      expect(c.formatCharacteristics).toEqual(['lp']);
+      expect(c.genre).toBe('Electronic');
+      expect(c.canonicalGenres).toEqual(['Electronic']);
       expect(c.barcode).toBe('724384960612');
       expect(c.coverArtUrl).toBe('https://img.discogs.com/cover.jpg');
       expect(c.sourceUrl).toBe('https://www.discogs.com/release/123456-Daft-Punk-Discovery');
       expect(c.provenance.provider).toBe('discogs');
       expect(c.provenance.attribution).toContain('Discogs');
+    });
+
+    it('preserves unrecognized provider metadata without inventing canonical values', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          results: [{
+            id: 123457,
+            title: 'Archive Artist - Obscure Release',
+            country: 'Yugoslavia',
+            format: ['Flexi-disc', 'Single', '45 RPM'],
+            genre: ['Rare Groove'],
+          }],
+        }),
+      });
+
+      const candidates = await new DiscogsMetadataProvider().searchCandidates({
+        artist: 'Archive Artist',
+        title: 'Obscure Release',
+      });
+
+      expect(candidates).toHaveLength(1);
+      expect(candidates[0]).toMatchObject({
+        country: 'Yugoslavia',
+        format: 'Flexi-disc, Single, 45 RPM',
+        genre: 'Rare Groove',
+        formatCharacteristics: [],
+        canonicalGenres: [],
+      });
+      expect(candidates[0].countryCode).toBeUndefined();
     });
 
     it('should handle Discogs API error and rate limits safely without crashing', async () => {

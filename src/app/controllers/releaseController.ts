@@ -7,6 +7,8 @@ import { FormViewModel } from '../view-models/formViewModel';
 import { processAndValidateImage } from '../utils/imageProcessor';
 import { DiscogsMetadataProvider } from '../services/metadata/discogsProvider';
 import { CandidateRelease } from '../services/metadata/types';
+import { COUNTRY_OPTIONS, RELEASE_GENRES, resolveCountry } from '../../domain/releaseMetadata';
+import { normalizeVinylFormatCharacteristics, VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
 
 function normalizeLookupText(value: string): string {
   return value
@@ -42,24 +44,21 @@ function hasConfidentTextMatch(query: string, candidate: string | undefined, max
     queryPhrase.endsWith(candidatePhrase);
 }
 
-/** Only auto-fill album results when both artist and release title match closely. */
-function chooseConfidentDiscogsMatch(
-  candidates: CandidateRelease[],
-  artist: string,
-  title: string
-): CandidateRelease | null {
+/** Return all confident album matches in a stable, relevance-first order. */
+function findConfidentDiscogsMatches(candidates: CandidateRelease[], artist: string, title: string): CandidateRelease[] {
   const matched = candidates.filter((candidate) =>
     hasConfidentTextMatch(artist, candidate.artist, 1) &&
     hasConfidentTextMatch(title, candidate.title, 2)
   );
-
   matched.sort((a, b) => {
     const score = (candidate: CandidateRelease) =>
       (normalizeLookupText(candidate.artist) === normalizeLookupText(artist) ? 2 : 0) +
       (normalizeLookupText(candidate.title) === normalizeLookupText(title) ? 2 : 0);
-    return score(b) - score(a);
+    const confidenceDifference = score(b) - score(a);
+    if (confidenceDifference !== 0) return confidenceDifference;
+    return Number(Boolean(b.coverArtUrl)) - Number(Boolean(a.coverArtUrl));
   });
-  return matched[0] || null;
+  return matched.slice(0, 8);
 }
 
 /**
@@ -69,19 +68,42 @@ function chooseConfidentDiscogsMatch(
  * evidence for the track title. Comparing the query to candidate.title incorrectly
  * rejects songs that appear on an album with a different title.
  */
-function chooseConfidentTrackMatch(
-  candidates: CandidateRelease[],
-  artist: string
-): CandidateRelease | null {
-  return candidates.find((candidate) =>
-    hasConfidentTextMatch(artist, candidate.artist, 1)
-  ) || null;
+function findConfidentTrackMatches(candidates: CandidateRelease[], artist: string): CandidateRelease[] {
+  const matched = candidates.filter((candidate) => hasConfidentTextMatch(artist, candidate.artist, 1));
+  matched.sort((a, b) => Number(Boolean(b.coverArtUrl)) - Number(Boolean(a.coverArtUrl)));
+  return matched.slice(0, 8);
+}
+
+function isUnambiguousVinylFormat(format: string | undefined): boolean {
+  if (!format) return false;
+  const tokens = format.split(',').map((token) => token.trim().toLowerCase());
+  const hasVinyl = tokens.includes('vinyl');
+  const hasOtherMedia = tokens.some((token) =>
+    ['cd', 'cassette', 'file', 'digital', 'dvd', 'blu-ray', 'sacd', 'minidisc', 'shellac', 'reel-to-reel', 'dat'].includes(token)
+  );
+  return hasVinyl && !hasOtherMedia;
+}
+
+function toDiscogsCandidateMetadata(candidate: CandidateRelease): Record<string, unknown> {
+  const formatCharacteristics = candidate.formatCharacteristics || normalizeVinylFormatCharacteristics(candidate.format);
+  return {
+    label: candidate.label || '',
+    catalogueNumber: candidate.catalogueNumber || '',
+    releaseYear: candidate.releaseYear ? String(candidate.releaseYear) : '',
+    format: candidate.format || '',
+    formatCharacteristics,
+    barcode: candidate.barcode || '',
+    country: candidate.country || '',
+    countryCode: resolveCountry(candidate.country)?.code || '',
+    genre: candidate.genre || '',
+    coverArtUrl: candidate.coverArtUrl || '',
+    discogsExternalId: candidate.externalId,
+  };
 }
 
 export async function getDiscogsMetadataLookup(req: Request, res: Response, _next: NextFunction): Promise<void> {
   const artist = typeof req.query.artist === 'string' ? req.query.artist.trim() : '';
   const title = typeof req.query.title === 'string' ? req.query.title.trim() : '';
-
   if (artist.length < 2 || title.length < 2 || artist.length > 120 || title.length > 160) {
     res.status(400).json({ error: 'Enter an artist and title within the supported length.' });
     return;
@@ -90,48 +112,51 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
   try {
     const provider = new DiscogsMetadataProvider({ timeoutMs: 5000, throwOnError: true });
     const releaseCandidates = await provider.searchCandidates({ artist, title });
-    let match = chooseConfidentDiscogsMatch(releaseCandidates, artist, title);
+    let candidates = findConfidentDiscogsMatches(releaseCandidates, artist, title);
     let matchType: 'release' | 'track' = 'release';
 
-    if (!match) {
-      // The input title may be a song on a release rather than the release/album title.
+    if (candidates.length === 0) {
       const trackCandidates = await provider.searchCandidates({ artist, track: title });
-      match = chooseConfidentTrackMatch(trackCandidates, artist);
+      candidates = findConfidentTrackMatches(trackCandidates, artist);
       matchType = 'track';
     }
-
-    if (!match) {
-      // Some valid releases are omitted by Discogs' structured filters. Try one
-      // broad query as a final candidate source, while keeping the same strict
-      // normalized artist/title confidence rule before auto-filling.
+    if (candidates.length === 0) {
       const broadCandidates = await provider.searchCandidates({ ocrText: `${artist} ${title}` });
-      match = chooseConfidentDiscogsMatch(broadCandidates, artist, title);
+      candidates = findConfidentDiscogsMatches(broadCandidates, artist, title);
       matchType = 'release';
     }
-
-    if (!match) {
+    if (candidates.length === 0) {
       res.setHeader('Cache-Control', 'no-store');
       res.status(200).json({ found: false });
       return;
     }
 
+    // Only one explicitly identified vinyl edition may be auto-filled. Multiple,
+    // non-vinyl or unspecified formats always require an affirmative seller choice.
+    const selectionRequired = candidates.length > 1 || !isUnambiguousVinylFormat(candidates[0].format);
+    // Artwork enrichment is still tied to the candidate's own Discogs release ID.
+    if (candidates.length === 1 && !candidates[0].coverArtUrl) {
+      const artwork = await provider.getReleaseArtwork(candidates[0].externalId);
+      if (artwork) candidates[0] = { ...candidates[0], coverArtUrl: artwork };
+    }
+
+    const candidatePayload = candidates.map((candidate) => ({
+      artist: candidate.artist,
+      title: candidate.title,
+      formatLabel: candidate.format || 'Format not supplied by Discogs',
+      hasArtwork: Boolean(candidate.coverArtUrl),
+      metadata: toDiscogsCandidateMetadata(candidate),
+    }));
+
     res.setHeader('Cache-Control', 'no-store');
     res.status(200).json({
       found: true,
       matchType,
-      metadata: {
-        label: match.label || '',
-        catalogueNumber: match.catalogueNumber || '',
-        releaseYear: match.releaseYear ? String(match.releaseYear) : '',
-        format: match.format || '',
-        barcode: match.barcode || '',
-        country: match.country || '',
-        genre: match.genre || '',
-        coverArtUrl: match.coverArtUrl || '',
-      },
+      selectionRequired,
+      candidates: candidatePayload,
+      metadata: toDiscogsCandidateMetadata(candidates[0]),
     });
   } catch {
-    // Fail closed for this lookup but keep manual release entry available.
     res.status(503).json({ error: 'Discogs lookup is temporarily unavailable.' });
   }
 }
@@ -149,6 +174,9 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
       genre?: string;
       country?: string;
       coverArtUrl?: string;
+      discogsExternalId?: string;
+      countryCode?: string;
+      formatCharacteristics?: string[];
     }> = {
       values: {
         format: 'LP',
@@ -160,6 +188,9 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
     renderWithLayout(res, 'releases/new', {
       title: 'Add Custom Release - The Vinyl Drop',
       form: formVm,
+      countryOptions: COUNTRY_OPTIONS,
+      genreOptions: RELEASE_GENRES,
+      formatCharacteristicOptions: VINYL_FORMAT_FILTERS,
     });
   } catch (error) {
     next(error);
@@ -168,9 +199,22 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
 
 export async function postCreateCustomRelease(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { artist, title, label, catalogueNumber, releaseYear, format, barcode, genre, country, coverArtUrl: submittedCoverArtUrl } = req.body;
+    const {
+      artist, title, label, catalogueNumber, releaseYear, format, barcode, genre, country, countryCode, formatCharacteristics,
+      coverArtUrl: submittedCoverArtUrl,
+      discogsExternalId: submittedDiscogsExternalId,
+    } = req.body;
+    const discogsExternalId =
+      typeof submittedDiscogsExternalId === 'string' && /^\d{1,15}$/.test(submittedDiscogsExternalId)
+        ? submittedDiscogsExternalId
+        : undefined;
 
     const parsedYear = releaseYear ? parseInt(releaseYear, 10) : undefined;
+    const submittedFormatCharacteristics = Array.isArray(formatCharacteristics)
+      ? formatCharacteristics
+      : typeof formatCharacteristics === 'string'
+        ? [formatCharacteristics]
+        : undefined;
 
     let coverArtUrl: string | undefined =
       typeof submittedCoverArtUrl === 'string' &&
@@ -197,8 +241,11 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
         barcode: barcode || undefined,
         genre: genre || undefined,
         country: country || undefined,
+        countryCode: countryCode || undefined,
+        formatCharacteristics: submittedFormatCharacteristics,
         coverArtUrl,
-        externalSource: 'custom',
+        externalSource: discogsExternalId ? 'discogs' : 'custom',
+        externalId: discogsExternalId,
       });
 
       return res.redirect(`/listings/create?releaseId=${release.id}`);
@@ -212,6 +259,9 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
       return renderWithLayout(res, 'releases/new', {
         title: 'Add Custom Release - The Vinyl Drop',
         form: formVm,
+        countryOptions: COUNTRY_OPTIONS,
+        genreOptions: RELEASE_GENRES,
+        formatCharacteristicOptions: VINYL_FORMAT_FILTERS,
       });
     }
   } catch (error) {

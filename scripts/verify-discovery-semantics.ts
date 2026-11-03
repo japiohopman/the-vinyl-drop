@@ -1,4 +1,5 @@
 import { PGlite } from '@electric-sql/pglite';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { drizzle } from 'drizzle-orm/pglite';
 import fs from 'fs';
 import path from 'path';
@@ -10,7 +11,7 @@ import { getSellerPublishedListings } from '../src/app/services/listingService';
 async function main() {
   console.log('🔄 Running discovery semantics verification against isolated PGlite engine...');
 
-  const pglite = new PGlite();
+  const pglite = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
   // Supabase provides this internal role; the isolated PGlite database does not.
   await pglite.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
   await pglite.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
