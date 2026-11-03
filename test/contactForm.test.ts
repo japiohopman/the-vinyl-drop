@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { createApp } from '../src/app';
+import { config } from '../src/config/env';
 import { sendContactMessage } from '../src/app/services/contactMessageService';
 
 jest.mock('../src/app/services/contactMessageService', () => ({ sendContactMessage: jest.fn() }));
@@ -7,8 +8,19 @@ jest.mock('../src/app/services/contactMessageService', () => ({ sendContactMessa
 const app = createApp();
 const sendMock = sendContactMessage as jest.MockedFunction<typeof sendContactMessage>;
 const origin = 'http://localhost:3000';
+const originalSharedRateLimitsEnabled = config.SHARED_RATE_LIMITS_ENABLED;
 
 describe('Contact form', () => {
+  beforeAll(() => {
+    // This suite targets the contact form's per-email cooldown, not the shared per-IP limiter.
+    // Shared rate-limit middleware is covered separately in rateLimit.test.ts.
+    config.SHARED_RATE_LIMITS_ENABLED = false;
+  });
+
+  afterAll(() => {
+    config.SHARED_RATE_LIMITS_ENABLED = originalSharedRateLimitsEnabled;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     sendMock.mockResolvedValue(undefined);
@@ -207,7 +219,7 @@ describe('Contact form', () => {
     expect(sendMock).not.toHaveBeenCalled();
   });
 
-  it('rate limits repeated submissions for the same email and does not claim false success on failure', async () => {
+  it('blocks repeated submissions for the same email during the contact cooldown', async () => {
     const form = {
       name: '',
       email: 'contact156cooldown@example.com',
@@ -219,17 +231,27 @@ describe('Contact form', () => {
     };
     const first = await request(app).post('/contact').set('Origin', origin).type('form').send(form);
     expect(first.status).toBe(200);
+
     const second = await request(app).post('/contact').set('Origin', origin).type('form').send(form);
     expect(second.status).toBe(429);
+    expect(second.text).toContain('Please wait about a minute');
     expect(sendMock).toHaveBeenCalledTimes(1);
-
-    sendMock.mockRejectedValueOnce(new Error('provider failure'));
-    const failure = await request(app).post('/contact').set('Origin', origin).type('form').send({
-      ...form,
-      email: 'contact156failure@example.com',
-    });
-    expect(failure.status).toBe(503);
-    expect(failure.text).toContain('We could not confirm that your message was sent');
-    expect(failure.text).not.toContain('provider failure');
   });
+
+  it('does not claim success when the contact email provider rejects a submission', async () => {
+    sendMock.mockRejectedValueOnce(new Error('provider failure'));
+    const response = await request(app).post('/contact').set('Origin', origin).type('form').send({
+      name: '',
+      email: 'contact156failure@example.com',
+      message: 'A sufficiently long contact message.',
+      category: 'general',
+      contentUrl: '',
+      goodFaithConfirmed: '',
+      contactFaxNumber: '',
+    });
+    expect(response.status).toBe(503);
+    expect(response.text).toContain('We could not confirm that your message was sent');
+    expect(response.text).not.toContain('provider failure');
+    expect(sendMock).toHaveBeenCalledTimes(1);
+  });;
 });
