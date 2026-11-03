@@ -3,11 +3,15 @@ import { createApp } from '../src/app';
 import { sendContactMessage } from '../src/app/services/contactMessageService';
 
 jest.mock('../src/app/services/contactMessageService', () => ({ sendContactMessage: jest.fn() }));
-jest.mock('../src/app/services/rateLimitService', () => ({
-  rateLimits: new Proxy({}, {
-    get: () => (_req: unknown, _res: unknown, next: () => void) => next(),
-  }),
-}));
+jest.mock('../src/app/services/rateLimitService', () => {
+  const passThrough = (_req: unknown, _res: unknown, next: () => void) => next();
+  return {
+    rateLimits: new Proxy({}, {
+      get: () => passThrough,
+    }),
+    conditionalDiscogsSearchRateLimit: passThrough,
+  };
+});
 
 const app = createApp();
 const sendMock = sendContactMessage as jest.MockedFunction<typeof sendContactMessage>;
