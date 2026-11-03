@@ -20,6 +20,7 @@ describe('Square cover photo cropper', () => {
   let browser: Browser;
   let page: Page;
   let portraitImage: Buffer;
+  let browserErrors: string[];
 
   beforeAll(async () => {
     browser = await chromium.launch({ headless: true });
@@ -34,7 +35,11 @@ describe('Square cover photo cropper', () => {
 
   beforeEach(async () => {
     page = await browser.newPage();
-    page.on('pageerror', (error) => console.error('[cropper browser error]', error.message));
+    browserErrors = [];
+    page.on('pageerror', (error) => {
+      browserErrors.push(error.message);
+      console.error('[cropper browser error]', error.message);
+    });
     await page.setViewportSize({ width: 375, height: 850 });
   });
 
@@ -331,6 +336,7 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#photoFile').evaluate((input) => (input as HTMLInputElement).files?.length || 0)).toBe(0);
     expect(await page.locator('form[action$="/photos"]').getAttribute('data-photo-editor-ready')).toBeNull();
     expect(await page.locator('form[action$="/photos"] button[type="submit"]').isEnabled()).toBe(true);
+    expect(browserErrors).toEqual([]);
   });
 
   it('shows a normal preview without cropping condition/detail photos', async () => {
