@@ -183,6 +183,15 @@ describe('Square cover photo cropper', () => {
         role === 'front_cover' ? 'Square front cover correction' : 'Square back cover correction'
       );
 
+      const topLeftHandle = page.locator('[data-corner-handle="0"]');
+      const polygonBeforeNudge = await page.locator('#square-cover-polygon').getAttribute('points');
+      await topLeftHandle.focus();
+      await page.keyboard.press('ArrowRight');
+      const polygonAfterNudge = await page.locator('#square-cover-polygon').getAttribute('points');
+      expect(polygonAfterNudge).not.toBe(polygonBeforeNudge);
+      expect(await page.locator('#square-cover-histogram').count()).toBe(1);
+      expect(await page.locator('[data-photo-adjustment="shadows"]').inputValue()).toBe('0');
+
       for (const width of [320, 360, 375, 414]) {
         await page.setViewportSize({ width, height: 850 });
         const layout = await page.evaluate("(() => {" +
