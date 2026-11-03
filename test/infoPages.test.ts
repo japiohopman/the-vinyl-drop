@@ -12,7 +12,7 @@ describe('Contact & Community Rules Pages (Phase 6A - Issue #46)', () => {
       expect(res.text).toContain('Contact The Vinyl Drop');
       expect(res.text).toContain('placeholder="Your name"');
       expect(res.text).toContain('placeholder="you@example.com"');
-      expect(res.text).toContain('placeholder="Tell us how we can help..."');
+      expect(res.text).toContain('placeholder="Tell us what happened and why the item may be illegal or violate the Community Rules..."');
       expect(res.text).toContain('yepyouknowhim@gmail.com');
       expect(res.text).toContain('Bugs &amp; Technical Problems');
       expect(res.text).toContain('Tips &amp; Feedback');
