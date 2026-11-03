@@ -25,6 +25,10 @@ export const envSchema = z
     }),
     SHARED_RATE_LIMITS_SECRET: z.string().optional(),
     STAGING_DIAGNOSTIC_TOKEN: z.string().min(32).optional(),
+    PRODUCTION_RATE_LIMIT_DIAGNOSTIC_TOKEN: z.preprocess(
+      (value) => (value === '' ? undefined : value),
+      z.string().min(32).optional()
+    ),
     SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED: z.string().optional().transform((val) => {
       if (val === undefined || val === '') return undefined;
       return val.toLowerCase() === 'true' || val === '1';
