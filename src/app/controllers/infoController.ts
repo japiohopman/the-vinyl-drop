@@ -52,7 +52,11 @@ const contactMessageSchema = z.object({
 
   if (data.contentUrl) {
     try {
-      if (/[\u0000-\u001F\u007F]/.test(data.contentUrl)) {
+      const containsControlCharacter = [...data.contentUrl].some((character) => {
+        const code = character.charCodeAt(0);
+        return code < 0x20 || code === 0x7f;
+      });
+      if (containsControlCharacter) {
         throw new Error('Control characters are not allowed in a page URL');
       }
       const parsedUrl = new URL(data.contentUrl);
