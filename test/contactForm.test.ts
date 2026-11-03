@@ -24,6 +24,7 @@ describe('Contact form', () => {
     expect(response.text).toContain('name="category"');
     expect(response.text).toContain('name="contentUrl"');
     expect(response.text).toContain('name="goodFaithConfirmed"');
+    expect(response.text).toContain('Name (required for illegal-content, copyright/trademark and counterfeit/fraud notices)');
   });
 
   it('sends a valid general message and clears submitted values after success', async () => {
@@ -62,10 +63,47 @@ describe('Contact form', () => {
       contactFaxNumber: '',
     });
     expect(incomplete.status).toBe(400);
-    expect(incomplete.text).toContain('Enter your name for an illegal-content notice');
+    expect(incomplete.text).toContain('Enter your name for an illegal-content, copyright/trademark or counterfeit/fraud notice');
     expect(incomplete.text).toContain('Enter the exact page URL');
     expect(incomplete.text).toContain('at least 30 characters');
     expect(incomplete.text).toContain('Confirm that you believe');
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['copyright-trademark', 'counterfeit-or-fraud'] as const)(
+    'requires a precise URL, name, reason and good-faith confirmation for %s notices',
+    async (category) => {
+      const incomplete = await request(app).post('/contact').set('Origin', origin).type('form').send({
+        name: '',
+        email: `notice-${category}@example.com`,
+        message: 'This is a notice.',
+        category,
+        contentUrl: '',
+        goodFaithConfirmed: '',
+        contactFaxNumber: '',
+      });
+      expect(incomplete.status).toBe(400);
+      expect(incomplete.text).toContain('Enter your name for an illegal-content, copyright/trademark or counterfeit/fraud notice');
+      expect(incomplete.text).toContain('Enter the exact page URL');
+      expect(incomplete.text).toContain('at least 30 characters');
+      expect(incomplete.text).toContain('Confirm that you believe');
+      expect(sendMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not preselect a general category after an invalid category is submitted', async () => {
+    const invalid = await request(app).post('/contact').set('Origin', origin).type('form').send({
+      name: '',
+      email: 'notice-invalid-category@example.com',
+      message: 'A sufficiently detailed explanation.',
+      category: 'not-a-category',
+      contentUrl: '',
+      goodFaithConfirmed: '',
+      contactFaxNumber: '',
+    });
+    expect(invalid.status).toBe(400);
+    expect(invalid.text).toContain('<option value="" disabled selected>Choose a category</option>');
+    expect(invalid.text).not.toContain('<option value="general" selected>');
     expect(sendMock).not.toHaveBeenCalled();
   });
 
