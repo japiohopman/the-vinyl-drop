@@ -38,7 +38,7 @@ const contactMessageSchema = z.object({
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['name'],
-      message: 'Enter your name for an illegal-content notice.',
+      message: 'Enter your name for an illegal-content, copyright/trademark or counterfeit/fraud notice.',
     });
   }
 
@@ -87,7 +87,7 @@ type ContactFormValues = {
   name: string;
   email: string;
   message: string;
-  category: ContactMessageCategory;
+  category: ContactMessageCategory | '';
   contentUrl: string;
   goodFaithConfirmed: string;
 };
@@ -157,11 +157,14 @@ export function getContactPage(req: Request, res: Response, next: NextFunction):
   }
 }
 
+/** Validates and forwards a contact message without storing its contents in application data. */
 export async function postContactMessage(req: Request, res: Response, next: NextFunction): Promise<void> {
   const body = req.body && typeof req.body === 'object' ? req.body as Record<string, unknown> : {};
-  const rawCategory = typeof body.category === 'string' && CONTACT_MESSAGE_CATEGORIES.includes(body.category as ContactMessageCategory)
+  const rawCategory: ContactMessageCategory | '' = typeof body.category === 'string' && CONTACT_MESSAGE_CATEGORIES.includes(body.category as ContactMessageCategory)
     ? body.category as ContactMessageCategory
-    : 'general';
+    : body.category === undefined || body.category === ''
+      ? 'general'
+      : '';
   const values: ContactFormValues = {
     name: typeof body.name === 'string' ? body.name : '',
     email: typeof body.email === 'string' ? body.email : '',
