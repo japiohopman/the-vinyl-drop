@@ -19,6 +19,7 @@ jest.mock('../src/db', () => ({
 }));
 
 let router: Router;
+let routerDatabaseBegin: jest.Mock;
 const environmentKeys = [
   'NODE_ENV',
   'DATABASE_URL',
@@ -57,6 +58,10 @@ beforeAll(() => {
 
   jest.isolateModules(() => {
     router = jest.requireActual<{ default: Router }>('../src/app/routes').default;
+    const { queryClient } = jest.requireMock('../src/db') as {
+      queryClient: { begin: jest.Mock };
+    };
+    routerDatabaseBegin = queryClient.begin;
   });
 });
 
@@ -82,9 +87,6 @@ describe('production rate-limit diagnostics registered router', () => {
     expect(response.body).toEqual({ database: 'pass', clientIpHeader: 'pass' });
     expect(response.headers['cache-control']).toBe('no-store');
 
-    const { queryClient } = jest.requireMock('../src/db') as {
-      queryClient: { begin: jest.Mock };
-    };
-    expect(queryClient.begin).toHaveBeenCalledTimes(1);
+    expect(routerDatabaseBegin).toHaveBeenCalledTimes(1);
   });
 });
