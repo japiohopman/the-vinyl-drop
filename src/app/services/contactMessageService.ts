@@ -48,6 +48,7 @@ const SENDER = 'The Vinyl Drop <no-reply@thevinyldrop.nl>';
 const RECIPIENT = 'yepyouknowhim@gmail.com';
 const REQUEST_TIMEOUT_MS = 8_000;
 
+/** Sends a categorized contact message through Resend without persisting it in the application. */
 export async function sendContactMessage(input: ContactMessageInput): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
