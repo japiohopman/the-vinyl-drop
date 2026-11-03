@@ -1,16 +1,4 @@
-const photoEditorCore = require('../public/js/listing-photo-editor-core.js') as {
-  DEFAULT_ADJUSTMENTS: Record<string, number>;
-  createDefaultCorners(width: number, height: number): Array<{ x: number; y: number }>;
-  isValidQuad(points: Array<{ x: number; y: number }>, width: number, height: number): boolean;
-  computeHomography(points: Array<{ x: number; y: number }>, outputWidth: number, outputHeight: number): number[];
-  rectifyImageData(
-    source: { data: Uint8ClampedArray; width: number; height: number },
-    points: Array<{ x: number; y: number }>,
-    outputWidth: number,
-    outputHeight: number,
-    adjustments?: Record<string, number>
-  ): { data: Uint8ClampedArray; width: number; height: number };
-};
+import photoEditorCore from '../public/js/listing-photo-editor-core.js';
 
 function createGradientImage(width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
