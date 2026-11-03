@@ -225,12 +225,16 @@
           continue;
         }
 
-        const x0 = Math.floor(sourceX);
-        const y0 = Math.floor(sourceY);
+        // ImageData pixels occupy unit squares; sample around their centres.
+        // Subtracting 0.5 prevents an identity transform from blending neighbours.
+        const sampleX = clamp(sourceX - 0.5, 0, sourceWidth - 1);
+        const sampleY = clamp(sourceY - 0.5, 0, sourceHeight - 1);
+        const x0 = Math.floor(sampleX);
+        const y0 = Math.floor(sampleY);
         const x1 = Math.min(sourceWidth - 1, x0 + 1);
         const y1 = Math.min(sourceHeight - 1, y0 + 1);
-        const xWeight = sourceX - x0;
-        const yWeight = sourceY - y0;
+        const xWeight = sampleX - x0;
+        const yWeight = sampleY - y0;
         const topLeft = (y0 * sourceWidth + x0) * 4;
         const topRight = (y0 * sourceWidth + x1) * 4;
         const bottomLeft = (y1 * sourceWidth + x0) * 4;
