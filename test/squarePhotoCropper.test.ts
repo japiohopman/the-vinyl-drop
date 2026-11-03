@@ -269,6 +269,39 @@ describe('Square cover photo cropper', () => {
     }
   });
 
+  it('does not upload a stale correction after the seller cancels processing', async () => {
+    await renderEditPage();
+    await page.evaluate("(() => {" +
+      "const originalToBlob = HTMLCanvasElement.prototype.toBlob;" +
+      "HTMLCanvasElement.prototype.toBlob = function(callback, type, quality) {" +
+        "originalToBlob.call(this, blob => window.setTimeout(() => callback(blob), 400), type, quality);" +
+      "};" +
+      "const form = document.querySelector('form[action$=\\\"/photos\\\"]');" +
+      "form.addEventListener('submit', event => event.preventDefault(), true);" +
+    "})()");
+
+    await selectPortrait('front_cover');
+    await page.waitForFunction(
+      "document.querySelector('#selected-photo-info').textContent.includes('300 × 500 px')",
+      undefined,
+      { timeout: 5000 }
+    );
+    await page.locator('form[action$="/photos"] button[type="submit"]').click();
+    await page.waitForFunction(
+      "document.querySelector('form[action$=\\\"/photos\\\"] button[type=\\\"submit\\\"]').disabled",
+      undefined,
+      { timeout: 5000 }
+    );
+
+    await page.locator('[data-close-photo-upload]').first().click();
+    await page.waitForTimeout(500);
+
+    expect(await page.locator('#photoUploadDialog').isVisible()).toBe(false);
+    expect(await page.locator('#photoFile').evaluate((input) => (input as HTMLInputElement).files?.length || 0)).toBe(0);
+    expect(await page.locator('form[action$="/photos"]').getAttribute('data-photo-editor-ready')).toBeNull();
+    expect(await page.locator('form[action$="/photos"] button[type="submit"]').isEnabled()).toBe(true);
+  });
+
   it('shows a normal preview without cropping condition/detail photos', async () => {
     await renderEditPage();
     await selectPortrait('detail');
