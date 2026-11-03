@@ -3,11 +3,8 @@ import { createHmac, randomBytes } from 'crypto';
 import { z } from 'zod';
 import { renderWithLayout } from '../utils/render';
 import { TERMS_VERSION } from '../services/registrationConsent';
-import {
-  CONTACT_MESSAGE_CATEGORIES,
-  ContactMessageCategory,
-  sendContactMessage,
-} from '../services/contactMessageService';
+import { CONTACT_MESSAGE_CATEGORIES, sendContactMessage } from '../services/contactMessageService';
+import type { ContactMessageCategory } from '../services/contactMessageService';
 
 const CONTACT_EMAIL = 'yepyouknowhim@gmail.com';
 const CONTACT_COOLDOWN_MS = 60_000;
