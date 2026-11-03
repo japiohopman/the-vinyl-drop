@@ -20,6 +20,9 @@ describe('contact message delivery service', () => {
       name: 'Record fan',
       email: 'sender@example.com',
       message: 'A problem with this record listing.',
+      category: 'general',
+      contentUrl: '',
+      goodFaithConfirmed: false,
     });
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -33,9 +36,27 @@ describe('contact message delivery service', () => {
     expect(payload.from).toBe('The Vinyl Drop <no-reply@thevinyldrop.nl>');
     expect(payload.to).toEqual(['yepyouknowhim@gmail.com']);
     expect(payload.reply_to).toBe('sender@example.com');
-    expect(payload.subject).toBe('The Vinyl Drop — contact form message');
+    expect(payload.subject).toBe('The Vinyl Drop — General question or feedback');
+    expect(payload.text).toContain('Category: General question or feedback');
     expect(payload.text).toContain('A problem with this record listing.');
     expect(payload).not.toHaveProperty('html');
+  });
+
+  it('includes the structured legal-notice details in the mail without storing them', async () => {
+    await sendContactMessage({
+      name: 'Rights holder',
+      email: 'sender@example.com',
+      message: 'This listing uses a protected image without permission and identifies the specific work and rights involved.',
+      category: 'copyright-trademark',
+      contentUrl: 'https://thevinyldrop.nl/listings/123',
+      goodFaithConfirmed: true,
+    });
+
+    const init = fetchSpy.mock.calls[0][1] as RequestInit;
+    const payload = JSON.parse(String(init.body)) as Record<string, unknown>;
+    expect(payload.subject).toContain('Copyright or trademark concern');
+    expect(payload.text).toContain('Content URL: https://thevinyldrop.nl/listings/123');
+    expect(payload.text).toContain('Good-faith confirmation: confirmed');
   });
 
   it('fails closed when RESEND_API_KEY is missing without making a request', async () => {
@@ -45,6 +66,9 @@ describe('contact message delivery service', () => {
       name: '',
       email: 'sender@example.com',
       message: 'A problem with this record listing.',
+      category: 'general',
+      contentUrl: '',
+      goodFaithConfirmed: false,
     })).rejects.toMatchObject({ reason: 'configuration' });
 
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -57,6 +81,9 @@ describe('contact message delivery service', () => {
       name: '',
       email: 'sender@example.com',
       message: 'A problem with this record listing.',
+      category: 'general',
+      contentUrl: '',
+      goodFaithConfirmed: false,
     })).rejects.toBeInstanceOf(ContactMessageDeliveryError);
   });
 });
