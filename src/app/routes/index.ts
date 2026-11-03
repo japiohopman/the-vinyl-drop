@@ -14,6 +14,7 @@ import listingRoutes from './listingRoutes';
 import releaseRoutes from './releaseRoutes';
 import messagingRoutes from './messagingRoutes';
 import { getCatalogueSuggestions } from '../controllers/catalogueSearchController';
+import { postProductionRateLimitDiagnostics } from '../controllers/productionRateLimitDiagnosticsController';
 
 const router = Router();
 
@@ -42,6 +43,7 @@ router.get('/drop/new', requireAuth, getCreateCustomReleasePage);
 
 router.get('/design-system', getDesignSystemPage);
 router.post('/design-system/demo', postDesignSystemDemo);
+router.post('/_internal/production/rate-limit-diagnostics', postProductionRateLimitDiagnostics);
 
 
 router.get('/health', (req: Request, res: Response) => {
