@@ -322,7 +322,7 @@ describe('Square cover photo cropper', () => {
       { timeout: 5000 }
     );
 
-    await page.locator('[data-close-photo-upload]').first().click();
+    await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
 
     expect(await page.locator('#photoUploadDialog').isVisible()).toBe(false);
