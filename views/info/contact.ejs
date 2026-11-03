@@ -40,31 +40,31 @@
 
         <div style="margin-bottom: var(--space-4);">
           <label for="contact-name" style="display: block; font-weight: 600; margin-bottom: var(--space-2);">Name (required for illegal-content, copyright/trademark and counterfeit/fraud notices)</label>
-          <input id="contact-name" name="name" type="text" autocomplete="name" maxlength="80" placeholder="Your name" value="<%= contactForm.values.name %>" aria-invalid="<%= Boolean(contactForm.fieldErrors.name) %>" <%= contactForm.fieldErrors.name ? 'aria-describedby="contact-name-error"' : '' %> style="width: 100%;">
+          <input id="contact-name" name="name" type="text" autocomplete="name" maxlength="80" placeholder="Your name" value="<%= contactForm.values.name %>" aria-invalid="<%= Boolean(contactForm.fieldErrors.name) %>" <% if (contactForm.fieldErrors.name) { %>aria-describedby="contact-name-error"<% } %> style="width: 100%;">
           <% if (contactForm.fieldErrors.name) { %><p id="contact-name-error" role="alert" style="color: var(--color-rust-accessible); font-size: var(--font-size-sm);"><%= contactForm.fieldErrors.name %></p><% } %>
         </div>
 
         <div style="margin-bottom: var(--space-4);">
           <label for="contact-email" style="display: block; font-weight: 600; margin-bottom: var(--space-2);">Reply email address</label>
-          <input id="contact-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required value="<%= contactForm.values.email %>" aria-invalid="<%= Boolean(contactForm.fieldErrors.email) %>" <%= contactForm.fieldErrors.email ? 'aria-describedby="contact-email-error"' : '' %> style="width: 100%;">
+          <input id="contact-email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required value="<%= contactForm.values.email %>" aria-invalid="<%= Boolean(contactForm.fieldErrors.email) %>" <% if (contactForm.fieldErrors.email) { %>aria-describedby="contact-email-error"<% } %> style="width: 100%;">
           <% if (contactForm.fieldErrors.email) { %><p id="contact-email-error" role="alert" style="color: var(--color-rust-accessible); font-size: var(--font-size-sm);"><%= contactForm.fieldErrors.email %></p><% } %>
         </div>
 
         <div style="margin-bottom: var(--space-4);">
           <label for="contact-content-url" style="display: block; font-weight: 600; margin-bottom: var(--space-2);">Exact page URL (required for content reports)</label>
-          <input id="contact-content-url" name="contentUrl" type="url" inputmode="url" maxlength="2048" placeholder="https://thevinyldrop.nl/listings/..." value="<%= contactForm.values.contentUrl %>" aria-invalid="<%= Boolean(contactForm.fieldErrors.contentUrl) %>" <%= contactForm.fieldErrors.contentUrl ? 'aria-describedby="contact-content-url-error"' : '' %> style="width: 100%;">
+          <input id="contact-content-url" name="contentUrl" type="url" inputmode="url" maxlength="2048" placeholder="https://thevinyldrop.nl/listings/..." value="<%= contactForm.values.contentUrl %>" aria-invalid="<%= Boolean(contactForm.fieldErrors.contentUrl) %>" <% if (contactForm.fieldErrors.contentUrl) { %>aria-describedby="contact-content-url-error"<% } %> style="width: 100%;">
           <% if (contactForm.fieldErrors.contentUrl) { %><p id="contact-content-url-error" role="alert" style="color: var(--color-rust-accessible); font-size: var(--font-size-sm);"><%= contactForm.fieldErrors.contentUrl %></p><% } %>
         </div>
 
         <div style="margin-bottom: var(--space-4);">
           <label for="contact-message" style="display: block; font-weight: 600; margin-bottom: var(--space-2);">Details / explanation</label>
-          <textarea id="contact-message" name="message" placeholder="Tell us what happened and why the item may be illegal or violate the Community Rules..." required minlength="10" maxlength="5000" rows="6" aria-invalid="<%= Boolean(contactForm.fieldErrors.message) %>" <%= contactForm.fieldErrors.message ? 'aria-describedby="contact-message-error"' : '' %> style="width: 100%; resize: vertical;"><%= contactForm.values.message %></textarea>
+          <textarea id="contact-message" name="message" placeholder="Tell us what happened and why the item may be illegal or violate the Community Rules..." required minlength="10" maxlength="5000" rows="6" aria-invalid="<%= Boolean(contactForm.fieldErrors.message) %>" <% if (contactForm.fieldErrors.message) { %>aria-describedby="contact-message-error"<% } %> style="width: 100%; resize: vertical;"><%= contactForm.values.message %></textarea>
           <% if (contactForm.fieldErrors.message) { %><p id="contact-message-error" role="alert" style="color: var(--color-rust-accessible); font-size: var(--font-size-sm);"><%= contactForm.fieldErrors.message %></p><% } %>
         </div>
 
         <div style="margin-bottom: var(--space-4);">
           <label style="display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--font-size-sm); line-height: 1.5;">
-            <input name="goodFaithConfirmed" type="checkbox" value="yes" <%= contactForm.values.goodFaithConfirmed === 'yes' ? 'checked' : '' %> aria-invalid="<%= Boolean(contactForm.fieldErrors.goodFaithConfirmed) %>" <%= contactForm.fieldErrors.goodFaithConfirmed ? 'aria-describedby="contact-good-faith-error"' : '' %> style="margin-top: 0.2rem;">
+            <input name="goodFaithConfirmed" type="checkbox" value="yes" <%= contactForm.values.goodFaithConfirmed === 'yes' ? 'checked' : '' %> aria-invalid="<%= Boolean(contactForm.fieldErrors.goodFaithConfirmed) %>" <% if (contactForm.fieldErrors.goodFaithConfirmed) { %>aria-describedby="contact-good-faith-error"<% } %> style="margin-top: 0.2rem;">
             <span>I believe the information and allegations in this notice are accurate and complete, and I am submitting it in good faith. Required for illegal-content, copyright/trademark and counterfeit/fraud notices.</span>
           </label>
           <% if (contactForm.fieldErrors.goodFaithConfirmed) { %><p id="contact-good-faith-error" role="alert" style="color: var(--color-rust-accessible); font-size: var(--font-size-sm);"><%= contactForm.fieldErrors.goodFaithConfirmed %></p><% } %>
