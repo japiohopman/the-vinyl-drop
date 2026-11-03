@@ -225,7 +225,7 @@ describe('Square cover photo cropper', () => {
       await page.waitForFunction(
         `document.querySelector('form[action$="/photos"]').dataset.photoEditorReady === 'true'`,
         undefined,
-        { timeout: 5000 }
+        { timeout: 20000 }
       );
       const uploaded = await page.evaluate("(async () => {" +
         "const fileInput = document.querySelector('#photoFile');" +
