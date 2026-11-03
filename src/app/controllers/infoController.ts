@@ -3,7 +3,8 @@ import { createHmac, randomBytes } from 'crypto';
 import { z } from 'zod';
 import { renderWithLayout } from '../utils/render';
 import { TERMS_VERSION } from '../services/registrationConsent';
-import { sendContactMessage } from '../services/contactMessageService';
+import { CONTACT_MESSAGE_CATEGORIES, sendContactMessage } from '../services/contactMessageService';
+import type { ContactMessageCategory } from '../services/contactMessageService';
 
 const CONTACT_EMAIL = 'yepyouknowhim@gmail.com';
 const CONTACT_COOLDOWN_MS = 60_000;
@@ -11,15 +12,92 @@ const MAX_CONTACT_RATE_KEYS = 2_000;
 const contactRateLimitSecret = randomBytes(32);
 const contactSubmissionTimes = new Map<string, number>();
 
+const formalNoticeCategories: readonly ContactMessageCategory[] = [
+  'illegal-content',
+  'copyright-trademark',
+  'counterfeit-or-fraud',
+];
+
+const categoriesRequiringLocation: readonly ContactMessageCategory[] = [
+  ...formalNoticeCategories,
+  'community-rules',
+];
+
 const contactMessageSchema = z.object({
   name: z.string().trim().max(80, 'Name must be 80 characters or fewer.').optional().default(''),
   email: z.string().trim().min(1, 'Enter an email address.').max(254, 'Email address is too long.').email('Enter a valid email address.'),
   message: z.string().trim().min(10, 'Message must be at least 10 characters.').max(5_000, 'Message must be 5,000 characters or fewer.'),
+  category: z.enum(CONTACT_MESSAGE_CATEGORIES).optional().default('general'),
+  contentUrl: z.string().trim().max(2_048, 'The page URL must be 2,048 characters or fewer.').optional().default(''),
+  goodFaithConfirmed: z.enum(['yes', '']).optional().default(''),
   contactFaxNumber: z.string().max(0, 'Leave this field empty.').optional().default(''),
+}).superRefine((data, context) => {
+  const isFormalNotice = formalNoticeCategories.includes(data.category);
+
+  if (isFormalNotice && !data.name) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['name'],
+      message: 'Enter your name for an illegal-content, copyright/trademark or counterfeit/fraud notice.',
+    });
+  }
+
+  if (categoriesRequiringLocation.includes(data.category) && !data.contentUrl) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['contentUrl'],
+      message: 'Enter the exact page URL so the item can be identified.',
+    });
+  }
+
+  if (data.contentUrl) {
+    try {
+      const containsControlCharacter = [...data.contentUrl].some((character) => {
+        const code = character.charCodeAt(0);
+        return code < 0x20 || code === 0x7f;
+      });
+      if (containsControlCharacter) {
+        throw new Error('Control characters are not allowed in a page URL');
+      }
+      const parsedUrl = new URL(data.contentUrl);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol) || !parsedUrl.hostname || parsedUrl.username || parsedUrl.password) {
+        throw new Error('Unsupported URL');
+      }
+    } catch {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contentUrl'],
+        message: 'Enter a complete http or https page URL.',
+      });
+    }
+  }
+
+  if (isFormalNotice && data.message.trim().length < 30) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['message'],
+      message: 'Explain the reasons for this notice in at least 30 characters.',
+    });
+  }
+
+  if (isFormalNotice && data.goodFaithConfirmed !== 'yes') {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['goodFaithConfirmed'],
+      message: 'Confirm that you believe the information and allegations are accurate and complete.',
+    });
+  }
 });
 
-type ContactField = 'name' | 'email' | 'message';
-type ContactFormValues = { name: string; email: string; message: string };
+type ContactField = 'name' | 'email' | 'message' | 'category' | 'contentUrl' | 'goodFaithConfirmed';
+type ContactFormValues = {
+  name: string;
+  email: string;
+  message: string;
+  category: ContactMessageCategory | '';
+  contentUrl: string;
+  goodFaithConfirmed: string;
+};
 type ContactFormState = {
   values: ContactFormValues;
   fieldErrors: Partial<Record<ContactField, string>>;
@@ -27,7 +105,14 @@ type ContactFormState = {
 };
 
 const emptyContactForm = (): ContactFormState => ({
-  values: { name: '', email: '', message: '' },
+  values: {
+    name: '',
+    email: '',
+    message: '',
+    category: 'general',
+    contentUrl: '',
+    goodFaithConfirmed: '',
+  },
   fieldErrors: {},
 });
 
@@ -79,12 +164,21 @@ export function getContactPage(req: Request, res: Response, next: NextFunction):
   }
 }
 
+/** Validates and forwards a contact message without storing its contents in application data. */
 export async function postContactMessage(req: Request, res: Response, next: NextFunction): Promise<void> {
   const body = req.body && typeof req.body === 'object' ? req.body as Record<string, unknown> : {};
+  const rawCategory: ContactMessageCategory | '' = typeof body.category === 'string' && CONTACT_MESSAGE_CATEGORIES.includes(body.category as ContactMessageCategory)
+    ? body.category as ContactMessageCategory
+    : body.category === undefined || body.category === ''
+      ? 'general'
+      : '';
   const values: ContactFormValues = {
     name: typeof body.name === 'string' ? body.name : '',
     email: typeof body.email === 'string' ? body.email : '',
     message: typeof body.message === 'string' ? body.message : '',
+    category: rawCategory,
+    contentUrl: typeof body.contentUrl === 'string' ? body.contentUrl : '',
+    goodFaithConfirmed: body.goodFaithConfirmed === 'yes' ? 'yes' : '',
   };
 
   // Reject automated submissions without pretending a message was sent.
@@ -102,8 +196,11 @@ export async function postContactMessage(req: Request, res: Response, next: Next
     const fieldErrors: Partial<Record<ContactField, string>> = {};
     for (const issue of parsed.error.issues) {
       const field = issue.path[0];
-      if ((field === 'name' || field === 'email' || field === 'message') && !fieldErrors[field]) {
-        fieldErrors[field] = issue.message;
+      if (
+        field === 'name' || field === 'email' || field === 'message' ||
+        field === 'category' || field === 'contentUrl' || field === 'goodFaithConfirmed'
+      ) {
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
       }
     }
     renderContact(res, next, 400, {
@@ -128,13 +225,18 @@ export async function postContactMessage(req: Request, res: Response, next: Next
       name: parsed.data.name,
       email: parsed.data.email,
       message: parsed.data.message,
+      category: parsed.data.category,
+      contentUrl: parsed.data.contentUrl,
+      goodFaithConfirmed: parsed.data.goodFaithConfirmed === 'yes',
     });
     renderContact(res, next, 200, {
-      values: { name: '', email: '', message: '' },
+      values: emptyContactForm().values,
       fieldErrors: {},
       feedback: {
         kind: 'success',
-        message: 'Your message was accepted by our email provider for sending. Delivery and response time are not guaranteed; please use the direct email above if you need to follow up.',
+        message: parsed.data.category === 'general' || parsed.data.category === 'privacy-request'
+          ? 'Your message was accepted by our email provider for sending. Delivery and response time are not guaranteed; please use the direct email above if you need to follow up.'
+          : 'Your report was accepted by our email provider for sending to the operator. This confirms hand-off to the email provider, not a decision about the report. Delivery and response time are not guaranteed.',
       },
     });
   } catch {

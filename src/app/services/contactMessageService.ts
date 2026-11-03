@@ -1,7 +1,32 @@
+export const CONTACT_MESSAGE_CATEGORIES = [
+  'general',
+  'illegal-content',
+  'copyright-trademark',
+  'counterfeit-or-fraud',
+  'community-rules',
+  'safety-concern',
+  'privacy-request',
+] as const;
+
+export type ContactMessageCategory = typeof CONTACT_MESSAGE_CATEGORIES[number];
+
+export const CONTACT_MESSAGE_CATEGORY_LABELS: Record<ContactMessageCategory, string> = {
+  general: 'General question or feedback',
+  'illegal-content': 'Illegal content notice',
+  'copyright-trademark': 'Copyright or trademark concern',
+  'counterfeit-or-fraud': 'Suspected counterfeit record or fraud',
+  'community-rules': 'Community Rules concern',
+  'safety-concern': 'Safety concern',
+  'privacy-request': 'Privacy or personal-data request',
+};
+
 export interface ContactMessageInput {
   name: string;
   email: string;
   message: string;
+  category: ContactMessageCategory;
+  contentUrl: string;
+  goodFaithConfirmed: boolean;
 }
 
 export type ContactDeliveryFailure = 'configuration' | 'delivery';
@@ -23,6 +48,7 @@ const SENDER = 'The Vinyl Drop <no-reply@thevinyldrop.nl>';
 const RECIPIENT = 'yepyouknowhim@gmail.com';
 const REQUEST_TIMEOUT_MS = 8_000;
 
+/** Sends a categorized contact message through Resend without persisting it in the application. */
 export async function sendContactMessage(input: ContactMessageInput): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
@@ -30,14 +56,18 @@ export async function sendContactMessage(input: ContactMessageInput): Promise<vo
   }
 
   const safeName = input.name.replace(/[\r\n]+/g, ' ').trim() || '(not provided)';
+  const categoryLabel = CONTACT_MESSAGE_CATEGORY_LABELS[input.category];
   const text = [
     'New message submitted through The Vinyl Drop contact form.',
     '',
+    `Category: ${categoryLabel}`,
     `Name: ${safeName}`,
     `Reply-to: ${input.email}`,
+    `Content URL: ${input.contentUrl || '(not provided)'}`,
+    `Good-faith confirmation: ${input.goodFaithConfirmed ? 'confirmed' : 'not applicable'}`,
     '',
-    'Message:',
-    '--------',
+    'Details / explanation:',
+    '---------------------',
     input.message,
     '',
     'This message was submitted by a website visitor. The application does not retain a support-message history.',
@@ -57,7 +87,7 @@ export async function sendContactMessage(input: ContactMessageInput): Promise<vo
         from: SENDER,
         to: [RECIPIENT],
         reply_to: input.email,
-        subject: 'The Vinyl Drop — contact form message',
+        subject: `The Vinyl Drop — ${categoryLabel}`,
         text,
       }),
       signal: abortController.signal,
