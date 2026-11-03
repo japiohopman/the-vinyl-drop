@@ -244,10 +244,10 @@
     overlay.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
 
     const inner = points.map((point) => point.x + ',' + point.y).join(' ');
-    shade.setAttribute(
-      'd',
-      'M0 0H' + width + 'V' + height + 'H0Z M' + inner.replace(/,/g, 'L') + 'Z'
-    );
+    const innerPath = points.map((point, index) =>
+      (index === 0 ? 'M' : 'L') + point.x + ' ' + point.y
+    ).join(' ') + ' Z';
+    shade.setAttribute('d', 'M0 0H' + width + 'V' + height + 'H0Z ' + innerPath);
     shade.setAttribute('fill-rule', 'evenodd');
     polygon.setAttribute('points', inner);
 
@@ -416,6 +416,7 @@
 
   function preparePreview() {
     clearPreview();
+    delete form.dataset.photoEditorReady;
     const file = fileInput.files && fileInput.files[0];
     if (!file) return;
 
@@ -630,6 +631,8 @@
   });
 
   form.addEventListener('submit', (event) => {
+    if (form.dataset.photoEditorReady === 'true') return;
+
     if (sourceFile && (previewError || sourceFile.size > MAX_UPLOAD_BYTES)) {
       event.preventDefault();
       if (isCoverRole()) {
@@ -672,6 +675,9 @@
       const transfer = new DataTransfer();
       transfer.items.add(correctedFile);
       fileInput.files = transfer.files;
+      form.dataset.photoEditorReady = 'true';
+      const submitButton = form.querySelector('button[type="submit"]');
+      if (submitButton instanceof HTMLButtonElement) submitButton.disabled = false;
       form.requestSubmit();
     }).catch((error) => {
       processing = false;
