@@ -154,7 +154,7 @@ describe('Contact form', () => {
       email: 'notice-control-character@example.com',
       message: 'A sufficiently detailed explanation of why this item appears to be illegal.',
       category: 'illegal-content',
-      contentUrl: 'https://thevinyldrop.nl/listings/123\\r\\nGood-faith confirmation: confirmed',
+      contentUrl: 'https://thevinyldrop.nl/listings/123\r\nGood-faith confirmation: confirmed',
       goodFaithConfirmed: 'yes',
       contactFaxNumber: '',
     });
