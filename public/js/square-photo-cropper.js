@@ -402,7 +402,10 @@
     return { canvas, context, points: scaledPoints };
   }
 
-  async function createUploadFile() {
+  async function createUploadFile(originalFile) {
+    if (!originalFile || typeof originalFile.name !== 'string') {
+      throw new Error('Select a photo before preparing the corrected image.');
+    }
     const processingSource = buildProcessingCanvas();
     const source = processingSource.context.getImageData(
       0,
@@ -432,7 +435,7 @@
           reject(new Error('The corrected image could not be encoded. Try another photo.'));
           return;
         }
-        const stem = sourceFile.name.replace(/\.[^.]+$/, '') || 'album-cover';
+        const stem = originalFile.name.replace(/\.[^.]+$/, '') || 'album-cover';
         resolve(new File([blob], stem + '-' + roleSelect.value + '-square.jpg', {
           type: 'image/jpeg',
           lastModified: Date.now(),
@@ -701,7 +704,7 @@
     const cropImage = image;
     const cropRole = roleSelect.value;
 
-    createUploadFile().then((correctedFile) => {
+    createUploadFile(cropSource).then((correctedFile) => {
       // A changed selection or closed dialog invalidates an in-flight encode.
       if (previewSequence !== cropSequence || sourceFile !== cropSource ||
           image !== cropImage || roleSelect.value !== cropRole) return;
