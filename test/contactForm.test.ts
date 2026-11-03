@@ -82,7 +82,11 @@ describe('Contact form', () => {
     expect(incomplete.text).toContain('Enter the exact page URL');
     expect(incomplete.text).toContain('at least 30 characters');
     expect(incomplete.text).toContain('Confirm that you believe');
+    expect(incomplete.text).toContain('aria-describedby="contact-name-error"');
+    expect(incomplete.text).toContain('aria-describedby="contact-content-url-error"');
+    expect(incomplete.text).toContain('aria-describedby="contact-message-error"');
     expect(incomplete.text).toContain('aria-describedby="contact-good-faith-error"');
+    expect(incomplete.text).not.toContain('aria-describedby=&#34;');
     expect(incomplete.text).toContain('id="contact-good-faith-error"');
     expect(sendMock).not.toHaveBeenCalled();
   });
