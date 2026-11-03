@@ -656,11 +656,10 @@ describe('Authentication & Session Handling', () => {
             ageConfirmed: 'false',
           });
 
-        const rejectedForMissingConsent = [];
         for (let index = 0; index < 5; index += 1) {
-          rejectedForMissingConsent.push(await attempt());
+          const response = await attempt();
+          expect(response.status).toBe(400);
         }
-        expect(rejectedForMissingConsent.map((response) => response.status)).toEqual([400, 400, 400, 400, 400]);
 
         const blockedAttempt = await attempt();
         expect(blockedAttempt.status).toBe(429);
@@ -726,11 +725,10 @@ describe('Authentication & Session Handling', () => {
 
         const app = createApp();
         const attempt = () => request(app).get('/auth/google').set('CF-Connecting-IP', '203.0.113.32');
-        const allowedAttempts = [];
         for (let index = 0; index < 10; index += 1) {
-          allowedAttempts.push(await attempt());
+          const response = await attempt();
+          expect(response.status).toBe(302);
         }
-        expect(allowedAttempts.every((response) => response.status === 302)).toBe(true);
 
         const blockedAttempt = await attempt();
         expect(blockedAttempt.status).toBe(429);
@@ -919,11 +917,10 @@ describe('Authentication & Session Handling', () => {
             .set('CF-Connecting-IP', '203.0.113.33')
             .send({ email: 'forgot-limit@example.com' });
 
-          const allowedAttempts = [];
           for (let index = 0; index < 5; index += 1) {
-            allowedAttempts.push(await attempt());
+            const response = await attempt();
+            expect(response.status).toBe(200);
           }
-          expect(allowedAttempts.every((response) => response.status === 200)).toBe(true);
 
           const blockedAttempt = await attempt();
           expect(blockedAttempt.status).toBe(429);
