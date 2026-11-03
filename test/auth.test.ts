@@ -639,6 +639,39 @@ describe('Authentication & Session Handling', () => {
       }
     });
 
+    it('POST /auth/signup enforces the five-per-hour shared limit on the real route', async () => {
+      setRateLimitStoreForTests(createInMemoryRateLimitStoreForTests());
+      const fixedNow = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-11-03T06:00:00.000Z'));
+      try {
+        const app = createApp();
+        const attempt = () => request(app)
+          .post('/auth/signup')
+          .set('Origin', 'http://localhost:3000')
+          .set('CF-Connecting-IP', '203.0.113.31')
+          .send({
+            username: 'limited_signup',
+            email: 'signup-limit@example.com',
+            password: 'securepassword123',
+            termsAccepted: 'false',
+            ageConfirmed: 'false',
+          });
+
+        for (let index = 0; index < 5; index += 1) {
+          const response = await attempt();
+          expect(response.status).toBe(400);
+        }
+
+        const blockedAttempt = await attempt();
+        expect(blockedAttempt.status).toBe(429);
+        expect(blockedAttempt.headers['retry-after']).toBeDefined();
+        expect(mockSupabase.auth.signUp).not.toHaveBeenCalled();
+        expect(mockIsPasswordPwned).not.toHaveBeenCalled();
+      } finally {
+        fixedNow.mockRestore();
+        setRateLimitStoreForTests(null);
+      }
+    });
+
     it('POST /auth/login should reject state-changing requests missing both Origin and Referer headers (CSRF Fail-Closed)', async () => {
       const app = createApp();
       const res = await request(app)
@@ -679,6 +712,32 @@ describe('Authentication & Session Handling', () => {
 
       expect(res.status).toBe(302);
       expect(res.header.location).toContain('accounts.google.com');
+    });
+
+    it('GET /auth/google enforces the ten-per-fifteen-minute shared limit on the real route', async () => {
+      setRateLimitStoreForTests(createInMemoryRateLimitStoreForTests());
+      const fixedNow = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-11-03T06:00:00.000Z'));
+      try {
+        mockSupabase.auth.signInWithOAuth.mockResolvedValue({
+          data: { url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=rate-limit-test' },
+          error: null,
+        });
+
+        const app = createApp();
+        const attempt = () => request(app).get('/auth/google').set('CF-Connecting-IP', '203.0.113.32');
+        for (let index = 0; index < 10; index += 1) {
+          const response = await attempt();
+          expect(response.status).toBe(302);
+        }
+
+        const blockedAttempt = await attempt();
+        expect(blockedAttempt.status).toBe(429);
+        expect(blockedAttempt.headers['retry-after']).toBeDefined();
+        expect(mockSupabase.auth.signInWithOAuth).toHaveBeenCalledTimes(10);
+      } finally {
+        fixedNow.mockRestore();
+        setRateLimitStoreForTests(null);
+      }
     });
 
     it('POST /auth/google/start carries signed registration consent through the OAuth callback', async () => {
@@ -744,6 +803,13 @@ describe('Authentication & Session Handling', () => {
       expect(res.status).toBe(400);
       expect(res.text).toContain('complete registration');
       expect(createProfileSpy).not.toHaveBeenCalled();
+      // Supabase may have created an Auth identity before returning from Google,
+      // but the app must revoke that local session and never issue app session cookies.
+      expect(mockSupabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+      const setCookies = res.headers['set-cookie'] || [];
+      const cookieText = (Array.isArray(setCookies) ? setCookies : [setCookies]).join(';');
+      expect(cookieText).not.toContain('sb-access-token=');
+      expect(cookieText).not.toContain('sb-refresh-token=');
     });
 
     it('GET /auth/callback should handle PKCE exchange failure safely', async () => {
@@ -837,6 +903,33 @@ describe('Authentication & Session Handling', () => {
         expect(res.status).toBe(200);
         expect(res.text).toContain('If an account with that email exists, we have sent instructions');
         expect(res.text).not.toContain('User not found');
+      });
+
+      it('POST /auth/forgot-password enforces the five-per-hour email-and-IP limit on the real route', async () => {
+        setRateLimitStoreForTests(createInMemoryRateLimitStoreForTests());
+        const fixedNow = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-11-03T06:00:00.000Z'));
+        try {
+          mockSupabase.auth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
+          const app = createApp();
+          const attempt = () => request(app)
+            .post('/auth/forgot-password')
+            .set('Origin', 'http://localhost:3000')
+            .set('CF-Connecting-IP', '203.0.113.33')
+            .send({ email: 'forgot-limit@example.com' });
+
+          for (let index = 0; index < 5; index += 1) {
+            const response = await attempt();
+            expect(response.status).toBe(200);
+          }
+
+          const blockedAttempt = await attempt();
+          expect(blockedAttempt.status).toBe(429);
+          expect(blockedAttempt.headers['retry-after']).toBeDefined();
+          expect(mockSupabase.auth.resetPasswordForEmail).toHaveBeenCalledTimes(5);
+        } finally {
+          fixedNow.mockRestore();
+          setRateLimitStoreForTests(null);
+        }
       });
 
       it('POST /auth/forgot-password should enforce same-origin CSRF protection', async () => {
