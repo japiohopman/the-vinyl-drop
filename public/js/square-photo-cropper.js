@@ -170,8 +170,10 @@
 
   function redo() {
     if (redoStack.length === 0) return;
-    pushUndo(cloneState());
-    restoreState(redoStack.pop());
+    const nextState = redoStack.pop();
+    if (undoStack.length >= 30) undoStack.shift();
+    undoStack.push(cloneState());
+    restoreState(nextState);
   }
 
   function clearCanvas(canvas, context) {
@@ -325,22 +327,42 @@
     if (!image || !points.length) return;
     try {
       const source = sourceContext.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
-      const adjustments = showBefore ? core.DEFAULT_ADJUSTMENTS : readAdjustments();
+
+      if (showBefore) {
+        clearCanvas(resultCanvas, resultContext);
+        resultContext.fillStyle = '#fffdf8';
+        resultContext.fillRect(0, 0, resultCanvas.width, resultCanvas.height);
+        const scale = Math.min(
+          resultCanvas.width / sourceCanvas.width,
+          resultCanvas.height / sourceCanvas.height
+        );
+        const width = sourceCanvas.width * scale;
+        const height = sourceCanvas.height * scale;
+        resultContext.drawImage(
+          sourceCanvas,
+          (resultCanvas.width - width) / 2,
+          (resultCanvas.height - height) / 2,
+          width,
+          height
+        );
+        drawHistogram(source.data);
+        setStatus('Original photo — your corner and tonal edits are preserved.');
+        return;
+      }
+
       const result = core.rectifyImageData(
         source,
         points,
         resultCanvas.width,
         resultCanvas.height,
-        adjustments
+        readAdjustments()
       );
       const frame = resultContext.createImageData(result.width, result.height);
       frame.data.set(result.data);
       resultContext.putImageData(frame, 0, 0);
       drawHistogram(result.data);
       updateAdjustmentOutputs();
-      setStatus(showBefore
-        ? 'Before preview — your edits are still preserved.'
-        : 'Preview updated. The saved file will contain these pixel adjustments.');
+      setStatus('Preview updated. The saved file will contain these pixel adjustments.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'The preview could not be rendered.', true);
     }
