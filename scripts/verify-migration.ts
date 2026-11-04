@@ -38,6 +38,15 @@ export async function verifyMigrations(): Promise<void> {
     $$ LANGUAGE plpgsql STABLE;
 
     CREATE SCHEMA IF NOT EXISTS storage;
+    CREATE TABLE IF NOT EXISTS storage.buckets (
+      id text PRIMARY KEY,
+      name text NOT NULL,
+      public boolean NOT NULL DEFAULT false
+    );
+    INSERT INTO storage.buckets (id, name, public)
+    VALUES ('listing-photo-originals', 'listing-photo-originals', false)
+    ON CONFLICT (id) DO NOTHING;
+
     CREATE TABLE IF NOT EXISTS storage.objects (
       id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
       bucket_id text NOT NULL,
