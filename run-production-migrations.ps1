@@ -30,10 +30,14 @@ $requiredFiles = @(
     'drizzle.config.ts',
     'drizzle/meta/_journal.json',
     'check-production-db-target.ps1',
-    'scripts/productionMigrationPlan.ps1',
-    'scripts/productionStoragePolicies.ts',
-    'scripts/verifyProductionStoragePolicies.ts'
+    'scripts/productionMigrationPlan.ps1'
 )
+if ($Phase -eq 'ReleaseCandidate') {
+    $requiredFiles += @(
+        'scripts/productionStoragePolicies.ts',
+        'scripts/verifyProductionStoragePolicies.ts'
+    )
+}
 foreach ($file in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path (Get-Location) $file) -PathType Leaf)) {
         throw "Required file is missing. Run this script from the repository root; missing: $file"
@@ -67,20 +71,22 @@ if ([string]::IsNullOrWhiteSpace($drizzleKitPath)) {
 }
 
 $tsxPath = $null
-$tsxNames = if ($env:OS -eq 'Windows_NT') {
-    @('tsx.cmd', 'tsx.ps1', 'tsx')
-} else {
-    @('tsx')
-}
-foreach ($binaryName in $tsxNames) {
-    $candidate = Join-Path $binDirectory $binaryName
-    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-        $tsxPath = $candidate
-        break
+if ($Phase -eq 'ReleaseCandidate') {
+    $tsxNames = if ($env:OS -eq 'Windows_NT') {
+        @('tsx.cmd', 'tsx.ps1', 'tsx')
+    } else {
+        @('tsx')
     }
-}
-if ([string]::IsNullOrWhiteSpace($tsxPath)) {
-    throw 'The lockfile-installed local tsx binary is missing. Run npm ci --include=dev from the repository root; no registry fallback will be used.'
+    foreach ($binaryName in $tsxNames) {
+        $candidate = Join-Path $binDirectory $binaryName
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $tsxPath = $candidate
+            break
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($tsxPath)) {
+        throw 'The lockfile-installed local tsx binary is missing. Run npm ci --include=dev from the repository root; no registry fallback will be used.'
+    }
 }
 
 $journalPath = Join-Path (Get-Location) 'drizzle/meta/_journal.json'
