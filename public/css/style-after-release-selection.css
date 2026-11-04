@@ -64,6 +64,76 @@
   background: var(--color-white);
 }
 
+/* Desktop Dig toolbar — keep the search, submit action and view switcher
+   on the same measured 44px control line. Mobile Dig keeps its own layout. */
+@media (min-width: 768px) {
+  .dig-search-control-bar {
+    align-items: center;
+  }
+
+  .dig-primary-search-form {
+    align-items: center;
+  }
+
+  .dig-primary-search-form input[type="search"],
+  .dig-primary-search-form button {
+    box-sizing: border-box;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .dig-primary-search-form button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding-block: var(--space-2);
+  }
+
+  .dig-search-control-bar .view-mode-toggle {
+    box-sizing: border-box;
+    align-self: center;
+    height: 44px;
+    min-height: 44px;
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .dig-search-control-bar .view-toggle-btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 var(--space-3);
+  }
+
+  /* Keep the format, genre, advanced-filter and action controls on the same
+     deliberate desktop height rhythm as the search toolbar. */
+  .dig-responsive-desktop .browse-format-chip,
+  .dig-responsive-desktop .browse-primary-filters select,
+  .dig-responsive-desktop .browse-secondary-grid input,
+  .dig-responsive-desktop .browse-secondary-grid select,
+  .dig-responsive-desktop .browse-filter-actions .browse-filter-action-buttons .btn {
+    box-sizing: border-box;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .dig-responsive-desktop .browse-format-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding-block: var(--space-1);
+  }
+
+  .dig-responsive-desktop .browse-filter-actions .browse-filter-action-buttons .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
 .mobile-you-info-section {
   padding-top: var(--space-4);
   border-top: var(--border-thick);

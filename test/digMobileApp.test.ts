@@ -1997,7 +1997,7 @@ describe('Mobile Dig app-like viewport', () => {
   it('keeps the conventional Dig heading and browse controls unchanged at desktop breakpoints', async () => {
     await loadPage(768, 900);
 
-    for (const width of [768, 1024, 1280]) {
+    for (const width of [768, 1024, 1280, 1440]) {
       if (width !== 768) await page.setViewportSize({ width, height: 900 });
       expect(await page.locator('.mobile-context-header').isVisible()).toBe(false);
       expect(await page.locator('.browse-header h1').isVisible()).toBe(true);
@@ -2008,6 +2008,61 @@ describe('Mobile Dig app-like viewport', () => {
       expect(await page.locator('[data-dig-crate-toolbar]').isVisible()).toBe(false);
       expect(await page.locator('[data-dig-crate-source]').isVisible()).toBe(false);
       expect(await page.locator('[data-dig-filter-dialog]').isVisible()).toBe(false);
+
+      await page.locator('.browse-mobile-filter-panel').evaluate((element) => {
+        (element as HTMLDetailsElement).open = true;
+      });
+      await page.locator('.browse-secondary-filters').evaluate((element) => {
+        (element as HTMLDetailsElement).open = true;
+      });
+
+      const toolbarMetrics = await page.evaluate(() => {
+        const rect = (selector: string) => {
+          const element = document.querySelector(selector);
+          if (!element) throw new Error('Missing Dig control: ' + selector);
+          const bounds = element.getBoundingClientRect();
+          return {
+            height: bounds.height,
+            centerY: bounds.top + bounds.height / 2,
+            left: bounds.left,
+            right: bounds.right,
+          };
+        };
+        const controls = [
+          rect('#dig-primary-search'),
+          rect('.dig-primary-search-form > button[type="submit"]'),
+          rect('.dig-search-control-bar > .view-mode-toggle'),
+        ];
+        const format = rect('.dig-responsive-desktop .browse-format-chip');
+        const genre = rect('.dig-responsive-desktop #filter-genre');
+        const sort = rect('.dig-responsive-desktop #filter-sort');
+        const actions = Array.from(document.querySelectorAll('.dig-responsive-desktop .browse-filter-action-buttons .btn'))
+          .map((element) => {
+            const bounds = element.getBoundingClientRect();
+            return { height: bounds.height, centerY: bounds.top + bounds.height / 2 };
+          });
+        return {
+          controls,
+          format,
+          genre,
+          sort,
+          actions,
+          documentWidth: document.documentElement.scrollWidth,
+          bodyWidth: document.body.scrollWidth,
+        };
+      });
+
+      expect(toolbarMetrics.controls.map((control) => control.height)).toEqual([44, 44, 44]);
+      const toolbarCenters = toolbarMetrics.controls.map((control) => control.centerY);
+      expect(Math.max(...toolbarCenters) - Math.min(...toolbarCenters)).toBeLessThanOrEqual(1);
+      expect(toolbarMetrics.format.height).toBe(44);
+      expect(toolbarMetrics.genre.height).toBe(44);
+      expect(toolbarMetrics.sort.height).toBe(44);
+      expect(toolbarMetrics.actions.length).toBeGreaterThan(0);
+      expect(toolbarMetrics.actions.every((action) => action.height === 44)).toBe(true);
+      expect(toolbarMetrics.documentWidth).toBeLessThanOrEqual(width + 1);
+      expect(toolbarMetrics.bodyWidth).toBeLessThanOrEqual(width + 1);
+
       const desktopBackFaceBackgrounds = await page.locator('.dig-responsive-mobile .dig-sleeve-face-back')
         .evaluateAll((faces) => faces.map((face) => getComputedStyle(face).backgroundColor));
       expect(desktopBackFaceBackgrounds.length).toBeGreaterThan(0);
@@ -2022,8 +2077,8 @@ describe('Mobile Dig app-like viewport', () => {
       documentWidth: document.documentElement.scrollWidth,
       bodyWidth: document.body.scrollWidth,
     }));
-    expect(desktopWidths.documentWidth).toBeLessThanOrEqual(1280);
-    expect(desktopWidths.bodyWidth).toBeLessThanOrEqual(1280);
+    expect(desktopWidths.documentWidth).toBeLessThanOrEqual(1440);
+    expect(desktopWidths.bodyWidth).toBeLessThanOrEqual(1440);
   });
   it('defaults Dig sounds on, exposes a visible mute control, and plays only for committed actions', async () => {
     await loadPage(375, 812);
