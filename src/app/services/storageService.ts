@@ -3,9 +3,11 @@ import { getSupabaseClient } from '../../lib/supabase';
 import { config } from '../../config/env';
 
 const BUCKET_NAME = 'listing-photos';
+const ORIGINAL_BUCKET_NAME = 'listing-photo-originals';
 
 // In-memory mock storage map strictly for test environment
 const inMemoryStorage = new Map<string, { buffer: Buffer; contentType: string }>();
+const inMemoryOriginalStorage = new Map<string, { buffer: Buffer; contentType: string }>();
 
 export interface StorageOptions {
   accessToken?: string;
@@ -116,8 +118,95 @@ export function getPhotoPublicUrl(storagePath: string): string {
   return `/mock-storage/${storagePath}`;
 }
 
+
+/**
+ * Upload an immutable, EXIF-sanitized editing master to the PRIVATE originals bucket.
+ * The bucket must be private and owner-scoped Storage RLS policies must be provisioned.
+ */
+export async function uploadListingPhotoSourceToStorage(
+  listingId: string,
+  photoId: string,
+  buffer: Buffer,
+  options?: StorageOptions
+): Promise<string> {
+  const storagePath = `listings/${listingId}/${photoId}.source.webp`;
+  if (config.NODE_ENV === 'test') {
+    if (inMemoryOriginalStorage.has(storagePath)) {
+      throw new Error('A private source already exists for this listing photo.');
+    }
+    inMemoryOriginalStorage.set(storagePath, { buffer: Buffer.from(buffer), contentType: 'image/webp' });
+    return storagePath;
+  }
+
+  const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
+  const { error } = await supabase.storage.from(ORIGINAL_BUCKET_NAME).upload(storagePath, buffer, {
+    contentType: 'image/webp',
+    upsert: false,
+  });
+  if (error) throw new Error(`Supabase private source upload failed: ${error.message}`);
+  return storagePath;
+}
+
+/** Download an owner's private editing master using that seller's authenticated JWT. */
+export async function downloadListingPhotoSourceFromStorage(
+  storagePath: string,
+  options?: StorageOptions
+): Promise<Buffer> {
+  if (config.NODE_ENV === 'test') {
+    const stored = inMemoryOriginalStorage.get(storagePath);
+    if (!stored) throw new Error('Private listing photo source was not found in test storage.');
+    return Buffer.from(stored.buffer);
+  }
+  const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
+  const { data, error } = await supabase.storage.from(ORIGINAL_BUCKET_NAME).download(storagePath);
+  if (error || !data) throw new Error('Supabase private source download failed.');
+  return Buffer.from(await data.arrayBuffer());
+}
+
+/** Remove an immutable private editing master after its row is removed or replaced. */
+export async function deleteListingPhotoSourceFromStorage(
+  storagePath: string,
+  options?: StorageOptions
+): Promise<boolean> {
+  if (config.NODE_ENV === 'test') {
+    inMemoryOriginalStorage.delete(storagePath);
+    return true;
+  }
+  const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
+  const { error } = await supabase.storage.from(ORIGINAL_BUCKET_NAME).remove([storagePath]);
+  if (error) throw new Error(`Supabase private source deletion failed: ${error.message}`);
+  return true;
+}
+
+/** Restore a private source without replacing an existing immutable object. */
+export async function restoreListingPhotoSourceToStorage(
+  storagePath: string,
+  buffer: Buffer,
+  options?: StorageOptions
+): Promise<void> {
+  if (config.NODE_ENV === 'test') {
+    if (!inMemoryOriginalStorage.has(storagePath)) {
+      inMemoryOriginalStorage.set(storagePath, { buffer: Buffer.from(buffer), contentType: 'image/webp' });
+    }
+    return;
+  }
+  const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
+  const { error } = await supabase.storage.from(ORIGINAL_BUCKET_NAME).upload(storagePath, buffer, {
+    contentType: 'image/webp',
+    upsert: false,
+  });
+  if (error) {
+    // A timeout after successful upload may leave the immutable object in place.
+    const { data, error: readError } = await supabase.storage.from(ORIGINAL_BUCKET_NAME).download(storagePath);
+    if (readError || !data) {
+      throw new Error(`Supabase private source restoration failed: ${error.message}`);
+    }
+  }
+}
+
 export function clearInMemoryStorage(): void {
   inMemoryStorage.clear();
+  inMemoryOriginalStorage.clear();
 }
 
 
