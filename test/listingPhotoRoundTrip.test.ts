@@ -6,7 +6,7 @@ import supertest from 'supertest';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { setOverrideDb } from '../src/db';
-import { getEditListingPage, getPreviewListingPage, postUploadPhoto, postUpdateReleaseArtwork, postRestoreDiscogsArtwork } from '../src/app/controllers/listingController';
+import { getEditListingPage, getPreviewListingPage, getListingPhotoEditorSource, postEditListingPhoto, postDeletePhoto, postUploadPhoto, postUpdateReleaseArtwork, postRestoreDiscogsArtwork } from '../src/app/controllers/listingController';
 import { getDigBrowsePage } from '../src/app/controllers/browseController';
 import { getCreateCustomReleasePage, postCreateCustomRelease } from '../src/app/controllers/releaseController';
 import { errorHandler } from '../src/app/middleware/errorHandler';
@@ -14,13 +14,41 @@ import { validateSameOrigin } from '../src/app/middleware/csrf';
 import { multipartUploadHandler } from '../src/app/middleware/upload';
 import { findPhotosByListingId } from '../src/app/repositories/listingPhotoRepository';
 import { searchDigListings } from '../src/app/services/listingService';
-import { clearInMemoryStorage, downloadListingPhotoFromStorage } from '../src/app/services/storageService';
+import { clearInMemoryStorage, downloadListingPhotoFromStorage, downloadListingPhotoSourceFromStorage } from '../src/app/services/storageService';
 import { config } from '../src/config/env';
 
 const sellerId = '11111111-1111-4111-8111-111111111111';
 const releaseId = '22222222-2222-4222-8222-222222222222';
 const copyId = '33333333-3333-4333-8333-333333333333';
 const listingId = '44444444-4444-4444-8444-444444444444';
+
+function editorState(width: number, height: number): string {
+  const insetX = width * 0.045;
+  const insetY = height * 0.045;
+  return JSON.stringify({
+    version: 1,
+    sourceWidth: width,
+    sourceHeight: height,
+    corners: [
+      { x: insetX, y: insetY },
+      { x: width - insetX, y: insetY },
+      { x: width - insetX, y: height - insetY },
+      { x: insetX, y: height - insetY },
+    ],
+    adjustments: {
+      exposure: 0,
+      blackPoint: 0,
+      shadows: 0,
+      contrast: 0,
+      highlights: 0,
+      whitePoint: 255,
+      gamma: 1,
+      temperature: 0,
+      tint: 0,
+      saturation: 0,
+    },
+  });
+}
 
 describe('Seller cover photo HTTP round trip', () => {
   let database: PGlite;
@@ -108,6 +136,9 @@ describe('Seller cover photo HTTP round trip', () => {
       multipartUploadHandler,
       postUploadPhoto
     );
+    app.get('/listings/:id/photos/:photoId/editor-source', authenticateTestSeller, getListingPhotoEditorSource);
+    app.post('/listings/:id/photos/:photoId/edit', authenticateTestSeller, validateSameOrigin, multipartUploadHandler, postEditListingPhoto);
+    app.post('/listings/:id/photos/:photoId/delete', authenticateTestSeller, validateSameOrigin, postDeletePhoto);
     app.get('/listings/:id/edit', authenticateTestSeller, getEditListingPage);
     app.get('/listings/:id/preview', authenticateTestSeller, getPreviewListingPage);
     app.get('/releases/new', authenticateTestSeller, getCreateCustomReleasePage);
@@ -328,6 +359,8 @@ describe('Seller cover photo HTTP round trip', () => {
       .post(`/listings/${listingId}/photos`)
       .set('Origin', new URL(config.APP_BASE_URL).origin)
       .attach('photo', frontImage, { filename: 'physical-front.jpg', contentType: 'image/jpeg' })
+      .attach('originalPhoto', frontImage, { filename: 'physical-front-original.jpg', contentType: 'image/jpeg' })
+      .field('editorState', editorState(128, 128))
       .field('role', 'front_cover')
       .field('altText', '');
 
@@ -338,6 +371,8 @@ describe('Seller cover photo HTTP round trip', () => {
       .post(`/listings/${listingId}/photos`)
       .set('Origin', new URL(config.APP_BASE_URL).origin)
       .attach('photo', backImage, { filename: 'physical-back.jpg', contentType: 'image/jpeg' })
+      .attach('originalPhoto', backImage, { filename: 'physical-back-original.jpg', contentType: 'image/jpeg' })
+      .field('editorState', editorState(128, 128))
       .field('role', 'back_cover')
       .field('altText', '');
 
@@ -355,6 +390,46 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(front?.storagePath).toBeTruthy();
     expect(back?.storagePath).toBeTruthy();
     expect(front?.storagePath).not.toBe(back?.storagePath);
+    expect(front?.sourceStoragePath).toBeTruthy();
+    expect(back?.sourceStoragePath).toBeTruthy();
+    expect(front?.sourceIsLegacy).toBe(false);
+    expect(back?.sourceIsLegacy).toBe(false);
+    expect(front?.editorState).toEqual(JSON.parse(editorState(128, 128)));
+
+    const privateSourceBeforeEdit = await downloadListingPhotoSourceFromStorage(front!.sourceStoragePath!);
+    const privateSourceResponse = await supertest(app).get(`/listings/${listingId}/photos/${front!.id}/editor-source`);
+    expect(privateSourceResponse.status).toBe(200);
+    expect(privateSourceResponse.headers['content-type']).toContain('image/webp');
+    expect(privateSourceResponse.headers['cache-control']).toContain('private');
+    expect(privateSourceResponse.headers['cache-control']).toContain('no-store');
+    expect(privateSourceResponse.headers['x-photo-source-legacy']).toBe('false');
+    expect(privateSourceResponse.body).toEqual(privateSourceBeforeEdit);
+
+    const oldDisplayPath = front!.storagePath;
+    const replacementImage = await sharp({
+      create: { width: 128, height: 128, channels: 3, background: { r: 25, g: 155, b: 80 } },
+    }).jpeg().toBuffer();
+    const editResponse = await supertest(app)
+      .post(`/listings/${listingId}/photos/${front!.id}/edit`)
+      .set('Origin', new URL(config.APP_BASE_URL).origin)
+      .attach('photo', replacementImage, { filename: 'edited-front.jpg', contentType: 'image/jpeg' })
+      .field('editorState', editorState(128, 128));
+    expect(editResponse.status).toBe(302);
+    expect(editResponse.headers.location).toBe(`/listings/${listingId}/edit`);
+
+    const afterEdit = await findPhotosByListingId(listingId);
+    const updatedFront = afterEdit.find((photo) => photo.id === front!.id);
+    expect(updatedFront?.storagePath).not.toBe(oldDisplayPath);
+    expect(updatedFront?.sourceStoragePath).toBe(front!.sourceStoragePath);
+    expect(updatedFront?.sourceIsLegacy).toBe(false);
+    expect(updatedFront?.editorState).toEqual(JSON.parse(editorState(128, 128)));
+    await expect(downloadListingPhotoFromStorage(oldDisplayPath)).rejects.toThrow();
+    expect(await downloadListingPhotoSourceFromStorage(front!.sourceStoragePath!)).toEqual(privateSourceBeforeEdit);
+
+    const deniedSourceResponse = await supertest(app)
+      .get(`/listings/${listingId}/photos/${front!.id}/editor-source`)
+      .set('x-test-user', '99999999-9999-4999-8999-999999999999');
+    expect([403, 404]).toContain(deniedSourceResponse.status);
 
     const listingPhotoForm = await supertest(app).get(`/listings/${listingId}/edit`);
     expect(listingPhotoForm.status).toBe(200);
@@ -388,5 +463,14 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(digResponse.text).not.toContain('https://i.discogs.com/original-kind-of-blue.jpg');
     expect(digResponse.text).not.toContain('Front cover not photographed');
     expect(digResponse.text).not.toContain('Back cover not photographed');
+
+    const savedSourcePath = updatedFront!.sourceStoragePath!;
+    const savedDisplayPath = updatedFront!.storagePath;
+    const deleteResponse = await supertest(app)
+      .post(`/listings/${listingId}/photos/${updatedFront!.id}/delete`)
+      .set('Origin', new URL(config.APP_BASE_URL).origin);
+    expect(deleteResponse.status).toBe(302);
+    await expect(downloadListingPhotoFromStorage(savedDisplayPath)).rejects.toThrow();
+    await expect(downloadListingPhotoSourceFromStorage(savedSourcePath)).rejects.toThrow();
   });
 });
