@@ -180,6 +180,10 @@ describe('Authentication & Session Handling', () => {
       expect(res.text).toContain('name="termsAccepted"');
       expect(res.text).toContain('name="ageConfirmed"');
       expect(res.text).toContain('href="/privacy"');
+      expect(res.text).toContain('New accounts start with email and password.');
+      expect(res.text).not.toContain('Sign up with Google');
+      expect(res.text).toContain('New accounts start with email and password.');
+      expect(res.text).not.toContain('Sign up with Google');
     });
 
     it('GET /auth/signup?next=%2Fprofile should render signup form page with next parameter', async () => {
@@ -759,35 +763,87 @@ describe('Authentication & Session Handling', () => {
       }
     });
 
-    it('POST /auth/google/start accepts an unlisted signup in public mode but still requires signed Terms and age consent', async () => {
+    it('POST /auth/google/start rejects new Google-only accounts before contacting Supabase Auth', async () => {
       expect(config.BETA_INVITE_ONLY_ENABLED).toBe(false);
       expect(config.BETA_ALLOWED_EMAILS).toBe('');
 
-      mockSupabase.auth.signInWithOAuth.mockResolvedValue({ data: { url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=test' }, error: null });
       const app = createApp();
-      const startResponse = await request(app).post('/auth/google/start').set('Origin', 'http://localhost:3000')
+      const response = await request(app)
+        .post('/auth/google/start')
+        .set('Origin', 'http://localhost:3000')
         .send({ termsAccepted: 'true', ageConfirmed: 'true', next: '/profile' });
-      expect(startResponse.status).toBe(302);
-      expect(startResponse.header.location).toContain('accounts.google.com');
-      const redirectTo = new URL(mockSupabase.auth.signInWithOAuth.mock.calls[0][0].options.redirectTo);
-      expect(redirectTo.pathname).toBe('/auth/callback');
-      expect(redirectTo.searchParams.get('flow')).toBe('signup');
-      expect(redirectTo.searchParams.get('next')).toBe('/profile');
-      const setCookies = startResponse.headers['set-cookie'];
-      const cookiePairs = (Array.isArray(setCookies) ? setCookies : [setCookies]).filter(Boolean).map((value: string) => value.split(';')[0]);
-      expect(cookiePairs.some((value: string) => value.startsWith('tvd-registration-consent='))).toBe(true);
-      const mockUser = { id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', email: 'googleuser@gmail.com', user_metadata: { full_name: 'New OAuth Tester' } };
-      mockSupabase.auth.exchangeCodeForSession.mockResolvedValue({ data: { user: mockUser, session: { access_token: 'oauth-consent-token', refresh_token: 'oauth-consent-refresh', expires_in: 3600 } }, error: null });
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(null);
-      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
-      jest.spyOn(profileRepository, 'createProfile').mockImplementation(async (data: any) => ({ ...data, bio: null, location: null, createdAt: new Date(), updatedAt: new Date() }));
-      const callback = await request(app).get('/auth/callback?code=synthetic-oauth-code&flow=signup&next=%2Fprofile').set('Cookie', cookiePairs.join('; '));
-      expect(callback.status).toBe(302);
-      expect(callback.header.location).toBe('/profile');
-      expect(mockSaveRegistrationConsent).toHaveBeenCalledWith(mockUser.id, expect.objectContaining({ termsVersion: 'beta-terms-2026-10-19-v2' }), undefined);
+
+      expect(response.status).toBe(403);
+      expect(response.text).toContain('Create your account with email and password first');
+      expect(mockSupabase.auth.signInWithOAuth).not.toHaveBeenCalled();
+      const setCookies = response.headers['set-cookie'] || [];
+      const cookieText = (Array.isArray(setCookies) ? setCookies : [setCookies]).join(';');
+      expect(cookieText).not.toContain('tvd-registration-consent=');
     });
 
-    it('GET /auth/callback rejects first-time Google accounts without registration consent', async () => {
+    it('GET /auth/callback explains the email-first rule when Supabase rejects a new Google identity', async () => {
+      const app = createApp();
+      const response = await request(app).get('/auth/callback?error=access_denied&next=%2Fprofile');
+
+      expect(response.status).toBe(403);
+      expect(response.text).toContain('New accounts must first be created with email and password and confirmed');
+      expect(response.text).toContain('use Google with the same verified email address');
+      expect(mockSupabase.auth.exchangeCodeForSession).not.toHaveBeenCalled();
+      expect(mockSupabase.auth.signOut).not.toHaveBeenCalled();
+      const setCookies = response.headers['set-cookie'] || [];
+      const cookieText = (Array.isArray(setCookies) ? setCookies : [setCookies]).join(';');
+      expect(cookieText).not.toContain('sb-access-token=');
+      expect(cookieText).not.toContain('sb-refresh-token=');
+    });
+
+    it('GET /auth/callback keeps Google login for an existing member account', async () => {
+      const mockUser = {
+        id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        email: 'existing-google@example.com',
+        email_confirmed_at: '2026-11-04T00:00:00.000Z',
+        app_metadata: { provider: 'google', providers: ['google'] },
+      };
+      const existingProfile: Profile = {
+        id: mockUser.id,
+        username: 'existing_google_member',
+        displayName: 'Existing Google Member',
+        avatarUrl: null,
+        websiteUrl: null,
+        bio: null,
+        location: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockSupabase.auth.exchangeCodeForSession.mockResolvedValue({
+        data: {
+          user: mockUser,
+          session: {
+            access_token: 'existing-google-access-token',
+            refresh_token: 'existing-google-refresh-token',
+            expires_in: 3600,
+          },
+        },
+        error: null,
+      });
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(existingProfile);
+      const createProfileSpy = jest.spyOn(profileRepository, 'createProfile');
+      const app = createApp();
+      const response = await request(app).get('/auth/callback?code=existing-google-code&next=%2Fprofile');
+
+      expect(response.status).toBe(302);
+      expect(response.header.location).toBe('/profile');
+      expect(createProfileSpy).not.toHaveBeenCalled();
+      expect(mockHasRegistrationConsent).not.toHaveBeenCalled();
+      expect(mockSaveRegistrationConsent).not.toHaveBeenCalled();
+      const setCookies = response.headers['set-cookie'] || [];
+      const cookieText = (Array.isArray(setCookies) ? setCookies : [setCookies]).join(';');
+      expect(cookieText).toContain('sb-access-token=existing-google-access-token');
+      expect(cookieText).toContain('sb-refresh-token=existing-google-refresh-token');
+    });
+
+    it('GET /auth/callback refuses a legacy Google Auth identity without an app profile or saved consent', async () => {
       const mockUser = {
         id: '44444444-4444-4444-4444-444444444444',
         email: 'googleuser@gmail.com',
@@ -823,10 +879,11 @@ describe('Authentication & Session Handling', () => {
       const app = createApp();
       const res = await request(app).get('/auth/callback?code=mock-pkce-code-123&next=/profile');
       expect(res.status).toBe(400);
-      expect(res.text).toContain('complete registration');
+      expect(res.text).toContain('Create an account with email and password, confirm your email');
+      expect(res.text).toContain('same verified address');
       expect(createProfileSpy).not.toHaveBeenCalled();
-      // Supabase may have created an Auth identity before returning from Google,
-      // but the app must revoke that local session and never issue app session cookies.
+      // This remains a defensive guard for legacy or externally-created Auth identities.
+      // The updated Before User Created hook prevents new Google identities from being inserted.
       expect(mockSupabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
       const setCookies = res.headers['set-cookie'] || [];
       const cookieText = (Array.isArray(setCookies) ? setCookies : [setCookies]).join(';');
