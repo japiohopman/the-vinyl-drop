@@ -20,6 +20,7 @@ export interface UploadPhotoParams {
   buffer: Buffer;
   contentType: string;
   extension?: string;
+  version?: string;
   options?: StorageOptions;
 }
 
@@ -29,8 +30,8 @@ export interface UploadPhotoParams {
  * In `development` / `production`, requires successful Supabase Storage upload or throws an error.
  */
 export async function uploadListingPhotoToStorage(params: UploadPhotoParams): Promise<string> {
-  const { listingId, photoId, buffer, contentType, extension = 'webp', options } = params;
-  const storagePath = `listings/${listingId}/${photoId}.${extension}`;
+  const { listingId, photoId, buffer, contentType, extension = 'webp', version, options } = params;
+  const storagePath = `listings/${listingId}/${photoId}${version ? `.v-${version}` : ''}.${extension}`;
 
   if (config.NODE_ENV === 'test') {
     inMemoryStorage.set(storagePath, { buffer, contentType });
@@ -40,7 +41,7 @@ export async function uploadListingPhotoToStorage(params: UploadPhotoParams): Pr
   const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
   const { error } = await supabase.storage.from(BUCKET_NAME).upload(storagePath, buffer, {
     contentType,
-    upsert: true,
+    upsert: !version,
   });
 
   if (error) {
