@@ -114,7 +114,7 @@
   .dig-responsive-desktop .browse-primary-filters select,
   .dig-responsive-desktop .browse-secondary-grid input,
   .dig-responsive-desktop .browse-secondary-grid select,
-  .dig-responsive-desktop .browse-filter-action-buttons .btn {
+  .dig-responsive-desktop .browse-filter-actions .browse-filter-action-buttons .btn {
     box-sizing: border-box;
     height: 44px;
     min-height: 44px;
@@ -124,23 +124,13 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-  }
-}
-
-@media (min-width: 768px) {
-  .dig-responsive-desktop .browse-format-chip {
-    box-sizing: border-box;
-    height: 44px;
-    min-height: 44px;
     padding-block: var(--space-1);
   }
 
   .dig-responsive-desktop .browse-filter-actions .browse-filter-action-buttons .btn {
-    box-sizing: border-box;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 44px;
   }
 }
 
