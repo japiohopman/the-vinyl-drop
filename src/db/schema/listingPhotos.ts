@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { ListingPhotoRole } from '../../domain/listingPhotoRole';
 import { listings } from './listings';
-import { ListingPhotoEditorState } from '../../domain/listingPhotoEditor';
+import type { ListingPhotoEditorState } from '../../domain/listingPhotoEditor';
 
 export const listingPhotos = pgTable(
   'listing_photos',
