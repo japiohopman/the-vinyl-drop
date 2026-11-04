@@ -146,7 +146,12 @@
         // artwork and Discogs identity can never drift to a different candidate.
         applyMetadata(metadata, true);
         clearCandidatePicker();
-        setStatus('Selected ' + candidate.title + ' · ' + candidate.formatLabel + '. Review the details before continuing.', 'found');
+
+        if (metadata.coverArtUrl && /^https:\/\//i.test(metadata.coverArtUrl)) {
+          setStatus('Selected ' + candidate.title + ' · ' + candidate.formatLabel + '. Review the details before continuing.', 'found');
+        } else {
+          enrichSelectedEditionArtwork(metadata, candidate.title);
+        }
       });
       candidateContainer.appendChild(button);
     });
@@ -289,6 +294,62 @@
     if (submitAfterLookup) {
       submitAfterLookup = false;
       form.requestSubmit();
+    }
+  }
+
+  async function enrichSelectedEditionArtwork(metadata, candidateTitle) {
+    var externalId = typeof metadata.discogsExternalId === 'string' ? metadata.discogsExternalId : '';
+    if (!/^\\d{1,15}$/.test(externalId)) return;
+
+    lookupSequence += 1;
+    var sequence = lookupSequence;
+    if (activeController) activeController.abort();
+    activeController = new AbortController();
+
+    setLookupPending(true);
+    setStatus('Selected ' + candidateTitle + '. Retrieving artwork for this exact Discogs edition…', 'searching');
+    setCoverPreviewMessage('Retrieving artwork for the selected Discogs edition…', 'searching');
+
+    try {
+      var params = new URLSearchParams({ discogsExternalId: externalId });
+      var response = await fetch('/releases/lookup-artwork?' + params.toString(), {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        signal: activeController.signal,
+        credentials: 'same-origin'
+      });
+      if (sequence !== lookupSequence) return;
+      if (!response.ok) throw new Error('Discogs artwork lookup unavailable');
+
+      var result = await response.json();
+      if (sequence !== lookupSequence) return;
+      var selectedReleaseId = getField('discogsExternalId');
+      if (!selectedReleaseId || selectedReleaseId.value !== externalId) return;
+
+      if (result && result.found && typeof result.coverArtUrl === 'string' && /^https:\/\//i.test(result.coverArtUrl)) {
+        metadata.coverArtUrl = result.coverArtUrl;
+        if (coverArtUrlInput) {
+          coverArtUrlInput.value = result.coverArtUrl;
+          coverArtUrlInput.dataset.discogsFilled = 'true';
+          delete coverArtUrlInput.dataset.userEdited;
+        }
+        updateCoverPreview(result.coverArtUrl, true);
+        setStatus('Selected ' + candidateTitle + '. Catalogue artwork found for this edition.', 'found');
+      } else {
+        updateCoverPreview('', true);
+        setCoverPreviewMessage('Discogs has no catalogue artwork for this edition. You can add artwork manually.', 'missing');
+        setStatus('Selected ' + candidateTitle + '. No catalogue artwork is available; you can add it manually.', 'empty');
+      }
+    } catch (error) {
+      if (error && error.name === 'AbortError') return;
+      if (sequence !== lookupSequence) return;
+      var currentReleaseId = getField('discogsExternalId');
+      if (!currentReleaseId || currentReleaseId.value !== externalId) return;
+      updateCoverPreview('', true);
+      setCoverPreviewMessage('Artwork for this edition could not be retrieved. Manual artwork remains available.', 'error');
+      setStatus('Selected ' + candidateTitle + '; Discogs artwork could not be retrieved. You can continue manually.', 'error');
+    } finally {
+      finishLookup(sequence);
     }
   }
 
