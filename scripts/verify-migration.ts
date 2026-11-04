@@ -640,7 +640,21 @@ export async function verifyMigrations(): Promise<void> {
     },
   };
 
-  const foundPolicies = new Map(storagePoliciesRes.rows.map((p) => [p.policyname, p]));
+  // Supabase Studio may append a generated token (for example " vmdo66_0")
+  // to the three source-bucket policy names. Normalize only those exact known
+  // policy prefixes and permit at most one generated alphanumeric/underscore token.
+  const normalizeStoragePolicyName = (policyname: string): string => {
+    const match = policyname.match(
+      /^(listing-photo-originals-(?:select|insert|delete)-owner)(?: [A-Za-z0-9_]+)?$/
+    );
+    return match ? match[1] : policyname;
+  };
+  const foundPolicies = new Map(
+    storagePoliciesRes.rows.map((p) => [normalizeStoragePolicyName(p.policyname), p])
+  );
+  if (foundPolicies.size !== storagePoliciesRes.rows.length) {
+    throw new Error('Duplicate Storage policy names after normalizing Supabase-generated suffixes');
+  }
 
   // Assert exact policy count to guarantee no extra/unrecognized permissive write policies exist
   if (storagePoliciesRes.rows.length !== Object.keys(expectedStoragePolicyMap).length) {
