@@ -932,8 +932,11 @@ export async function verifyMigrations(): Promise<void> {
   const expiredApproval = await runSignupHook(emailSignupEvent('expired@example.com', expiredApprovalId));
   if (!expiredApproval.error) throw new Error('An expired signup approval was accepted');
 
-  const allowedGoogleOAuth = await runSignupHook({ user: { email: 'oauth@example.com', app_metadata: { provider: 'google' }, user_metadata: {} } });
-  if (allowedGoogleOAuth.error) throw new Error('Google OAuth signup without a password was incorrectly blocked by the password hook');
+  const blockedGoogleOAuth = await runSignupHook({ user: { email: 'oauth@example.com', app_metadata: { provider: 'google' }, user_metadata: {} } });
+  const googleSignupError = blockedGoogleOAuth.error as { http_code?: number; message?: string } | undefined;
+  if (googleSignupError?.http_code !== 403 || !googleSignupError.message?.includes('Create your account with email and password first')) {
+    throw new Error('A new Google Auth identity was not rejected before user creation');
+  }
   const unknownProvider = await runSignupHook({ user: { email: 'unknown@example.com', app_metadata: { provider: 'other-provider' }, user_metadata: {} } });
   if (!unknownProvider.error) throw new Error('An unapproved Auth provider bypassed the signup hook');
 
