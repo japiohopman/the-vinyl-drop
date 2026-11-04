@@ -499,6 +499,7 @@ export async function postEditListingPhoto(req: Request, res: Response, next: Ne
         originalname: files[0].filename,
       },
       req.body.editorState,
+      req.body.altText,
       undefined,
       { req }
     );
