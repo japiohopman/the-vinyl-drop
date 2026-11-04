@@ -22,22 +22,17 @@ $script:ProductionMigrationExpectedTags = @(
     '0018_add_release_youtube_preview',
     '0019_shared_rate_limit_buckets',
     '0020_catalogue_search_trigram',
-    '0021_release_metadata_vocabulary'
+    '0021_release_metadata_vocabulary',
+    '0022_listing_photo_source_versions',
+    '0023_block_new_google_oauth_identities'
 )
 
 $script:ProductionMigrationPhaseRanges = @{
-    Base = @{
-        StartIndex = 0
-        EndIndex = 5
-    }
-    Complete = @{
-        StartIndex = 6
-        EndIndex = 19
-    }
-    ReleaseCandidate = @{
-        StartIndex = 20
-        EndIndex = 21
-    }
+    Base = @{ StartIndex = 0; EndIndex = 5 }
+    Complete = @{ StartIndex = 6; EndIndex = 19 }
+    # 0022 fails closed unless the private photo-source bucket and its three exact
+    # listing-owner Storage policies exist before Drizzle applies that migration.
+    ReleaseCandidate = @{ StartIndex = 20; EndIndex = 23 }
 }
 
 function Get-ProductionMigrationEntries {
@@ -46,34 +41,23 @@ function Get-ProductionMigrationEntries {
         [Parameter(Mandatory = $true)]
         [ValidateSet('Base', 'Complete', 'ReleaseCandidate')]
         [string]$Phase,
-
         [Parameter(Mandatory = $true)]
         [string]$JournalPath
     )
-
     if (-not (Test-Path -LiteralPath $JournalPath -PathType Leaf)) {
         throw "Migration journal not found: $JournalPath"
     }
-
     try {
         $journal = Get-Content -LiteralPath $JournalPath -Raw | ConvertFrom-Json -ErrorAction Stop
     }
-    catch {
-        throw 'Migration journal is not valid JSON.'
-    }
-
+    catch { throw 'Migration journal is not valid JSON.' }
     if ($journal.version -cne '7' -or $journal.dialect -cne 'postgresql') {
         throw 'Unexpected Drizzle migration journal version or dialect; refusing to select migrations.'
     }
-
     $range = $script:ProductionMigrationPhaseRanges[$Phase]
-    if (-not $range) {
-        throw "No pinned migration range is defined for phase $Phase."
-    }
-
+    if (-not $range) { throw "No pinned migration range is defined for phase $Phase." }
     $selectedEntries = @()
     $previousTimestamp = [int64]0
-
     # Validate the complete historical prefix through the phase's end index.
     # Only the requested phase's sub-range is returned to the migration runner.
     for ($index = 0; $index -le $range.EndIndex; $index++) {
@@ -81,28 +65,21 @@ function Get-ProductionMigrationEntries {
         if ($matches.Count -ne 1) {
             throw "Expected exactly one journal entry for migration index $index; found $($matches.Count)."
         }
-
         $entry = $matches[0]
         $expectedTag = $script:ProductionMigrationExpectedTags[$index]
         if ($entry.tag -cne $expectedTag) {
             throw "Migration index $index must be '$expectedTag'; found '$($entry.tag)'."
         }
-
         $timestamp = [int64]$entry.when
         if ($timestamp -le $previousTimestamp) {
             throw "Migration timestamps are not strictly increasing at index $index."
         }
         $previousTimestamp = $timestamp
-
-        if ($index -ge $range.StartIndex) {
-            $selectedEntries += $entry
-        }
+        if ($index -ge $range.StartIndex) { $selectedEntries += $entry }
     }
-
     $expectedCount = $range.EndIndex - $range.StartIndex + 1
     if ($selectedEntries.Count -ne $expectedCount) {
         throw "Phase $Phase should select exactly $expectedCount migrations; found $($selectedEntries.Count)."
     }
-
     return $selectedEntries
 }
