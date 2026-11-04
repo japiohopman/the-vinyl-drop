@@ -32,6 +32,8 @@
   const redoButton = form.querySelector('[data-photo-editor-redo]');
   const resetButton = form.querySelector('[data-photo-editor-reset]');
   const adjustmentControls = Array.from(form.querySelectorAll('[data-photo-adjustment]'));
+  const frameControls = Array.from(form.querySelectorAll('[data-photo-frame]'));
+  const FRAME_DEFAULTS = Object.freeze({ rotation: 0, zoom: 100, offsetX: 0, offsetY: 0 });
 
   if (!core || !(fileInput instanceof HTMLInputElement) ||
       !(originalFileInput instanceof HTMLInputElement) ||
@@ -55,7 +57,7 @@
       !(cropTitle instanceof HTMLElement) ||
       !(cropDescription instanceof HTMLElement) ||
       !(status instanceof HTMLElement) ||
-      handles.length !== 4 || adjustmentControls.length === 0) return;
+      handles.length !== 4 || adjustmentControls.length === 0 || frameControls.length !== 4) return;
 
   const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true });
   const resultContext = resultCanvas.getContext('2d');
@@ -111,6 +113,82 @@
       else values[key] = value;
     });
     return values;
+  }
+
+  function updateFrameOutputs() {
+    frameControls.forEach((control) => {
+      const key = control.dataset.photoFrame;
+      const output = form.querySelector('[data-photo-frame-value="' + key + '"]');
+      if (!(output instanceof HTMLOutputElement) || !key) return;
+      const value = Number(control.value);
+      output.value = key === 'rotation'
+        ? (value > 0 ? '+' : '') + value + '°'
+        : key === 'zoom'
+          ? Math.round(value) + '%'
+          : (value > 0 ? '+' : '') + value + '%';
+    });
+  }
+
+  function framePointsFromBaseline(basePoints, key, value) {
+    const centre = basePoints.reduce((sum, point) => ({
+      x: sum.x + point.x / basePoints.length,
+      y: sum.y + point.y / basePoints.length,
+    }), { x: 0, y: 0 });
+
+    if (key === 'rotation') {
+      const radians = value * Math.PI / 180;
+      const cosine = Math.cos(radians);
+      const sine = Math.sin(radians);
+      return basePoints.map((point) => {
+        const x = point.x - centre.x;
+        const y = point.y - centre.y;
+        return {
+          x: centre.x + x * cosine - y * sine,
+          y: centre.y + x * sine + y * cosine,
+        };
+      });
+    }
+
+    if (key === 'zoom') {
+      const scale = value / 100;
+      return basePoints.map((point) => ({
+        x: centre.x + (point.x - centre.x) * scale,
+        y: centre.y + (point.y - centre.y) * scale,
+      }));
+    }
+
+    if (key === 'offsetX') {
+      const offset = value / 100 * sourceCanvas.width;
+      return basePoints.map((point) => ({ x: point.x + offset, y: point.y }));
+    }
+
+    if (key === 'offsetY') {
+      const offset = value / 100 * sourceCanvas.height;
+      return basePoints.map((point) => ({ x: point.x, y: point.y + offset }));
+    }
+
+    return basePoints.map((point) => ({ x: point.x, y: point.y }));
+  }
+
+  function applyFrameControl(control) {
+    if (!image) return;
+    if (!controlStartState) controlStartState = cloneState();
+    const key = control.dataset.photoFrame;
+    if (!key || !Object.prototype.hasOwnProperty.call(FRAME_DEFAULTS, key)) return;
+
+    const candidate = framePointsFromBaseline(
+      controlStartState.points,
+      key,
+      Number(control.value)
+    );
+    if (!core.isValidQuad(candidate, sourceCanvas.width, sourceCanvas.height)) {
+      setStatus('Keep the complete photo inside the frame. Reduce the adjustment or move the corners inward first.', true);
+      return;
+    }
+
+    points = candidate;
+    updateOverlay();
+    schedulePreview();
   }
 
   function updateAdjustmentOutputs() {
@@ -213,6 +291,13 @@
     showBefore = false;
     undoStack = [];
     redoStack = [];
+    frameControls.forEach((control) => {
+      const key = control.dataset.photoFrame;
+      if (key && Object.prototype.hasOwnProperty.call(FRAME_DEFAULTS, key)) {
+        control.value = String(FRAME_DEFAULTS[key]);
+      }
+    });
+    updateFrameOutputs();
     originalFileInput.value = '';
     if (!form.dataset.editingPhotoId) editorStateInput.value = '';
     if (objectUrl) URL.revokeObjectURL(objectUrl);
@@ -709,6 +794,31 @@
     });
   });
 
+  frameControls.forEach((control) => {
+    control.addEventListener('pointerdown', () => {
+      controlStartState = cloneState();
+    });
+    control.addEventListener('keydown', () => {
+      if (!controlStartState) controlStartState = cloneState();
+    });
+    control.addEventListener('input', () => {
+      applyFrameControl(control);
+      updateFrameOutputs();
+    });
+    control.addEventListener('change', () => {
+      if (controlStartState && !statesEqual(controlStartState, cloneState())) {
+        pushUndo(controlStartState);
+      }
+      controlStartState = null;
+      const key = control.dataset.photoFrame;
+      if (key && Object.prototype.hasOwnProperty.call(FRAME_DEFAULTS, key)) {
+        control.value = String(FRAME_DEFAULTS[key]);
+      }
+      updateFrameOutputs();
+      schedulePreview();
+    });
+  });
+
   if (beforeAfterButton instanceof HTMLButtonElement) {
     beforeAfterButton.addEventListener('click', () => {
       showBefore = !showBefore;
@@ -726,6 +836,13 @@
       if (!image) return;
       pushUndo(cloneState());
       points = core.createDefaultCorners(sourceCanvas.width, sourceCanvas.height);
+      frameControls.forEach((control) => {
+        const key = control.dataset.photoFrame;
+        if (key && Object.prototype.hasOwnProperty.call(FRAME_DEFAULTS, key)) {
+          control.value = String(FRAME_DEFAULTS[key]);
+        }
+      });
+      updateFrameOutputs();
       adjustmentControls.forEach((control) => {
         const key = control.dataset.photoAdjustment;
         const value = core.DEFAULT_ADJUSTMENTS[key];
