@@ -163,8 +163,10 @@ describe('App Routes and Error Handling', () => {
       expect(response.text).not.toContain('migration must be separately applied and verified before the updated registration flow is deployed');
       expect(response.text).toContain('href="/privacy"');
       expect(response.text).toContain('yepyouknowhim@gmail.com');
-      expect(response.text).toContain('tvd-registration-consent');
-      expect(response.text).toContain('up to 10 minutes');
+      expect(response.text).not.toContain('tvd-registration-consent');
+      expect(response.text).toContain('There is no separate Google registration-consent cookie.');
+      expect(response.text).toContain('New accounts are created with email and password.');
+      expect(response.text).toContain('same verified email');
       expect(response.text).toContain('waitlist addresses');
       expect(response.text).toContain('responsible operator');
       expect(response.text).toContain('Your privacy rights');
