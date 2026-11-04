@@ -51,6 +51,7 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
       '0015_dismiss_completed_listings.sql',
       '0018_add_release_youtube_preview.sql',
       '0021_release_metadata_vocabulary.sql',
+      '0022_listing_photo_source_versions.sql',
     ];
 
     for (const file of migrationFiles) {
