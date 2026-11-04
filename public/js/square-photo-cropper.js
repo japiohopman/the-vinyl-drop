@@ -170,17 +170,51 @@
     return basePoints.map((point) => ({ x: point.x, y: point.y }));
   }
 
+  function fitPointsInsideCanvas(candidate) {
+    const centre = candidate.reduce((sum, point) => ({
+      x: sum.x + point.x / candidate.length,
+      y: sum.y + point.y / candidate.length,
+    }), { x: 0, y: 0 });
+    let scale = 1;
+
+    candidate.forEach((point) => {
+      const x = point.x - centre.x;
+      const y = point.y - centre.y;
+      if (x > 0) scale = Math.min(scale, (sourceCanvas.width - 1 - centre.x) / x);
+      else if (x < 0) scale = Math.min(scale, (centre.x - 1) / -x);
+      if (y > 0) scale = Math.min(scale, (sourceCanvas.height - 1 - centre.y) / y);
+      else if (y < 0) scale = Math.min(scale, (centre.y - 1) / -y);
+    });
+
+    scale = clamp(scale, 0, 1);
+    return {
+      scale,
+      points: candidate.map((point) => ({
+        x: centre.x + (point.x - centre.x) * scale,
+        y: centre.y + (point.y - centre.y) * scale,
+      })),
+    };
+  }
+
   function applyFrameControl(control) {
     if (!image) return;
     if (!controlStartState) controlStartState = cloneState();
     const key = control.dataset.photoFrame;
     if (!key || !Object.prototype.hasOwnProperty.call(FRAME_DEFAULTS, key)) return;
 
-    const candidate = framePointsFromBaseline(
+    let candidate = framePointsFromBaseline(
       controlStartState.points,
       key,
       Number(control.value)
     );
+    if (key === 'rotation' || key === 'zoom') {
+      const fitted = fitPointsInsideCanvas(candidate);
+      candidate = fitted.points;
+      if (key === 'zoom' && fitted.scale < 1) {
+        const effectiveZoom = Math.round(Number(control.value) * fitted.scale * 10) / 10;
+        control.value = String(effectiveZoom);
+      }
+    }
     if (!core.isValidQuad(candidate, sourceCanvas.width, sourceCanvas.height)) {
       setStatus('Keep the complete photo inside the frame. Reduce the adjustment or move the corners inward first.', true);
       return;
