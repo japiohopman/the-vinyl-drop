@@ -9,6 +9,16 @@ export interface ProcessedImage {
 }
 
 export const MAX_IMAGE_DIMENSION = 2048;
+export async function readImageDimensions(inputBuffer: Buffer): Promise<{ width: number; height: number }> {
+  if (!inputBuffer || inputBuffer.length === 0) throw new Error('Image payload is empty');
+  const metadata = await sharp(inputBuffer, { limitInputPixels: 40_000_000 }).metadata();
+  if (!metadata.width || !metadata.height || !metadata.format ||
+      !ALLOWED_FORMATS.includes(metadata.format.toLowerCase())) {
+    throw new Error('Unsupported or unrecognized image format');
+  }
+  return { width: metadata.width, height: metadata.height };
+}
+
 export const MAX_SOURCE_IMAGE_BYTES = 20 * 1024 * 1024;
 
 /**
