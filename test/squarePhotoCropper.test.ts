@@ -367,6 +367,19 @@ describe('Square cover photo cropper', () => {
       height: (canvas as HTMLCanvasElement).height,
     }));
     expect(resultDimensions.width).toBeLessThan(resultDimensions.height);
+    const topLeftHandle = page.locator('[data-corner-handle="0"]');
+    const polygonBeforeDrag = await page.locator('#square-cover-polygon').getAttribute('points');
+    const handleBox = await topLeftHandle.boundingBox();
+    if (!handleBox) throw new Error('The additional-photo corner handle is not visible.');
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(handleBox.x + handleBox.width / 2 + 8, handleBox.y + handleBox.height / 2 + 8, { steps: 3 });
+    await page.mouse.up();
+    await page.waitForFunction(
+      (before) => document.querySelector('#square-cover-polygon')?.getAttribute('points') !== before,
+      polygonBeforeDrag,
+      { timeout: 5000 }
+    );
     expect(await page.locator('#selected-photo-info').textContent()).toContain('300 × 500 px');
     expect(JSON.parse(await page.locator('#photoEditorState').inputValue()).sourceWidth).toBe(300);
     expect(browserErrors).toEqual([]);
