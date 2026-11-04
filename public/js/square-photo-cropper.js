@@ -242,8 +242,9 @@
   function updateRoleGuidance() {
     const selectedOption = roleSelect.options[roleSelect.selectedIndex];
     const roleHint = selectedOption && selectedOption.dataset.guidance;
-    roleGuidance.textContent = roleHint ||
-      'Choose a photo type first. Front and back covers use four-corner perspective correction; other photos keep their original framing.';
+    roleGuidance.textContent = roleHint
+      ? roleHint + ' The editor also supports four-corner framing and light/colour adjustments; extra photos keep their natural proportions.'
+      : 'Choose a photo type first. The editor supports four-corner framing and light/colour adjustments; cover photos are flattened to a square and extra photos keep their natural proportions.';
 
     if (isCoverRole()) {
       const side = coverSideLabel();
@@ -550,7 +551,7 @@
       fileInfo.textContent += ' — choose a JPEG, PNG or WebP image.';
       fileInfo.style.color = 'var(--color-error-border)';
       previewError = true;
-      if (coverRole) setStatus('Choose a JPEG, PNG or WebP image.', true);
+      setStatus('Choose a JPEG, PNG or WebP image.', true);
       return;
     }
 
@@ -558,7 +559,7 @@
       fileInfo.textContent += ' — larger than 5 MiB. Choose a smaller file.';
       fileInfo.style.color = 'var(--color-error-border)';
       previewError = true;
-      if (coverRole) setStatus('Choose a photo no larger than 5 MiB.', true);
+      setStatus('Choose a photo no larger than 5 MiB.', true);
       return;
     }
     fileInfo.style.color = 'var(--color-ink-muted)';
