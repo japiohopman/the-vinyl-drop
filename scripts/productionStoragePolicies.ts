@@ -100,7 +100,7 @@ function normalizePolicyName(policyName: string): string {
 }
 
 function normalizePredicate(value: string | null): string | null {
-  return value === null ? null : value.replace(/\\s+/g, '');
+  return value === null ? null : value.replace(/\s+/g, '');
 }
 
 export function getStoragePolicyValidationErrors(rows: readonly StoragePolicyRow[]): string[] {
