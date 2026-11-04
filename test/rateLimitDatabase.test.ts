@@ -2,9 +2,30 @@ import { randomBytes } from 'crypto';
 import postgres from 'postgres';
 import {
   decrementRateLimitBucketWithClient,
+  getSafeRateLimitDatabaseErrorCode,
   incrementRateLimitBucketWithClient,
+  pruneExpiredRateLimitBucketsWithClient,
   RateLimitBucket,
 } from '../src/app/services/rateLimitService';
+
+
+describe('shared rate-limit cleanup error classification', () => {
+  it('exposes only a PostgreSQL SQLSTATE code and never a raw error message', () => {
+    expect(getSafeRateLimitDatabaseErrorCode({
+      code: '42501',
+      message: 'sensitive connection or query detail',
+    })).toBe('42501');
+
+    expect(getSafeRateLimitDatabaseErrorCode({
+      code: 'ECONNRESET',
+      message: 'sensitive connection detail',
+    })).toBe('unclassified');
+
+    expect(getSafeRateLimitDatabaseErrorCode(
+      new Error('sensitive driver message')
+    )).toBe('unclassified');
+  });
+});
 
 const databaseUrl = process.env.RATE_LIMIT_TEST_DATABASE_URL;
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
@@ -29,6 +50,49 @@ describeWithPostgres('PostgreSQL shared rate-limit reservation release', () => {
 
   afterAll(async () => {
     if (client) await client.end();
+  });
+
+
+  it('removes expired buckets and retains buckets that have not expired', async () => {
+    const nowMs = Date.now();
+    const expiredBucketKey = randomBytes(32).toString('hex');
+    const activeBucketKey = randomBytes(32).toString('hex');
+
+    const expiredWindowStart = nowMs - 2 * 60 * 1000;
+    const expiredAt = nowMs - 60 * 1000;
+    const activeWindowStart = nowMs - 60 * 1000;
+    const activeExpiresAt = nowMs + 60 * 60 * 1000;
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        '($1, $2, 1, $3), ($4, $5, 1, $6)',
+        [
+          expiredBucketKey,
+          new Date(expiredWindowStart),
+          new Date(expiredAt),
+          activeBucketKey,
+          new Date(activeWindowStart),
+          new Date(activeExpiresAt),
+        ]
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const rows = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        'WHERE bucket_key IN ($1, $2)',
+        [expiredBucketKey, activeBucketKey]
+      );
+
+      expect(rows.map((row) => row.bucket_key)).toEqual([activeBucketKey]);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key IN ($1, $2)',
+        [expiredBucketKey, activeBucketKey]
+      );
+    }
   });
 
   it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
