@@ -279,6 +279,40 @@
                 </div>
               </div>
 
+              <section class="square-cover-tone-panel" aria-labelledby="square-cover-frame-title">
+                <header class="square-cover-tone-header">
+                  <div>
+                    <p class="square-cover-panel-label">03 — FRAME REFINEMENT</p>
+                    <h3 id="square-cover-frame-title">Rotate, zoom &amp; position</h3>
+                  </div>
+                </header>
+                <details class="square-cover-adjustments">
+                  <summary>Fine-tune the photo framing <span>Corner handles remain available</span></summary>
+                  <div class="square-cover-adjustment-grid">
+                    <label class="square-cover-adjustment" for="photo-frame-rotation">
+                      <span>Straighten</span>
+                      <output data-photo-frame-value="rotation">0°</output>
+                      <input id="photo-frame-rotation" type="range" min="-2" max="2" value="0" step="0.1" data-photo-frame="rotation" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-frame-zoom">
+                      <span>Zoom</span>
+                      <output data-photo-frame-value="zoom">100%</output>
+                      <input id="photo-frame-zoom" type="range" min="80" max="105" value="100" step="1" data-photo-frame="zoom" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-frame-offset-x">
+                      <span>Move horizontally</span>
+                      <output data-photo-frame-value="offsetX">0%</output>
+                      <input id="photo-frame-offset-x" type="range" min="-3" max="3" value="0" step="0.5" data-photo-frame="offsetX" />
+                    </label>
+                    <label class="square-cover-adjustment" for="photo-frame-offset-y">
+                      <span>Move vertically</span>
+                      <output data-photo-frame-value="offsetY">0%</output>
+                      <input id="photo-frame-offset-y" type="range" min="-3" max="3" value="0" step="0.5" data-photo-frame="offsetY" />
+                    </label>
+                  </div>
+                </details>
+              </section>
+
               <section class="square-cover-tone-panel" aria-labelledby="square-cover-tone-title">
                 <header class="square-cover-tone-header">
                   <div>
