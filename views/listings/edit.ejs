@@ -127,6 +127,7 @@
               <div class="cover-photo-actions">
                 <button type="button" class="btn btn-outline btn-sm" data-open-existing-photo-editor
                   data-editor-source-url="/listings/<%= listing.id %>/photos/<%= slot.photo.id %>/editor-source"
+                  data-photo-id="<%= slot.photo.id %>"
                   data-photo-role="<%= slot.role %>"
                   data-photo-alt-text="<%= slot.photo.altText || '' %>"
                   data-editor-state="<%= JSON.stringify(slot.photo.editorState || '') %>">
@@ -170,6 +171,7 @@
                   <% if (photo.altText) { %><span><%= photo.altText %></span><% } %>
                   <button type="button" class="btn btn-outline btn-sm" data-open-existing-photo-editor
                     data-editor-source-url="/listings/<%= listing.id %>/photos/<%= photo.id %>/editor-source"
+                    data-photo-id="<%= photo.id %>"
                     data-photo-role="<%= photo.role %>"
                     data-photo-alt-text="<%= photo.altText || '' %>"
                     data-editor-state="<%= JSON.stringify(photo.editorState || '') %>">
