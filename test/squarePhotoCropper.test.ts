@@ -417,6 +417,11 @@ describe('Square cover photo cropper', () => {
     }));
     await page.evaluate("document.querySelector('#photoUploadForm').addEventListener('submit', event => event.preventDefault(), true)");
     await page.locator('[data-open-existing-photo-editor]').click({ timeout: 5000 });
+    await page.waitForFunction(
+      "document.querySelector('#photoUploadDialog')?.open === true",
+      undefined,
+      { timeout: 5000 }
+    );
 
     expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
     expect(await page.locator('#photoUploadForm').getAttribute('action')).toContain('/photos/22222222-2222-4222-8222-222222222222/edit');
