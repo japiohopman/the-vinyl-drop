@@ -578,7 +578,8 @@ describe('Square cover photo cropper', () => {
 
     expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
     expect(await page.locator('#photoUploadForm').getAttribute('action')).toContain('/photos/22222222-2222-4222-8222-222222222222/edit');
-    expect(await page.locator('.photo-file-trigger').isVisible()).toBe(false);
+    expect(await page.locator('label.photo-file-trigger').isVisible()).toBe(false);
+    expect(await page.locator('[data-photo-camera-trigger]').isVisible()).toBe(false);
     expect(await page.locator('#photoOriginalFile').evaluate((input) => (input as HTMLInputElement).files?.length || 0)).toBe(0);
     expect(await page.locator('#photo-editor-source-notice').isVisible()).toBe(false);
     expect(await page.locator('[data-photo-adjustment="exposure"]').inputValue()).toBe('25');
