@@ -4,6 +4,7 @@
 
   const core = window.TVDPhotoEditorCore;
   const fileInput = form.querySelector('#photoFile');
+  const photoFileField = fileInput?.closest('.photo-upload-field');
   const originalFileInput = form.querySelector('#photoOriginalFile');
   const editorStateInput = form.querySelector('#photoEditorState');
   const editorSourceNotice = form.querySelector('#photo-editor-source-notice');
@@ -846,6 +847,7 @@
     roleSelect.required = true;
     const fileTrigger = form.querySelector('.photo-file-trigger');
     if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = false;
+    if (photoFileField instanceof HTMLElement) photoFileField.hidden = false;
     if (roleField instanceof HTMLElement) roleField.hidden = false;
     roleGuidance.hidden = false;
     editorSourceNotice.hidden = true;
@@ -871,6 +873,7 @@
       editorSourceNotice.hidden = true;
       const fileTrigger = form.querySelector('.photo-file-trigger');
       if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = false;
+      if (photoFileField instanceof HTMLElement) photoFileField.hidden = false;
 
       const requestedRole = trigger.dataset.photoRole || '';
       const label = trigger.dataset.photoLabel || 'Additional photo';
@@ -974,6 +977,7 @@
         }
         const fileTrigger = form.querySelector('.photo-file-trigger');
         if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = true;
+        if (photoFileField instanceof HTMLElement) photoFileField.hidden = true;
 
         const isLegacySource = sourceResponse.headers.get('X-Photo-Source-Legacy') === 'true';
         editorSourceNotice.hidden = !isLegacySource;
