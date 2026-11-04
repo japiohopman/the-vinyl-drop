@@ -185,8 +185,40 @@ describe('Square cover photo cropper', () => {
     const cameraTrigger = page.locator('[data-photo-camera-trigger]');
     expect(await cameraTrigger.isVisible()).toBe(true);
 
+    for (const width of [360, 390, 430, 768, 1280]) {
+      await page.setViewportSize({ width, height: 850 });
+      const layout = await page.evaluate(() => {
+        const actions = document.querySelector('[data-photo-file-actions]');
+        const choose = actions?.querySelector('label');
+        const camera = actions?.querySelector('button');
+        if (!choose || !camera) return null;
+        const chooseRect = choose.getBoundingClientRect();
+        const cameraRect = camera.getBoundingClientRect();
+        return {
+          viewport: window.innerWidth,
+          document: document.documentElement.scrollWidth,
+          body: document.body.scrollWidth,
+          chooseLeft: chooseRect.left,
+          chooseRight: chooseRect.right,
+          chooseWidth: chooseRect.width,
+          cameraLeft: cameraRect.left,
+          cameraRight: cameraRect.right,
+          cameraWidth: cameraRect.width,
+        };
+      });
+      expect(layout).not.toBeNull();
+      expect(layout!.document).toBeLessThanOrEqual(width + 1);
+      expect(layout!.body).toBeLessThanOrEqual(width + 1);
+      expect(layout!.chooseWidth).toBeGreaterThan(100);
+      expect(layout!.cameraWidth).toBeGreaterThan(100);
+      expect(layout!.cameraLeft).toBeGreaterThanOrEqual(layout!.chooseRight - 1);
+      expect(layout!.cameraRight).toBeLessThanOrEqual(width + 1);
+    }
+
+    await cameraTrigger.focus();
+    expect(await cameraTrigger.evaluate((button) => document.activeElement === button)).toBe(true);
     const firstChooserPromise = page.waitForEvent('filechooser');
-    await cameraTrigger.click({ timeout: 5000 });
+    await cameraTrigger.press('Enter', { timeout: 5000 });
     const firstChooser = await firstChooserPromise;
     await firstChooser.setFiles({
       name: 'camera-front-cover.jpg',
