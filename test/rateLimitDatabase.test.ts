@@ -117,7 +117,1034 @@ describeWithPostgres('PostgreSQL shared rate-limit reservation release', () => {
     const expiresAt = new Date(nowMs - 60 * 1000);
     const valuePlaceholders = fixtureKeys.map((_, index) => {
       const firstParameter = index * 3 + 1;
-      return `(${firstParameter}, ${firstParameter + 1}, 1, ${firstParameter + 2})`;
+      return '(
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => '
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => '
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + firstParameter + ', 
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (firstParameter + 1) +
+        ', 1, 
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (firstParameter + 2) + ')';
+    }).join(', ');
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (index + 1)).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + firstParameter + ', 
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (firstParameter + 1) +
+        ', 1, 
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (firstParameter + 2) + ')';
+    }).join(', ');
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (index + 1)).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + firstParameter + ', 
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (firstParameter + 1) +
+        ', 1, 
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (firstParameter + 2) + ')';
+    }).join(', ');
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (index + 1)).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + firstParameter + ', 
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (firstParameter + 1) +
+        ', 1, 
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        `WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      const keyPlaceholders = fixtureKeys.map((_, index) => `${index + 1}`).join(', ');
+      await client.unsafe(
+        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        fixtureKeys
+      );
+    }
+  });
+
+  it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
+    // One failed attempt plus two successful reservations are already counted.
+    // The concurrent increment adds another failed attempt; two releases must
+    // leave both failed attempts in the shared counter.
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: Date.parse('2026-10-31T09:00:00.000Z'),
+      expiresAtMs: Date.parse('2026-10-31T10:00:00.000Z'),
+    };
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ($1, $2, 3, $3)',
+        [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+      );
+
+      await Promise.all([
+        decrementRateLimitBucketWithClient(client, bucket),
+        decrementRateLimitBucketWithClient(client, bucket),
+        incrementRateLimitBucketWithClient(client, bucket),
+      ]);
+
+      const rows = await client.unsafe(
+        'SELECT hit_count FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(Number(rows[0].hit_count)).toBe(2);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
+        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      );
+    }
+  });
+});
+ + (firstParameter + 2) + ')';
     }).join(', ');
     const values = fixtureKeys.flatMap((bucketKey) => [
       bucketKey,
