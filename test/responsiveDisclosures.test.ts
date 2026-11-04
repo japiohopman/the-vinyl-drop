@@ -301,15 +301,15 @@ describe('Responsive disclosure browser behavior', () => {
       expect(metrics.documentWidth).toBeLessThanOrEqual(width + 1);
       expect(metrics.bodyWidth).toBeLessThanOrEqual(width + 1);
 
-      for (const [name, control] of [
-        ['search', metrics.search],
-        ['Search action', metrics.submit],
-        ['Grid/List group', metrics.viewGroup],
-        ['format filter', metrics.format],
-        ['genre filter', metrics.genre],
-        ['advanced price filter', metrics.advanced],
-        ['Apply filters', metrics.apply],
-      ] as const) {
+      for (const control of [
+        metrics.search,
+        metrics.submit,
+        metrics.viewGroup,
+        metrics.format,
+        metrics.genre,
+        metrics.advanced,
+        metrics.apply,
+      ]) {
         expect(control).not.toBeNull();
         expect(control!.height).toBeCloseTo(44, 0);
       }
