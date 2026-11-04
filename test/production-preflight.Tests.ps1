@@ -161,9 +161,10 @@ function Test-PinnedProductionMigrationPlans {
 
 function Test-ReleaseCandidateStoragePreflightRunsBeforeDrizzle {
     $runnerSource = Get-Content -LiteralPath $migrationRunnerPath -Raw
-    $firstPreflight = $runnerSource.IndexOf("verifyProductionStoragePolicies.ts")
+    $preflightInvocation = "& $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionStoragePolicies.ts')"
+    $firstPreflight = $runnerSource.IndexOf($preflightInvocation)
     $confirmation = $runnerSource.IndexOf('$confirmation = Read-Host')
-    $finalPreflight = $runnerSource.LastIndexOf("verifyProductionStoragePolicies.ts")
+    $finalPreflight = $runnerSource.LastIndexOf($preflightInvocation)
     $drizzleMigration = $runnerSource.IndexOf('& $drizzleKitPath migrate')
 
     if ($firstPreflight -lt 0 -or $finalPreflight -le $firstPreflight) {
@@ -187,8 +188,6 @@ function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
         New-Item -ItemType Directory -Path (Join-Path $tempRoot 'drizzle/meta') -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $tempRoot 'scripts') -Force | Out-Null
         Copy-Item -LiteralPath $migrationPlanPath -Destination (Join-Path $tempRoot 'scripts/productionMigrationPlan.ps1')
-        Set-Content -LiteralPath (Join-Path $tempRoot 'scripts/productionStoragePolicies.ts') -Value 'export {}' -NoNewline
-        Set-Content -LiteralPath (Join-Path $tempRoot 'scripts/verifyProductionStoragePolicies.ts') -Value 'export {}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot 'package.json') -Value '{}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle.config.ts') -Value 'export default {}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle/meta/_journal.json') -Value '{}' -NoNewline
