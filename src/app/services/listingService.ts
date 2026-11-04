@@ -72,6 +72,10 @@ import {
   getPhotoPublicUrl,
   StorageOptions,
   uploadListingPhotoToStorage,
+  uploadListingPhotoSourceToStorage,
+  downloadListingPhotoSourceFromStorage,
+  deleteListingPhotoSourceFromStorage,
+  listingPhotoSourceStoragePath,
 } from './storageService';
 import { recordOrphanedStorageObject } from '../repositories/orphanRepository';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
@@ -744,6 +748,223 @@ export async function addPhotoToListing(
     }
     throw dbErr;
   }
+}
+
+export interface ListingPhotoEditorSource {
+  buffer: Buffer;
+  sourceWidth: number;
+  sourceHeight: number;
+  sourceIsLegacy: boolean;
+  editorState: ListingPhotoEditorState | null;
+}
+
+/**
+ * Returns a seller-owned private source. Photos uploaded before source retention
+ * existed get a private, lossless baseline made from their current display file;
+ * this is explicitly not represented as the unrecoverable original camera photo.
+ */
+export async function getListingPhotoEditorSource(
+  listingId: string,
+  photoId: string,
+  requestingUserId: string,
+  dbOverride?: DbInstance,
+  storageOptions?: StorageOptions
+): Promise<ListingPhotoEditorSource> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) throw new NotFoundError('Listing not found');
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to edit photos for this listing');
+  }
+  if (isTerminalListingStatus(listing.status)) {
+    throw new ValidationError(`Cannot edit photos for a listing in terminal state '${listing.status}'`);
+  }
+
+  const photo = await findPhotoById(photoId, dbOverride);
+  if (!photo || photo.listingId !== listingId) throw new NotFoundError('Photo not found');
+
+  let sourceStoragePath = photo.sourceStoragePath;
+  let sourceIsLegacy = photo.sourceIsLegacy;
+  if (!sourceStoragePath) {
+    const displayBuffer = await downloadListingPhotoFromStorage(photo.storagePath, storageOptions);
+    let sourceMaster: ProcessedImage;
+    try {
+      sourceMaster = await preserveListingPhotoSource(displayBuffer, 'image/webp');
+    } catch (error) {
+      throw new ValidationError((error as Error).message);
+    }
+
+    const expectedPath = listingPhotoSourceStoragePath(listingId, photoId);
+    try {
+      sourceStoragePath = await uploadListingPhotoSourceToStorage(
+        listingId,
+        photoId,
+        sourceMaster.buffer,
+        storageOptions
+      );
+    } catch (uploadError) {
+      // Another editor tab may have initialized the same deterministic legacy path.
+      try {
+        await downloadListingPhotoSourceFromStorage(expectedPath, storageOptions);
+        sourceStoragePath = expectedPath;
+      } catch {
+        throw uploadError;
+      }
+    }
+
+    const updated = await updateListingPhotoSource(
+      listingId,
+      photoId,
+      sourceStoragePath,
+      true,
+      dbOverride
+    );
+    if (!updated) {
+      try {
+        await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+      } catch {
+        await recordPhotoStorageOrphan(
+          listingId,
+          photoId,
+          sourceStoragePath,
+          'LEGACY_SOURCE_INITIALIZATION_ROW_MISSING',
+          dbOverride
+        );
+      }
+      throw new NotFoundError('Photo not found');
+    }
+    sourceIsLegacy = true;
+  }
+
+  if (!sourceStoragePath) throw new Error('The private photo source was not initialized.');
+  const buffer = await downloadListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+  const dimensions = await readImageDimensions(buffer);
+  return {
+    buffer,
+    sourceWidth: dimensions.width,
+    sourceHeight: dimensions.height,
+    sourceIsLegacy,
+    editorState: photo.editorState || null,
+  };
+}
+
+/**
+ * Save a new public derivative while preserving the immutable private source.
+ * A unique object path is uploaded first; only then is the DB pointer changed.
+ */
+export async function saveListingPhotoEditor(
+  listingId: string,
+  photoId: string,
+  requestingUserId: string,
+  file: { buffer: Buffer; mimetype: string; originalname?: string },
+  editorStateInput: unknown,
+  dbOverride?: DbInstance,
+  storageOptions?: StorageOptions
+): Promise<ListingPhotoWithUrl> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) throw new NotFoundError('Listing not found');
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to edit photos for this listing');
+  }
+  if (isTerminalListingStatus(listing.status)) {
+    throw new ValidationError(`Cannot edit photos for a listing in terminal state '${listing.status}'`);
+  }
+
+  const photo = await findPhotoById(photoId, dbOverride);
+  if (!photo || photo.listingId !== listingId) throw new NotFoundError('Photo not found');
+
+  const editorState = parseEditorState(editorStateInput);
+  if (!editorState) {
+    throw new ValidationError('Save the crop and adjustments in the photo editor before applying them.');
+  }
+
+  const source = await getListingPhotoEditorSource(
+    listingId,
+    photoId,
+    requestingUserId,
+    dbOverride,
+    storageOptions
+  );
+  if (
+    editorState.sourceWidth !== source.sourceWidth ||
+    editorState.sourceHeight !== source.sourceHeight
+  ) {
+    throw new ValidationError('The edit recipe does not match the saved original. Reopen the photo editor and try again.');
+  }
+
+  let processed: ProcessedImage;
+  try {
+    processed = await processAndValidateImage(file.buffer, file.mimetype);
+  } catch (error) {
+    throw new ValidationError((error as Error).message);
+  }
+  if ((photo.role === 'front_cover' || photo.role === 'back_cover') &&
+      processed.width !== processed.height) {
+    throw new ValidationError('Cover photos must remain square. Reopen the editor and correct the sleeve crop.');
+  }
+
+  const version = crypto.randomUUID();
+  const nextStoragePath = await uploadListingPhotoToStorage({
+    listingId,
+    photoId,
+    buffer: processed.buffer,
+    contentType: processed.contentType,
+    extension: processed.extension,
+    version,
+    options: storageOptions,
+  });
+
+  let updated: ListingPhoto | null;
+  try {
+    updated = await updateListingPhotoEditor(
+      listingId,
+      photoId,
+      nextStoragePath,
+      editorState,
+      dbOverride
+    );
+  } catch (error) {
+    try {
+      await deleteListingPhotoFromStorage(nextStoragePath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        nextStoragePath,
+        'PHOTO_EDIT_DB_UPDATE_FAILED_NEW_DERIVATIVE_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    throw error;
+  }
+
+  if (!updated) {
+    try {
+      await deleteListingPhotoFromStorage(nextStoragePath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        nextStoragePath,
+        'PHOTO_EDIT_ROW_MISSING_NEW_DERIVATIVE_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    throw new NotFoundError('Photo not found');
+  }
+
+  try {
+    await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
+  } catch {
+    await recordPhotoStorageOrphan(
+      listingId,
+      photoId,
+      photo.storagePath,
+      'PHOTO_EDIT_OLD_DERIVATIVE_CLEANUP_FAILED',
+      dbOverride
+    );
+  }
+
+  return listingPhotoWithPublicUrl(updated);
 }
 
 export async function updateListingPhotoRole(
