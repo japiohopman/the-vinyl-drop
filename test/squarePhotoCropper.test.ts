@@ -221,7 +221,7 @@ describe('Square cover photo cropper', () => {
         { timeout: 5000 }
       );
 
-      await page.locator('.square-cover-adjustments > summary').click();
+      await page.getByText('Fine-tune tonal and colour controls').click();
       const exposure = page.locator('[data-photo-adjustment="exposure"]');
       const baselineRed = await page.locator('#square-cover-result').evaluate((canvas) =>
         (canvas as HTMLCanvasElement).getContext('2d')!.getImageData(256, 256, 1, 1).data[0]
@@ -347,6 +347,73 @@ describe('Square cover photo cropper', () => {
     expect(browserErrors).toEqual([]);
   });
 
+  it('supports straighten, zoom and position controls as saved corner geometry', async () => {
+    await renderEditPage();
+    await selectPortrait('front_cover');
+    await page.waitForFunction(
+      "document.querySelector('#square-cover-source').height === 320",
+      undefined,
+      { timeout: 5000 }
+    );
+
+    await page.waitForFunction(
+      "document.querySelector('#photoEditorState').value.includes('corners')",
+      undefined,
+      { timeout: 5000 }
+    );
+    const initialPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
+    const initialState = JSON.parse(await page.locator('#photoEditorState').inputValue());
+    const changeFrame = async (key: string, value: string) => {
+      const before = await page.locator('#square-cover-polygon').getAttribute('points');
+      await page.locator('[data-photo-frame="' + key + '"]').evaluate((input, nextValue) => {
+        (input as HTMLInputElement).value = String(nextValue);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }, value);
+      await page.waitForFunction(
+        (previous) => document.querySelector('#square-cover-polygon')?.getAttribute('points') !== previous,
+        before,
+        { timeout: 5000 }
+      );
+    };
+
+    await changeFrame('rotation', '8');
+    const rotatedPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
+    expect(rotatedPolygon).not.toBe(initialPolygon);
+    expect(await page.locator('[data-photo-frame="rotation"]').inputValue()).toBe('0');
+    await page.locator('[data-photo-editor-undo]').click();
+    expect(await page.locator('#square-cover-polygon').getAttribute('points')).toBe(initialPolygon);
+    await page.locator('[data-photo-editor-redo]').click();
+    expect(await page.locator('#square-cover-polygon').getAttribute('points')).toBe(rotatedPolygon);
+
+    await changeFrame('zoom', '90');
+    const zoomedPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
+    expect(zoomedPolygon).not.toBe(rotatedPolygon);
+    expect(await page.locator('[data-photo-frame="zoom"]').inputValue()).toBe('100');
+
+    await changeFrame('offsetX', '1');
+    const repositionedPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
+    expect(repositionedPolygon).not.toBe(zoomedPolygon);
+    await page.waitForFunction(
+      (before) => {
+        try {
+          const editorState = document.querySelector('#photoEditorState') as HTMLInputElement | null;
+          if (!editorState) return false;
+          const state = JSON.parse(editorState.value);
+          return JSON.stringify(state.corners) !== JSON.stringify(before);
+        } catch {
+          return false;
+        }
+      },
+      initialState.corners,
+      { timeout: 5000 }
+    );
+    const state = JSON.parse(await page.locator('#photoEditorState').inputValue());
+    expect(state.corners).toHaveLength(4);
+    expect(state.corners).not.toEqual(initialState.corners);
+    expect(await page.locator('[data-photo-frame="offsetX"]').inputValue()).toBe('0');
+  });
+
   it('offers the full framing and tonal editor for additional photos without forcing a square crop', async () => {
     await renderEditPage();
     await selectPortrait('detail');
@@ -367,6 +434,19 @@ describe('Square cover photo cropper', () => {
       height: (canvas as HTMLCanvasElement).height,
     }));
     expect(resultDimensions.width).toBeLessThan(resultDimensions.height);
+    const topLeftHandle = page.locator('[data-corner-handle="0"]');
+    const polygonBeforeDrag = await page.locator('#square-cover-polygon').getAttribute('points');
+    const handleBox = await topLeftHandle.boundingBox();
+    if (!handleBox) throw new Error('The additional-photo corner handle is not visible.');
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(handleBox.x + handleBox.width / 2 + 8, handleBox.y + handleBox.height / 2 + 8, { steps: 3 });
+    await page.mouse.up();
+    await page.waitForFunction(
+      (before) => document.querySelector('#square-cover-polygon')?.getAttribute('points') !== before,
+      polygonBeforeDrag,
+      { timeout: 5000 }
+    );
     expect(await page.locator('#selected-photo-info').textContent()).toContain('300 × 500 px');
     expect(JSON.parse(await page.locator('#photoEditorState').inputValue()).sourceWidth).toBe(300);
     expect(browserErrors).toEqual([]);

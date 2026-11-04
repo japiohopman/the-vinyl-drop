@@ -626,21 +626,35 @@ export async function verifyMigrations(): Promise<void> {
       cmd: 'SELECT',
       qualContains: "bucket_id = 'listing-photos'",
     },
-    'Authenticated Listing Owner Select for listing-photo-originals': {
+    'listing-photo-originals-select-owner': {
       cmd: 'SELECT',
       qualContains: "bucket_id = 'listing-photo-originals'",
     },
-    'Authenticated Listing Owner Insert for listing-photo-originals': {
+    'listing-photo-originals-insert-owner': {
       cmd: 'INSERT',
       checkContains: "bucket_id = 'listing-photo-originals'",
     },
-    'Authenticated Listing Owner Delete for listing-photo-originals': {
+    'listing-photo-originals-delete-owner': {
       cmd: 'DELETE',
       qualContains: "bucket_id = 'listing-photo-originals'",
     },
   };
 
-  const foundPolicies = new Map(storagePoliciesRes.rows.map((p) => [p.policyname, p]));
+  // Supabase Studio may append a generated token (for example " vmdo66_0")
+  // to the three source-bucket policy names. Normalize only those exact known
+  // policy prefixes and permit at most one generated alphanumeric/underscore token.
+  const normalizeStoragePolicyName = (policyname: string): string => {
+    const match = policyname.match(
+      /^(listing-photo-originals-(?:select|insert|delete)-owner)(?: [A-Za-z0-9_]+)?$/
+    );
+    return match ? match[1] : policyname;
+  };
+  const foundPolicies = new Map(
+    storagePoliciesRes.rows.map((p) => [normalizeStoragePolicyName(p.policyname), p])
+  );
+  if (foundPolicies.size !== storagePoliciesRes.rows.length) {
+    throw new Error('Duplicate Storage policy names after normalizing Supabase-generated suffixes');
+  }
 
   // Assert exact policy count to guarantee no extra/unrecognized permissive write policies exist
   if (storagePoliciesRes.rows.length !== Object.keys(expectedStoragePolicyMap).length) {
@@ -691,21 +705,21 @@ export async function verifyMigrations(): Promise<void> {
         "id)::text = (storage.foldername(objects.name))[2]",
       ],
     },
-    'Authenticated Listing Owner Select for listing-photo-originals': {
+    'listing-photo-originals-select-owner': {
       qualIncludes: [
         "bucket_id = 'listing-photo-originals'",
         "seller_id = ( SELECT auth.uid()",
         "id)::text = (storage.foldername(objects.name))[2]",
       ],
     },
-    'Authenticated Listing Owner Insert for listing-photo-originals': {
+    'listing-photo-originals-insert-owner': {
       checkIncludes: [
         "bucket_id = 'listing-photo-originals'",
         "seller_id = ( SELECT auth.uid()",
         "id)::text = (storage.foldername(objects.name))[2]",
       ],
     },
-    'Authenticated Listing Owner Delete for listing-photo-originals': {
+    'listing-photo-originals-delete-owner': {
       qualIncludes: [
         "bucket_id = 'listing-photo-originals'",
         "seller_id = ( SELECT auth.uid()",
