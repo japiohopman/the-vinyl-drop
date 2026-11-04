@@ -29,7 +29,7 @@ describe('shared rate-limit cleanup error classification', () => {
     })).toBe('unclassified');
 
     expect(getSafeRateLimitDatabaseErrorCode({
-      code: '4250\\n',
+      code: '4250\n',
     })).toBe('unclassified');
   });
 });
