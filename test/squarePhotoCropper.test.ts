@@ -357,15 +357,17 @@ describe('Square cover photo cropper', () => {
     );
 
     const initialPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
+    const initialState = JSON.parse(await page.locator('#photoEditorState').inputValue());
     const changeFrame = async (key: string, value: string) => {
+      const before = await page.locator('#square-cover-polygon').getAttribute('points');
       await page.locator('[data-photo-frame="' + key + '"]').evaluate((input, nextValue) => {
         (input as HTMLInputElement).value = String(nextValue);
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
       }, value);
       await page.waitForFunction(
-        (before) => document.querySelector('#square-cover-polygon')?.getAttribute('points') !== before,
-        initialPolygon,
+        (previous) => document.querySelector('#square-cover-polygon')?.getAttribute('points') !== previous,
+        before,
         { timeout: 5000 }
       );
     };
@@ -389,7 +391,7 @@ describe('Square cover photo cropper', () => {
     expect(repositionedPolygon).not.toBe(zoomedPolygon);
     const state = JSON.parse(await page.locator('#photoEditorState').inputValue());
     expect(state.corners).toHaveLength(4);
-    expect(state.corners).not.toEqual(JSON.parse(await page.locator('#photoEditorState').inputValue()).corners.slice(0, 0));
+    expect(state.corners).not.toEqual(initialState.corners);
     expect(await page.locator('[data-photo-frame="offsetX"]').inputValue()).toBe('0');
   });
 
