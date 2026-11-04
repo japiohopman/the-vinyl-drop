@@ -213,7 +213,7 @@ Request processing adheres strictly to the following architecture:
 
 1. **HTTP Request & Middleware Boundary:**
    - Request enters Express pipeline (`src/app/routes/`).
-   - `sessionMiddleware` verifies Supabase Auth cookies (`sb-access-token`, `sb-refresh-token`) and attaches `req.user` / `req.profile`.
+   - `sessionMiddleware` verifies Supabase Auth cookies (`sb-access-token`, `sb-refresh-token`) and attaches `req.user`; profile rows are loaded by controllers/services only on routes that require them.
    - `requireAuth` enforces login redirects for protected routes.
    - `messagingFeatureGuard` verifies `MESSAGING_ENABLED` feature flag state and returns 404 if disabled.
    - `validateSameOrigin` enforces CSRF same-origin origin/referer verification on state-changing requests (`POST`).
