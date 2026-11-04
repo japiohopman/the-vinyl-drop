@@ -27,6 +27,21 @@ BEGIN
     SELECT 1 FROM information_schema.tables
     WHERE table_schema = 'storage' AND table_name = 'objects'
   ) THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM information_schema.tables
+      WHERE table_schema = 'storage' AND table_name = 'buckets'
+    ) OR NOT EXISTS (
+      SELECT 1
+      FROM storage.buckets
+      WHERE id = 'listing-photo-originals' AND public IS FALSE
+    ) THEN
+      RAISE EXCEPTION USING
+        ERRCODE = '42501',
+        MESSAGE = 'The listing-photo-originals Storage bucket must exist and be private before migration 0022 can complete.',
+        HINT = 'Create listing-photo-originals with public = false in Supabase Storage, then rerun migrations.';
+    END IF;
+
     SELECT pg_get_userbyid(c.relowner)::name, c.relrowsecurity
       INTO v_owner, v_rls_enabled
     FROM pg_class c
