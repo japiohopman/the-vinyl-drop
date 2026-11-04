@@ -349,10 +349,10 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     test('serves widget inbox, truthful participant-scoped unread count, and conversation JSON', async () => {
       const originalFlag = config.MESSAGING_ENABLED;
       (config as any).MESSAGING_ENABLED = true;
+      const profileLookupSpy = jest.spyOn(profileRepository, 'findProfileById');
       try {
         const app = createApp();
         const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
-        const profileLookupSpy = jest.spyOn(profileRepository, 'findProfileById');
         await messagingService.markAsRead(conv.id, buyerId, conv.lastMessageSeq);
         await messagingService.markAsRead(conv.id, sellerId, conv.lastMessageSeq);
         await new Promise((resolve) => setTimeout(resolve, 10));
