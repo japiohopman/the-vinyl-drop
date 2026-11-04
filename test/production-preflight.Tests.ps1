@@ -109,6 +109,7 @@ function Test-PinnedProductionMigrationPlans {
     }
 
     $journal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
+    # Index 24 is the first journal position outside the pinned 0020-0023 release phase.
     $journal.entries += [pscustomobject]@{
         idx = 24
         version = '7'
