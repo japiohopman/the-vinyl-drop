@@ -555,7 +555,7 @@
       return;
     }
 
-    if (file.size > MAX_UPLOAD_BYTES) {
+    if (!form.dataset.editingPhotoId && file.size > MAX_UPLOAD_BYTES) {
       fileInfo.textContent += ' — larger than 5 MiB. Choose a smaller file.';
       fileInfo.style.color = 'var(--color-error-border)';
       previewError = true;
@@ -753,7 +753,7 @@
   form.addEventListener('submit', (event) => {
     if (form.dataset.photoEditorReady === 'true') return;
 
-    if (sourceFile && (previewError || sourceFile.size > MAX_UPLOAD_BYTES)) {
+    if (sourceFile && (previewError || (!form.dataset.editingPhotoId && sourceFile.size > MAX_UPLOAD_BYTES))) {
       event.preventDefault();
       if (isCoverRole()) {
         setStatus(
@@ -843,6 +843,7 @@
     editorStateInput.value = '';
     delete form.dataset.editingPhotoId;
     form.action = newUploadAction;
+    roleSelect.required = true;
     const fileTrigger = form.querySelector('.photo-file-trigger');
     if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = false;
     if (roleField instanceof HTMLElement) roleField.hidden = false;
@@ -876,6 +877,7 @@
       const isDirectCoverSlot = requestedRole === 'front_cover' || requestedRole === 'back_cover';
       if (roleField instanceof HTMLElement) roleField.hidden = isDirectCoverSlot;
       roleGuidance.hidden = isDirectCoverSlot;
+      roleSelect.required = true;
       roleSelect.value = requestedRole === 'optional' ? '' : requestedRole;
       fileInput.value = '';
       if (altTextInput instanceof HTMLInputElement) {
@@ -948,6 +950,8 @@
         form.dataset.editingPhotoId = trigger.dataset.photoId;
         form.action = trigger.dataset.editorSourceUrl.replace(/\/editor-source$/, '/edit');
         roleSelect.value = trigger.dataset.photoRole || '';
+        // Existing-photo edits do not submit a role; legacy roles may not have an upload option.
+        roleSelect.required = false;
         if (roleField instanceof HTMLElement) roleField.hidden = true;
         roleGuidance.hidden = true;
         editorStateInput.value = storedState;
