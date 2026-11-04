@@ -4,6 +4,8 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import fs from 'fs';
 import path from 'path';
+import { assertExactStoragePolicySet } from './productionStoragePolicies';
+import type { StoragePolicyRow } from './productionStoragePolicies';
 
 export async function verifyMigrations(): Promise<void> {
   console.log('🔄 Verifying database migrations via Drizzle migrator against isolated in-memory PostgreSQL engine...');
@@ -596,171 +598,28 @@ export async function verifyMigrations(): Promise<void> {
     throw new Error("Row Level Security (RLS) is NOT enabled on 'storage.objects'");
   }
 
-  const storagePoliciesRes = await pg.query<{
-    policyname: string;
-    cmd: string;
-    qual: string | null;
-    with_check: string | null;
-  }>(
-    `SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' ORDER BY policyname;`
+  // Supabase Studio provisions the three seller write policies as TO authenticated.
+  // The fresh PGlite database runs migration 0006's table-owner branch, whose historical
+  // CREATE POLICY statements rely on auth.role() in USING/WITH CHECK and therefore default
+  // to PUBLIC. Mirror the actual managed Supabase role metadata in this isolated fixture
+  // before asserting the exact hosted policy contract. This changes only the disposable
+  // in-memory database; no staging or production Storage policy is touched.
+  await pg.exec(`
+    ALTER POLICY "Authenticated Seller Delete for listing-photos"
+      ON storage.objects TO authenticated;
+    ALTER POLICY "Authenticated Seller Insert for listing-photos"
+      ON storage.objects TO authenticated;
+    ALTER POLICY "Authenticated Seller Update for listing-photos"
+      ON storage.objects TO authenticated;
+  `);
+
+  const storagePoliciesRes = await pg.query<StoragePolicyRow>(
+    `SELECT policyname, permissive, roles::text AS roles, cmd, qual, with_check
+     FROM pg_policies
+     WHERE schemaname = 'storage' AND tablename = 'objects'
+     ORDER BY policyname;`
   );
-
-  const expectedStoragePolicyMap: Record<
-    string,
-    { cmd: string; qualContains?: string; checkContains?: string }
-  > = {
-    'Authenticated Seller Delete for listing-photos': {
-      cmd: 'DELETE',
-      qualContains: "bucket_id = 'listing-photos'",
-    },
-    'Authenticated Seller Insert for listing-photos': {
-      cmd: 'INSERT',
-      checkContains: "bucket_id = 'listing-photos'",
-    },
-    'Authenticated Seller Update for listing-photos': {
-      cmd: 'UPDATE',
-      qualContains: "bucket_id = 'listing-photos'",
-      checkContains: "bucket_id = 'listing-photos'",
-    },
-    'Scoped Read Access for listing-photos': {
-      cmd: 'SELECT',
-      qualContains: "bucket_id = 'listing-photos'",
-    },
-    'listing-photo-originals-select-owner': {
-      cmd: 'SELECT',
-      qualContains: "bucket_id = 'listing-photo-originals'",
-    },
-    'listing-photo-originals-insert-owner': {
-      cmd: 'INSERT',
-      checkContains: "bucket_id = 'listing-photo-originals'",
-    },
-    'listing-photo-originals-delete-owner': {
-      cmd: 'DELETE',
-      qualContains: "bucket_id = 'listing-photo-originals'",
-    },
-  };
-
-  // Supabase Studio may append a generated token (for example " vmdo66_0")
-  // to the three source-bucket policy names. Normalize only those exact known
-  // policy prefixes and permit at most one generated alphanumeric/underscore token.
-  const normalizeStoragePolicyName = (policyname: string): string => {
-    const match = policyname.match(
-      /^(listing-photo-originals-(?:select|insert|delete)-owner)(?: [A-Za-z0-9_]+)?$/
-    );
-    return match ? match[1] : policyname;
-  };
-  const foundPolicies = new Map(
-    storagePoliciesRes.rows.map((p) => [normalizeStoragePolicyName(p.policyname), p])
-  );
-  if (foundPolicies.size !== storagePoliciesRes.rows.length) {
-    throw new Error('Duplicate Storage policy names after normalizing Supabase-generated suffixes');
-  }
-
-  // Assert exact policy count to guarantee no extra/unrecognized permissive write policies exist
-  if (storagePoliciesRes.rows.length !== Object.keys(expectedStoragePolicyMap).length) {
-    throw new Error(
-      `Unexpected policy count on storage.objects: expected ${Object.keys(expectedStoragePolicyMap).length}, found ${storagePoliciesRes.rows.length}`
-    );
-  }
-
-  const expectedPredicates: Record<
-    string,
-    { qualIncludes?: string[]; checkIncludes?: string[] }
-  > = {
-    'Authenticated Seller Delete for listing-photos': {
-      qualIncludes: [
-        "bucket_id = 'listing-photos'",
-        "auth.role() = 'authenticated'",
-        "seller_id = auth.uid()",
-        "id)::text = (storage.foldername(objects.name))[2]",
-      ],
-    },
-    'Authenticated Seller Insert for listing-photos': {
-      checkIncludes: [
-        "bucket_id = 'listing-photos'",
-        "auth.role() = 'authenticated'",
-        "seller_id = auth.uid()",
-        "id)::text = (storage.foldername(objects.name))[2]",
-      ],
-    },
-    'Authenticated Seller Update for listing-photos': {
-      qualIncludes: [
-        "bucket_id = 'listing-photos'",
-        "auth.role() = 'authenticated'",
-        "seller_id = auth.uid()",
-        "id)::text = (storage.foldername(objects.name))[2]",
-      ],
-      checkIncludes: [
-        "bucket_id = 'listing-photos'",
-        "auth.role() = 'authenticated'",
-        "seller_id = auth.uid()",
-        "id)::text = (storage.foldername(objects.name))[2]",
-      ],
-    },
-    'Scoped Read Access for listing-photos': {
-      qualIncludes: [
-        "bucket_id = 'listing-photos'",
-        "status = 'published'",
-        "seller_id = auth.uid()",
-        "id)::text = (storage.foldername(objects.name))[2]",
-      ],
-    },
-    'listing-photo-originals-select-owner': {
-      qualIncludes: [
-        "bucket_id = 'listing-photo-originals'",
-        "seller_id = ( SELECT auth.uid()",
-        "id)::text = (storage.foldername(objects.name))[2]",
-      ],
-    },
-    'listing-photo-originals-insert-owner': {
-      checkIncludes: [
-        "bucket_id = 'listing-photo-originals'",
-        "seller_id = ( SELECT auth.uid()",
-        "id)::text = (storage.foldername(objects.name))[2]",
-      ],
-    },
-    'listing-photo-originals-delete-owner': {
-      qualIncludes: [
-        "bucket_id = 'listing-photo-originals'",
-        "seller_id = ( SELECT auth.uid()",
-        "id)::text = (storage.foldername(objects.name))[2]",
-      ],
-    },
-  };
-
-  for (const [policyName, spec] of Object.entries(expectedStoragePolicyMap)) {
-    const policy = foundPolicies.get(policyName);
-    if (!policy) {
-      throw new Error(`Missing expected Storage RLS policy '${policyName}' on storage.objects`);
-    }
-
-    if (policy.cmd.toUpperCase() !== spec.cmd) {
-      throw new Error(
-        `Storage policy '${policyName}' command mismatch: expected '${spec.cmd}', got '${policy.cmd}'`
-      );
-    }
-
-    const predicates = expectedPredicates[policyName];
-    if (predicates.qualIncludes) {
-      for (const requiredStr of predicates.qualIncludes) {
-        if (!policy.qual || !policy.qual.includes(requiredStr)) {
-          throw new Error(
-            `Storage policy '${policyName}' USING predicate missing required clause '${requiredStr}'`
-          );
-        }
-      }
-    }
-
-    if (predicates.checkIncludes) {
-      for (const requiredStr of predicates.checkIncludes) {
-        if (!policy.with_check || !policy.with_check.includes(requiredStr)) {
-          throw new Error(
-            `Storage policy '${policyName}' WITH CHECK predicate missing required clause '${requiredStr}'`
-          );
-        }
-      }
-    }
-  }
+  assertExactStoragePolicySet(storagePoliciesRes.rows);
 
   // 9. Verify that Supabase Data API roles are read-only on every application table.
   // The Express/Drizzle server is the sole application data-write path.

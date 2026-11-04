@@ -32,6 +32,12 @@ $requiredFiles = @(
     'check-production-db-target.ps1',
     'scripts/productionMigrationPlan.ps1'
 )
+if ($Phase -eq 'ReleaseCandidate') {
+    $requiredFiles += @(
+        'scripts/productionStoragePolicies.ts',
+        'scripts/verifyProductionStoragePolicies.ts'
+    )
+}
 foreach ($file in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path (Get-Location) $file) -PathType Leaf)) {
         throw "Required file is missing. Run this script from the repository root; missing: $file"
@@ -64,6 +70,25 @@ if ([string]::IsNullOrWhiteSpace($drizzleKitPath)) {
     throw 'The lockfile-installed local drizzle-kit binary is missing. Run npm ci --include=dev from the repository root; no registry fallback will be used.'
 }
 
+$tsxPath = $null
+if ($Phase -eq 'ReleaseCandidate') {
+    $tsxNames = if ($env:OS -eq 'Windows_NT') {
+        @('tsx.cmd', 'tsx.ps1', 'tsx')
+    } else {
+        @('tsx')
+    }
+    foreach ($binaryName in $tsxNames) {
+        $candidate = Join-Path $binDirectory $binaryName
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $tsxPath = $candidate
+            break
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($tsxPath)) {
+        throw 'The lockfile-installed local tsx binary is missing. Run npm ci --include=dev from the repository root; no registry fallback will be used.'
+    }
+}
+
 $journalPath = Join-Path (Get-Location) 'drizzle/meta/_journal.json'
 $migrationEntries = @(Get-ProductionMigrationEntries -Phase $Phase -JournalPath $journalPath)
 foreach ($entry in $migrationEntries) {
@@ -83,8 +108,9 @@ Write-Host "Production migration phase: $Phase ($($phaseSettings[$Phase].Descrip
 Write-Host "Project: $projectRef"
 Write-Host "Host: $poolerHost (Supabase Shared Session Pooler, port 5432; TLS required)"
 if ($Phase -eq 'ReleaseCandidate') {
-    Write-Host 'Precondition: listing-photo-originals must be private and have the exact three authenticated seller-owner SELECT/INSERT/DELETE policies.'
-    Write-Host 'Migration 0022 checks these prerequisites and aborts if any policy is missing or broader than the reviewed predicates.'
+    Write-Host 'Precondition: production must have a private listing-photo-originals bucket and exactly seven approved storage.objects policies.'
+    Write-Host 'The seven-policy set is the four existing listing-photos policies plus the three authenticated seller-owner source policies.'
+    Write-Host 'A read-only preflight compares full predicates, roles, commands and permissive mode, and rejects missing, altered or extra policies before migrations start.'
     Write-Host 'Migration 0023 updates the existing Before User Created function; it does not change the Auth hook selection.'
 }
 Write-Host 'The password is requested securely and is not written to .env or printed.'
@@ -155,6 +181,15 @@ try {
         throw 'Production target preflight failed. No Drizzle migration command was started.'
     }
 
+    if ($Phase -eq 'ReleaseCandidate') {
+        Write-Host 'Running read-only production Storage policy verification...'
+        & $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionStoragePolicies.ts')
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Production Storage policy verification failed. No Drizzle migration command was started.'
+        }
+        Write-Host 'PASS: exactly seven approved Storage policies are present; no extra or widened policy was found.'
+    }
+
     $confirmation = Read-Host "Type exactly: $expectedConfirmation"
     if ($confirmation -cne $expectedConfirmation) {
         throw 'Confirmation did not match. No Drizzle migration command was started.'
@@ -200,6 +235,14 @@ export default defineConfig({
         [System.Text.UTF8Encoding]::new($false)
     )
 
+    if ($Phase -eq 'ReleaseCandidate') {
+        Write-Host 'Repeating read-only Storage policy verification immediately before Drizzle starts...'
+        & $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionStoragePolicies.ts')
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Final production Storage policy verification failed. Drizzle was not started.'
+        }
+    }
+
     Write-Host "Applying only pinned production migrations $($phaseSettings[$Phase].Description)..."
     & $drizzleKitPath migrate "--config=$tempConfigFileName"
     if ($LASTEXITCODE -ne 0) {
@@ -216,10 +259,10 @@ export default defineConfig({
             Write-Host 'Next: verify the 20-row Drizzle migration ledger, schema, RLS and Storage policies before creating or deploying the Render application service.'
         }
         'ReleaseCandidate' {
-            Write-Host 'Only migrations 0020-0023 were selected. No later journal entry was included in this phase.'
-            Write-Host 'Migration 0022 required the private listing-photo-originals bucket and three exact seller-owner Storage policies; its SQL guard verified them.'
-            Write-Host 'Migration 0023 updated the existing private password-check hook function to reject new Google Auth identities.'
-            Write-Host 'Next: verify all 24 Drizzle migration entries, pg_trgm indexes, release metadata columns, private photo-source policies, hook function/grants, RLS and Storage before deployment.'
+            Write-Host 'Only migrations 0020-0023 were selected. Later journal entries beginning at index 24 remain outside this phase.'
+            Write-Host 'The read-only preflight verified exactly seven Storage policies, including full predicates, roles, commands and permissive mode, before Drizzle started.'
+            Write-Host 'Migration 0022 retains its historical private-source bucket/policy prerequisite; migration 0023 updates the existing private password-check hook function to reject new Google Auth identities.'
+            Write-Host 'Next: verify all 24 Drizzle migration entries, pg_trgm indexes, release metadata columns, private-source policies, hook function/grants, RLS and Storage before deployment.'
         }
     }
 }

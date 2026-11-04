@@ -132,29 +132,52 @@ function Test-PinnedProductionMigrationPlans {
         }
     }
 
-    $invalidJournalPath = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-invalid-journal-" + [guid]::NewGuid().ToString('N') + '.json')
-    try {
-        $invalidJournal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
-        $invalidJournal.entries[21].tag = '0022_unexpected_migration'
-        $invalidJournal | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $invalidJournalPath
-        $threw = $false
+    foreach ($driftIndex in 21, 22, 23) {
+        $invalidJournalPath = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-invalid-journal-" + [guid]::NewGuid().ToString('N') + '.json')
         try {
-            Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $invalidJournalPath | Out-Null
+            $invalidJournal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
+            $invalidJournal.entries[$driftIndex].tag = "unexpected_migration_$driftIndex"
+            $invalidJournal | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $invalidJournalPath
+            $threw = $false
+            try {
+                Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $invalidJournalPath | Out-Null
+            }
+            catch {
+                $threw = $true
+            }
+            if (-not $threw) {
+                throw "ReleaseCandidate phase accepted a replaced migration entry at index $driftIndex."
+            }
         }
-        catch {
-            $threw = $true
-        }
-        if (-not $threw) {
-            throw 'ReleaseCandidate phase accepted a replaced migration 0021 entry.'
-        }
-    }
-    finally {
-        if (Test-Path -LiteralPath $invalidJournalPath) {
-            Remove-Item -LiteralPath $invalidJournalPath -Force
+        finally {
+            if (Test-Path -LiteralPath $invalidJournalPath) {
+                Remove-Item -LiteralPath $invalidJournalPath -Force
+            }
         }
     }
 
     Write-Host 'PASS: production migration phases select only their pinned index ranges and reject journal drift'
+}
+
+function Test-ReleaseCandidateStoragePreflightRunsBeforeDrizzle {
+    $runnerSource = Get-Content -LiteralPath $migrationRunnerPath -Raw
+    $preflightInvocation = '& $tsxPath (Join-Path (Get-Location) ''scripts/verifyProductionStoragePolicies.ts'')'
+    $firstPreflight = $runnerSource.IndexOf($preflightInvocation)
+    $confirmation = $runnerSource.IndexOf('$confirmation = Read-Host')
+    $finalPreflight = $runnerSource.LastIndexOf($preflightInvocation)
+    $drizzleMigration = $runnerSource.IndexOf('& $drizzleKitPath migrate')
+
+    if ($firstPreflight -lt 0 -or $finalPreflight -le $firstPreflight) {
+        throw 'ReleaseCandidate runner must perform an initial and a final Storage policy preflight.'
+    }
+    if ($firstPreflight -ge $confirmation) {
+        throw 'The initial Storage policy preflight must run before the typed migration confirmation.'
+    }
+    if ($finalPreflight -ge $drizzleMigration) {
+        throw 'The final Storage policy preflight must run immediately before Drizzle migration execution.'
+    }
+
+    Write-Host 'PASS: ReleaseCandidate checks exact Storage policies before confirmation and again before Drizzle starts'
 }
 
 function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
@@ -204,6 +227,7 @@ function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
 Push-Location $repositoryRoot
 try {
     Test-PinnedProductionMigrationPlans
+    Test-ReleaseCandidateStoragePreflightRunsBeforeDrizzle
     Invoke-PreflightCase -Name 'approved production project with TLS' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 0
     Invoke-PreflightCase -Name 'known staging project is rejected' -ProjectRef 'xuhzhdjmgvqzjxijmksu' -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1
     Invoke-PreflightCase -Name 'valid-looking but unapproved project is rejected' -ProjectRef 'aaaaaaaaaaaaaaaaaaaa' -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1
