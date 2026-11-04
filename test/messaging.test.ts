@@ -73,7 +73,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     // Seed test profiles
     await db.insert(profiles).values([
       { id: buyerId, username: 'buyer_user', displayName: 'Buyer User' },
-      { id: sellerId, username: 'seller_user', displayName: 'Seller User' },
+      { id: sellerId, username: 'seller_user', displayName: 'Seller User', avatarUrl: 'https://example.test/seller-avatar.png' },
       { id: thirdUserId, username: 'third_user', displayName: 'Third User' },
     ]);
 
@@ -387,7 +387,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         expect(detail.status).toBe(200);
         expect(detail.body.id).toBe(conv.id);
         expect(detail.body.unreadCount).toBeGreaterThanOrEqual(1);
-        expect(detail.body.currentUserAvatarUrl).toBeDefined();
+        expect(detail.body.currentUserAvatarUrl).toBe('https://example.test/seller-avatar.png');
         expect(profileLookupSpy).toHaveBeenCalledTimes(1);
         expect(profileLookupSpy).toHaveBeenCalledWith(sellerId, undefined);
         expect(detail.body.otherParticipant.avatarUrl).toBeDefined();
