@@ -280,6 +280,8 @@ async function run(): Promise<void> {
         );
 
         if (viewport.width >= 768) {
+          // Keep this callback free of nested named closures: tsx/esbuild can inject
+          // a __name helper that does not exist when Playwright serializes it in-page.
           const metrics = await page.evaluate(() => {
             const searchElement = document.querySelector('#dig-primary-search');
             const submitElement = document.querySelector('.dig-primary-search-form > button[type="submit"]');
