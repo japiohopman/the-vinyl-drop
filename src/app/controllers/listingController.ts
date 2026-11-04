@@ -9,6 +9,8 @@ import {
   createListingFromRelease,
   updateListing,
   addPhotoToListing,
+  getListingPhotoEditorSource as loadListingPhotoEditorSource,
+  saveListingPhotoEditor,
   deletePhotoFromListing,
   reorderListingPhotos,
   updateListingPhotoRole,
@@ -384,34 +386,41 @@ export async function postRestoreDiscogsArtwork(req: Request, res: Response, nex
 /** Uploads a seller photo and issues success feedback only after the upload succeeds. */
 export async function postUploadPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    if (!req.user) {
-      return res.redirect('/auth/login');
-    }
+    if (!req.user) return res.redirect('/auth/login');
 
     const listingId = req.params.id;
     const files = req.files || [];
-
-    if (files.length === 0) {
-      throw new ValidationError('Please select an image file to upload.');
+    const photoFiles = files.filter((file) => file.fieldname === 'photo');
+    const originalFiles = files.filter((file) => file.fieldname === 'originalPhoto');
+    if (
+      photoFiles.length !== 1 ||
+      originalFiles.length > 1 ||
+      files.some((file) => file.fieldname !== 'photo' && file.fieldname !== 'originalPhoto')
+    ) {
+      throw new ValidationError('Choose one photo to upload. The original editing source is attached automatically.');
     }
 
-    const storageOptions = { req };
-
-    for (const file of files) {
-      await addPhotoToListing(
-        listingId,
-        req.user.id,
-        {
-          buffer: file.buffer,
-          mimetype: file.mimetype,
-          originalname: file.filename,
-        },
-        req.body.altText,
-        undefined,
-        storageOptions,
-        req.body.role
-      );
-    }
+    const displayFile = photoFiles[0];
+    const originalFile = originalFiles[0];
+    await addPhotoToListing(
+      listingId,
+      req.user.id,
+      {
+        buffer: displayFile.buffer,
+        mimetype: displayFile.mimetype,
+        originalname: displayFile.filename,
+      },
+      req.body.altText,
+      undefined,
+      { req },
+      req.body.role,
+      originalFile ? {
+        buffer: originalFile.buffer,
+        mimetype: originalFile.mimetype,
+        originalname: originalFile.filename,
+      } : undefined,
+      req.body.editorState
+    );
 
     setFlashCookie(res, 'success', 'Photo uploaded successfully.');
     res.redirect(`/listings/${listingId}/edit`);
@@ -419,7 +428,7 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
     if (error instanceof ValidationError) {
       const listingId = req.params.id;
       const details = await getListingWithDetails(listingId);
-      if (details) {
+      if (details && req.user?.id === details.listing.sellerId) {
         const form: FormViewModel = {
           values: {},
           fieldErrors: {},
@@ -445,6 +454,64 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
   }
 }
 
+/** Streams a seller-owned private source; the object path is never sent to the browser. */
+export async function getListingPhotoEditorSource(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    const source = await loadListingPhotoEditorSource(
+      req.params.id,
+      req.params.photoId,
+      req.user.id,
+      undefined,
+      { req }
+    );
+    res.setHeader('Content-Type', 'image/webp');
+    res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Photo-Source-Width', String(source.sourceWidth));
+    res.setHeader('X-Photo-Source-Height', String(source.sourceHeight));
+    res.setHeader('X-Photo-Source-Legacy', source.sourceIsLegacy ? 'true' : 'false');
+    res.status(200).send(source.buffer);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/** Applies a new public derivative while the private source remains immutable. */
+export async function postEditListingPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) return res.redirect('/auth/login');
+    const files = req.files || [];
+    if (files.length !== 1 || files[0].fieldname !== 'photo') {
+      throw new ValidationError('The edited photo could not be read. Reopen the editor and try again.');
+    }
+    await saveListingPhotoEditor(
+      req.params.id,
+      req.params.photoId,
+      req.user.id,
+      {
+        buffer: files[0].buffer,
+        mimetype: files[0].mimetype,
+        originalname: files[0].filename,
+      },
+      req.body.editorState,
+      req.body.altText,
+      undefined,
+      { req }
+    );
+    setFlashCookie(res, 'success', 'Photo edits saved.');
+    res.redirect(`/listings/${req.params.id}/edit`);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      return res.redirect(`/listings/${req.params.id}/edit?photoError=${encodeURIComponent(error.message)}`);
+    }
+    next(error);
+  }
+}
 
 /** Updates a listing photo role and issues confirmation after the update succeeds. */
 export async function postUpdatePhotoRole(req: Request, res: Response, next: NextFunction): Promise<void> {

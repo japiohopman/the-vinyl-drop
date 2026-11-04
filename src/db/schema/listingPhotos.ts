@@ -1,7 +1,8 @@
 import { sql } from 'drizzle-orm';
-import { check, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { ListingPhotoRole } from '../../domain/listingPhotoRole';
 import { listings } from './listings';
+import type { ListingPhotoEditorState } from '../../domain/listingPhotoEditor';
 
 export const listingPhotos = pgTable(
   'listing_photos',
@@ -11,6 +12,9 @@ export const listingPhotos = pgTable(
       .notNull()
       .references(() => listings.id, { onDelete: 'cascade' }),
     storagePath: text('storage_path').notNull(),
+    sourceStoragePath: text('source_storage_path'),
+    sourceIsLegacy: boolean('source_is_legacy').notNull().default(true),
+    editorState: jsonb('editor_state').$type<ListingPhotoEditorState>(),
     displayOrder: integer('display_order').default(0).notNull(),
     altText: text('alt_text'),
     role: text('role').$type<ListingPhotoRole>().default('legacy_unclassified').notNull(),

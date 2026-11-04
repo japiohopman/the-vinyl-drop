@@ -124,6 +124,16 @@
                 <p class="listing-photo-square-warning" hidden role="status"></p>
               </div>
               <p class="cover-photo-status"><span aria-hidden="true">✓</span> Photo added</p>
+              <div class="cover-photo-actions">
+                <button type="button" class="btn btn-outline btn-sm" data-open-existing-photo-editor
+                  data-editor-source-url="/listings/<%= listing.id %>/photos/<%= slot.photo.id %>/editor-source"
+                  data-photo-id="<%= slot.photo.id %>"
+                  data-photo-role="<%= slot.role %>"
+                  data-photo-alt-text="<%= slot.photo.altText || '' %>"
+                  data-editor-state="<%= JSON.stringify(slot.photo.editorState || '') %>">
+                  Edit photo
+                </button>
+              </div>
               <form action="/listings/<%= listing.id %>/photos/<%= slot.photo.id %>/delete" method="POST" class="cover-photo-remove-form">
                 <button type="submit" class="photo-remove-link">Remove photo</button>
               </form>
@@ -159,6 +169,14 @@
                 <div class="additional-photo-meta">
                   <strong><%= photoRoleLabels[photo.role] || photoRoleLabels.legacy_unclassified %></strong>
                   <% if (photo.altText) { %><span><%= photo.altText %></span><% } %>
+                  <button type="button" class="btn btn-outline btn-sm" data-open-existing-photo-editor
+                    data-editor-source-url="/listings/<%= listing.id %>/photos/<%= photo.id %>/editor-source"
+                    data-photo-id="<%= photo.id %>"
+                    data-photo-role="<%= photo.role %>"
+                    data-photo-alt-text="<%= photo.altText || '' %>"
+                    data-editor-state="<%= JSON.stringify(photo.editorState || '') %>">
+                    Edit photo
+                  </button>
                   <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/role" method="POST" class="additional-photo-role-form">
                     <label for="photo-role-<%= idx %>">Photo type</label>
                     <select id="photo-role-<%= idx %>" name="role" required class="form-control">
@@ -195,8 +213,7 @@
         <% if (photoError) { %>
           <p role="alert" class="photo-dialog-error"><%= photoError %></p>
         <% } %>
-        <% if (photos.length < 5) { %>
-          <form action="/listings/<%= listing.id %>/photos" method="POST" enctype="multipart/form-data" class="photo-upload-form">
+        <form id="photoUploadForm" action="/listings/<%= listing.id %>/photos" data-new-action="/listings/<%= listing.id %>/photos" method="POST" enctype="multipart/form-data" class="photo-upload-form">
             <div class="photo-upload-field photo-role-field">
               <label for="newPhotoRole">Photo type</label>
               <select id="newPhotoRole" name="role" required class="form-control">
@@ -211,6 +228,8 @@
             <div class="photo-upload-field">
               <span class="photo-upload-label">Photo file</span>
               <input type="file" id="photoFile" name="photo" accept="image/jpeg,image/png,image/webp" required class="photo-file-input" aria-describedby="photoFileHelp selected-photo-info" />
+              <input type="file" id="photoOriginalFile" name="originalPhoto" accept="image/jpeg,image/png,image/webp" hidden />
+              <input type="hidden" id="photoEditorState" name="editorState" value="" />
               <label for="photoFile" class="btn btn-outline photo-file-trigger" tabindex="-1">
                 <%- include('../partials/icon', { name: 'photo-camera', size: '1.125rem', ariaHidden: true }) %>
                 <span>Choose photo</span>
@@ -335,6 +354,7 @@
                 </details>
               </section>
 
+              <p id="photo-editor-source-notice" class="photo-role-guidance" role="status" hidden></p>
               <p id="square-cover-status" role="status" aria-live="polite" class="square-cover-status">Place each corner on the sleeve edge before uploading.</p>
             </div>
 
@@ -348,7 +368,6 @@
               <button type="submit" class="btn btn-primary">Upload photo</button>
             </div>
           </form>
-        <% } %>
       </dialog>
 
       <dialog id="photoHelpDialog" class="photo-dialog photo-help-dialog" aria-labelledby="photoHelpTitle">

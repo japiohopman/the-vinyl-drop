@@ -24,6 +24,7 @@ import {
 import { ConditionGrade } from '../src/db/schema/enums';
 import { config } from '../src/config/env';
 import { AuthorizationError, ValidationError } from '../src/app/services/errors';
+import { clearInMemoryStorage } from '../src/app/services/storageService';
 
 // Mock repository functions and database for isolated unit testing
 jest.mock('../src/db', () => {
@@ -58,6 +59,7 @@ const app = createApp();
 describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearInMemoryStorage();
   });
 
   describe('Price Input Parsing (parsePriceEurToCents)', () => {
@@ -303,41 +305,55 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(listingRepo.updateListing).toHaveBeenCalledWith(listingId, { dismissedAt: null }, undefined);
     });
 
-    it('should delete a photo from a listing and re-compact photo order', async () => {
+    it('should delete both photo objects before removing metadata and re-compact photo order', async () => {
       const photoId = '60000000-0000-4000-8000-000000000001';
+      const storagePath = `listings/${listingId}/${photoId}.webp`;
       (photoRepo.findPhotoById as jest.Mock).mockResolvedValue({
         id: photoId,
         listingId,
-        storagePath: `listings/${listingId}/${photoId}.webp`,
+        storagePath,
       });
 
+      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce({
+        id: photoId,
+        listingId,
+        storagePath,
+      });
+      const storage = await import('../src/app/services/storageService');
+      const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
       const deleted = await deletePhotoFromListing(listingId, photoId, sellerId);
       expect(deleted).toBe(true);
       expect(photoRepo.deleteListingPhoto).toHaveBeenCalledWith(photoId, undefined);
+      expect(download).toHaveBeenCalledWith(storagePath, undefined);
+      download.mockRestore();
     });
 
-    it('should prevent storage object removal if database row deletion fails during photo deletion', async () => {
+    it('restores the display object if database row deletion fails during photo deletion', async () => {
       const photoId = '60000000-0000-4000-8000-000000000001';
+      const storagePath = `listings/${listingId}/${photoId}.webp`;
       (photoRepo.findPhotoById as jest.Mock).mockResolvedValue({
         id: photoId,
         listingId,
-        storagePath: `listings/${listingId}/${photoId}.webp`,
+        storagePath,
       });
 
       (photoRepo.deleteListingPhoto as jest.Mock).mockRejectedValueOnce(new Error('PostgreSQL write lock timeout'));
 
-      const storageModule = await import('../src/app/services/storageService');
-      const deleteStorageSpy = jest.spyOn(storageModule, 'deleteListingPhotoFromStorage');
+      const storage = await import('../src/app/services/storageService');
+      const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
+      const deleteStorageSpy = jest.spyOn(storage, 'deleteListingPhotoFromStorage');
+      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValue(undefined);
 
       await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('PostgreSQL write lock timeout');
 
-      // Verify Storage object deletion was NOT called because DB row deletion failed first
-      expect(deleteStorageSpy).not.toHaveBeenCalled();
-
+      expect(deleteStorageSpy).toHaveBeenCalledWith(storagePath, undefined);
+      expect(restore).toHaveBeenCalledWith(storagePath, Buffer.from('photo'), undefined);
+      download.mockRestore();
       deleteStorageSpy.mockRestore();
+      restore.mockRestore();
     });
 
-    it('should re-insert database metadata record as compensation if storage object deletion fails', async () => {
+    it('keeps metadata intact and restores the object if Storage deletion fails', async () => {
       const photoId = '60000000-0000-4000-8000-000000000001';
       const samplePhoto = {
         id: photoId,
@@ -349,33 +365,21 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       };
 
       (photoRepo.findPhotoById as jest.Mock).mockResolvedValue(samplePhoto);
-      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(true);
-      (photoRepo.createListingPhoto as jest.Mock).mockResolvedValueOnce(samplePhoto);
-
-      const storageModule = await import('../src/app/services/storageService');
+      const storage = await import('../src/app/services/storageService');
+      const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
       const deleteStorageSpy = jest
-        .spyOn(storageModule, 'deleteListingPhotoFromStorage')
+        .spyOn(storage, 'deleteListingPhotoFromStorage')
         .mockRejectedValueOnce(new Error('Supabase Storage deletion failed: 500 Internal Server Error'));
+      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValue(undefined);
 
       await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('Supabase Storage deletion failed');
 
-      // Verify that deleteListingPhoto was called first
-      expect(photoRepo.deleteListingPhoto).toHaveBeenCalledWith(photoId, undefined);
-
-      // Verify compensation re-insertion was called to restore the metadata row
-      expect(photoRepo.createListingPhoto).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: photoId,
-          listingId,
-          storagePath: `listings/${listingId}/${photoId}.webp`,
-          displayOrder: 0,
-          altText: 'Cover art',
-          role: 'back_cover',
-        }),
-        undefined
-      );
-
+      expect(photoRepo.deleteListingPhoto).not.toHaveBeenCalled();
+      expect(photoRepo.createListingPhoto).not.toHaveBeenCalled();
+      expect(restore).toHaveBeenCalledWith(samplePhoto.storagePath, Buffer.from('photo'), undefined);
+      download.mockRestore();
       deleteStorageSpy.mockRestore();
+      restore.mockRestore();
     });
 
     it.each([
@@ -509,7 +513,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(orphanRepo.recordOrphanedStorageObject).toHaveBeenCalledWith(
         expect.objectContaining({
           listingId,
-          reason: 'UPLOAD_DB_INSERT_FAILED_AND_STORAGE_CLEANUP_FAILED',
+          reason: 'UPLOAD_DB_INSERT_FAILED_DISPLAY_CLEANUP_FAILED',
         }),
         undefined
       );
@@ -519,7 +523,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       deleteStorageSpy.mockRestore();
     });
 
-    it('should record durable orphan record if photo deletion Storage removal fails AND DB compensation re-insertion fails', async () => {
+    it('records an orphan if Storage deletion and its restore both fail', async () => {
       const photoId = '60000000-0000-4000-8000-000000000001';
       const samplePhoto = {
         id: photoId,
@@ -530,19 +534,14 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       };
 
       (photoRepo.findPhotoById as jest.Mock).mockResolvedValue(samplePhoto);
-      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(true);
-      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(new Error('DB primary key conflict'));
-      (orphanRepo.recordOrphanedStorageObject as jest.Mock).mockResolvedValueOnce({
-        id: 'orphan-456',
-        listingId,
-        photoId,
-        storagePath: samplePhoto.storagePath,
-      });
+      (orphanRepo.recordOrphanedStorageObject as jest.Mock).mockResolvedValueOnce({ id: 'orphan-456' });
 
-      const storageModule = await import('../src/app/services/storageService');
+      const storage = await import('../src/app/services/storageService');
+      const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
       const deleteStorageSpy = jest
-        .spyOn(storageModule, 'deleteListingPhotoFromStorage')
+        .spyOn(storage, 'deleteListingPhotoFromStorage')
         .mockRejectedValueOnce(new Error('Supabase Storage 500 Network Timeout'));
+      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockRejectedValueOnce(new Error('restore failed'));
 
       await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('Supabase Storage 500 Network Timeout');
 
@@ -551,14 +550,15 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
           listingId,
           photoId,
           storagePath: samplePhoto.storagePath,
-          reason: 'DELETE_STORAGE_FAILED_AND_DB_COMPENSATION_FAILED',
+          reason: 'PHOTO_DELETE_DISPLAY_RESTORE_FAILED',
         }),
         undefined
       );
-
       const recordedOrphan = (orphanRepo.recordOrphanedStorageObject as jest.Mock).mock.calls[0][0];
       expect(recordedOrphan).not.toHaveProperty('errorDetails');
+      download.mockRestore();
       deleteStorageSpy.mockRestore();
+      restore.mockRestore();
     });
 
     it('should not persist or log raw exception details when storage rollback and orphan recording both fail', async () => {
@@ -596,7 +596,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       deleteStorageSpy.mockRestore();
     });
 
-    it('should not persist or log raw exception details when delete compensation and orphan recording both fail', async () => {
+    it('does not persist or log raw exception details when delete restore and orphan recording fail', async () => {
       const photoId = '60000000-0000-4000-8000-000000000002';
       const storagePath = `listings/${listingId}/${photoId}.webp`;
       (photoRepo.findPhotoById as jest.Mock).mockResolvedValue({
@@ -606,29 +606,34 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         displayOrder: 0,
         altText: 'Cover art',
       });
-      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce(true);
-      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(new Error('compensation-secret-detail'));
       (orphanRepo.recordOrphanedStorageObject as jest.Mock).mockRejectedValueOnce(new Error('orphan-secret-detail'));
 
-      const storageModule = await import('../src/app/services/storageService');
-      const deleteStorageSpy = jest.spyOn(storageModule, 'deleteListingPhotoFromStorage')
+      const storage = await import('../src/app/services/storageService');
+      const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
+      const deleteStorageSpy = jest.spyOn(storage, 'deleteListingPhotoFromStorage')
         .mockRejectedValueOnce(new Error('storage-secret-detail'));
+      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage')
+        .mockRejectedValueOnce(new Error('restore-secret-detail'));
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
       await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('storage-secret-detail');
 
-      const recordedOrphan = (orphanRepo.recordOrphanedStorageObject as jest.Mock).mock.calls[0][0];
-      expect(recordedOrphan).not.toHaveProperty('errorDetails');
+      expect(orphanRepo.recordOrphanedStorageObject).toHaveBeenCalledWith(
+        expect.objectContaining({ listingId, photoId, storagePath, reason: 'PHOTO_DELETE_DISPLAY_RESTORE_FAILED' }),
+        undefined
+      );
       expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
       const logged = consoleErrorSpy.mock.calls.flat().join(' ');
       expect(logged).toContain('storage_orphan_unresolved');
       expect(logged).not.toContain('storage-secret-detail');
-      expect(logged).not.toContain('compensation-secret-detail');
+      expect(logged).not.toContain('restore-secret-detail');
       expect(logged).not.toContain('orphan-secret-detail');
       expect(logged).not.toContain(storagePath);
 
+      download.mockRestore();
       consoleErrorSpy.mockRestore();
       deleteStorageSpy.mockRestore();
+      restore.mockRestore();
     });
 
     it('should reject publishing without server-side preview confirmation (Blocker 3)', async () => {

@@ -3,6 +3,8 @@ import { getDb } from '../../db';
 import { ListingStatus } from '../../db/schema/enums';
 import { ListingPhoto } from '../../db/schema/listingPhotos';
 import { ListingPhotoRole } from '../../domain/listingPhotoRole';
+import type { ListingPhotoEditorState } from '../../domain/listingPhotoEditor';
+import { listingPhotoEditorStateSchema } from '../../validators/listingPhotoEditor';
 import { resolveDigArtwork, DigArtworkFace } from '../../domain/digExperience';
 import { Listing } from '../../db/schema/listings';
 import { PhysicalCopy } from '../../db/schema/physicalCopies';
@@ -29,6 +31,8 @@ import {
   findPhotoById,
   findPhotosByListingId,
   findPhotosByListingIds,
+  updateListingPhotoEditor,
+  updateListingPhotoSource,
   updateListingPhotoRole as updatePhotoRoleInRepo,
   updatePhotoOrder,
 } from '../repositories/listingPhotoRepository';
@@ -56,7 +60,7 @@ import {
 } from '../repositories/physicalCopyRepository';
 import { findProfileById } from '../repositories/profileRepository';
 import { findReleaseById } from '../repositories/releaseRepository';
-import { ProcessedImage, processAndValidateImage } from '../utils/imageProcessor';
+import { ProcessedImage, preserveListingPhotoSource, processAndValidateImage, readImageDimensions } from '../utils/imageProcessor';
 import {
   deleteListingPhotoFromStorage,
   restoreListingPhotoToStorage,
@@ -64,6 +68,12 @@ import {
   getPhotoPublicUrl,
   StorageOptions,
   uploadListingPhotoToStorage,
+  uploadListingPhotoSourceToStorage,
+  downloadListingPhotoSourceFromStorage,
+  deleteListingPhotoSourceFromStorage,
+  restoreListingPhotoSourceToStorage,
+  listingPhotoSourceStoragePath,
+  listingPhotoStoragePath,
 } from './storageService';
 import { recordOrphanedStorageObject } from '../repositories/orphanRepository';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
@@ -72,8 +82,55 @@ import { recordListingPublishedEvent } from './activityService';
 
 type DbInstance = ReturnType<typeof getDb>;
 
-export interface ListingPhotoWithUrl extends ListingPhoto {
+export type ListingPhotoWithUrl = Omit<ListingPhoto, 'sourceStoragePath'> & {
   publicUrl: string;
+};
+
+/** Private Storage paths must never be passed into EJS or public listing view models. */
+function listingPhotoWithPublicUrl(photo: ListingPhoto): ListingPhotoWithUrl {
+  const { sourceStoragePath, ...safePhoto } = photo;
+  // Deliberately consume the value only to omit it from the public view model.
+  void sourceStoragePath;
+  return {
+    ...safePhoto,
+    publicUrl: getPhotoPublicUrl(photo.storagePath),
+  };
+}
+
+function parseEditorState(input: unknown): ListingPhotoEditorState | null {
+  if (input === undefined || input === null || input === '') return null;
+  let value = input;
+  if (typeof input === 'string') {
+    try {
+      value = JSON.parse(input);
+    } catch {
+      throw new ValidationError('The photo edit recipe is invalid. Please reopen the editor and try again.');
+    }
+  }
+  const parsed = listingPhotoEditorStateSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new ValidationError('The photo edit recipe is invalid. Please reopen the editor and try again.');
+  }
+  return parsed.data;
+}
+
+async function recordPhotoStorageOrphan(
+  listingId: string,
+  photoId: string,
+  storagePath: string,
+  reason: string,
+  dbOverride?: DbInstance
+): Promise<void> {
+  try {
+    await recordOrphanedStorageObject({ listingId, photoId, storagePath, reason }, dbOverride);
+  } catch {
+    console.error(JSON.stringify({
+      event: 'storage_orphan_unresolved',
+      reason,
+      listingId,
+      photoId,
+    }));
+  }
 }
 
 export interface DigListingViewModel extends ListingCardViewModel {
@@ -233,10 +290,7 @@ export async function getListingWithDetails(
   }
 
   const photoRecords = await findPhotosByListingId(listingId, dbOverride);
-  const photos: ListingPhotoWithUrl[] = photoRecords.map((photo) => ({
-    ...photo,
-    publicUrl: getPhotoPublicUrl(photo.storagePath),
-  }));
+  const photos: ListingPhotoWithUrl[] = photoRecords.map(listingPhotoWithPublicUrl);
 
   return {
     listing,
@@ -312,10 +366,7 @@ export async function searchDigListings(
   }
 
   const items: DigListingViewModel[] = result.records.map((record) => {
-    const photos = (photosByListingId.get(record.listing.id) || []).map((photo) => ({
-      ...photo,
-      publicUrl: getPhotoPublicUrl(photo.storagePath),
-    }));
+    const photos = (photosByListingId.get(record.listing.id) || []).map(listingPhotoWithPublicUrl);
     const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist, undefined, record.release.coverArtUrl);
     const base = recordToListingCardViewModel(record);
 
@@ -558,17 +609,15 @@ export async function addPhotoToListing(
   altText?: string,
   dbOverride?: DbInstance,
   storageOptions?: StorageOptions,
-  roleInput?: unknown
+  roleInput?: unknown,
+  sourceFile?: { buffer: Buffer; mimetype: string; originalname?: string },
+  editorStateInput?: unknown
 ): Promise<ListingPhotoWithUrl> {
   const listing = await findListingById(listingId, dbOverride);
-  if (!listing) {
-    throw new NotFoundError('Listing not found');
-  }
-
+  if (!listing) throw new NotFoundError('Listing not found');
   if (listing.sellerId !== requestingUserId) {
     throw new AuthorizationError('You are not authorized to upload photos to this listing');
   }
-
   if (isTerminalListingStatus(listing.status)) {
     throw new ValidationError(`Cannot add photos to a listing in terminal state '${listing.status}'`);
   }
@@ -580,8 +629,8 @@ export async function addPhotoToListing(
 
   const roleResult = newListingPhotoRoleSchema.safeParse(roleInput);
   if (!roleResult.success) throw new ValidationError('Choose a photo role before uploading.');
-
   const role = roleResult.data;
+
   const submittedAltText = typeof altText === 'string' ? altText.trim() : '';
   const defaultAltText = role === 'front_cover'
     ? 'Front cover of the record sleeve'
@@ -592,83 +641,394 @@ export async function addPhotoToListing(
   if (!altTextResult.success) {
     throw new ValidationError(altTextResult.error.issues.map((issue) => issue.message).join('; '));
   }
-  const validatedAltText = altTextResult.data;
 
-  // Safe Sharp inspection and processing
+  if (sourceFile && (
+    !sourceFile.buffer.length ||
+    sourceFile.buffer.length > 5 * 1024 * 1024
+  )) {
+    throw new ValidationError('The original photo must be a valid image no larger than 5 MiB.');
+  }
+
   let processed: ProcessedImage;
+  let sourceMaster: ProcessedImage;
   try {
     processed = await processAndValidateImage(file.buffer, file.mimetype);
+    const original = sourceFile || file;
+    sourceMaster = await preserveListingPhotoSource(original.buffer, original.mimetype);
   } catch (err) {
     throw new ValidationError((err as Error).message);
   }
 
-  // Both sleeve faces must be stored as square pixels so Dig renders the two sides consistently.
-  // The seller confirms the crop in the browser; never guess a destructive server-side crop.
   if ((role === 'front_cover' || role === 'back_cover') && processed.width !== processed.height) {
     const side = role === 'front_cover' ? 'front-cover' : 'back-cover';
     throw new ValidationError('Crop the ' + side + ' photo to a square in the preview before uploading.');
   }
 
+  const editorState = parseEditorState(editorStateInput);
+  if (editorState && (
+    editorState.sourceWidth !== sourceMaster.width ||
+    editorState.sourceHeight !== sourceMaster.height
+  )) {
+    throw new ValidationError('The saved edit recipe does not match the selected original photo. Reopen the editor and try again.');
+  }
+
   const photoId = crypto.randomUUID();
-
-  // Upload processed buffer to storage
-  const storagePath = await uploadListingPhotoToStorage({
-    listingId,
-    photoId,
-    buffer: processed.buffer,
-    contentType: processed.contentType,
-    extension: processed.extension,
-    options: storageOptions,
-  });
-
-  // Insert into DB with rollback handling if DB write fails
+  const sourceIsLegacy = !sourceFile;
+  const expectedSourcePath = listingPhotoSourceStoragePath(listingId, photoId);
+  let sourceStoragePath: string;
   try {
-    const photoRecord = await createListingPhoto(
-      {
-        id: photoId,
-        listingId,
-        storagePath,
-        displayOrder: existingPhotoCount,
-        altText: validatedAltText,
-        role,
-      },
-      dbOverride
+    sourceStoragePath = await uploadListingPhotoSourceToStorage(
+      listingId,
+      photoId,
+      sourceMaster.buffer,
+      storageOptions
     );
+  } catch (sourceUploadError) {
+    try {
+      await deleteListingPhotoSourceFromStorage(expectedSourcePath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        expectedSourcePath,
+        'PHOTO_SOURCE_UPLOAD_FAILED_SOURCE_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    throw sourceUploadError;
+  }
 
-    return {
-      ...photoRecord,
-      publicUrl: getPhotoPublicUrl(storagePath),
-    };
+  const expectedDisplayPath = listingPhotoStoragePath(listingId, photoId, processed.extension);
+  let storagePath: string;
+  try {
+    storagePath = await uploadListingPhotoToStorage({
+      listingId,
+      photoId,
+      buffer: processed.buffer,
+      contentType: processed.contentType,
+      extension: processed.extension,
+      options: storageOptions,
+    });
+  } catch (uploadError) {
+    try {
+      await deleteListingPhotoFromStorage(expectedDisplayPath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        expectedDisplayPath,
+        'PHOTO_DISPLAY_UPLOAD_FAILED_DISPLAY_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    try {
+      await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        sourceStoragePath,
+        'PHOTO_DISPLAY_UPLOAD_FAILED_SOURCE_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    throw uploadError;
+  }
+
+  try {
+    const photoRecord = await createListingPhoto({
+      id: photoId,
+      listingId,
+      storagePath,
+      sourceStoragePath,
+      sourceIsLegacy,
+      editorState,
+      displayOrder: existingPhotoCount,
+      altText: altTextResult.data,
+      role,
+    }, dbOverride);
+
+    return listingPhotoWithPublicUrl(photoRecord);
   } catch (dbErr) {
-    // Rollback: clean up orphaned file in storage if DB insert fails
     try {
       await deleteListingPhotoFromStorage(storagePath, storageOptions);
     } catch {
-      // Record durable orphan record in database for double-failure reconciliation
-      try {
-        await recordOrphanedStorageObject(
-          {
-            listingId,
-            photoId,
-            storagePath,
-            reason: 'UPLOAD_DB_INSERT_FAILED_AND_STORAGE_CLEANUP_FAILED',
-          },
-          dbOverride
-        );
-      } catch {
-        console.error(JSON.stringify({
-          event: 'storage_orphan_unresolved',
-          reason: 'UPLOAD_DB_INSERT_FAILED_AND_STORAGE_CLEANUP_FAILED',
-          listingId,
-          photoId,
-        }));
-      }
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        storagePath,
+        'UPLOAD_DB_INSERT_FAILED_DISPLAY_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    try {
+      await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        sourceStoragePath,
+        'UPLOAD_DB_INSERT_FAILED_SOURCE_CLEANUP_FAILED',
+        dbOverride
+      );
     }
     if ((dbErr as { code?: string }).code === '23505') {
       throw new ValidationError('This listing already has a photo assigned to that sleeve side. Reclassify the existing photo before adding another one.');
     }
     throw dbErr;
   }
+}
+
+export interface ListingPhotoEditorSource {
+  buffer: Buffer;
+  sourceWidth: number;
+  sourceHeight: number;
+  sourceIsLegacy: boolean;
+  editorState: ListingPhotoEditorState | null;
+}
+
+/**
+ * Returns a seller-owned private source. Photos uploaded before source retention
+ * existed get a private, lossless baseline made from their current display file;
+ * this is explicitly not represented as the unrecoverable original camera photo.
+ */
+export async function getListingPhotoEditorSource(
+  listingId: string,
+  photoId: string,
+  requestingUserId: string,
+  dbOverride?: DbInstance,
+  storageOptions?: StorageOptions
+): Promise<ListingPhotoEditorSource> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) throw new NotFoundError('Listing not found');
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to edit photos for this listing');
+  }
+  if (isTerminalListingStatus(listing.status)) {
+    throw new ValidationError(`Cannot edit photos for a listing in terminal state '${listing.status}'`);
+  }
+
+  const photo = await findPhotoById(photoId, dbOverride);
+  if (!photo || photo.listingId !== listingId) throw new NotFoundError('Photo not found');
+
+  let sourceStoragePath = photo.sourceStoragePath;
+  let sourceIsLegacy = photo.sourceIsLegacy;
+  if (!sourceStoragePath) {
+    const displayBuffer = await downloadListingPhotoFromStorage(photo.storagePath, storageOptions);
+    let sourceMaster: ProcessedImage;
+    try {
+      sourceMaster = await preserveListingPhotoSource(displayBuffer, 'image/webp');
+    } catch (error) {
+      throw new ValidationError((error as Error).message);
+    }
+
+    const expectedPath = listingPhotoSourceStoragePath(listingId, photoId);
+    let uploadedNewSource = false;
+    try {
+      sourceStoragePath = await uploadListingPhotoSourceToStorage(
+        listingId,
+        photoId,
+        sourceMaster.buffer,
+        storageOptions
+      );
+      uploadedNewSource = true;
+    } catch (uploadError) {
+      // Another editor tab may have initialized the same deterministic legacy path.
+      try {
+        await downloadListingPhotoSourceFromStorage(expectedPath, storageOptions);
+        sourceStoragePath = expectedPath;
+      } catch {
+        throw uploadError;
+      }
+    }
+
+    let updated: ListingPhoto | null;
+    try {
+      updated = await updateListingPhotoSource(
+        listingId,
+        photoId,
+        sourceStoragePath,
+        true,
+        dbOverride
+      );
+    } catch (updateError) {
+      if (uploadedNewSource) {
+        try {
+          await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+        } catch {
+          await recordPhotoStorageOrphan(
+            listingId,
+            photoId,
+            sourceStoragePath,
+            'LEGACY_SOURCE_INITIALIZATION_UPDATE_FAILED_CLEANUP_FAILED',
+            dbOverride
+          );
+        }
+      }
+      throw updateError;
+    }
+    if (!updated) {
+      if (uploadedNewSource) {
+        try {
+          await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+        } catch {
+          await recordPhotoStorageOrphan(
+            listingId,
+            photoId,
+            sourceStoragePath,
+            'LEGACY_SOURCE_INITIALIZATION_ROW_MISSING',
+            dbOverride
+          );
+        }
+      }
+      throw new NotFoundError('Photo not found');
+    }
+    sourceIsLegacy = true;
+  }
+
+  if (!sourceStoragePath) throw new Error('The private photo source was not initialized.');
+  const buffer = await downloadListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+  const dimensions = await readImageDimensions(buffer);
+  return {
+    buffer,
+    sourceWidth: dimensions.width,
+    sourceHeight: dimensions.height,
+    sourceIsLegacy,
+    editorState: photo.editorState || null,
+  };
+}
+
+/**
+ * Save a new public derivative while preserving the immutable private source.
+ * A unique object path is uploaded first; only then is the DB pointer changed.
+ */
+export async function saveListingPhotoEditor(
+  listingId: string,
+  photoId: string,
+  requestingUserId: string,
+  file: { buffer: Buffer; mimetype: string; originalname?: string },
+  editorStateInput: unknown,
+  altTextInput: unknown,
+  dbOverride?: DbInstance,
+  storageOptions?: StorageOptions
+): Promise<ListingPhotoWithUrl> {
+  const listing = await findListingById(listingId, dbOverride);
+  if (!listing) throw new NotFoundError('Listing not found');
+  if (listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to edit photos for this listing');
+  }
+  if (isTerminalListingStatus(listing.status)) {
+    throw new ValidationError(`Cannot edit photos for a listing in terminal state '${listing.status}'`);
+  }
+
+  const photo = await findPhotoById(photoId, dbOverride);
+  if (!photo || photo.listingId !== listingId) throw new NotFoundError('Photo not found');
+
+  const submittedAltText = typeof altTextInput === 'string' ? altTextInput.trim() : '';
+  let altText = photo.altText;
+  if (submittedAltText) {
+    const altTextResult = listingPhotoAltTextSchema.safeParse(submittedAltText);
+    if (!altTextResult.success) {
+      throw new ValidationError(altTextResult.error.issues.map((issue) => issue.message).join('; '));
+    }
+    altText = altTextResult.data;
+  }
+
+  const editorState = parseEditorState(editorStateInput);
+  if (!editorState) {
+    throw new ValidationError('Save the crop and adjustments in the photo editor before applying them.');
+  }
+
+  const source = await getListingPhotoEditorSource(
+    listingId,
+    photoId,
+    requestingUserId,
+    dbOverride,
+    storageOptions
+  );
+  if (
+    editorState.sourceWidth !== source.sourceWidth ||
+    editorState.sourceHeight !== source.sourceHeight
+  ) {
+    throw new ValidationError('The edit recipe does not match the saved original. Reopen the photo editor and try again.');
+  }
+
+  let processed: ProcessedImage;
+  try {
+    processed = await processAndValidateImage(file.buffer, file.mimetype);
+  } catch (error) {
+    throw new ValidationError((error as Error).message);
+  }
+  if ((photo.role === 'front_cover' || photo.role === 'back_cover') &&
+      processed.width !== processed.height) {
+    throw new ValidationError('Cover photos must remain square. Reopen the editor and correct the sleeve crop.');
+  }
+
+  const version = crypto.randomUUID();
+  const nextStoragePath = await uploadListingPhotoToStorage({
+    listingId,
+    photoId,
+    buffer: processed.buffer,
+    contentType: processed.contentType,
+    extension: processed.extension,
+    version,
+    options: storageOptions,
+  });
+
+  let updated: ListingPhoto | null;
+  try {
+    updated = await updateListingPhotoEditor(
+      listingId,
+      photoId,
+      photo.storagePath,
+      nextStoragePath,
+      editorState,
+      altText,
+      dbOverride
+    );
+  } catch (error) {
+    try {
+      await deleteListingPhotoFromStorage(nextStoragePath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        nextStoragePath,
+        'PHOTO_EDIT_DB_UPDATE_FAILED_NEW_DERIVATIVE_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    throw error;
+  }
+
+  if (!updated) {
+    try {
+      await deleteListingPhotoFromStorage(nextStoragePath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        nextStoragePath,
+        'PHOTO_EDIT_ROW_MISSING_NEW_DERIVATIVE_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    throw new ValidationError('This photo was changed in another tab. Reopen the editor before saving again.');
+  }
+
+  try {
+    await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
+  } catch {
+    await recordPhotoStorageOrphan(
+      listingId,
+      photoId,
+      photo.storagePath,
+      'PHOTO_EDIT_OLD_DERIVATIVE_CLEANUP_FAILED',
+      dbOverride
+    );
+  }
+
+  return listingPhotoWithPublicUrl(updated);
 }
 
 export async function updateListingPhotoRole(
@@ -749,76 +1109,81 @@ export async function deletePhotoFromListing(
   storageOptions?: StorageOptions
 ): Promise<boolean> {
   const listing = await findListingById(listingId, dbOverride);
-  if (!listing) {
-    throw new NotFoundError('Listing not found');
-  }
-
+  if (!listing) throw new NotFoundError('Listing not found');
   if (listing.sellerId !== requestingUserId) {
     throw new AuthorizationError('You are not authorized to modify photos for this listing');
   }
-
   if (isTerminalListingStatus(listing.status)) {
     throw new ValidationError(`Cannot delete photos from a listing in terminal state '${listing.status}'`);
   }
 
   const photo = await findPhotoById(photoId, dbOverride);
-  if (!photo || photo.listingId !== listingId) {
-    throw new NotFoundError('Photo not found');
-  }
+  if (!photo || photo.listingId !== listingId) throw new NotFoundError('Photo not found');
 
-  // Execute database metadata record deletion first
-  await deleteListingPhoto(photoId, dbOverride);
+  // Snapshot every object before deleting anything. Storage timeouts can happen
+  // after a provider has completed a delete, so attempted removals are compensated.
+  const displayBuffer = await downloadListingPhotoFromStorage(photo.storagePath, storageOptions);
+  const sourceBuffer = photo.sourceStoragePath
+    ? await downloadListingPhotoSourceFromStorage(photo.sourceStoragePath, storageOptions)
+    : null;
+  let attemptedDisplayDelete = false;
+  let attemptedSourceDelete = false;
 
-  // Attempt Storage object deletion
-  try {
-    await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
-  } catch (storageErr) {
-    // Compensation strategy: Storage deletion failed. Re-insert the DB metadata record
-    // to restore cross-system state consistency before re-throwing the error.
-    try {
-      await createListingPhoto(
-        {
-          id: photo.id,
-          listingId: photo.listingId,
-          storagePath: photo.storagePath,
-          displayOrder: photo.displayOrder,
-          altText: photo.altText,
-          role: photo.role,
-        },
-        dbOverride
-      );
-    } catch {
-      // Record durable orphan record in database for double-failure reconciliation
+  const restoreObjects = async (): Promise<void> => {
+    if (attemptedDisplayDelete) {
       try {
-        await recordOrphanedStorageObject(
-          {
-            listingId,
-            photoId,
-            storagePath: photo.storagePath,
-            reason: 'DELETE_STORAGE_FAILED_AND_DB_COMPENSATION_FAILED',
-          },
-          dbOverride
-        );
+        await restoreListingPhotoToStorage(photo.storagePath, displayBuffer, storageOptions);
       } catch {
-        console.error(JSON.stringify({
-          event: 'storage_orphan_unresolved',
-          reason: 'DELETE_STORAGE_FAILED_AND_DB_COMPENSATION_FAILED',
+        await recordPhotoStorageOrphan(
           listingId,
           photoId,
-        }));
+          photo.storagePath,
+          'PHOTO_DELETE_DISPLAY_RESTORE_FAILED',
+          dbOverride
+        );
       }
     }
-    throw storageErr;
+    if (attemptedSourceDelete && photo.sourceStoragePath && sourceBuffer) {
+      try {
+        await restoreListingPhotoSourceToStorage(photo.sourceStoragePath, sourceBuffer, storageOptions);
+      } catch {
+        await recordPhotoStorageOrphan(
+          listingId,
+          photoId,
+          photo.sourceStoragePath,
+          'PHOTO_DELETE_SOURCE_RESTORE_FAILED',
+          dbOverride
+        );
+      }
+    }
+  };
+
+  try {
+    attemptedDisplayDelete = true;
+    await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
+    if (photo.sourceStoragePath) {
+      attemptedSourceDelete = true;
+      await deleteListingPhotoSourceFromStorage(photo.sourceStoragePath, storageOptions);
+    }
+  } catch (storageError) {
+    await restoreObjects();
+    throw storageError;
   }
 
-  // Compact display orders
+  try {
+    const deleted = await deleteListingPhoto(photoId, dbOverride);
+    if (!deleted) throw new Error('Photo metadata could not be removed.');
+  } catch (databaseError) {
+    await restoreObjects();
+    throw databaseError;
+  }
+
   const remainingPhotos = await findPhotosByListingId(listingId, dbOverride);
   await updatePhotoOrder(
     listingId,
-    remainingPhotos.map((p) => p.id),
+    remainingPhotos.map((remainingPhoto) => remainingPhoto.id),
     dbOverride
   );
-
   return true;
 }
 
@@ -834,7 +1199,7 @@ export async function permanentlyDeleteArchivedListing(
   storageOptions?: StorageOptions
 ): Promise<boolean> {
   const listing = await findListingById(listingId, dbOverride);
-  if (!listing) return false; // Idempotent repeat: it is already gone.
+  if (!listing) return false;
   if (listing.sellerId !== requestingUserId) {
     throw new AuthorizationError('You are not authorized to delete this listing');
   }
@@ -845,29 +1210,42 @@ export async function permanentlyDeleteArchivedListing(
   const photos = await findPhotosByListingId(listingId, dbOverride);
   const snapshots = await Promise.all(photos.map(async (photo) => ({
     photo,
-    buffer: await downloadListingPhotoFromStorage(photo.storagePath, storageOptions),
+    displayBuffer: await downloadListingPhotoFromStorage(photo.storagePath, storageOptions),
+    sourceBuffer: photo.sourceStoragePath
+      ? await downloadListingPhotoSourceFromStorage(photo.sourceStoragePath, storageOptions)
+      : null,
   })));
 
   const attemptedRemovals: typeof snapshots = [];
   const restoreRemovedPhotos = async (): Promise<void> => {
     for (const snapshot of attemptedRemovals) {
       try {
-        await restoreListingPhotoToStorage(snapshot.photo.storagePath, snapshot.buffer, storageOptions);
+        await restoreListingPhotoToStorage(snapshot.photo.storagePath, snapshot.displayBuffer, storageOptions);
       } catch {
+        await recordPhotoStorageOrphan(
+          listingId,
+          snapshot.photo.id,
+          snapshot.photo.storagePath,
+          'ARCHIVED_LISTING_DELETE_DISPLAY_RESTORE_FAILED',
+          dbOverride
+        );
+      }
+
+      if (snapshot.photo.sourceStoragePath && snapshot.sourceBuffer) {
         try {
-          await recordOrphanedStorageObject({
-            listingId,
-            photoId: snapshot.photo.id,
-            storagePath: snapshot.photo.storagePath,
-            reason: 'ARCHIVED_LISTING_DELETE_STORAGE_RESTORE_FAILED',
-          }, dbOverride);
+          await restoreListingPhotoSourceToStorage(
+            snapshot.photo.sourceStoragePath,
+            snapshot.sourceBuffer,
+            storageOptions
+          );
         } catch {
-          console.error(JSON.stringify({
-            event: 'storage_orphan_unresolved',
-            reason: 'ARCHIVED_LISTING_DELETE_STORAGE_RESTORE_FAILED',
+          await recordPhotoStorageOrphan(
             listingId,
-            photoId: snapshot.photo.id,
-          }));
+            snapshot.photo.id,
+            snapshot.photo.sourceStoragePath,
+            'ARCHIVED_LISTING_DELETE_SOURCE_RESTORE_FAILED',
+            dbOverride
+          );
         }
       }
     }
@@ -875,10 +1253,13 @@ export async function permanentlyDeleteArchivedListing(
 
   try {
     for (const snapshot of snapshots) {
-      // A provider timeout may arrive after the object was removed, so include
-      // the current path in compensation before making the remote request.
+      // Mark before requesting the remote delete: a timeout may arrive after
+      // Storage removed the object, and compensation must still restore it.
       attemptedRemovals.push(snapshot);
       await deleteListingPhotoFromStorage(snapshot.photo.storagePath, storageOptions);
+      if (snapshot.photo.sourceStoragePath) {
+        await deleteListingPhotoSourceFromStorage(snapshot.photo.sourceStoragePath, storageOptions);
+      }
     }
   } catch (storageError) {
     await restoreRemovedPhotos();
@@ -898,8 +1279,6 @@ export async function permanentlyDeleteArchivedListing(
     });
 
     if (!deleted) {
-      // A parallel delete may already have removed the listing. In that case,
-      // leave its Storage paths removed instead of restoring orphaned objects.
       const stillExists = await findListingById(listingId, dbOverride);
       if (stillExists) await restoreRemovedPhotos();
       return false;

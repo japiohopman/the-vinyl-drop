@@ -87,6 +87,44 @@ export async function findPhotosByListingIds(
     .orderBy(asc(listingPhotos.listingId), asc(listingPhotos.displayOrder), asc(listingPhotos.createdAt));
 }
 
+export async function updateListingPhotoEditor(
+  listingId: string,
+  photoId: string,
+  expectedStoragePath: string,
+  storagePath: string,
+  editorState: ListingPhoto['editorState'],
+  altText: string | null,
+  dbOverride?: DbInstance
+): Promise<ListingPhoto | null> {
+  const db = dbOverride || getDb();
+  const results = await db
+    .update(listingPhotos)
+    .set({ storagePath, editorState: editorState ?? null, altText, updatedAt: new Date() })
+    .where(and(
+      eq(listingPhotos.listingId, listingId),
+      eq(listingPhotos.id, photoId),
+      eq(listingPhotos.storagePath, expectedStoragePath)
+    ))
+    .returning();
+  return results[0] || null;
+}
+
+export async function updateListingPhotoSource(
+  listingId: string,
+  photoId: string,
+  sourceStoragePath: string,
+  sourceIsLegacy: boolean,
+  dbOverride?: DbInstance
+): Promise<ListingPhoto | null> {
+  const db = dbOverride || getDb();
+  const results = await db
+    .update(listingPhotos)
+    .set({ sourceStoragePath, sourceIsLegacy, updatedAt: new Date() })
+    .where(and(eq(listingPhotos.listingId, listingId), eq(listingPhotos.id, photoId)))
+    .returning();
+  return results[0] || null;
+}
+
 export async function updateListingPhotoRole(
   listingId: string,
   photoId: string,

@@ -4,6 +4,10 @@
 
   const core = window.TVDPhotoEditorCore;
   const fileInput = form.querySelector('#photoFile');
+  const photoFileField = fileInput?.closest('.photo-upload-field');
+  const originalFileInput = form.querySelector('#photoOriginalFile');
+  const editorStateInput = form.querySelector('#photoEditorState');
+  const editorSourceNotice = form.querySelector('#photo-editor-source-notice');
   const roleSelect = form.querySelector('#newPhotoRole');
   const roleGuidance = form.querySelector('#photo-role-guidance');
   const selectionPreview = form.querySelector('#photo-selection-preview');
@@ -30,6 +34,9 @@
   const adjustmentControls = Array.from(form.querySelectorAll('[data-photo-adjustment]'));
 
   if (!core || !(fileInput instanceof HTMLInputElement) ||
+      !(originalFileInput instanceof HTMLInputElement) ||
+      !(editorStateInput instanceof HTMLInputElement) ||
+      !(editorSourceNotice instanceof HTMLElement) ||
       !(roleSelect instanceof HTMLSelectElement) ||
       !(roleGuidance instanceof HTMLElement) ||
       !(selectionPreview instanceof HTMLElement) ||
@@ -61,6 +68,7 @@
   const PROCESS_MAX_DIMENSION = 2048;
   const OUTPUT_DIMENSION = 1536;
   const HANDLE_LABELS = ['Top-left', 'Top-right', 'Bottom-right', 'Bottom-left'];
+  const newUploadAction = form.dataset.newAction || form.getAttribute('action') || form.action;
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -205,6 +213,8 @@
     showBefore = false;
     undoStack = [];
     redoStack = [];
+    originalFileInput.value = '';
+    if (!form.dataset.editingPhotoId) editorStateInput.value = '';
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = null;
     sourceStage.style.aspectRatio = '';
@@ -233,14 +243,19 @@
   function updateRoleGuidance() {
     const selectedOption = roleSelect.options[roleSelect.selectedIndex];
     const roleHint = selectedOption && selectedOption.dataset.guidance;
-    roleGuidance.textContent = roleHint ||
-      'Choose a photo type first. Front and back covers use four-corner perspective correction; other photos keep their original framing.';
+    roleGuidance.textContent = roleHint
+      ? roleHint + ' The editor also supports four-corner framing and light/colour adjustments; extra photos keep their natural proportions.'
+      : 'Choose a photo type first. The editor supports four-corner framing and light/colour adjustments; cover photos are flattened to a square and extra photos keep their natural proportions.';
 
     if (isCoverRole()) {
       const side = coverSideLabel();
       cropTitle.textContent = 'Square ' + side + ' correction';
       cropDescription.textContent =
         'Move each corner onto the sleeve edge. The four selected points are flattened into the square preview below.';
+    } else {
+      cropTitle.textContent = 'Photo framing correction';
+      cropDescription.textContent =
+        'Move the four corners to frame the visible photo. The corrected image keeps the selected photo proportions.';
     }
   }
 
@@ -328,6 +343,74 @@
     });
   }
 
+  function getProcessingDimensions() {
+    if (!image) return { width: 2, height: 2 };
+    const scale = Math.min(
+      PROCESS_MAX_DIMENSION / image.naturalWidth,
+      PROCESS_MAX_DIMENSION / image.naturalHeight,
+      1
+    );
+    return {
+      width: Math.max(2, Math.round(image.naturalWidth * scale)),
+      height: Math.max(2, Math.round(image.naturalHeight * scale)),
+    };
+  }
+
+  function getOutputDimensions(maximumDimension = OUTPUT_DIMENSION) {
+    if (isCoverRole()) return { width: maximumDimension, height: maximumDimension };
+    if (points.length !== 4) return { width: maximumDimension, height: maximumDimension };
+    const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+    const width = (distance(points[0], points[1]) + distance(points[3], points[2])) / 2;
+    const height = (distance(points[0], points[3]) + distance(points[1], points[2])) / 2;
+    const aspect = width / Math.max(1, height);
+    if (!Number.isFinite(aspect) || aspect <= 0) return { width: maximumDimension, height: maximumDimension };
+    return aspect >= 1
+      ? { width: maximumDimension, height: Math.max(2, Math.round(maximumDimension / aspect)) }
+      : { width: Math.max(2, Math.round(maximumDimension * aspect)), height: maximumDimension };
+  }
+
+  function syncEditorState() {
+    if (!image || points.length !== 4) return;
+    const dimensions = getProcessingDimensions();
+    editorStateInput.value = JSON.stringify({
+      version: 1,
+      sourceWidth: dimensions.width,
+      sourceHeight: dimensions.height,
+      corners: points.map((point) => ({
+        x: point.x * dimensions.width / sourceCanvas.width,
+        y: point.y * dimensions.height / sourceCanvas.height,
+      })),
+      adjustments: readAdjustments(),
+    });
+  }
+
+  function applyStoredEditorState() {
+    if (!editorStateInput.value || !image) return false;
+    try {
+      const state = JSON.parse(editorStateInput.value);
+      const dimensions = getProcessingDimensions();
+      if (state.version !== 1 || state.sourceWidth !== dimensions.width ||
+          state.sourceHeight !== dimensions.height || !Array.isArray(state.corners) ||
+          state.corners.length !== 4 || !state.adjustments) return false;
+      const restoredPoints = state.corners.map((point) => ({
+        x: Number(point.x) * sourceCanvas.width / dimensions.width,
+        y: Number(point.y) * sourceCanvas.height / dimensions.height,
+      }));
+      if (!core.isValidQuad(restoredPoints, sourceCanvas.width, sourceCanvas.height)) return false;
+      points = restoredPoints;
+      adjustmentControls.forEach((control) => {
+        const key = control.dataset.photoAdjustment;
+        const value = state.adjustments[key];
+        if (typeof value !== 'number' || !Number.isFinite(value)) return;
+        control.value = String(key === 'exposure' ? value * 50 : key === 'gamma' ? value * 100 : value);
+      });
+      updateAdjustmentOutputs();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function renderPreview() {
     if (!image || !points.length) return;
     try {
@@ -351,6 +434,7 @@
           height
         );
         drawHistogram(source.data);
+        syncEditorState();
         setStatus('Original photo — your corner and tonal edits are preserved.');
         return;
       }
@@ -367,6 +451,7 @@
       resultContext.putImageData(frame, 0, 0);
       drawHistogram(result.data);
       updateAdjustmentOutputs();
+      syncEditorState();
       setStatus('Preview updated. The saved file will contain these pixel adjustments.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'The preview could not be rendered.', true);
@@ -413,11 +498,12 @@
       processingSource.canvas.width,
       processingSource.canvas.height
     );
+    const outputDimensions = getOutputDimensions(OUTPUT_DIMENSION);
     const output = core.rectifyImageData(
       source,
       processingSource.points,
-      OUTPUT_DIMENSION,
-      OUTPUT_DIMENSION,
+      outputDimensions.width,
+      outputDimensions.height,
       readAdjustments()
     );
     const canvas = document.createElement('canvas');
@@ -451,24 +537,30 @@
     if (!file) return;
 
     sourceFile = file;
+    if (!form.dataset.editingPhotoId) {
+      const originalTransfer = new DataTransfer();
+      originalTransfer.items.add(file);
+      originalFileInput.files = originalTransfer.files;
+    }
     selectionPreview.hidden = false;
     fileInfo.textContent = file.name + ' · ' + formatFileSize(file.size);
     const coverRole = isCoverRole();
-    cropper.hidden = !coverRole;
+    cropper.hidden = false;
+    if (!coverRole) updateRoleGuidance();
 
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type.toLowerCase())) {
       fileInfo.textContent += ' — choose a JPEG, PNG or WebP image.';
       fileInfo.style.color = 'var(--color-error-border)';
       previewError = true;
-      if (coverRole) setStatus('Choose a JPEG, PNG or WebP image.', true);
+      setStatus('Choose a JPEG, PNG or WebP image.', true);
       return;
     }
 
-    if (file.size > MAX_UPLOAD_BYTES) {
+    if (!form.dataset.editingPhotoId && file.size > MAX_UPLOAD_BYTES) {
       fileInfo.textContent += ' — larger than 5 MiB. Choose a smaller file.';
       fileInfo.style.color = 'var(--color-error-border)';
       previewError = true;
-      if (coverRole) setStatus('Choose a photo no larger than 5 MiB.', true);
+      setStatus('Choose a photo no larger than 5 MiB.', true);
       return;
     }
     fileInfo.style.color = 'var(--color-ink-muted)';
@@ -478,14 +570,14 @@
     objectUrl = currentUrl;
     const previewImage = new Image();
     image = previewImage;
-    if (coverRole) setStatus('Preparing your four-corner preview…');
+    setStatus('Preparing your four-corner preview…');
 
     previewImage.onload = () => {
       if (previewSequence !== currentSequence || image !== previewImage || objectUrl !== currentUrl) return;
       fileInfo.textContent = file.name + ' · ' + formatFileSize(file.size) + ' · ' +
         previewImage.naturalWidth + ' × ' + previewImage.naturalHeight + ' px';
 
-      if (coverRole) {
+      {
         const scale = Math.min(
           PREVIEW_MAX_DIMENSION / previewImage.naturalWidth,
           PREVIEW_MAX_DIMENSION / previewImage.naturalHeight,
@@ -497,14 +589,13 @@
         sourceContext.drawImage(previewImage, 0, 0, sourceCanvas.width, sourceCanvas.height);
         sourceStage.style.aspectRatio = sourceCanvas.width + ' / ' + sourceCanvas.height;
         points = core.createDefaultCorners(sourceCanvas.width, sourceCanvas.height);
-        resultCanvas.width = 512;
-        resultCanvas.height = 512;
+        if (form.dataset.editingPhotoId) applyStoredEditorState();
+        const previewDimensions = getOutputDimensions(512);
+        resultCanvas.width = previewDimensions.width;
+        resultCanvas.height = previewDimensions.height;
         updateOverlay();
         renderPreview();
         updateHistoryButtons();
-      } else {
-        originalPreview.src = currentUrl;
-        originalPreview.hidden = false;
       }
     };
 
@@ -514,7 +605,7 @@
       previewError = true;
       fileInfo.textContent = file.name + ' — this image could not be previewed. Choose a JPEG, PNG or WebP file.';
       fileInfo.style.color = 'var(--color-error-border)';
-      if (coverRole) setStatus('This photo cannot be previewed. Choose a JPEG, PNG or WebP file.', true);
+      setStatus('This photo cannot be previewed. Choose a JPEG, PNG or WebP file.', true);
     };
     previewImage.src = currentUrl;
   }
@@ -663,7 +754,7 @@
   form.addEventListener('submit', (event) => {
     if (form.dataset.photoEditorReady === 'true') return;
 
-    if (sourceFile && (previewError || sourceFile.size > MAX_UPLOAD_BYTES)) {
+    if (sourceFile && (previewError || (!form.dataset.editingPhotoId && sourceFile.size > MAX_UPLOAD_BYTES))) {
       event.preventDefault();
       if (isCoverRole()) {
         setStatus(
@@ -677,8 +768,6 @@
       }
       return;
     }
-    if (!isCoverRole()) return;
-
     event.preventDefault();
     if (processing) return;
     if (!image || !sourceFile || !image.complete || image.naturalWidth === 0 || image.naturalHeight === 0) {
@@ -749,16 +838,49 @@
     }
   }
 
+  function resetPhotoEditorForm() {
+    fileInput.value = '';
+    originalFileInput.value = '';
+    editorStateInput.value = '';
+    delete form.dataset.editingPhotoId;
+    form.action = newUploadAction;
+    roleSelect.required = true;
+    const fileTrigger = form.querySelector('.photo-file-trigger');
+    if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = false;
+    if (photoFileField instanceof HTMLElement) photoFileField.hidden = false;
+    if (roleField instanceof HTMLElement) roleField.hidden = false;
+    roleGuidance.hidden = false;
+    editorSourceNotice.hidden = true;
+    if (altTextInput instanceof HTMLInputElement) {
+      altTextInput.value = '';
+      altTextInput.placeholder = 'Describe what is visible, e.g. a crease or Side A label';
+      altTextInput.required = true;
+    }
+    if (uploadTitle instanceof HTMLElement) uploadTitle.textContent = 'Upload a photo';
+    clearPreview();
+    updateRoleGuidance();
+  }
+
   document.querySelectorAll('[data-open-photo-upload]').forEach((trigger) => {
     trigger.addEventListener('click', () => {
       if (!(trigger instanceof HTMLButtonElement) ||
           !(uploadDialog instanceof HTMLDialogElement)) return;
+
+      delete form.dataset.editingPhotoId;
+      form.action = newUploadAction;
+      originalFileInput.value = '';
+      editorStateInput.value = '';
+      editorSourceNotice.hidden = true;
+      const fileTrigger = form.querySelector('.photo-file-trigger');
+      if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = false;
+      if (photoFileField instanceof HTMLElement) photoFileField.hidden = false;
 
       const requestedRole = trigger.dataset.photoRole || '';
       const label = trigger.dataset.photoLabel || 'Additional photo';
       const isDirectCoverSlot = requestedRole === 'front_cover' || requestedRole === 'back_cover';
       if (roleField instanceof HTMLElement) roleField.hidden = isDirectCoverSlot;
       roleGuidance.hidden = isDirectCoverSlot;
+      roleSelect.required = true;
       roleSelect.value = requestedRole === 'optional' ? '' : requestedRole;
       fileInput.value = '';
       if (altTextInput instanceof HTMLInputElement) {
@@ -792,11 +914,95 @@
     });
   });
 
+  document.querySelectorAll('[data-open-existing-photo-editor]').forEach((trigger) => {
+    trigger.addEventListener('click', async () => {
+      if (!(trigger instanceof HTMLButtonElement) ||
+          !(uploadDialog instanceof HTMLDialogElement) ||
+          !trigger.dataset.editorSourceUrl ||
+          !trigger.dataset.photoId) return;
+
+      trigger.disabled = true;
+      try {
+        const sourceResponse = await fetch(trigger.dataset.editorSourceUrl, {
+          credentials: 'same-origin',
+          headers: { Accept: 'image/webp' },
+        });
+        if (!sourceResponse.ok) {
+          throw new Error(sourceResponse.status === 401 || sourceResponse.status === 403
+            ? 'You are not allowed to edit this photo.'
+            : 'The private photo source could not be loaded. Please try again.');
+        }
+        const sourceBlob = await sourceResponse.blob();
+        const sourceFileForEdit = new File(
+          [sourceBlob],
+          'listing-photo-source.webp',
+          { type: 'image/webp', lastModified: Date.now() }
+        );
+
+        const stateAttribute = trigger.dataset.editorState || '';
+        let storedState = '';
+        if (stateAttribute && stateAttribute !== '""') {
+          try {
+            const parsedState = JSON.parse(stateAttribute);
+            if (parsedState && typeof parsedState === 'object') storedState = JSON.stringify(parsedState);
+          } catch {
+            storedState = '';
+          }
+        }
+
+        form.dataset.editingPhotoId = trigger.dataset.photoId;
+        form.action = trigger.dataset.editorSourceUrl.replace(/\/editor-source$/, '/edit');
+        roleSelect.value = trigger.dataset.photoRole || '';
+        // Existing-photo edits do not submit a role; legacy roles may not have an upload option.
+        roleSelect.required = false;
+        if (roleField instanceof HTMLElement) roleField.hidden = true;
+        roleGuidance.hidden = true;
+        editorStateInput.value = storedState;
+        originalFileInput.value = '';
+
+        const fileTransfer = new DataTransfer();
+        fileTransfer.items.add(sourceFileForEdit);
+        fileInput.files = fileTransfer.files;
+
+        if (altTextInput instanceof HTMLInputElement) {
+          altTextInput.value = trigger.dataset.photoAltText || '';
+          altTextInput.required = false;
+        }
+        if (uploadTitle instanceof HTMLElement) {
+          uploadTitle.textContent = 'Edit ' + (roleSelect.value === 'front_cover'
+            ? 'front cover'
+            : roleSelect.value === 'back_cover'
+              ? 'back cover'
+              : 'photo');
+        }
+        const fileTrigger = form.querySelector('.photo-file-trigger');
+        if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = true;
+        if (photoFileField instanceof HTMLElement) photoFileField.hidden = true;
+
+        const isLegacySource = sourceResponse.headers.get('X-Photo-Source-Legacy') === 'true';
+        editorSourceNotice.hidden = !isLegacySource;
+        if (isLegacySource) {
+          editorSourceNotice.textContent =
+            'Legacy photo: the starting image is the currently saved display photo. The original camera file was not retained when this photo was first uploaded.';
+        }
+
+        preparePreview();
+        openAccessibleDialog(uploadDialog);
+        const firstHandle = form.querySelector('[data-corner-handle="0"]');
+        if (firstHandle instanceof HTMLElement) firstHandle.focus();
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : 'The private photo source could not be opened.', true);
+        openAccessibleDialog(uploadDialog);
+      } finally {
+        trigger.disabled = false;
+      }
+    });
+  });
+
   document.querySelectorAll('[data-close-photo-upload]').forEach((trigger) => {
     trigger.addEventListener('click', () => {
       closeAccessibleDialog(uploadDialog);
-      fileInput.value = '';
-      clearPreview();
+      resetPhotoEditorForm();
     });
   });
 
@@ -810,8 +1016,7 @@
 
   if (uploadDialog instanceof HTMLDialogElement) {
     uploadDialog.addEventListener('cancel', () => {
-      fileInput.value = '';
-      clearPreview();
+      resetPhotoEditorForm();
     });
   }
 
@@ -821,8 +1026,7 @@
       if (event.target !== dialog) return;
       closeAccessibleDialog(dialog);
       if (dialog === uploadDialog) {
-        fileInput.value = '';
-        clearPreview();
+        resetPhotoEditorForm();
       }
     });
   });
