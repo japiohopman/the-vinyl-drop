@@ -155,6 +155,13 @@
       "when": 1793618253000,
       "tag": "0021_release_metadata_vocabulary",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793746560000,
+      "tag": "0022_listing_photo_source_versions",
+      "breakpoints": true
     }
   ]
 }
