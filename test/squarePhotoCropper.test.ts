@@ -235,6 +235,13 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#photoOriginalFile').evaluate((input) => (input as HTMLInputElement).files?.[0]?.name)).toBe('camera-front-cover.jpg');
     expect(await page.locator('#photoCameraInput').inputValue()).toBe('');
 
+    const cancelledChooserPromise = page.waitForEvent('filechooser');
+    await cameraTrigger.click({ timeout: 5000 });
+    const cancelledChooser = await cancelledChooserPromise;
+    await cancelledChooser.setFiles([]);
+    expect(await page.locator('#photoFile').evaluate((input) => (input as HTMLInputElement).files?.[0]?.name)).toBe('camera-front-cover.jpg');
+    expect(await page.locator('#photoCameraInput').inputValue()).toBe('');
+
     const secondChooserPromise = page.waitForEvent('filechooser');
     await cameraTrigger.click({ timeout: 5000 });
     const secondChooser = await secondChooserPromise;
