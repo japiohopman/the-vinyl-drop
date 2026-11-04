@@ -161,7 +161,7 @@ function Test-PinnedProductionMigrationPlans {
 
 function Test-ReleaseCandidateStoragePreflightRunsBeforeDrizzle {
     $runnerSource = Get-Content -LiteralPath $migrationRunnerPath -Raw
-    $preflightInvocation = "& $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionStoragePolicies.ts')"
+    $preflightInvocation = '& $tsxPath (Join-Path (Get-Location) ''scripts/verifyProductionStoragePolicies.ts'')'
     $firstPreflight = $runnerSource.IndexOf($preflightInvocation)
     $confirmation = $runnerSource.IndexOf('$confirmation = Read-Host')
     $finalPreflight = $runnerSource.LastIndexOf($preflightInvocation)
