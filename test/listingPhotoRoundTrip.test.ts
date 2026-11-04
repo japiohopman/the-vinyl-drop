@@ -413,16 +413,19 @@ describe('Seller cover photo HTTP round trip', () => {
       .post(`/listings/${listingId}/photos/${front!.id}/edit`)
       .set('Origin', new URL(config.APP_BASE_URL).origin)
       .attach('photo', replacementImage, { filename: 'edited-front.jpg', contentType: 'image/jpeg' })
-      .field('editorState', editorState(128, 128));
+      .field('editorState', editorState(128, 128))
+      .field('altText', 'Front sleeve with corrected crease description');
     expect(editResponse.status).toBe(302);
     expect(editResponse.headers.location).toBe(`/listings/${listingId}/edit`);
 
     const afterEdit = await findPhotosByListingId(listingId);
     const updatedFront = afterEdit.find((photo) => photo.id === front!.id);
+    const updatedBack = afterEdit.find((photo) => photo.id === back!.id);
     expect(updatedFront?.storagePath).not.toBe(oldDisplayPath);
     expect(updatedFront?.sourceStoragePath).toBe(front!.sourceStoragePath);
     expect(updatedFront?.sourceIsLegacy).toBe(false);
     expect(updatedFront?.editorState).toEqual(JSON.parse(editorState(128, 128)));
+    expect(updatedFront?.altText).toBe('Front sleeve with corrected crease description');
     await expect(downloadListingPhotoFromStorage(oldDisplayPath)).rejects.toThrow();
     expect(await downloadListingPhotoSourceFromStorage(front!.sourceStoragePath!)).toEqual(privateSourceBeforeEdit);
 
@@ -451,14 +454,14 @@ describe('Seller cover photo HTTP round trip', () => {
     const digResults = await searchDigListings({ q: 'Kind of Blue' });
     expect(digResults.items).toHaveLength(1);
     expect(digResults.items[0].frontArtwork.sourceKind).toBe('seller_front');
-    expect(digResults.items[0].frontArtwork.src).toBe(`/mock-storage/${front?.storagePath}`);
+    expect(digResults.items[0].frontArtwork.src).toBe(`/mock-storage/${updatedFront?.storagePath}`);
     expect(digResults.items[0].backArtwork?.sourceKind).toBe('seller_back');
-    expect(digResults.items[0].backArtwork?.src).toBe(`/mock-storage/${back?.storagePath}`);
+    expect(digResults.items[0].backArtwork?.src).toBe(`/mock-storage/${updatedBack?.storagePath}`);
 
     const digResponse = await supertest(app).get('/browse/dig?q=Kind+of+Blue');
     expect(digResponse.status).toBe(200);
-    expect(digResponse.text).toContain(`/mock-storage/${front?.storagePath}`);
-    expect(digResponse.text).toContain(`/mock-storage/${back?.storagePath}`);
+    expect(digResponse.text).toContain(`/mock-storage/${updatedFront?.storagePath}`);
+    expect(digResponse.text).toContain(`/mock-storage/${updatedBack?.storagePath}`);
     expect(digResponse.text).not.toContain('https://catalog.example/miles.jpg');
     expect(digResponse.text).not.toContain('https://i.discogs.com/original-kind-of-blue.jpg');
     expect(digResponse.text).not.toContain('Front cover not photographed');
