@@ -87,7 +87,9 @@ export type ListingPhotoWithUrl = Omit<ListingPhoto, 'sourceStoragePath'> & {
 
 /** Private Storage paths must never be passed into EJS or public listing view models. */
 function listingPhotoWithPublicUrl(photo: ListingPhoto): ListingPhotoWithUrl {
-  const { sourceStoragePath: _privateSourcePath, ...safePhoto } = photo;
+  const { sourceStoragePath, ...safePhoto } = photo;
+  // Deliberately consume the value only to omit it from the public view model.
+  void sourceStoragePath;
   return {
     ...safePhoto,
     publicUrl: getPhotoPublicUrl(photo.storagePath),
