@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import {
   signUpSchema,
-  registrationConsentSchema,
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
@@ -17,7 +16,7 @@ import {
   updatePassword,
   signOut,
 } from '../services/authService';
-import { createRegistrationConsentRecord, setRegistrationConsentCookie, getRegistrationConsentFromRequest, clearRegistrationConsentCookie } from '../services/registrationConsent';
+import { createRegistrationConsentRecord } from '../services/registrationConsent';
 import {
   setAuthCookies,
   clearAuthCookies,
@@ -269,19 +268,24 @@ export async function getGoogleOAuth(req: Request, res: Response, next: NextFunc
 export async function postGoogleSignupStart(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const nextUrl = sanitizeRedirectUrl((req.body.next as string) || (req.query.next as string), '/profile');
-    const result = registrationConsentSchema.safeParse(req.body);
-    if (!result.success) {
-      const form = formatZodFormErrors(result.error, { email: '', password: '', username: '', displayName: '' });
-      res.status(400);
-      renderWithLayout(res, 'auth/signup', { title: 'Sign Up — The Vinyl Drop', form, nextUrl }, next);
-      return;
-    }
-    setRegistrationConsentCookie(res, createRegistrationConsentRecord());
-    const callbackUrl = new URL('/auth/callback', config.APP_BASE_URL);
-    callbackUrl.searchParams.set('next', nextUrl);
-    callbackUrl.searchParams.set('flow', 'signup');
-    res.redirect(await getGoogleOAuthUrl(callbackUrl.toString(), { req, res }));
-  } catch (error) { clearRegistrationConsentCookie(res); next(error); }
+    const form: FormViewModel = {
+      values: { email: '', password: '', username: '', displayName: '' },
+      fieldErrors: {},
+      generalErrors: [
+        'Create your account with email and password first, then confirm your email address. After confirmation, you can sign in with Google using the same email address.',
+      ],
+      isSubmitted: true,
+      isSuccess: false,
+    };
+    res.status(403);
+    renderWithLayout(res, 'auth/signup', {
+      title: 'Sign Up — The Vinyl Drop',
+      form,
+      nextUrl,
+    }, next);
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function getAuthCallback(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -290,12 +294,22 @@ export async function getAuthCallback(req: Request, res: Response, next: NextFun
     const token_hash = req.query.token_hash as string;
     const type = req.query.type as string;
     const nextUrl = sanitizeRedirectUrl(req.query.next as string, '/profile');
-    const isSignupFlow = req.query.flow === 'signup';
-    const registrationConsent = isSignupFlow ? getRegistrationConsentFromRequest(req) : null;
-    if (isSignupFlow && !registrationConsent) {
-      clearRegistrationConsentCookie(res);
-      res.status(400);
-      renderWithLayout(res, 'auth/signup', { title: 'Sign Up — The Vinyl Drop', form: { values: { email: '', password: '', username: '', displayName: '' }, fieldErrors: {}, generalErrors: ['Your registration confirmation expired. Return to Sign Up, accept the Terms of Use and confirm you are at least 18.'] }, nextUrl }, next);
+    const providerError = typeof req.query.error === 'string' ? req.query.error : '';
+    if (providerError) {
+      res.status(403);
+      renderWithLayout(res, 'auth/login', {
+        title: 'Sign In — The Vinyl Drop',
+        form: {
+          values: { email: '', password: '' },
+          fieldErrors: {},
+          generalErrors: [
+            'Google sign-in could not be completed. New accounts must first be created with email and password and confirmed; after that, use Google with the same verified email address. Existing members can retry Google sign-in.',
+          ],
+          isSubmitted: true,
+          isSuccess: false,
+        },
+        nextUrl,
+      }, next);
       return;
     }
 
@@ -313,8 +327,7 @@ export async function getAuthCallback(req: Request, res: Response, next: NextFun
       return;
     }
 
-    const authResult = await handleAuthCallback({ code, token_hash, type }, { req, res, registrationConsent: registrationConsent || undefined });
-    clearRegistrationConsentCookie(res);
+    const authResult = await handleAuthCallback({ code, token_hash, type }, { req, res });
 
     if (authResult.error || !authResult.session) {
       const denied = authResult.error === INVITE_ONLY_ACCESS_DENIED_MESSAGE;
