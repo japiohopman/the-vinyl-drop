@@ -19,8 +19,8 @@ $phaseSettings = @{
         Description = '0006-0019'
     }
     ReleaseCandidate = @{
-        Confirmation = "APPLY-PRODUCTION-RELEASE-MIGRATIONS-0020-0021 $projectRef"
-        Description = '0020-0021'
+        Confirmation = "APPLY-PRODUCTION-RELEASE-MIGRATIONS-0020-0023 $projectRef"
+        Description = '0020-0023 (requires verified private photo-source Storage policies before migration 0022)'
     }
 }
 $expectedConfirmation = $phaseSettings[$Phase].Confirmation
@@ -83,6 +83,11 @@ Write-Host "Production migration phase: $Phase ($($phaseSettings[$Phase].Descrip
 Write-Host "Project: $projectRef"
 Write-Host "Host: $poolerHost (Supabase Shared Session Pooler, port 5432; TLS required)"
 Write-Host 'The password is requested securely and is not written to .env or printed.'
+if ($Phase -eq 'ReleaseCandidate') {
+    Write-Host 'STOP before continuing unless the private listing-photo-originals bucket is private and the three exact owner-scoped SELECT/INSERT/DELETE policies are present.'
+    Write-Host 'Migration 0022 independently checks these prerequisites and aborts if storage.objects is not owned by the migration role and the exact policies are missing.'
+    Write-Host 'Do not broaden or modify the existing listing-photos policies.'
+}
 
 $securePassword = Read-Host -Prompt 'Enter the production database password (input hidden)' -AsSecureString
 if ($securePassword.Length -eq 0) {
@@ -211,8 +216,9 @@ export default defineConfig({
             Write-Host 'Next: verify the 20-row Drizzle migration ledger, schema, RLS and Storage policies before creating or deploying the Render application service.'
         }
         'ReleaseCandidate' {
-            Write-Host 'Only migrations 0020 and 0021 were selected. No later journal entry was included in this phase.'
-            Write-Host 'Next: verify the Drizzle migration ledger, pg_trgm extension/indexes, release metadata columns, RLS and Storage before any application deployment.'
+            Write-Host 'Only migrations 0020-0023 were selected in ascending journal order. No later journal entry was included in this phase.'
+            Write-Host 'The phase includes release metadata, private listing-photo source retention and the new-Google-identity signup boundary.'
+            Write-Host 'Next: verify the 24-row Drizzle migration ledger, pg_trgm, release columns, private source bucket/policies, Auth hook function and least-privilege RLS before any application deployment.'
         }
     }
 }
