@@ -770,6 +770,17 @@ describe('Custom release mobile navigation and artwork picker', () => {
         }),
       });
     });
+    let artworkReleaseId: string | null = null;
+    const selectedEditionArtwork = 'https://i.discogs.com/discovery-cd-edition.jpg';
+    await page.route('http://localhost/releases/lookup-artwork**', async (route) => {
+      const url = new URL(route.request().url());
+      artworkReleaseId = url.searchParams.get('discogsExternalId');
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ found: true, coverArtUrl: selectedEditionArtwork }),
+      });
+    });
     await page.addScriptTag({ content: discogsLookupScript });
     await page.locator('#releaseArtist').fill('Daft Punk');
     await page.locator('#releaseTitle').fill('Discovery');
@@ -791,9 +802,223 @@ describe('Custom release mobile navigation and artwork picker', () => {
     await choices.nth(1).press('Enter');
     expect(await page.locator('#discogsExternalId').inputValue()).toBe('202');
     expect(await page.locator('[data-discogs-field="format"]').inputValue()).toBe('CD, Album, Reissue');
+    await page.waitForFunction(
+      () => (document.getElementById('discogsCoverArtUrl') as HTMLInputElement | null)?.value === 'https://i.discogs.com/discovery-cd-edition.jpg',
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(artworkReleaseId).toBe('202');
+    expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe(selectedEditionArtwork);
+    expect(await page.locator('[data-discogs-cover-preview] img').getAttribute('src')).toBe(selectedEditionArtwork);
+    expect(await page.locator('#discogsCoverArtUrl').inputValue()).not.toBe('https://i.discogs.com/discovery-vinyl.jpg');
+    expect(await page.locator('[data-discogs-candidates]').isHidden()).toBe(true);
+  });
+
+  it('waits for selected-edition artwork before continuing a pending DROP submission', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+
+    const candidate = {
+      artist: 'Daft Punk',
+      title: 'Discovery',
+      formatLabel: 'CD, Album, Reissue',
+      metadata: {
+        label: 'Virgin',
+        catalogueNumber: 'CDVX 2940',
+        releaseYear: '2001',
+        format: 'CD, Album, Reissue',
+        formatCharacteristics: [],
+        coverArtUrl: '',
+        discogsExternalId: '202',
+      },
+    };
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          found: true,
+          matchType: 'release',
+          selectionRequired: true,
+          candidates: [candidate],
+          metadata: candidate.metadata,
+        }),
+      });
+    });
+
+    let allowArtworkResponse!: () => void;
+    const artworkGate = new Promise<void>((resolve) => { allowArtworkResponse = resolve; });
+    await page.route('http://localhost/releases/lookup-artwork**', async (route) => {
+      await artworkGate;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          found: true,
+          coverArtUrl: 'https://i.discogs.com/selected-discovery-edition.jpg',
+        }),
+      });
+    });
+
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Daft Punk');
+    await page.locator('#releaseTitle').fill('Discovery');
+    await page.waitForFunction(
+      () => document.querySelector('[data-discogs-candidates] button') !== null,
+      undefined,
+      { timeout: 3000 }
+    );
+
+    await page.addScriptTag({
+      content: `
+        (() => {
+          const form = document.querySelector('form[data-discogs-lookup-form]');
+          if (!form) throw new Error('DROP form not found');
+          form.noValidate = true;
+          document.addEventListener('submit', (event) => {
+            if (event.target !== form) return;
+            event.preventDefault();
+            form.setAttribute(
+              'data-test-submit-count',
+              String(Number(form.getAttribute('data-test-submit-count') || '0') + 1)
+            );
+          }, true);
+        })();
+      `,
+    });
+
+    await page.locator('[data-discogs-candidates] button').click();
+    await page.waitForRequest((request) => request.url().includes('/releases/lookup-artwork?'));
+    expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-lookup-pending')).toBe('true');
+
+    await page.locator('.custom-release-submit').click();
+    expect(await page.locator('form[data-discogs-lookup-form]').getAttribute('data-test-submit-count')).toBe('1');
+
+    allowArtworkResponse();
+    await page.waitForFunction(
+      () => document.querySelector('form[data-discogs-lookup-form]')?.getAttribute('data-test-submit-count') === '2',
+      undefined,
+      { timeout: 3000 }
+    );
+    expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('https://i.discogs.com/selected-discovery-edition.jpg');
+  });
+
+  it('keeps manual artwork entry available when selected-edition artwork is missing', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+
+    const candidate = {
+      artist: 'Daft Punk',
+      title: 'Discovery',
+      formatLabel: 'CD, Album, Reissue',
+      metadata: {
+        format: 'CD, Album, Reissue',
+        formatCharacteristics: [],
+        coverArtUrl: '',
+        discogsExternalId: '202',
+      },
+    };
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ found: true, selectionRequired: true, candidates: [candidate] }),
+      });
+    });
+    await page.route('http://localhost/releases/lookup-artwork**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ found: false, coverArtUrl: '' }),
+      });
+    });
+
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Daft Punk');
+    await page.locator('#releaseTitle').fill('Discovery');
+    await page.waitForFunction(() => document.querySelector('[data-discogs-candidates] button') !== null);
+    await page.locator('[data-discogs-candidates] button').click();
+    await page.waitForFunction(
+      () => document.getElementById('discogsLookupStatus')?.getAttribute('data-state') === 'empty',
+      undefined,
+      { timeout: 3000 }
+    );
+
     expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('');
     expect(await page.locator('[data-discogs-cover-preview] img').getAttribute('src')).toBeNull();
-    expect(await page.locator('[data-discogs-candidates]').isHidden()).toBe(true);
+    expect(await page.locator('#discogsLookupStatus').innerText()).toContain('No catalogue artwork is available');
+  });
+
+  it('does not apply stale selected-edition artwork after the seller changes the lookup', async () => {
+    const releaseHtml = await renderReleasePage();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.setContent(documentHtml(await renderHeader('/drop/new'), releaseHtml));
+
+    let allowOldArtworkResponse!: () => void;
+    const oldArtworkGate = new Promise<void>((resolve) => { allowOldArtworkResponse = resolve; });
+    await page.route('http://localhost/releases/lookup-metadata**', async (route) => {
+      const url = new URL(route.request().url());
+      const isNewSearch = url.searchParams.get('artist') === 'New Artist';
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(isNewSearch
+          ? {
+              found: true,
+              selectionRequired: false,
+              metadata: {
+                artist: 'New Artist',
+                title: 'New Album',
+                coverArtUrl: 'https://i.discogs.com/new-album.jpg',
+                discogsExternalId: '303',
+              },
+            }
+          : {
+              found: true,
+              selectionRequired: true,
+              candidates: [{
+                artist: 'Daft Punk',
+                title: 'Discovery',
+                formatLabel: 'CD, Album, Reissue',
+                metadata: { format: 'CD, Album, Reissue', coverArtUrl: '', discogsExternalId: '202' },
+              }],
+            }),
+      });
+    });
+    await page.route('http://localhost/releases/lookup-artwork**', async (route) => {
+      await oldArtworkGate;
+      try {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ found: true, coverArtUrl: 'https://i.discogs.com/stale-discovery-cover.jpg' }),
+        });
+      } catch {
+        // The browser correctly aborts this superseded request.
+      }
+    });
+
+    await page.addScriptTag({ content: discogsLookupScript });
+    await page.locator('#releaseArtist').fill('Daft Punk');
+    await page.locator('#releaseTitle').fill('Discovery');
+    await page.waitForFunction(() => document.querySelector('[data-discogs-candidates] button') !== null);
+    await page.locator('[data-discogs-candidates] button').click();
+    await page.waitForRequest((request) => request.url().includes('/releases/lookup-artwork?'));
+
+    await page.locator('#releaseArtist').fill('New Artist');
+    await page.waitForFunction(
+      () => (document.getElementById('discogsExternalId') as HTMLInputElement | null)?.value === '303',
+      undefined,
+      { timeout: 5000 }
+    );
+    allowOldArtworkResponse();
+    await page.waitForTimeout(100);
+
+    expect(await page.locator('#discogsExternalId').inputValue()).toBe('303');
+    expect(await page.locator('#discogsCoverArtUrl').inputValue()).toBe('https://i.discogs.com/new-album.jpg');
+    expect(await page.locator('#discogsCoverArtUrl').inputValue()).not.toBe('https://i.discogs.com/stale-discovery-cover.jpg');
   });
 
   it('supports touch selection of a vinyl Discogs edition and applies its own artwork and characteristics', async () => {
