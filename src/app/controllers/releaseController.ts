@@ -163,7 +163,7 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
 
 export async function getDiscogsReleaseArtwork(req: Request, res: Response, _next: NextFunction): Promise<void> {
   const externalId = typeof req.query.discogsExternalId === 'string' ? req.query.discogsExternalId.trim() : '';
-  if (!/^\\d{1,15}$/.test(externalId)) {
+  if (!/^\d{1,15}$/.test(externalId)) {
     res.status(400).json({ error: 'A valid Discogs release ID is required.' });
     return;
   }
