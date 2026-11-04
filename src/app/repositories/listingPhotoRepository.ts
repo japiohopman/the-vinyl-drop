@@ -90,15 +90,21 @@ export async function findPhotosByListingIds(
 export async function updateListingPhotoEditor(
   listingId: string,
   photoId: string,
+  expectedStoragePath: string,
   storagePath: string,
   editorState: ListingPhoto['editorState'],
+  altText: string | null,
   dbOverride?: DbInstance
 ): Promise<ListingPhoto | null> {
   const db = dbOverride || getDb();
   const results = await db
     .update(listingPhotos)
-    .set({ storagePath, editorState: editorState ?? null, updatedAt: new Date() })
-    .where(and(eq(listingPhotos.listingId, listingId), eq(listingPhotos.id, photoId)))
+    .set({ storagePath, editorState: editorState ?? null, altText, updatedAt: new Date() })
+    .where(and(
+      eq(listingPhotos.listingId, listingId),
+      eq(listingPhotos.id, photoId),
+      eq(listingPhotos.storagePath, expectedStoragePath)
+    ))
     .returning();
   return results[0] || null;
 }
