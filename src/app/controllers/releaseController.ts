@@ -161,6 +161,26 @@ export async function getDiscogsMetadataLookup(req: Request, res: Response, _nex
   }
 }
 
+export async function getDiscogsReleaseArtwork(req: Request, res: Response, _next: NextFunction): Promise<void> {
+  const externalId = typeof req.query.discogsExternalId === 'string' ? req.query.discogsExternalId.trim() : '';
+  if (!/^\\d{1,15}$/.test(externalId)) {
+    res.status(400).json({ error: 'A valid Discogs release ID is required.' });
+    return;
+  }
+
+  try {
+    const provider = new DiscogsMetadataProvider({ timeoutMs: 5000, throwOnError: true });
+    const coverArtUrl = await provider.getReleaseArtwork(externalId);
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).json({
+      found: Boolean(coverArtUrl),
+      coverArtUrl: coverArtUrl || '',
+    });
+  } catch {
+    res.status(503).json({ error: 'Discogs artwork is temporarily unavailable.' });
+  }
+}
+
 export async function getCreateCustomReleasePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const formVm: FormViewModel<{
