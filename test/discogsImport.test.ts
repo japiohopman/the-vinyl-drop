@@ -68,6 +68,80 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
       expect(response.headers.location).toContain('/auth/login?next=%2Freleases%2Flookup-metadata');
     });
 
+    it('redirects unauthenticated users before running a selected-edition artwork lookup', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setSupabaseClient({
+        auth: {
+          getUser: jest.fn().mockResolvedValue({
+            data: { user: null },
+            error: null,
+          }),
+        },
+      } as any);
+
+      const response = await supertest(app)
+        .get('/releases/lookup-artwork')
+        .query({ discogsExternalId: '202' });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toContain('/auth/login?next=%2Freleases%2Flookup-artwork');
+    });
+
+    it('returns artwork for the exact selected Discogs release ID', async () => {
+      const artworkUrl = 'https://i.discogs.com/selected-cd-edition.jpg';
+      const artworkLookup = jest.spyOn(DiscogsMetadataProvider.prototype, 'getReleaseArtwork').mockResolvedValue(artworkUrl);
+
+      const response = await supertest(app)
+        .get('/releases/lookup-artwork')
+        .query({ discogsExternalId: '202' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ found: true, coverArtUrl: artworkUrl });
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(artworkLookup).toHaveBeenCalledTimes(1);
+      expect(artworkLookup).toHaveBeenCalledWith('202');
+    });
+
+    it('rejects malformed Discogs release IDs before calling the artwork provider', async () => {
+      const artworkLookup = jest.spyOn(DiscogsMetadataProvider.prototype, 'getReleaseArtwork');
+
+      const response = await supertest(app)
+        .get('/releases/lookup-artwork')
+        .query({ discogsExternalId: '202/not-a-release' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({ error: 'A valid Discogs release ID is required.' });
+      expect(artworkLookup).not.toHaveBeenCalled();
+    });
+
+    it('keeps manual artwork entry available when the selected release has no artwork', async () => {
+      const artworkLookup = jest.spyOn(DiscogsMetadataProvider.prototype, 'getReleaseArtwork').mockResolvedValue(undefined);
+
+      const response = await supertest(app)
+        .get('/releases/lookup-artwork')
+        .query({ discogsExternalId: '202' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ found: false, coverArtUrl: '' });
+      expect(artworkLookup).toHaveBeenCalledWith('202');
+    });
+
+    it('returns a safe 503 when the selected-edition artwork provider fails', async () => {
+      jest.spyOn(DiscogsMetadataProvider.prototype, 'getReleaseArtwork').mockRejectedValue(new Error('private provider detail'));
+
+      const response = await supertest(app)
+        .get('/releases/lookup-artwork')
+        .query({ discogsExternalId: '202' })
+        .set('Cookie', ['sb-access-token=mock-valid-token']);
+
+      expect(response.status).toBe(503);
+      expect(response.body).toEqual({ error: 'Discogs artwork is temporarily unavailable.' });
+      expect(response.body.error).not.toContain('private provider detail');
+    });
+
     it('returns the confident Discogs match and available metadata', async () => {
       jest.spyOn(DiscogsMetadataProvider.prototype, 'searchCandidates').mockResolvedValue([{
         id: 'discogs:123',
