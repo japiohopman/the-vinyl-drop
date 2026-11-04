@@ -82,6 +82,7 @@ describe('Square cover photo cropper', () => {
       .replace('<script src="/js/square-photo-cropper.js" defer></script>', '');
     await page.setContent(
       '<!doctype html><html lang="en"><head><meta charset="UTF-8">' +
+      '<base href="http://localhost/">' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<style>' + stylesheet + '</style></head>' +
       '<body><main class="main-content">' + body + '</main></body></html>',
