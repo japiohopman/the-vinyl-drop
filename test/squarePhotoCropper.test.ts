@@ -21,6 +21,7 @@ describe('Square cover photo cropper', () => {
   let page: Page;
   let portraitImage: Buffer;
   let browserErrors: string[];
+  let browserErrors: string[];
 
   beforeAll(async () => {
     browser = await chromium.launch({ headless: true });
@@ -52,6 +53,8 @@ describe('Square cover photo cropper', () => {
     role: string;
     publicUrl: string;
     altText: string;
+    editorState?: Record<string, unknown>;
+    sourceIsLegacy?: boolean;
   }): Promise<void> {
     const html = await ejs.renderFile(viewPath, {
       listing: {
@@ -282,6 +285,11 @@ describe('Square cover photo cropper', () => {
         undefined,
         { timeout: 20000 }
       );
+      expect(await page.locator('#photoOriginalFile').evaluate((input) => (input as HTMLInputElement).files?.[0]?.name)).toBe(role + '-phone-photo.jpg');
+      const savedEditState = JSON.parse(await page.locator('#photoEditorState').inputValue());
+      expect(savedEditState.sourceWidth).toBe(300);
+      expect(savedEditState.sourceHeight).toBe(500);
+
       const uploaded = await page.evaluate("(async () => {" +
         "const fileInput = document.querySelector('#photoFile');" +
         "const file = fileInput && fileInput.files && fileInput.files[0];" +
@@ -339,7 +347,7 @@ describe('Square cover photo cropper', () => {
     expect(browserErrors).toEqual([]);
   });
 
-  it('shows a normal preview without cropping condition/detail photos', async () => {
+  it('offers the full framing and tonal editor for additional photos without forcing a square crop', async () => {
     await renderEditPage();
     await selectPortrait('detail');
     expect(await page.locator('.photo-role-field').isVisible()).toBe(true);
@@ -348,13 +356,85 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#altText').getAttribute('required')).not.toBeNull();
 
     await page.waitForFunction(
-      "document.querySelector('#photo-original-preview').naturalWidth === 300",
+      "document.querySelector('#square-cover-source').height === 320",
       undefined,
       { timeout: 5000 }
     );
-    expect(await page.locator('#square-cover-cropper').isVisible()).toBe(false);
-    expect(await page.locator('#photo-original-preview').isVisible()).toBe(true);
+    expect(await page.locator('#square-cover-cropper').isVisible()).toBe(true);
+    expect(await page.locator('#photo-original-preview').isVisible()).toBe(false);
+    const resultDimensions = await page.locator('#square-cover-result').evaluate((canvas) => ({
+      width: (canvas as HTMLCanvasElement).width,
+      height: (canvas as HTMLCanvasElement).height,
+    }));
+    expect(resultDimensions.width).toBeLessThan(resultDimensions.height);
     expect(await page.locator('#selected-photo-info').textContent()).toContain('300 × 500 px');
+    expect(JSON.parse(await page.locator('#photoEditorState').inputValue()).sourceWidth).toBe(300);
+    expect(browserErrors).toEqual([]);
+  });
+
+  it('reopens an existing private source and restores the saved edit recipe', async () => {
+    const storedState = {
+      version: 1,
+      sourceWidth: 300,
+      sourceHeight: 500,
+      corners: [
+        { x: 12, y: 20 },
+        { x: 288, y: 20 },
+        { x: 288, y: 480 },
+        { x: 12, y: 480 },
+      ],
+      adjustments: {
+        exposure: 0.5,
+        blackPoint: 0,
+        shadows: 10,
+        contrast: 0,
+        highlights: 0,
+        whitePoint: 255,
+        gamma: 1,
+        temperature: 0,
+        tint: 0,
+        saturation: 0,
+      },
+    };
+    const sourceBuffer = await sharp(portraitImage).webp({ lossless: true }).toBuffer();
+    await renderEditPage({
+      id: '22222222-2222-4222-8222-222222222222',
+      role: 'front_cover',
+      publicUrl: 'data:image/jpeg;base64,' + portraitImage.toString('base64'),
+      altText: 'Front sleeve with a small crease',
+      editorState: storedState,
+      sourceIsLegacy: false,
+    });
+    await page.route('**/listings/**/editor-source', (route) => route.fulfill({
+      status: 200,
+      headers: {
+        'Content-Type': 'image/webp',
+        'X-Photo-Source-Width': '300',
+        'X-Photo-Source-Height': '500',
+        'X-Photo-Source-Legacy': 'false',
+      },
+      body: sourceBuffer,
+    }));
+    await page.evaluate("document.querySelector('#photoUploadForm').addEventListener('submit', event => event.preventDefault(), true)");
+    await page.locator('[data-open-existing-photo-editor]').click({ timeout: 5000 });
+
+    expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
+    expect(await page.locator('#photoUploadForm').getAttribute('action')).toContain('/photos/22222222-2222-4222-8222-222222222222/edit');
+    expect(await page.locator('.photo-file-trigger').isVisible()).toBe(false);
+    expect(await page.locator('#photoOriginalFile').evaluate((input) => (input as HTMLInputElement).files?.length || 0)).toBe(0);
+    expect(await page.locator('#photo-editor-source-notice').isVisible()).toBe(false);
+    expect(await page.locator('[data-photo-adjustment="exposure"]').inputValue()).toBe('25');
+
+    const polygon = await page.locator('#square-cover-polygon').getAttribute('points');
+    expect(polygon).toContain('7.68');
+    await page.locator('#photoUploadForm button[type="submit"]').click();
+    await page.waitForFunction(
+      "document.querySelector('#photoUploadForm').dataset.photoEditorReady === 'true'",
+      undefined,
+      { timeout: 20000 }
+    );
+    expect(await page.locator('#photoUploadForm').getAttribute('action')).toContain('/edit');
+    expect(browserErrors).toEqual([]);
   });
 
   it('blocks a cover upload when the selected image cannot be previewed', async () => {
