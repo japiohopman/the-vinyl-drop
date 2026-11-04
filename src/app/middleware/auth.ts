@@ -2,8 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { User, Session } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import { getUserFromToken, refreshSession } from '../services/authService';
-import { getProfileById } from '../services/profileService';
-import { Profile } from '../../db/schema/profiles';
 import { config } from '../../config/env';
 import { shouldUseSecureCookies } from '../../config/cookiePolicy';
 import { isBetaAllowedEmail } from '../services/betaAccess';
@@ -15,7 +13,6 @@ declare global {
     interface Request {
       user?: User | null;
       session?: Session | null;
-      profile?: Profile | null;
     }
   }
 }
@@ -164,21 +161,17 @@ export async function sessionMiddleware(
       req.user = activeUser;
       res.locals.currentUser = activeUser;
 
-      const profile = await getProfileById(activeUser.id);
-      if (profile) {
-        req.profile = profile;
-        res.locals.currentProfile = profile;
-      }
+      // Profile data is loaded only by handlers that actually need it.
+      // Keep the navigation's established neutral account fallback.
+      res.locals.currentProfile = null;
     } else {
       req.user = null;
-      req.profile = null;
       res.locals.currentUser = null;
       res.locals.currentProfile = null;
     }
   } catch {
     // If session extraction or refresh fails, clear locals and continue unauthenticated
     req.user = null;
-    req.profile = null;
     res.locals.currentUser = null;
     res.locals.currentProfile = null;
   }
