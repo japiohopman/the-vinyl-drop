@@ -22,7 +22,9 @@ $script:ProductionMigrationExpectedTags = @(
     '0018_add_release_youtube_preview',
     '0019_shared_rate_limit_buckets',
     '0020_catalogue_search_trigram',
-    '0021_release_metadata_vocabulary'
+    '0021_release_metadata_vocabulary',
+    '0022_listing_photo_source_versions',
+    '0023_block_new_google_oauth_identities'
 )
 
 $script:ProductionMigrationPhaseRanges = @{
@@ -36,7 +38,7 @@ $script:ProductionMigrationPhaseRanges = @{
     }
     ReleaseCandidate = @{
         StartIndex = 20
-        EndIndex = 21
+        EndIndex = 23
     }
 }
 

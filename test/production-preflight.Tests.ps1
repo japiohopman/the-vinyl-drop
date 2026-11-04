@@ -91,16 +91,20 @@ function Test-PinnedProductionMigrationPlans {
     if ($complete.Count -ne 14 -or $complete[0].tag -cne '0006_storage_objects_rls' -or $complete[-1].tag -cne '0019_shared_rate_limit_buckets') {
         throw 'Complete phase did not select exactly migrations 0006-0019.'
     }
-    if ($release.Count -ne 2 -or $release[0].tag -cne '0020_catalogue_search_trigram' -or $release[1].tag -cne '0021_release_metadata_vocabulary') {
-        throw 'ReleaseCandidate phase did not select exactly migrations 0020-0021.'
+    if ($release.Count -ne 4 -or
+        $release[0].tag -cne '0020_catalogue_search_trigram' -or
+        $release[1].tag -cne '0021_release_metadata_vocabulary' -or
+        $release[2].tag -cne '0022_listing_photo_source_versions' -or
+        $release[3].tag -cne '0023_block_new_google_oauth_identities') {
+        throw 'ReleaseCandidate phase did not select exactly migrations 0020-0023 in order.'
     }
 
     $journal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
     $journal.entries += [pscustomobject]@{
-        idx = 22
+        idx = 24
         version = '7'
-        when = 1793700000000
-        tag = '0022_unapproved_future_migration'
+        when = 1793850000000
+        tag = '0024_unapproved_future_migration'
         breakpoints = $true
     }
 
@@ -108,7 +112,7 @@ function Test-PinnedProductionMigrationPlans {
     try {
         $journal | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $futureJournalPath
         $futureRelease = @(Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $futureJournalPath)
-        if ($futureRelease.Count -ne 2 -or @($futureRelease | Where-Object { $_.idx -gt 21 }).Count -ne 0) {
+        if ($futureRelease.Count -ne 4 -or @($futureRelease | Where-Object { $_.idx -gt 23 }).Count -ne 0) {
             throw 'ReleaseCandidate phase selected a later unapproved journal entry.'
         }
     }
