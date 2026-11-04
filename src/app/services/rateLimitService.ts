@@ -219,7 +219,7 @@ export function getSafeRateLimitDatabaseErrorCode(error: unknown): string {
     : 'unclassified';
 }
 
-/** Execute one bounded expiry pass using the supplied PostgreSQL client. */
+/** Delete rows expiring at or before nowMs, in expiry order, up to the per-pass batch limit. */
 export async function pruneExpiredRateLimitBucketsWithClient(
   client: NonNullable<typeof queryClient>,
   nowMs: number
