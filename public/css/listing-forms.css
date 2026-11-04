@@ -743,17 +743,33 @@
   white-space: nowrap;
   border: 0;
 }
+.photo-file-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  width: 100%;
+}
+.photo-file-actions.is-standalone {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .photo-file-trigger {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
   width: 100%;
+  min-width: 0;
   min-height: 44px;
+  padding-inline: var(--space-2);
+  text-align: center;
   cursor: pointer;
 }
+.photo-file-trigger[hidden] {
+  display: none !important;
+}
 .photo-file-input:focus + .photo-file-trigger,
-.photo-file-trigger:focus {
+.photo-file-trigger:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }

@@ -230,10 +230,17 @@
               <input type="file" id="photoFile" name="photo" accept="image/jpeg,image/png,image/webp" required class="photo-file-input" aria-describedby="photoFileHelp selected-photo-info" />
               <input type="file" id="photoOriginalFile" name="originalPhoto" accept="image/jpeg,image/png,image/webp" hidden />
               <input type="hidden" id="photoEditorState" name="editorState" value="" />
-              <label for="photoFile" class="btn btn-outline photo-file-trigger" tabindex="-1">
-                <%- include('../partials/icon', { name: 'photo-camera', size: '1.125rem', ariaHidden: true }) %>
-                <span>Choose photo</span>
-              </label>
+              <input type="file" id="photoCameraInput" accept="image/jpeg,image/png,image/webp" capture="environment" class="photo-file-input" tabindex="-1" aria-label="Take a picture with the rear camera" />
+              <div class="photo-file-actions" data-photo-file-actions>
+                <label for="photoFile" class="btn btn-outline photo-file-trigger" tabindex="-1">
+                  <%- include('../partials/icon', { name: 'photo-camera', size: '1.125rem', ariaHidden: true }) %>
+                  <span>Choose photo</span>
+                </label>
+                <button type="button" class="btn btn-outline photo-file-trigger photo-camera-trigger" data-photo-camera-trigger hidden>
+                  <%- include('../partials/icon', { name: 'photo-camera', size: '1.125rem', ariaHidden: true }) %>
+                  <span>Take picture</span>
+                </button>
+              </div>
               <span id="photoFileHelp" class="photo-file-help">JPEG, PNG or WebP · max 5 MiB</span>
             </div>
 

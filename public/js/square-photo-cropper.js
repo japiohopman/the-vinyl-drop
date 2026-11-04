@@ -6,6 +6,9 @@
   const fileInput = form.querySelector('#photoFile');
   const photoFileField = fileInput?.closest('.photo-upload-field');
   const originalFileInput = form.querySelector('#photoOriginalFile');
+  const cameraInput = form.querySelector('#photoCameraInput');
+  const cameraTrigger = form.querySelector('[data-photo-camera-trigger]');
+  const photoFileActions = form.querySelector('[data-photo-file-actions]');
   const editorStateInput = form.querySelector('#photoEditorState');
   const editorSourceNotice = form.querySelector('#photo-editor-source-notice');
   const roleSelect = form.querySelector('#newPhotoRole');
@@ -37,6 +40,9 @@
 
   if (!core || !(fileInput instanceof HTMLInputElement) ||
       !(originalFileInput instanceof HTMLInputElement) ||
+      !(cameraInput instanceof HTMLInputElement) ||
+      !(cameraTrigger instanceof HTMLButtonElement) ||
+      !(photoFileActions instanceof HTMLElement) ||
       !(editorStateInput instanceof HTMLInputElement) ||
       !(editorSourceNotice instanceof HTMLElement) ||
       !(roleSelect instanceof HTMLSelectElement) ||
@@ -58,6 +64,12 @@
       !(cropDescription instanceof HTMLElement) ||
       !(status instanceof HTMLElement) ||
       handles.length !== 4 || adjustmentControls.length === 0 || frameControls.length !== 4) return;
+
+  const isStandalonePwa =
+    (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) ||
+    window.navigator.standalone === true;
+  cameraTrigger.hidden = !isStandalonePwa;
+  photoFileActions.classList.toggle('is-standalone', isStandalonePwa);
 
   const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true });
   const resultContext = resultCanvas.getContext('2d');
@@ -897,6 +909,25 @@
 
   fileInput.addEventListener('change', preparePreview);
 
+  cameraTrigger.addEventListener('click', () => {
+    // Clear the previous capture before reopening the native camera picker so
+    // taking the same photo twice still produces a fresh change event.
+    cameraInput.value = '';
+    cameraInput.click();
+  });
+
+  cameraInput.addEventListener('change', () => {
+    const capturedFile = cameraInput.files && cameraInput.files[0];
+    cameraInput.value = '';
+    if (!capturedFile) return;
+
+    // Keep one source of truth for the editor and multipart upload pipeline.
+    const transfer = new DataTransfer();
+    transfer.items.add(capturedFile);
+    fileInput.files = transfer.files;
+    preparePreview();
+  });
+
   roleSelect.addEventListener('change', () => {
     updateRoleGuidance();
     preparePreview();
@@ -992,6 +1023,7 @@
   function resetPhotoEditorForm() {
     fileInput.value = '';
     originalFileInput.value = '';
+    cameraInput.value = '';
     editorStateInput.value = '';
     delete form.dataset.editingPhotoId;
     form.action = newUploadAction;
@@ -1034,6 +1066,7 @@
       roleSelect.required = true;
       roleSelect.value = requestedRole === 'optional' ? '' : requestedRole;
       fileInput.value = '';
+      cameraInput.value = '';
       if (altTextInput instanceof HTMLInputElement) {
         altTextInput.value = '';
         if (requestedRole === 'front_cover') {
