@@ -314,6 +314,11 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
         storagePath,
       });
 
+      (photoRepo.deleteListingPhoto as jest.Mock).mockResolvedValueOnce({
+        id: photoId,
+        listingId,
+        storagePath,
+      });
       const storage = await import('../src/app/services/storageService');
       const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
       const deleted = await deletePhotoFromListing(listingId, photoId, sellerId);
