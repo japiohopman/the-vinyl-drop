@@ -204,11 +204,27 @@ async function decrementBucket(bucket: RateLimitBucket): Promise<void> {
   await decrementRateLimitBucketWithClient(queryClient, bucket);
 }
 
-async function pruneExpiredBuckets(nowMs: number): Promise<void> {
-  if (testStore) return testStore.prune(nowMs);
-  if (!queryClient) throw new Error('Rate-limit database connection is unavailable.');
+/**
+ * Expose only stable PostgreSQL SQLSTATE codes in operational logs. Never
+ * forward driver messages, query text, connection details, or request data.
+ */
+export function getSafeRateLimitDatabaseErrorCode(error: unknown): string {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return 'unclassified';
+  }
 
-  await queryClient.unsafe(
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code)
+    ? code
+    : 'unclassified';
+}
+
+/** Execute one bounded expiry pass using the supplied PostgreSQL client. */
+export async function pruneExpiredRateLimitBucketsWithClient(
+  client: NonNullable<typeof queryClient>,
+  nowMs: number
+): Promise<void> {
+  await client.unsafe(
     'WITH expired AS (' +
     'SELECT bucket_key, window_start FROM private.rate_limit_buckets ' +
     'WHERE expires_at <= $1 ORDER BY expires_at LIMIT ' + CLEANUP_BATCH_SIZE +
@@ -216,6 +232,12 @@ async function pruneExpiredBuckets(nowMs: number): Promise<void> {
     'WHERE bucket.bucket_key = expired.bucket_key AND bucket.window_start = expired.window_start',
     [new Date(nowMs)]
   );
+}
+
+async function pruneExpiredBuckets(nowMs: number): Promise<void> {
+  if (testStore) return testStore.prune(nowMs);
+  if (!queryClient) throw new Error('Rate-limit database connection is unavailable.');
+  await pruneExpiredRateLimitBucketsWithClient(queryClient, nowMs);
 }
 
 /**
@@ -226,9 +248,11 @@ export function startRateLimitCleanup(): void {
   if (!config.SHARED_RATE_LIMITS_ENABLED || !queryClient || cleanupTimer) return;
 
   const runCleanup = (): void => {
-    void pruneExpiredBuckets(Date.now()).catch(() => {
-      // Do not expose database details or let maintenance failure affect the app.
-      console.error('Shared rate-limit expiry cleanup failed.');
+    void pruneExpiredBuckets(Date.now()).catch((error: unknown) => {
+      // Keep maintenance failures isolated and log only a safe SQLSTATE code.
+      console.error('Shared rate-limit expiry cleanup failed.', {
+        databaseErrorCode: getSafeRateLimitDatabaseErrorCode(error),
+      });
     });
   };
 
