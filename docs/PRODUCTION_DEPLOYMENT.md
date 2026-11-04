@@ -1,8 +1,8 @@
 # Production Deployment — The Vinyl Drop
 
 **Governing Issue:** [#278](https://github.com/japiohopman/the-vinyl-drop/issues/278)  
-**Status:** Production is live on a separate Render/Supabase environment at the canonical apex domain. The latest read-only production checkpoint is 3 November 2026: production remains on the PR #286 baseline; the production rate-limit database-role and Cloudflare client-IP runtime checks both passed; temporary diagnostics and their token have been removed. `main` and staging are at `db1dac957e98ca3df17359fa06139b11803230d8`, while production remains on `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d`. Public release remains gated on migration compatibility, authenticated DB/Storage smoke coverage, provider-level signup state, production OAuth, dependency-audit triage, backup/recovery readiness, privacy/legal checks and Jaap's final release decision.  
-**Last checked:** 3 November 2026.
+**Status:** Production remains live on the separate Render/Supabase environment at the canonical apex domain and on the approved PR #286 baseline. On 4 November, current `main` `4102103623c1da85e7aec804fa95c4c7da54748e` was manually deployed to staging; post-merge CI passed. Production remains deliberately unchanged. Its Drizzle ledger is verified through migration 0019; migrations 0020–0023 are not applied. The latest migration, Storage and release-candidate findings are recorded in section 9 below. Public release remains gated on migration compatibility, authenticated DB/Storage smoke coverage, provider-level signup state, dependency-audit triage, backup/recovery readiness, privacy/legal decisions and Jaap's final release approval.  
+**Last checked:** 4 November 2026.
 
 ## 1. Owner-approved target and safety boundaries
 
@@ -141,3 +141,38 @@ On 3 November, the protected production runtime check returned `database: pass` 
 ### Release boundary
 
 Do not treat this checkpoint as approval to deploy, apply migrations, change provider settings, expand the allowlist, enable public signup or activate messaging. Production remains invite-only; `MESSAGING_ENABLED=false`; `SHARED_RATE_LIMITS_ENABLED=false`. The 13-person figure is capacity preparation only, not proof of 13 production allowlist entries or authorization to invite them.
+
+
+## 9. Controlled 13-tester release candidate — read-only checkpoint, 4 November 2026
+
+This section supersedes the older 3 November migration-range statements above. It records preparation only; it does not authorize a production migration, environment change, deployment, allowlist edit or invitation.
+
+### Current service revisions
+
+- Production Render is still Live on PR #286 commit `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d`, Auto-Deploy off.
+- Staging Render is Live on current `main` commit `4102103623c1da85e7aec804fa95c4c7da54748e` after a manual staging deployment on 4 November. No production service or setting was changed.
+- The post-merge GitHub CI run [41867838942](https://github.com/japiohopman/the-vinyl-drop/actions/runs/41867838942) for `4102103` completed successfully.
+- Production's Drizzle ledger contains exactly 20 entries, IDs 1–20, through migration 0019. The 20 stored hashes and `created_at` timestamps match the repository's historical journal through that point.
+- Staging's Drizzle ledger is not a clean mirror of the current journal: it has 23 rows with IDs 1–13 and 15–24 (ID 14 is absent), and several hashes differ from the current journal. Its live schema does contain the current release metadata and listing-photo source columns and the three private source policies. **Do not run a general Drizzle migration command against staging or use its ledger as proof of production migration parity.** The staging database was inspected read-only.
+
+### Production schema and Storage facts
+
+- Production `public.releases` does not yet contain `country_code`, `canonical_genres` or `format_characteristics`; migration 0021 adds them.
+- Production `public.listing_photos` does not yet contain `source_storage_path`, `source_is_legacy` or `editor_state`; migration 0022 adds them.
+- The private `listing-photo-originals` bucket already exists in production, is private, and has a 20 MiB upload limit. It currently has **none** of the three required authenticated seller-owner Storage object policies. Production's existing four `listing-photos` policies are present and remain unchanged.
+- Migration 0022 verifies the private bucket and the three exact seller-owner SELECT/INSERT/DELETE predicates. It fails closed if the bucket is missing/public or if the policy set is incomplete or broader than those predicates. Do not weaken the existing public-display photo policies.
+- Production does not yet have the pg_trgm extension installed in the `extensions` schema or the migration 0020 trigram indexes. The current catalogue-search implementation has a normalized-search fallback, but migration 0020 is part of the pinned release-candidate range for full fuzzy suggestions.
+- Migration 0023 replaces the existing private `enforce_password_checked_signup(jsonb)` function so a first-time Google Auth identity is denied before creation. The production Before User Created hook is owner-confirmed attached to this function; the migration does not change the provider's hook selection. Existing verified-email Google sign-in is expected to keep working for already registered members, but production Google OAuth remains unconfigured/unverified under #281 and is not a supported tester onboarding path for this release.
+
+### Pinned production migration range
+
+The production migration runner now treats the release candidate as exactly **0020–0023**, after the verified 0000–0019 baseline. The full journal prefix and strict timestamps are checked before any database credentials are requested. A later or replaced journal entry is rejected by the PowerShell regression tests.
+
+Before any separately authorized production execution:
+1. Confirm the production target identity and pinned migration file hashes using the repository preflight.
+2. Provision and independently verify the exact three authenticated seller-owner policies for the already existing private `listing-photo-originals` bucket. Use only the predicates from migration 0022; do not grant public access and do not alter `listing-photos`.
+3. Review the effect of migration 0023 on the owner-confirmed Before User Created hook and retain the existing application HIBP / one-use signup approval requirement.
+4. Apply only the typed, reviewed ReleaseCandidate phase (0020–0023), then independently verify all 24 Drizzle journal entries, RLS/grants, trigram extension/indexes, release columns, private-source policies and the hook function definition.
+5. Only after verified migration state may a separate owner-approved application deploy be considered.
+
+No migration, Storage policy, Auth setting, environment variable, allowlist address, user, listing or production object was changed for this checkpoint.
