@@ -377,7 +377,7 @@ describe('Square cover photo cropper', () => {
       );
     };
 
-    await changeFrame('rotation', '1.5');
+    await changeFrame('rotation', '8');
     const rotatedPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
     expect(rotatedPolygon).not.toBe(initialPolygon);
     expect(await page.locator('[data-photo-frame="rotation"]').inputValue()).toBe('0');
