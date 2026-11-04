@@ -598,6 +598,21 @@ export async function verifyMigrations(): Promise<void> {
     throw new Error("Row Level Security (RLS) is NOT enabled on 'storage.objects'");
   }
 
+  // Supabase Studio provisions the three seller write policies as TO authenticated.
+  // The fresh PGlite database runs migration 0006's table-owner branch, whose historical
+  // CREATE POLICY statements rely on auth.role() in USING/WITH CHECK and therefore default
+  // to PUBLIC. Mirror the actual managed Supabase role metadata in this isolated fixture
+  // before asserting the exact hosted policy contract. This changes only the disposable
+  // in-memory database; no staging or production Storage policy is touched.
+  await pg.exec(`
+    ALTER POLICY "Authenticated Seller Delete for listing-photos"
+      ON storage.objects TO authenticated;
+    ALTER POLICY "Authenticated Seller Insert for listing-photos"
+      ON storage.objects TO authenticated;
+    ALTER POLICY "Authenticated Seller Update for listing-photos"
+      ON storage.objects TO authenticated;
+  `);
+
   const storagePoliciesRes = await pg.query<StoragePolicyRow>(
     `SELECT policyname, permissive, roles::text AS roles, cmd, qual, with_check
      FROM pg_policies
