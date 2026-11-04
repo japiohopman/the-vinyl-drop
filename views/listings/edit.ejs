@@ -213,8 +213,7 @@
         <% if (photoError) { %>
           <p role="alert" class="photo-dialog-error"><%= photoError %></p>
         <% } %>
-        <% if (photos.length < 5) { %>
-          <form id="photoUploadForm" action="/listings/<%= listing.id %>/photos" data-new-action="/listings/<%= listing.id %>/photos" method="POST" enctype="multipart/form-data" class="photo-upload-form">
+        <form id="photoUploadForm" action="/listings/<%= listing.id %>/photos" data-new-action="/listings/<%= listing.id %>/photos" method="POST" enctype="multipart/form-data" class="photo-upload-form">
             <div class="photo-upload-field photo-role-field">
               <label for="newPhotoRole">Photo type</label>
               <select id="newPhotoRole" name="role" required class="form-control">
@@ -369,7 +368,6 @@
               <button type="submit" class="btn btn-primary">Upload photo</button>
             </div>
           </form>
-        <% } %>
       </dialog>
 
       <dialog id="photoHelpDialog" class="photo-dialog photo-help-dialog" aria-labelledby="photoHelpTitle">
