@@ -823,6 +823,7 @@ export async function getListingPhotoEditorSource(
     }
 
     const expectedPath = listingPhotoSourceStoragePath(listingId, photoId);
+    let uploadedNewSource = false;
     try {
       sourceStoragePath = await uploadListingPhotoSourceToStorage(
         listingId,
@@ -830,6 +831,7 @@ export async function getListingPhotoEditorSource(
         sourceMaster.buffer,
         storageOptions
       );
+      uploadedNewSource = true;
     } catch (uploadError) {
       // Another editor tab may have initialized the same deterministic legacy path.
       try {
@@ -840,24 +842,44 @@ export async function getListingPhotoEditorSource(
       }
     }
 
-    const updated = await updateListingPhotoSource(
-      listingId,
-      photoId,
-      sourceStoragePath,
-      true,
-      dbOverride
-    );
+    let updated: ListingPhoto | null;
+    try {
+      updated = await updateListingPhotoSource(
+        listingId,
+        photoId,
+        sourceStoragePath,
+        true,
+        dbOverride
+      );
+    } catch (updateError) {
+      if (uploadedNewSource) {
+        try {
+          await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+        } catch {
+          await recordPhotoStorageOrphan(
+            listingId,
+            photoId,
+            sourceStoragePath,
+            'LEGACY_SOURCE_INITIALIZATION_UPDATE_FAILED_CLEANUP_FAILED',
+            dbOverride
+          );
+        }
+      }
+      throw updateError;
+    }
     if (!updated) {
-      try {
-        await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
-      } catch {
-        await recordPhotoStorageOrphan(
-          listingId,
-          photoId,
-          sourceStoragePath,
-          'LEGACY_SOURCE_INITIALIZATION_ROW_MISSING',
-          dbOverride
-        );
+      if (uploadedNewSource) {
+        try {
+          await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+        } catch {
+          await recordPhotoStorageOrphan(
+            listingId,
+            photoId,
+            sourceStoragePath,
+            'LEGACY_SOURCE_INITIALIZATION_ROW_MISSING',
+            dbOverride
+          );
+        }
       }
       throw new NotFoundError('Photo not found');
     }
