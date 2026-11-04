@@ -1,7 +1,8 @@
 import postgres from 'postgres';
 import { getPostgresConnectionOptions } from '../src/db/connectionOptions';
 import { basename } from 'node:path';
-import { assertExactStoragePolicySet, StoragePolicyRow } from './productionStoragePolicies';
+import { assertExactStoragePolicySet } from './productionStoragePolicies';
+import type { StoragePolicyRow } from './productionStoragePolicies';
 
 const EXPECTED_PROJECT_REF = 'anxhmlalxjvatrufcjei';
 const EXPECTED_POOLER_HOST = 'aws-0-eu-west-1.pooler.supabase.com';
