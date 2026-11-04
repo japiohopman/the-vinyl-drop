@@ -5,6 +5,15 @@ import { config } from '../../config/env';
 const BUCKET_NAME = 'listing-photos';
 const ORIGINAL_BUCKET_NAME = 'listing-photo-originals';
 
+export function listingPhotoStoragePath(
+  listingId: string,
+  photoId: string,
+  extension = 'webp',
+  version?: string
+): string {
+  return `listings/${listingId}/${photoId}${version ? `.v-${version}` : ''}.${extension}`;
+}
+
 // In-memory mock storage map strictly for test environment
 const inMemoryStorage = new Map<string, { buffer: Buffer; contentType: string }>();
 const inMemoryOriginalStorage = new Map<string, { buffer: Buffer; contentType: string }>();
@@ -31,7 +40,7 @@ export interface UploadPhotoParams {
  */
 export async function uploadListingPhotoToStorage(params: UploadPhotoParams): Promise<string> {
   const { listingId, photoId, buffer, contentType, extension = 'webp', version, options } = params;
-  const storagePath = `listings/${listingId}/${photoId}${version ? `.v-${version}` : ''}.${extension}`;
+  const storagePath = listingPhotoStoragePath(listingId, photoId, extension, version);
 
   if (config.NODE_ENV === 'test') {
     inMemoryStorage.set(storagePath, { buffer, contentType });
