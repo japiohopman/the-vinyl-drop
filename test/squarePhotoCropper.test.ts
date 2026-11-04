@@ -397,7 +397,9 @@ describe('Square cover photo cropper', () => {
     await page.waitForFunction(
       (before) => {
         try {
-          const state = JSON.parse(document.querySelector('#photoEditorState').value);
+          const editorState = document.querySelector('#photoEditorState') as HTMLInputElement | null;
+          if (!editorState) return false;
+          const state = JSON.parse(editorState.value);
           return JSON.stringify(state.corners) !== JSON.stringify(before);
         } catch {
           return false;
