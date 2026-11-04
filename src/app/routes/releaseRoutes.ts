@@ -4,6 +4,7 @@ import { validateSameOrigin } from '../middleware/csrf';
 import {
   getCreateCustomReleasePage,
   getDiscogsMetadataLookup,
+  getDiscogsReleaseArtwork,
   postCreateCustomRelease,
   postImportDiscogsRelease,
 } from '../controllers/releaseController';
@@ -14,6 +15,7 @@ import { rateLimits } from '../services/rateLimitService';
 const router = Router();
 
 router.get('/lookup-metadata', requireAuth, rateLimits.discogsMetadataLookup, getDiscogsMetadataLookup);
+router.get('/lookup-artwork', requireAuth, rateLimits.discogsMetadataLookup, getDiscogsReleaseArtwork);
 router.get('/new', requireAuth, getCreateCustomReleasePage);
 router.post('/new', requireAuth, validateSameOrigin, multipartUploadHandler, postCreateCustomRelease);
 router.post('/import-discogs', requireAuth, validateSameOrigin, rateLimits.discogsImport, postImportDiscogsRelease);
