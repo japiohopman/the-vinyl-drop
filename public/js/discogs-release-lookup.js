@@ -299,7 +299,7 @@
 
   async function enrichSelectedEditionArtwork(metadata, candidateTitle) {
     var externalId = typeof metadata.discogsExternalId === 'string' ? metadata.discogsExternalId : '';
-    if (!/^\\d{1,15}$/.test(externalId)) return;
+    if (!/^\d{1,15}$/.test(externalId)) return;
 
     lookupSequence += 1;
     var sequence = lookupSequence;
