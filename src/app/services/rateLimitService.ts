@@ -234,6 +234,10 @@ export async function pruneExpiredRateLimitBucketsWithClient(
   );
 }
 
+/**
+ * Runs one expiry pass against the injected test store or the shared PostgreSQL
+ * connection, without changing the bounded cleanup behavior.
+ */
 async function pruneExpiredBuckets(nowMs: number): Promise<void> {
   if (testStore) return testStore.prune(nowMs);
   if (!queryClient) throw new Error('Rate-limit database connection is unavailable.');
