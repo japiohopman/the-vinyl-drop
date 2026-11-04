@@ -65,16 +65,13 @@ import {
   deleteListingPhotoFromStorage,
   restoreListingPhotoToStorage,
   downloadListingPhotoFromStorage,
-  uploadListingPhotoSourceToStorage,
-  downloadListingPhotoSourceFromStorage,
-  deleteListingPhotoSourceFromStorage,
-  restoreListingPhotoSourceToStorage,
   getPhotoPublicUrl,
   StorageOptions,
   uploadListingPhotoToStorage,
   uploadListingPhotoSourceToStorage,
   downloadListingPhotoSourceFromStorage,
   deleteListingPhotoSourceFromStorage,
+  restoreListingPhotoSourceToStorage,
   listingPhotoSourceStoragePath,
 } from './storageService';
 import { recordOrphanedStorageObject } from '../repositories/orphanRepository';
@@ -1045,76 +1042,81 @@ export async function deletePhotoFromListing(
   storageOptions?: StorageOptions
 ): Promise<boolean> {
   const listing = await findListingById(listingId, dbOverride);
-  if (!listing) {
-    throw new NotFoundError('Listing not found');
-  }
-
+  if (!listing) throw new NotFoundError('Listing not found');
   if (listing.sellerId !== requestingUserId) {
     throw new AuthorizationError('You are not authorized to modify photos for this listing');
   }
-
   if (isTerminalListingStatus(listing.status)) {
     throw new ValidationError(`Cannot delete photos from a listing in terminal state '${listing.status}'`);
   }
 
   const photo = await findPhotoById(photoId, dbOverride);
-  if (!photo || photo.listingId !== listingId) {
-    throw new NotFoundError('Photo not found');
-  }
+  if (!photo || photo.listingId !== listingId) throw new NotFoundError('Photo not found');
 
-  // Execute database metadata record deletion first
-  await deleteListingPhoto(photoId, dbOverride);
+  // Snapshot every object before deleting anything. Storage timeouts can happen
+  // after a provider has completed a delete, so attempted removals are compensated.
+  const displayBuffer = await downloadListingPhotoFromStorage(photo.storagePath, storageOptions);
+  const sourceBuffer = photo.sourceStoragePath
+    ? await downloadListingPhotoSourceFromStorage(photo.sourceStoragePath, storageOptions)
+    : null;
+  let attemptedDisplayDelete = false;
+  let attemptedSourceDelete = false;
 
-  // Attempt Storage object deletion
-  try {
-    await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
-  } catch (storageErr) {
-    // Compensation strategy: Storage deletion failed. Re-insert the DB metadata record
-    // to restore cross-system state consistency before re-throwing the error.
-    try {
-      await createListingPhoto(
-        {
-          id: photo.id,
-          listingId: photo.listingId,
-          storagePath: photo.storagePath,
-          displayOrder: photo.displayOrder,
-          altText: photo.altText,
-          role: photo.role,
-        },
-        dbOverride
-      );
-    } catch {
-      // Record durable orphan record in database for double-failure reconciliation
+  const restoreObjects = async (): Promise<void> => {
+    if (attemptedDisplayDelete) {
       try {
-        await recordOrphanedStorageObject(
-          {
-            listingId,
-            photoId,
-            storagePath: photo.storagePath,
-            reason: 'DELETE_STORAGE_FAILED_AND_DB_COMPENSATION_FAILED',
-          },
-          dbOverride
-        );
+        await restoreListingPhotoToStorage(photo.storagePath, displayBuffer, storageOptions);
       } catch {
-        console.error(JSON.stringify({
-          event: 'storage_orphan_unresolved',
-          reason: 'DELETE_STORAGE_FAILED_AND_DB_COMPENSATION_FAILED',
+        await recordPhotoStorageOrphan(
           listingId,
           photoId,
-        }));
+          photo.storagePath,
+          'PHOTO_DELETE_DISPLAY_RESTORE_FAILED',
+          dbOverride
+        );
       }
     }
-    throw storageErr;
+    if (attemptedSourceDelete && photo.sourceStoragePath && sourceBuffer) {
+      try {
+        await restoreListingPhotoSourceToStorage(photo.sourceStoragePath, sourceBuffer, storageOptions);
+      } catch {
+        await recordPhotoStorageOrphan(
+          listingId,
+          photoId,
+          photo.sourceStoragePath,
+          'PHOTO_DELETE_SOURCE_RESTORE_FAILED',
+          dbOverride
+        );
+      }
+    }
+  };
+
+  try {
+    attemptedDisplayDelete = true;
+    await deleteListingPhotoFromStorage(photo.storagePath, storageOptions);
+    if (photo.sourceStoragePath) {
+      attemptedSourceDelete = true;
+      await deleteListingPhotoSourceFromStorage(photo.sourceStoragePath, storageOptions);
+    }
+  } catch (storageError) {
+    await restoreObjects();
+    throw storageError;
   }
 
-  // Compact display orders
+  try {
+    const deleted = await deleteListingPhoto(photoId, dbOverride);
+    if (!deleted) throw new Error('Photo metadata could not be removed.');
+  } catch (databaseError) {
+    await restoreObjects();
+    throw databaseError;
+  }
+
   const remainingPhotos = await findPhotosByListingId(listingId, dbOverride);
   await updatePhotoOrder(
     listingId,
-    remainingPhotos.map((p) => p.id),
+    remainingPhotos.map((remainingPhoto) => remainingPhoto.id),
     dbOverride
   );
-
   return true;
 }
 
@@ -1130,7 +1132,7 @@ export async function permanentlyDeleteArchivedListing(
   storageOptions?: StorageOptions
 ): Promise<boolean> {
   const listing = await findListingById(listingId, dbOverride);
-  if (!listing) return false; // Idempotent repeat: it is already gone.
+  if (!listing) return false;
   if (listing.sellerId !== requestingUserId) {
     throw new AuthorizationError('You are not authorized to delete this listing');
   }
@@ -1141,29 +1143,42 @@ export async function permanentlyDeleteArchivedListing(
   const photos = await findPhotosByListingId(listingId, dbOverride);
   const snapshots = await Promise.all(photos.map(async (photo) => ({
     photo,
-    buffer: await downloadListingPhotoFromStorage(photo.storagePath, storageOptions),
+    displayBuffer: await downloadListingPhotoFromStorage(photo.storagePath, storageOptions),
+    sourceBuffer: photo.sourceStoragePath
+      ? await downloadListingPhotoSourceFromStorage(photo.sourceStoragePath, storageOptions)
+      : null,
   })));
 
   const attemptedRemovals: typeof snapshots = [];
   const restoreRemovedPhotos = async (): Promise<void> => {
     for (const snapshot of attemptedRemovals) {
       try {
-        await restoreListingPhotoToStorage(snapshot.photo.storagePath, snapshot.buffer, storageOptions);
+        await restoreListingPhotoToStorage(snapshot.photo.storagePath, snapshot.displayBuffer, storageOptions);
       } catch {
+        await recordPhotoStorageOrphan(
+          listingId,
+          snapshot.photo.id,
+          snapshot.photo.storagePath,
+          'ARCHIVED_LISTING_DELETE_DISPLAY_RESTORE_FAILED',
+          dbOverride
+        );
+      }
+
+      if (snapshot.photo.sourceStoragePath && snapshot.sourceBuffer) {
         try {
-          await recordOrphanedStorageObject({
-            listingId,
-            photoId: snapshot.photo.id,
-            storagePath: snapshot.photo.storagePath,
-            reason: 'ARCHIVED_LISTING_DELETE_STORAGE_RESTORE_FAILED',
-          }, dbOverride);
+          await restoreListingPhotoSourceToStorage(
+            snapshot.photo.sourceStoragePath,
+            snapshot.sourceBuffer,
+            storageOptions
+          );
         } catch {
-          console.error(JSON.stringify({
-            event: 'storage_orphan_unresolved',
-            reason: 'ARCHIVED_LISTING_DELETE_STORAGE_RESTORE_FAILED',
+          await recordPhotoStorageOrphan(
             listingId,
-            photoId: snapshot.photo.id,
-          }));
+            snapshot.photo.id,
+            snapshot.photo.sourceStoragePath,
+            'ARCHIVED_LISTING_DELETE_SOURCE_RESTORE_FAILED',
+            dbOverride
+          );
         }
       }
     }
@@ -1171,10 +1186,13 @@ export async function permanentlyDeleteArchivedListing(
 
   try {
     for (const snapshot of snapshots) {
-      // A provider timeout may arrive after the object was removed, so include
-      // the current path in compensation before making the remote request.
+      // Mark before requesting the remote delete: a timeout may arrive after
+      // Storage removed the object, and compensation must still restore it.
       attemptedRemovals.push(snapshot);
       await deleteListingPhotoFromStorage(snapshot.photo.storagePath, storageOptions);
+      if (snapshot.photo.sourceStoragePath) {
+        await deleteListingPhotoSourceFromStorage(snapshot.photo.sourceStoragePath, storageOptions);
+      }
     }
   } catch (storageError) {
     await restoreRemovedPhotos();
@@ -1194,8 +1212,6 @@ export async function permanentlyDeleteArchivedListing(
     });
 
     if (!deleted) {
-      // A parallel delete may already have removed the listing. In that case,
-      // leave its Storage paths removed instead of restoring orphaned objects.
       const stillExists = await findListingById(listingId, dbOverride);
       if (stillExists) await restoreRemovedPhotos();
       return false;
