@@ -356,6 +356,11 @@ describe('Square cover photo cropper', () => {
       { timeout: 5000 }
     );
 
+    await page.waitForFunction(
+      "document.querySelector('#photoEditorState').value.includes('corners')",
+      undefined,
+      { timeout: 5000 }
+    );
     const initialPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
     const initialState = JSON.parse(await page.locator('#photoEditorState').inputValue());
     const changeFrame = async (key: string, value: string) => {
@@ -389,6 +394,18 @@ describe('Square cover photo cropper', () => {
     await changeFrame('offsetX', '1');
     const repositionedPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
     expect(repositionedPolygon).not.toBe(zoomedPolygon);
+    await page.waitForFunction(
+      (before) => {
+        try {
+          const state = JSON.parse(document.querySelector('#photoEditorState').value);
+          return JSON.stringify(state.corners) !== JSON.stringify(before);
+        } catch {
+          return false;
+        }
+      },
+      initialState.corners,
+      { timeout: 5000 }
+    );
     const state = JSON.parse(await page.locator('#photoEditorState').inputValue());
     expect(state.corners).toHaveLength(4);
     expect(state.corners).not.toEqual(initialState.corners);
