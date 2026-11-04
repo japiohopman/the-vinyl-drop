@@ -261,6 +261,24 @@ async function run(): Promise<void> {
       const page = await browser.newPage({ viewport });
       try {
         await page.setContent(digHtml, { waitUntil: 'load', timeout: 15000 });
+
+        if (viewport.width <= 430) {
+          const crateImage = page.locator('[data-dig-crate-source] img');
+          assert.equal(
+            await crateImage.isVisible(),
+            true,
+            'Mobile Dig crate artwork must be visible at ' + viewport.width + 'px'
+          );
+          const crateImageLoaded = await crateImage.evaluate((element) =>
+            (element as HTMLImageElement).naturalWidth > 0
+          );
+          assert.equal(
+            crateImageLoaded,
+            true,
+            'Mobile Dig crate artwork must load at ' + viewport.width + 'px'
+          );
+        }
+
         await page.locator('.browse-mobile-filter-panel').evaluate((element) => {
           (element as HTMLDetailsElement).open = true;
         });
@@ -288,8 +306,12 @@ async function run(): Promise<void> {
             const viewElement = document.querySelector('.dig-search-control-bar > .view-mode-toggle');
             const formatElement = document.querySelector('.dig-responsive-desktop .browse-format-chip');
             const genreElement = document.querySelector('.dig-responsive-desktop #filter-genre');
+            const conditionElement = document.querySelector('.dig-responsive-desktop #filter-condition');
             const sortElement = document.querySelector('.dig-responsive-desktop #filter-sort');
-            if (!searchElement || !submitElement || !viewElement || !formatElement || !genreElement || !sortElement) {
+            if (
+              !searchElement || !submitElement || !viewElement || !formatElement ||
+              !genreElement || !conditionElement || !sortElement
+            ) {
               throw new Error('Missing one or more desktop Dig controls');
             }
 
@@ -310,6 +332,7 @@ async function run(): Promise<void> {
               view: { height: viewBounds.height, centerY: viewBounds.top + viewBounds.height / 2 },
               format: formatElement.getBoundingClientRect().height,
               genre: genreElement.getBoundingClientRect().height,
+              condition: conditionElement.getBoundingClientRect().height,
               sort: sortElement.getBoundingClientRect().height,
               actions,
             };
@@ -327,6 +350,7 @@ async function run(): Promise<void> {
           );
           assert.equal(metrics.format, 44, 'Format filter height mismatch at ' + viewport.width + 'px');
           assert.equal(metrics.genre, 44, 'Genre control height mismatch at ' + viewport.width + 'px');
+          assert.equal(metrics.condition, 44, 'Condition control height mismatch at ' + viewport.width + 'px');
           assert.equal(metrics.sort, 44, 'Sort control height mismatch at ' + viewport.width + 'px');
           assert.ok(
             metrics.actions.length > 0 && metrics.actions.every((height) => height === 44),

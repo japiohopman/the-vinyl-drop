@@ -78,7 +78,6 @@
   .dig-primary-search-form input[type="search"],
   .dig-primary-search-form button {
     box-sizing: border-box;
-    height: 44px;
     min-height: 44px;
   }
 

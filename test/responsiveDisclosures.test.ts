@@ -292,6 +292,7 @@ describe('Responsive disclosure browser behavior', () => {
           gridToggle: measure('.dig-search-control-bar .view-toggle-btn'),
           format: measure('.dig-responsive-desktop .browse-format-chip'),
           genre: measure('.dig-responsive-desktop .browse-primary-filters select'),
+          condition: measure('.dig-responsive-desktop #filter-condition'),
           advanced: measure('.dig-responsive-desktop .browse-secondary-grid input'),
           apply: measure('.dig-responsive-desktop .browse-filter-action-buttons .btn'),
         };
@@ -307,6 +308,7 @@ describe('Responsive disclosure browser behavior', () => {
         metrics.viewGroup,
         metrics.format,
         metrics.genre,
+        metrics.condition,
         metrics.advanced,
         metrics.apply,
       ]) {
