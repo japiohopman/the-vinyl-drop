@@ -120,6 +120,10 @@ export function getPhotoPublicUrl(storagePath: string): string {
 }
 
 
+export function listingPhotoSourceStoragePath(listingId: string, photoId: string): string {
+  return `listings/${listingId}/${photoId}.source.webp`;
+}
+
 /**
  * Upload an immutable, EXIF-sanitized editing master to the PRIVATE originals bucket.
  * The bucket must be private and owner-scoped Storage RLS policies must be provisioned.
@@ -130,7 +134,7 @@ export async function uploadListingPhotoSourceToStorage(
   buffer: Buffer,
   options?: StorageOptions
 ): Promise<string> {
-  const storagePath = `listings/${listingId}/${photoId}.source.webp`;
+  const storagePath = listingPhotoSourceStoragePath(listingId, photoId);
   if (config.NODE_ENV === 'test') {
     if (inMemoryOriginalStorage.has(storagePath)) {
       throw new Error('A private source already exists for this listing photo.');
