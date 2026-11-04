@@ -95,6 +95,7 @@
     height: 44px;
     min-height: 44px;
     align-items: stretch;
+    padding: 0;
   }
 
   .dig-search-control-bar .view-toggle-btn {
@@ -102,8 +103,27 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 36px;
-    padding-block: 0;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 var(--space-3);
+  }
+
+  /* Keep the format, genre, advanced-filter and action controls on the same
+     deliberate desktop height rhythm as the search toolbar. */
+  .dig-responsive-desktop .browse-format-chip,
+  .dig-responsive-desktop .browse-primary-filters select,
+  .dig-responsive-desktop .browse-secondary-grid input,
+  .dig-responsive-desktop .browse-secondary-grid select,
+  .dig-responsive-desktop .browse-filter-action-buttons .btn {
+    box-sizing: border-box;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .dig-responsive-desktop .browse-format-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 
