@@ -21,7 +21,6 @@ describe('Square cover photo cropper', () => {
   let page: Page;
   let portraitImage: Buffer;
   let browserErrors: string[];
-  let browserErrors: string[];
 
   beforeAll(async () => {
     browser = await chromium.launch({ headless: true });
