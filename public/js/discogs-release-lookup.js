@@ -356,6 +356,8 @@
   function scheduleLookup() {
     if (debounceTimer !== null) window.clearTimeout(debounceTimer);
     if (activeController) activeController.abort();
+    // A submit requested for the previous selection must not auto-submit a new lookup.
+    submitAfterLookup = false;
     lookupSequence += 1;
     var sequence = lookupSequence;
     setLookupPending(true);
