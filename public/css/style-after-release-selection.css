@@ -128,6 +128,13 @@
 }
 
 @media (min-width: 768px) {
+  .dig-responsive-desktop .browse-format-chip {
+    box-sizing: border-box;
+    height: 44px;
+    min-height: 44px;
+    padding-block: var(--space-1);
+  }
+
   .dig-responsive-desktop .browse-filter-actions .browse-filter-action-buttons .btn {
     box-sizing: border-box;
     display: inline-flex;
