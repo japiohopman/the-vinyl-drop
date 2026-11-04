@@ -17,6 +17,8 @@ import {
   postUpdateReleaseArtwork,
   postRestoreDiscogsArtwork,
   postUploadPhoto,
+  getListingPhotoEditorSource,
+  postEditListingPhoto,
   postDeletePhoto,
   postUpdatePhotoRole,
   postReorderPhotos,
@@ -61,6 +63,8 @@ router.post('/:id/release-artwork/restore-discogs', requireAuth, validateSameOri
 
 // Photo Operations
 router.post('/:id/photos', requireAuth, validateSameOrigin, rateLimits.listingPhotoUpload, multipartUploadHandler, postUploadPhoto);
+router.get('/:id/photos/:photoId/editor-source', requireAuth, getListingPhotoEditorSource);
+router.post('/:id/photos/:photoId/edit', requireAuth, validateSameOrigin, rateLimits.listingPhotoUpload, multipartUploadHandler, postEditListingPhoto);
 router.post('/:id/photos/:photoId/delete', requireAuth, validateSameOrigin, postDeletePhoto);
 router.post('/:id/photos/:photoId/role', requireAuth, validateSameOrigin, postUpdatePhotoRole);
 router.post('/:id/photos/reorder', requireAuth, validateSameOrigin, postReorderPhotos);
