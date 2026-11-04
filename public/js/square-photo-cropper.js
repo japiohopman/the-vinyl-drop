@@ -658,7 +658,7 @@
   handles.forEach((handle, index) => {
     handle.disabled = true;
     handle.addEventListener('pointerdown', (event) => {
-      if (!image || !isCoverRole()) return;
+      if (!image) return;
       event.preventDefault();
       activeCorner = index;
       dragStartState = cloneState();
