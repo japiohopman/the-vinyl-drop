@@ -776,6 +776,10 @@
   font-size: var(--font-size-xs);
   overflow-wrap: anywhere;
 }
+.photo-selection-preview[hidden],
+.photo-selection-preview img[hidden] {
+  display: none;
+}
 .photo-selection-preview img {
   display: block;
   width: 100%;
