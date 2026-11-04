@@ -1,8 +1,8 @@
 import {
   EXPECTED_STORAGE_POLICIES,
   getStoragePolicyValidationErrors,
-  StoragePolicyRow,
 } from '../scripts/productionStoragePolicies';
+import type { StoragePolicyRow } from '../scripts/productionStoragePolicies';
 
 function validPolicyRows(): StoragePolicyRow[] {
   return EXPECTED_STORAGE_POLICIES.map((policy) => ({
