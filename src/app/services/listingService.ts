@@ -856,6 +856,7 @@ export async function saveListingPhotoEditor(
   requestingUserId: string,
   file: { buffer: Buffer; mimetype: string; originalname?: string },
   editorStateInput: unknown,
+  altTextInput: unknown,
   dbOverride?: DbInstance,
   storageOptions?: StorageOptions
 ): Promise<ListingPhotoWithUrl> {
@@ -870,6 +871,16 @@ export async function saveListingPhotoEditor(
 
   const photo = await findPhotoById(photoId, dbOverride);
   if (!photo || photo.listingId !== listingId) throw new NotFoundError('Photo not found');
+
+  const submittedAltText = typeof altTextInput === 'string' ? altTextInput.trim() : '';
+  let altText = photo.altText;
+  if (submittedAltText) {
+    const altTextResult = listingPhotoAltTextSchema.safeParse(submittedAltText);
+    if (!altTextResult.success) {
+      throw new ValidationError(altTextResult.error.issues.map((issue) => issue.message).join('; '));
+    }
+    altText = altTextResult.data;
+  }
 
   const editorState = parseEditorState(editorStateInput);
   if (!editorState) {
@@ -917,8 +928,10 @@ export async function saveListingPhotoEditor(
     updated = await updateListingPhotoEditor(
       listingId,
       photoId,
+      photo.storagePath,
       nextStoragePath,
       editorState,
+      altText,
       dbOverride
     );
   } catch (error) {
@@ -948,7 +961,7 @@ export async function saveListingPhotoEditor(
         dbOverride
       );
     }
-    throw new NotFoundError('Photo not found');
+    throw new ValidationError('This photo was changed in another tab. Reopen the editor before saving again.');
   }
 
   try {
