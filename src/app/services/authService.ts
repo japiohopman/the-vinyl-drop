@@ -334,16 +334,14 @@ export async function handleAuthCallback(
   const existingProfile = await findProfileById(data.user.id, options?.dbOverride);
   if (!existingProfile) {
     const storedConsent = await hasRegistrationConsent(data.user.id, options?.dbOverride);
-    if (!storedConsent && !options?.registrationConsent) {
+    if (!storedConsent) {
       try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* remains denied */ }
-      return { user: null, session: null, profile: null, error: 'This Google account needs to complete registration. Return to Sign Up, accept the Terms of Use and confirm you are at least 18.' };
-    }
-    if (!storedConsent && options?.registrationConsent) {
-      try { await saveRegistrationConsent(data.user.id, options.registrationConsent, options?.dbOverride); }
-      catch {
-        try { await supabase.auth.signOut({ scope: 'local' }); } catch { /* remains denied */ }
-        return { user: null, session: null, profile: null, error: 'Registration could not be completed securely. Please return to Sign Up and try again.' };
-      }
+      return {
+        user: null,
+        session: null,
+        profile: null,
+        error: 'This Google identity is not linked to an account that completed registration. Create an account with email and password, confirm your email, then sign in with Google using the same verified address.',
+      };
     }
   }
   const profile = existingProfile || await ensureProfileForUser(data.user, undefined, options?.dbOverride);
