@@ -47,14 +47,17 @@ describe('Square cover photo cropper', () => {
     if (page) await page.close();
   });
 
-  async function renderEditPage(existingPhoto?: {
-    id: string;
-    role: string;
-    publicUrl: string;
-    altText: string;
-    editorState?: Record<string, unknown>;
-    sourceIsLegacy?: boolean;
-  }): Promise<void> {
+  async function renderEditPage(
+    existingPhoto?: {
+      id: string;
+      role: string;
+      publicUrl: string;
+      altText: string;
+      editorState?: Record<string, unknown>;
+      sourceIsLegacy?: boolean;
+    },
+    standaloneMode: 'browser' | 'display-mode' | 'ios' = 'browser',
+  ): Promise<void> {
     const html = await ejs.renderFile(viewPath, {
       listing: {
         id: '11111111-1111-4111-8111-111111111111',
@@ -88,6 +91,15 @@ describe('Square cover photo cropper', () => {
       '<body><main class="main-content">' + body + '</main></body></html>',
       { waitUntil: 'domcontentloaded', timeout: 5000 }
     );
+    if (standaloneMode === 'display-mode') {
+      await page.addScriptTag({
+        content: "Object.defineProperty(window, 'matchMedia', { configurable: true, value: query => ({ matches: query === '(display-mode: standalone)' }) });",
+      });
+    } else if (standaloneMode === 'ios') {
+      await page.addScriptTag({
+        content: "Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });",
+      });
+    }
     await page.addScriptTag({ path: corePath });
     await page.addScriptTag({ path: cropperPath });
   }
@@ -144,6 +156,109 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#photoHelpDialog').innerText()).toContain('whole sleeve visible');
     await page.keyboard.press('Escape');
     expect(await page.locator('#photoHelpDialog').isVisible()).toBe(false);
+  });
+
+  it('keeps the normal picker in browser mode and exposes camera capture only in standalone mode', async () => {
+    await renderEditPage();
+
+    expect(await page.locator('#photoCameraInput').getAttribute('accept')).toBe('image/jpeg,image/png,image/webp');
+    expect(await page.locator('#photoCameraInput').getAttribute('capture')).toBe('environment');
+    expect(await page.locator('#photoFile').getAttribute('capture')).toBeNull();
+    await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
+    expect(await page.locator('[data-photo-camera-trigger]').isHidden()).toBe(true);
+    expect(await page.locator('label[for="photoFile"]').isVisible()).toBe(true);
+
+    await renderEditPage(undefined, 'display-mode');
+    await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
+    expect(await page.locator('[data-photo-camera-trigger]').isVisible()).toBe(true);
+    expect(await page.locator('label[for="photoFile"]').isVisible()).toBe(true);
+
+    await renderEditPage(undefined, 'ios');
+    await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
+    expect(await page.locator('[data-photo-camera-trigger]').isVisible()).toBe(true);
+  });
+
+  it('hands standalone camera captures into the existing photo editor and resets for repeat captures', async () => {
+    await renderEditPage(undefined, 'display-mode');
+    await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
+
+    const cameraTrigger = page.locator('[data-photo-camera-trigger]');
+    expect(await cameraTrigger.isVisible()).toBe(true);
+
+    for (const width of [360, 390, 430, 768, 1280]) {
+      await page.setViewportSize({ width, height: 850 });
+      const layout = await page.evaluate(() => {
+        const actions = document.querySelector('[data-photo-file-actions]');
+        const choose = actions?.querySelector('label');
+        const camera = actions?.querySelector('button');
+        if (!choose || !camera) return null;
+        const chooseRect = choose.getBoundingClientRect();
+        const cameraRect = camera.getBoundingClientRect();
+        return {
+          viewport: window.innerWidth,
+          document: document.documentElement.scrollWidth,
+          body: document.body.scrollWidth,
+          chooseLeft: chooseRect.left,
+          chooseRight: chooseRect.right,
+          chooseWidth: chooseRect.width,
+          cameraLeft: cameraRect.left,
+          cameraRight: cameraRect.right,
+          cameraWidth: cameraRect.width,
+        };
+      });
+      expect(layout).not.toBeNull();
+      expect(layout!.document).toBeLessThanOrEqual(width + 1);
+      expect(layout!.body).toBeLessThanOrEqual(width + 1);
+      expect(layout!.chooseWidth).toBeGreaterThan(100);
+      expect(layout!.cameraWidth).toBeGreaterThan(100);
+      expect(layout!.cameraLeft).toBeGreaterThanOrEqual(layout!.chooseRight - 1);
+      expect(layout!.cameraRight).toBeLessThanOrEqual(width + 1);
+    }
+
+    await cameraTrigger.focus();
+    expect(await cameraTrigger.evaluate((button) => document.activeElement === button)).toBe(true);
+    const firstChooserPromise = page.waitForEvent('filechooser');
+    await cameraTrigger.press('Enter', { timeout: 5000 });
+    const firstChooser = await firstChooserPromise;
+    await firstChooser.setFiles({
+      name: 'camera-front-cover.jpg',
+      mimeType: 'image/jpeg',
+      buffer: portraitImage,
+    });
+
+    await page.waitForFunction(
+      "document.querySelector('#photoFile').files?.[0]?.name === 'camera-front-cover.jpg' && " +
+      "document.querySelector('#square-cover-source').height === 320",
+      undefined,
+      { timeout: 5000 }
+    );
+    expect(await page.locator('#photoOriginalFile').evaluate((input) => (input as HTMLInputElement).files?.[0]?.name)).toBe('camera-front-cover.jpg');
+    expect(await page.locator('#photoCameraInput').inputValue()).toBe('');
+
+    const cancelledChooserPromise = page.waitForEvent('filechooser');
+    await cameraTrigger.click({ timeout: 5000 });
+    const cancelledChooser = await cancelledChooserPromise;
+    await cancelledChooser.setFiles([]);
+    expect(await page.locator('#photoFile').evaluate((input) => (input as HTMLInputElement).files?.[0]?.name)).toBe('camera-front-cover.jpg');
+    expect(await page.locator('#photoCameraInput').inputValue()).toBe('');
+
+    const secondChooserPromise = page.waitForEvent('filechooser');
+    await cameraTrigger.click({ timeout: 5000 });
+    const secondChooser = await secondChooserPromise;
+    await secondChooser.setFiles({
+      name: 'camera-front-cover-second.jpg',
+      mimeType: 'image/jpeg',
+      buffer: portraitImage,
+    });
+
+    await page.waitForFunction(
+      "document.querySelector('#photoFile').files?.[0]?.name === 'camera-front-cover-second.jpg'",
+      undefined,
+      { timeout: 5000 }
+    );
+    expect(await page.locator('#photoOriginalFile').evaluate((input) => (input as HTMLInputElement).files?.[0]?.name)).toBe('camera-front-cover-second.jpg');
+    expect(await page.locator('#photoCameraInput').inputValue()).toBe('');
+    expect(await page.locator('#square-cover-cropper').isVisible()).toBe(true);
   });
 
   it('preselects the matching role when a front or back slot opens the uploader', async () => {
@@ -505,7 +620,8 @@ describe('Square cover photo cropper', () => {
 
     expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
     expect(await page.locator('#photoUploadForm').getAttribute('action')).toContain('/photos/22222222-2222-4222-8222-222222222222/edit');
-    expect(await page.locator('.photo-file-trigger').isVisible()).toBe(false);
+    expect(await page.locator('label.photo-file-trigger').isVisible()).toBe(false);
+    expect(await page.locator('[data-photo-camera-trigger]').isVisible()).toBe(false);
     expect(await page.locator('#photoOriginalFile').evaluate((input) => (input as HTMLInputElement).files?.length || 0)).toBe(0);
     expect(await page.locator('#photo-editor-source-notice').isVisible()).toBe(false);
     expect(await page.locator('[data-photo-adjustment="exposure"]').inputValue()).toBe('25');
