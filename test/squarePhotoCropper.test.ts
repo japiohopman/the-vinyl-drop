@@ -347,6 +347,52 @@ describe('Square cover photo cropper', () => {
     expect(browserErrors).toEqual([]);
   });
 
+  it('supports straighten, zoom and position controls as saved corner geometry', async () => {
+    await renderEditPage();
+    await selectPortrait('front_cover');
+    await page.waitForFunction(
+      "document.querySelector('#square-cover-source').height === 320",
+      undefined,
+      { timeout: 5000 }
+    );
+
+    const initialPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
+    const changeFrame = async (key: string, value: string) => {
+      await page.locator('[data-photo-frame="' + key + '"]').evaluate((input, nextValue) => {
+        (input as HTMLInputElement).value = String(nextValue);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }, value);
+      await page.waitForFunction(
+        (before) => document.querySelector('#square-cover-polygon')?.getAttribute('points') !== before,
+        initialPolygon,
+        { timeout: 5000 }
+      );
+    };
+
+    await changeFrame('rotation', '1.5');
+    const rotatedPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
+    expect(rotatedPolygon).not.toBe(initialPolygon);
+    expect(await page.locator('[data-photo-frame="rotation"]').inputValue()).toBe('0');
+    await page.locator('[data-photo-editor-undo]').click();
+    expect(await page.locator('#square-cover-polygon').getAttribute('points')).toBe(initialPolygon);
+    await page.locator('[data-photo-editor-redo]').click();
+    expect(await page.locator('#square-cover-polygon').getAttribute('points')).toBe(rotatedPolygon);
+
+    await changeFrame('zoom', '90');
+    const zoomedPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
+    expect(zoomedPolygon).not.toBe(rotatedPolygon);
+    expect(await page.locator('[data-photo-frame="zoom"]').inputValue()).toBe('100');
+
+    await changeFrame('offsetX', '1');
+    const repositionedPolygon = await page.locator('#square-cover-polygon').getAttribute('points');
+    expect(repositionedPolygon).not.toBe(zoomedPolygon);
+    const state = JSON.parse(await page.locator('#photoEditorState').inputValue());
+    expect(state.corners).toHaveLength(4);
+    expect(state.corners).not.toEqual(JSON.parse(await page.locator('#photoEditorState').inputValue()).corners.slice(0, 0));
+    expect(await page.locator('[data-photo-frame="offsetX"]').inputValue()).toBe('0');
+  });
+
   it('offers the full framing and tonal editor for additional photos without forcing a square crop', async () => {
     await renderEditPage();
     await selectPortrait('detail');
