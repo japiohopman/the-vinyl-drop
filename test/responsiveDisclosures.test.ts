@@ -258,6 +258,68 @@ describe('Responsive disclosure browser behavior', () => {
     await desktopPage.close();
   });
 
+  it('keeps desktop Dig toolbar and adjacent filter controls on a consistent measured height', async () => {
+    const desktopPage = await browser.newPage({ viewport: { width: 1024, height: 900 } });
+
+    for (const width of [1024, 1280, 1440]) {
+      await desktopPage.setViewportSize({ width, height: 900 });
+      await desktopPage.goto(`${baseUrl}/test/responsive-dig`, { waitUntil: 'networkidle' });
+      await desktopPage.locator('.browse-secondary-filters').evaluate((element) => {
+        (element as HTMLDetailsElement).open = true;
+      });
+
+      const metrics = await desktopPage.evaluate(() => {
+        const measure = (selector: string) => {
+          const element = document.querySelector(selector);
+          if (!(element instanceof HTMLElement)) return null;
+          const rect = element.getBoundingClientRect();
+          return {
+            height: rect.height,
+            centerY: rect.top + rect.height / 2,
+          };
+        };
+
+        return {
+          viewport: window.innerWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          bodyWidth: document.body.scrollWidth,
+          search: measure('#dig-primary-search'),
+          submit: measure('.dig-primary-search-form > button'),
+          viewGroup: measure('.dig-search-control-bar .view-mode-toggle'),
+          gridToggle: measure('.dig-search-control-bar .view-toggle-btn'),
+          format: measure('.dig-responsive-desktop .browse-format-chip'),
+          genre: measure('.dig-responsive-desktop .browse-primary-filters select'),
+          advanced: measure('.dig-responsive-desktop .browse-secondary-grid input'),
+          apply: measure('.dig-responsive-desktop .browse-filter-action-buttons .btn'),
+        };
+      });
+
+      expect(metrics.viewport).toBe(width);
+      expect(metrics.documentWidth).toBeLessThanOrEqual(width + 1);
+      expect(metrics.bodyWidth).toBeLessThanOrEqual(width + 1);
+
+      for (const [name, control] of [
+        ['search', metrics.search],
+        ['Search action', metrics.submit],
+        ['Grid/List group', metrics.viewGroup],
+        ['format filter', metrics.format],
+        ['genre filter', metrics.genre],
+        ['advanced price filter', metrics.advanced],
+        ['Apply filters', metrics.apply],
+      ] as const) {
+        expect(control).not.toBeNull();
+        expect(control!.height).toBeCloseTo(44, 0);
+      }
+
+      expect(metrics.gridToggle).not.toBeNull();
+      expect(metrics.gridToggle!.height).toBeCloseTo(40, 0);
+      expect(Math.abs(metrics.search!.centerY - metrics.submit!.centerY)).toBeLessThanOrEqual(1);
+      expect(Math.abs(metrics.search!.centerY - metrics.viewGroup!.centerY)).toBeLessThanOrEqual(1);
+    }
+
+    await desktopPage.close();
+  });
+
   it('syncs pending search terms and filter controls between the separate Dig forms', async () => {
     const filterPage = await browser.newPage({ viewport: { width: 375, height: 812 } });
     await filterPage.goto(`${baseUrl}/test/responsive-dig`, { waitUntil: 'networkidle' });
