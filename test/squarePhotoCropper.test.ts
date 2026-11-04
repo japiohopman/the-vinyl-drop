@@ -164,14 +164,17 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#photoCameraInput').getAttribute('accept')).toBe('image/jpeg,image/png,image/webp');
     expect(await page.locator('#photoCameraInput').getAttribute('capture')).toBe('environment');
     expect(await page.locator('#photoFile').getAttribute('capture')).toBeNull();
+    await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
     expect(await page.locator('[data-photo-camera-trigger]').isHidden()).toBe(true);
     expect(await page.locator('label[for="photoFile"]').isVisible()).toBe(true);
 
     await renderEditPage(undefined, 'display-mode');
+    await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
     expect(await page.locator('[data-photo-camera-trigger]').isVisible()).toBe(true);
     expect(await page.locator('label[for="photoFile"]').isVisible()).toBe(true);
 
     await renderEditPage(undefined, 'ios');
+    await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
     expect(await page.locator('[data-photo-camera-trigger]').isVisible()).toBe(true);
   });
 
