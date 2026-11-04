@@ -85,18 +85,27 @@ function Test-PinnedProductionMigrationPlans {
     $complete = @(Get-ProductionMigrationEntries -Phase Complete -JournalPath $journalPath)
     $release = @(Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $journalPath)
 
-    if ($base.Count -ne 6 -or $base[0].tag -cne '0000_grey_living_tribunal' -or $base[-1].tag -cne '0005_enforce_least_privilege_rls') {
-        throw 'Base phase did not select exactly migrations 0000-0005.'
+    $baseIndexes = @($base | ForEach-Object { [int]$_.idx })
+    if ($base.Count -ne 6 -or ($baseIndexes -join ',') -cne '0,1,2,3,4,5' -or
+        $base[0].tag -cne '0000_grey_living_tribunal' -or
+        $base[-1].tag -cne '0005_enforce_least_privilege_rls') {
+        throw 'Base phase did not select exactly indexes 0-5 (migrations 0000-0005).'
     }
-    if ($complete.Count -ne 14 -or $complete[0].tag -cne '0006_storage_objects_rls' -or $complete[-1].tag -cne '0019_shared_rate_limit_buckets') {
-        throw 'Complete phase did not select exactly migrations 0006-0019.'
+
+    $completeIndexes = @($complete | ForEach-Object { [int]$_.idx })
+    if ($complete.Count -ne 14 -or ($completeIndexes -join ',') -cne '6,7,8,9,10,11,12,13,14,15,16,17,18,19' -or
+        $complete[0].tag -cne '0006_storage_objects_rls' -or
+        $complete[-1].tag -cne '0019_shared_rate_limit_buckets') {
+        throw 'Complete phase did not select exactly indexes 6-19 (migrations 0006-0019).'
     }
-    if ($release.Count -ne 4 -or
+
+    $releaseIndexes = @($release | ForEach-Object { [int]$_.idx })
+    if ($release.Count -ne 4 -or ($releaseIndexes -join ',') -cne '20,21,22,23' -or
         $release[0].tag -cne '0020_catalogue_search_trigram' -or
         $release[1].tag -cne '0021_release_metadata_vocabulary' -or
         $release[2].tag -cne '0022_listing_photo_source_versions' -or
         $release[3].tag -cne '0023_block_new_google_oauth_identities') {
-        throw 'ReleaseCandidate phase did not select exactly migrations 0020-0023 in order.'
+        throw 'ReleaseCandidate phase did not select exactly indexes 20-23 (migrations 0020-0023) in order.'
     }
 
     $journal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
