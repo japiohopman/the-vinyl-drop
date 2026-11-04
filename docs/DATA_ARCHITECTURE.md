@@ -211,7 +211,7 @@ Cookies:
 - `sb-access-token`: short-lived JWT access token.
 - `sb-refresh-token`: refresh token for automatic token rotation.
 
-Middleware (`sessionMiddleware` and `requireAuth`) binds `req.user` and `req.profile` to Express requests.
+Middleware (`sessionMiddleware` and `requireAuth`) binds `req.user` to Express requests; controllers and services load profile data only when a requested feature needs it.
 
 ## Application request flow
 

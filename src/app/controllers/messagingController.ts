@@ -3,6 +3,7 @@ import { config } from '../../config/env';
 import { renderWithLayout } from '../utils/render';
 import { messagingService } from '../services/messagingService';
 import { savedPeopleService } from '../services/savedPeopleService';
+import { getProfileById } from '../services/profileService';
 import { ValidationError } from '../services/errors';
 
 export function messagingFeatureGuard(req: Request, res: Response, next: NextFunction): void {
@@ -74,7 +75,10 @@ export async function getWidgetConversation(req: Request, res: Response, next: N
     const otherParticipant = conversation.participantA.id === userId
       ? conversation.participantB
       : conversation.participantA;
-    const inbox = await messagingService.getInboxForUser(userId);
+    const [inbox, currentProfile] = await Promise.all([
+      messagingService.getInboxForUser(userId),
+      getProfileById(userId),
+    ]);
     const unreadCount = inbox.find((item) => item.conversation.id === conversation.id)?.unreadCount ?? 0;
     res.set('Cache-Control', 'no-store').json({
       id: conversation.id,
@@ -86,7 +90,7 @@ export async function getWidgetConversation(req: Request, res: Response, next: N
       listing: conversation.listing ? { id: conversation.listing.id } : null,
       userRole,
       unreadCount,
-      currentUserAvatarUrl: req.profile?.avatarUrl ?? null,
+      currentUserAvatarUrl: currentProfile?.avatarUrl ?? null,
       otherParticipant: {
         id: otherParticipant.id,
         username: otherParticipant.username,
@@ -117,7 +121,6 @@ export async function getInboxPage(req: Request, res: Response, next: NextFuncti
       summaries,
       savedPeople,
       user: req.user,
-      profile: req.profile,
     });
   } catch (err) {
     next(err);
@@ -147,7 +150,6 @@ export async function getConversationPage(req: Request, res: Response, next: Nex
       otherParticipant,
       readThroughSeq: messages.length ? messages[messages.length - 1].messageSeq : 0,
       user: req.user,
-      profile: req.profile,
       query: req.query,
     });
   } catch (err) {

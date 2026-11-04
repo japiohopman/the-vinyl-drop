@@ -6,6 +6,7 @@ import request from 'supertest';
 import { createApp } from '../src/app';
 import * as dbModule from '../src/db';
 import * as authService from '../src/app/services/authService';
+import * as profileRepository from '../src/app/repositories/profileRepository';
 import { listings, physicalCopies, profiles, releases } from '../src/db/schema';
 import { conversations } from '../src/db/schema/conversations';
 import { messages } from '../src/db/schema/messages';
@@ -72,7 +73,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     // Seed test profiles
     await db.insert(profiles).values([
       { id: buyerId, username: 'buyer_user', displayName: 'Buyer User' },
-      { id: sellerId, username: 'seller_user', displayName: 'Seller User' },
+      { id: sellerId, username: 'seller_user', displayName: 'Seller User', avatarUrl: 'https://example.test/seller-avatar.png' },
       { id: thirdUserId, username: 'third_user', displayName: 'Third User' },
     ]);
 
@@ -214,6 +215,38 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
       (config as any).MESSAGING_ENABLED = originalFlag;
     });
 
+    test('does not load the current profile for ordinary requests or messaging HTML pages', async () => {
+      const originalFlag = config.MESSAGING_ENABLED;
+      (config as any).MESSAGING_ENABLED = true;
+      const profileLookupSpy = jest.spyOn(profileRepository, 'findProfileById');
+
+      try {
+        const app = createApp();
+        const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
+        const cookie = ['sb-access-token=buyer-token'];
+
+        const health = await request(app)
+          .get('/health')
+          .set('Cookie', cookie);
+        expect(health.status).toBe(200);
+
+        const inbox = await request(app)
+          .get('/messages')
+          .set('Cookie', cookie);
+        expect(inbox.status).toBe(200);
+
+        const conversation = await request(app)
+          .get(`/messages/${conv.id}`)
+          .set('Cookie', cookie);
+        expect(conversation.status).toBe(200);
+
+        expect(profileLookupSpy).not.toHaveBeenCalled();
+      } finally {
+        profileLookupSpy.mockRestore();
+        (config as any).MESSAGING_ENABLED = originalFlag;
+      }
+    });
+
     test('requires CSRF same-origin headers for POST mutation routes when authenticated', async () => {
       const originalFlag = config.MESSAGING_ENABLED;
       (config as any).MESSAGING_ENABLED = true;
@@ -316,6 +349,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
     test('serves widget inbox, truthful participant-scoped unread count, and conversation JSON', async () => {
       const originalFlag = config.MESSAGING_ENABLED;
       (config as any).MESSAGING_ENABLED = true;
+      const profileLookupSpy = jest.spyOn(profileRepository, 'findProfileById');
       try {
         const app = createApp();
         const conv = await messagingService.getOrCreateConversation(publishedListingId, buyerId);
@@ -344,6 +378,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         expect(item.releaseTitle).toBe('The Dark Side of the Moon');
         expect(item.unreadCount).toBeGreaterThanOrEqual(1);
         expect(item.lastMessage).toBe('A widget-only unread message');
+        expect(profileLookupSpy).not.toHaveBeenCalled();
 
         const detail = await request(app)
           .get(`/messages/widget/${conv.id}`)
@@ -352,7 +387,9 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         expect(detail.status).toBe(200);
         expect(detail.body.id).toBe(conv.id);
         expect(detail.body.unreadCount).toBeGreaterThanOrEqual(1);
-        expect(detail.body.currentUserAvatarUrl).toBeDefined();
+        expect(detail.body.currentUserAvatarUrl).toBe('https://example.test/seller-avatar.png');
+        expect(profileLookupSpy).toHaveBeenCalledTimes(1);
+        expect(profileLookupSpy).toHaveBeenCalledWith(sellerId, undefined);
         expect(detail.body.otherParticipant.avatarUrl).toBeDefined();
         expect(detail.body.messages.some((message: { body: string; isOwnMessage: boolean }) =>
           message.body === 'A widget-only unread message' && message.isOwnMessage === false
@@ -363,6 +400,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
           .set('Cookie', ['sb-access-token=third-token'])
           .set('Accept', 'application/json');
         expect(outsider.status).toBe(404);
+        expect(profileLookupSpy).toHaveBeenCalledTimes(1);
 
         const sellerSnapshot = await messagingService.getConversationDetail(conv.id, sellerId);
         const readThroughSeq = sellerSnapshot.messages.reduce((maximum, message) => Math.max(maximum, message.messageSeq), 0);
@@ -375,6 +413,7 @@ describe('Phase 7 Private Communication — Messaging Integration', () => {
         expect(cleared.status).toBe(200);
         expect(cleared.body.unreadCount).toBe(0);
       } finally {
+        profileLookupSpy.mockRestore();
         (config as any).MESSAGING_ENABLED = originalFlag;
       }
     });
