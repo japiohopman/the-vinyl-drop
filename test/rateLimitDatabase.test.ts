@@ -2,9 +2,37 @@ import { randomBytes } from 'crypto';
 import postgres from 'postgres';
 import {
   decrementRateLimitBucketWithClient,
+  getSafeRateLimitDatabaseErrorCode,
   incrementRateLimitBucketWithClient,
+  pruneExpiredRateLimitBucketsWithClient,
   RateLimitBucket,
 } from '../src/app/services/rateLimitService';
+
+describe('shared rate-limit cleanup error classification', () => {
+  it('exposes only a PostgreSQL SQLSTATE code and never a raw error message', () => {
+    expect(getSafeRateLimitDatabaseErrorCode({
+      code: '42501',
+      message: 'sensitive connection or query detail',
+    })).toBe('42501');
+
+    expect(getSafeRateLimitDatabaseErrorCode({
+      code: 'ECONNRESET',
+      message: 'sensitive connection detail',
+    })).toBe('unclassified');
+
+    expect(getSafeRateLimitDatabaseErrorCode(
+      new Error('sensitive driver message')
+    )).toBe('unclassified');
+
+    expect(getSafeRateLimitDatabaseErrorCode({
+      code: 'abcde',
+    })).toBe('unclassified');
+
+    expect(getSafeRateLimitDatabaseErrorCode({
+      code: '4250\n',
+    })).toBe('unclassified');
+  });
+});
 
 const databaseUrl = process.env.RATE_LIMIT_TEST_DATABASE_URL;
 const describeWithPostgres = databaseUrl ? describe : describe.skip;
@@ -29,6 +57,100 @@ describeWithPostgres('PostgreSQL shared rate-limit reservation release', () => {
 
   afterAll(async () => {
     if (client) await client.end();
+  });
+
+  it('removes expired buckets at and before the expiry boundary while retaining active buckets', async () => {
+    const nowMs = Date.now();
+    const expiredBucketKey = randomBytes(32).toString('hex');
+    const boundaryBucketKey = randomBytes(32).toString('hex');
+    const activeBucketKey = randomBytes(32).toString('hex');
+
+    const expiredWindowStart = nowMs - 3 * 60 * 1000;
+    const expiredAt = nowMs - 60 * 1000;
+    const boundaryWindowStart = nowMs - 2 * 60 * 1000;
+    const activeWindowStart = nowMs - 60 * 1000;
+    const activeExpiresAt = nowMs + 60 * 60 * 1000;
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        '($1, $2, 1, $3), ($4, $5, 1, $6), ($7, $8, 1, $9)',
+        [
+          expiredBucketKey,
+          new Date(expiredWindowStart),
+          new Date(expiredAt),
+          boundaryBucketKey,
+          new Date(boundaryWindowStart),
+          new Date(nowMs),
+          activeBucketKey,
+          new Date(activeWindowStart),
+          new Date(activeExpiresAt),
+        ]
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const rows = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        'WHERE bucket_key IN ($1, $2, $3)',
+        [expiredBucketKey, boundaryBucketKey, activeBucketKey]
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].bucket_key).toBe(activeBucketKey);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key IN ($1, $2, $3)',
+        [expiredBucketKey, boundaryBucketKey, activeBucketKey]
+      );
+    }
+  });
+
+  it('deletes no more than 1,000 expired fixture buckets in one cleanup pass', async () => {
+    const nowMs = Date.now();
+    const fixtureKeys = Array.from(
+      { length: 1001 },
+      () => randomBytes(32).toString('hex')
+    );
+    const windowStart = new Date(nowMs - 2 * 60 * 1000);
+    const expiresAt = new Date(nowMs - 60 * 1000);
+    const valuePlaceholders = fixtureKeys.map((_, index) => {
+      const firstParameter = index * 3 + 1;
+      return '($' + firstParameter + ', $' + (firstParameter + 1) +
+        ', 1, $' + (firstParameter + 2) + ')';
+    }).join(', ');
+    const values = fixtureKeys.flatMap((bucketKey) => [
+      bucketKey,
+      windowStart,
+      expiresAt,
+    ]);
+    const keyPlaceholders = fixtureKeys.map((_, index) => '$' + (index + 1)).join(', ');
+
+    try {
+      await client.unsafe(
+        'INSERT INTO private.rate_limit_buckets ' +
+        '(bucket_key, window_start, hit_count, expires_at) VALUES ' +
+        valuePlaceholders,
+        values
+      );
+
+      await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+      const remaining = await client.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets ' +
+        'WHERE bucket_key IN (' + keyPlaceholders + ')',
+        fixtureKeys
+      );
+
+      expect(remaining.length).toBeGreaterThanOrEqual(1);
+    } finally {
+      await client.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (' +
+        keyPlaceholders + ')',
+        fixtureKeys
+      );
+    }
   });
 
   it('serializes concurrent releases with a failed-attempt increment without losing either failure', async () => {
