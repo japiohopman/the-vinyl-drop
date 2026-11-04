@@ -221,7 +221,7 @@ describe('Square cover photo cropper', () => {
         { timeout: 5000 }
       );
 
-      await page.locator('.square-cover-adjustments > summary').click();
+      await page.getByText('Fine-tune tonal and colour controls').click();
       const exposure = page.locator('[data-photo-adjustment="exposure"]');
       const baselineRed = await page.locator('#square-cover-result').evaluate((canvas) =>
         (canvas as HTMLCanvasElement).getContext('2d')!.getImageData(256, 256, 1, 1).data[0]
