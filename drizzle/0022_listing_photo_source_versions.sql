@@ -50,11 +50,11 @@ BEGIN
 
     IF v_owner = current_user THEN
       ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-      DROP POLICY IF EXISTS "Authenticated Listing Owner Select for listing-photo-originals" ON storage.objects;
-      DROP POLICY IF EXISTS "Authenticated Listing Owner Insert for listing-photo-originals" ON storage.objects;
-      DROP POLICY IF EXISTS "Authenticated Listing Owner Delete for listing-photo-originals" ON storage.objects;
+      DROP POLICY IF EXISTS "listing-photo-originals-select-owner" ON storage.objects;
+      DROP POLICY IF EXISTS "listing-photo-originals-insert-owner" ON storage.objects;
+      DROP POLICY IF EXISTS "listing-photo-originals-delete-owner" ON storage.objects;
 
-      CREATE POLICY "Authenticated Listing Owner Select for listing-photo-originals"
+      CREATE POLICY "listing-photo-originals-select-owner"
         ON storage.objects FOR SELECT TO authenticated
         USING (
           bucket_id = 'listing-photo-originals'
@@ -65,7 +65,7 @@ BEGIN
           )
         );
 
-      CREATE POLICY "Authenticated Listing Owner Insert for listing-photo-originals"
+      CREATE POLICY "listing-photo-originals-insert-owner"
         ON storage.objects FOR INSERT TO authenticated
         WITH CHECK (
           bucket_id = 'listing-photo-originals'
@@ -76,7 +76,7 @@ BEGIN
           )
         );
 
-      CREATE POLICY "Authenticated Listing Owner Delete for listing-photo-originals"
+      CREATE POLICY "listing-photo-originals-delete-owner"
         ON storage.objects FOR DELETE TO authenticated
         USING (
           bucket_id = 'listing-photo-originals'
@@ -91,16 +91,16 @@ BEGIN
       FROM pg_policies
       WHERE schemaname = 'storage' AND tablename = 'objects'
         AND policyname IN (
-          'Authenticated Listing Owner Select for listing-photo-originals',
-          'Authenticated Listing Owner Insert for listing-photo-originals',
-          'Authenticated Listing Owner Delete for listing-photo-originals'
+          'listing-photo-originals-select-owner',
+          'listing-photo-originals-insert-owner',
+          'listing-photo-originals-delete-owner'
         );
 
       SELECT count(*) INTO v_matching_count
       FROM pg_policies p
       WHERE p.schemaname = 'storage' AND p.tablename = 'objects'
         AND (
-          (p.policyname = 'Authenticated Listing Owner Select for listing-photo-originals'
+          (p.policyname = 'listing-photo-originals-select-owner'
             AND p.cmd = 'SELECT'
             AND p.roles = ARRAY['authenticated']::name[]
             AND position('bucket_id = ''listing-photo-originals''' in p.qual) > 0
@@ -108,7 +108,7 @@ BEGIN
             AND position('storage.foldername(objects.name))[2]' in p.qual) > 0
             AND p.with_check IS NULL)
           OR
-          (p.policyname = 'Authenticated Listing Owner Insert for listing-photo-originals'
+          (p.policyname = 'listing-photo-originals-insert-owner'
             AND p.cmd = 'INSERT'
             AND p.roles = ARRAY['authenticated']::name[]
             AND p.qual IS NULL
@@ -116,7 +116,7 @@ BEGIN
             AND position('seller_id = ( SELECT auth.uid()' in p.with_check) > 0
             AND position('storage.foldername(objects.name))[2]' in p.with_check) > 0)
           OR
-          (p.policyname = 'Authenticated Listing Owner Delete for listing-photo-originals'
+          (p.policyname = 'listing-photo-originals-delete-owner'
             AND p.cmd = 'DELETE'
             AND p.roles = ARRAY['authenticated']::name[]
             AND position('bucket_id = ''listing-photo-originals''' in p.qual) > 0
