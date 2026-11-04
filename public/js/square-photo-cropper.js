@@ -836,10 +836,39 @@
     }
   }
 
+  function resetPhotoEditorForm() {
+    fileInput.value = '';
+    originalFileInput.value = '';
+    editorStateInput.value = '';
+    delete form.dataset.editingPhotoId;
+    form.action = newUploadAction;
+    const fileTrigger = form.querySelector('.photo-file-trigger');
+    if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = false;
+    if (roleField instanceof HTMLElement) roleField.hidden = false;
+    roleGuidance.hidden = false;
+    editorSourceNotice.hidden = true;
+    if (altTextInput instanceof HTMLInputElement) {
+      altTextInput.value = '';
+      altTextInput.placeholder = 'Describe what is visible, e.g. a crease or Side A label';
+      altTextInput.required = true;
+    }
+    if (uploadTitle instanceof HTMLElement) uploadTitle.textContent = 'Upload a photo';
+    clearPreview();
+    updateRoleGuidance();
+  }
+
   document.querySelectorAll('[data-open-photo-upload]').forEach((trigger) => {
     trigger.addEventListener('click', () => {
       if (!(trigger instanceof HTMLButtonElement) ||
           !(uploadDialog instanceof HTMLDialogElement)) return;
+
+      delete form.dataset.editingPhotoId;
+      form.action = newUploadAction;
+      originalFileInput.value = '';
+      editorStateInput.value = '';
+      editorSourceNotice.hidden = true;
+      const fileTrigger = form.querySelector('.photo-file-trigger');
+      if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = false;
 
       const requestedRole = trigger.dataset.photoRole || '';
       const label = trigger.dataset.photoLabel || 'Additional photo';
@@ -879,11 +908,92 @@
     });
   });
 
+  document.querySelectorAll('[data-open-existing-photo-editor]').forEach((trigger) => {
+    trigger.addEventListener('click', async () => {
+      if (!(trigger instanceof HTMLButtonElement) ||
+          !(uploadDialog instanceof HTMLDialogElement) ||
+          !trigger.dataset.editorSourceUrl ||
+          !trigger.dataset.photoId) return;
+
+      trigger.disabled = true;
+      try {
+        const sourceResponse = await fetch(trigger.dataset.editorSourceUrl, {
+          credentials: 'same-origin',
+          headers: { Accept: 'image/webp' },
+        });
+        if (!sourceResponse.ok) {
+          throw new Error(sourceResponse.status === 401 || sourceResponse.status === 403
+            ? 'You are not allowed to edit this photo.'
+            : 'The private photo source could not be loaded. Please try again.');
+        }
+        const sourceBlob = await sourceResponse.blob();
+        const sourceFileForEdit = new File(
+          [sourceBlob],
+          'listing-photo-source.webp',
+          { type: 'image/webp', lastModified: Date.now() }
+        );
+
+        const stateAttribute = trigger.dataset.editorState || '';
+        let storedState = '';
+        if (stateAttribute && stateAttribute !== '""') {
+          try {
+            const parsedState = JSON.parse(stateAttribute);
+            if (parsedState && typeof parsedState === 'object') storedState = JSON.stringify(parsedState);
+          } catch {
+            storedState = '';
+          }
+        }
+
+        form.dataset.editingPhotoId = trigger.dataset.photoId;
+        form.action = trigger.dataset.editorSourceUrl.replace(/\/editor-source$/, '/edit');
+        roleSelect.value = trigger.dataset.photoRole || '';
+        if (roleField instanceof HTMLElement) roleField.hidden = true;
+        roleGuidance.hidden = true;
+        editorStateInput.value = storedState;
+        originalFileInput.value = '';
+
+        const fileTransfer = new DataTransfer();
+        fileTransfer.items.add(sourceFileForEdit);
+        fileInput.files = fileTransfer.files;
+
+        if (altTextInput instanceof HTMLInputElement) {
+          altTextInput.value = trigger.dataset.photoAltText || '';
+          altTextInput.required = false;
+        }
+        if (uploadTitle instanceof HTMLElement) {
+          uploadTitle.textContent = 'Edit ' + (roleSelect.value === 'front_cover'
+            ? 'front cover'
+            : roleSelect.value === 'back_cover'
+              ? 'back cover'
+              : 'photo');
+        }
+        const fileTrigger = form.querySelector('.photo-file-trigger');
+        if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = true;
+
+        const isLegacySource = sourceResponse.headers.get('X-Photo-Source-Legacy') === 'true';
+        editorSourceNotice.hidden = !isLegacySource;
+        if (isLegacySource) {
+          editorSourceNotice.textContent =
+            'Legacy photo: the starting image is the currently saved display photo. The original camera file was not retained when this photo was first uploaded.';
+        }
+
+        preparePreview();
+        openAccessibleDialog(uploadDialog);
+        const firstHandle = form.querySelector('[data-corner-handle="0"]');
+        if (firstHandle instanceof HTMLElement) firstHandle.focus();
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : 'The private photo source could not be opened.', true);
+        openAccessibleDialog(uploadDialog);
+      } finally {
+        trigger.disabled = false;
+      }
+    });
+  });
+
   document.querySelectorAll('[data-close-photo-upload]').forEach((trigger) => {
     trigger.addEventListener('click', () => {
       closeAccessibleDialog(uploadDialog);
-      fileInput.value = '';
-      clearPreview();
+      resetPhotoEditorForm();
     });
   });
 
@@ -897,8 +1007,7 @@
 
   if (uploadDialog instanceof HTMLDialogElement) {
     uploadDialog.addEventListener('cancel', () => {
-      fileInput.value = '';
-      clearPreview();
+      resetPhotoEditorForm();
     });
   }
 
@@ -908,8 +1017,7 @@
       if (event.target !== dialog) return;
       closeAccessibleDialog(dialog);
       if (dialog === uploadDialog) {
-        fileInput.value = '';
-        clearPreview();
+        resetPhotoEditorForm();
       }
     });
   });
