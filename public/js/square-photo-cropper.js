@@ -4,6 +4,9 @@
 
   const core = window.TVDPhotoEditorCore;
   const fileInput = form.querySelector('#photoFile');
+  const originalFileInput = form.querySelector('#photoOriginalFile');
+  const editorStateInput = form.querySelector('#photoEditorState');
+  const editorSourceNotice = form.querySelector('#photo-editor-source-notice');
   const roleSelect = form.querySelector('#newPhotoRole');
   const roleGuidance = form.querySelector('#photo-role-guidance');
   const selectionPreview = form.querySelector('#photo-selection-preview');
@@ -30,6 +33,9 @@
   const adjustmentControls = Array.from(form.querySelectorAll('[data-photo-adjustment]'));
 
   if (!core || !(fileInput instanceof HTMLInputElement) ||
+      !(originalFileInput instanceof HTMLInputElement) ||
+      !(editorStateInput instanceof HTMLInputElement) ||
+      !(editorSourceNotice instanceof HTMLElement) ||
       !(roleSelect instanceof HTMLSelectElement) ||
       !(roleGuidance instanceof HTMLElement) ||
       !(selectionPreview instanceof HTMLElement) ||
@@ -61,6 +67,7 @@
   const PROCESS_MAX_DIMENSION = 2048;
   const OUTPUT_DIMENSION = 1536;
   const HANDLE_LABELS = ['Top-left', 'Top-right', 'Bottom-right', 'Bottom-left'];
+  const newUploadAction = form.dataset.newAction || form.getAttribute('action') || form.action;
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
@@ -205,6 +212,8 @@
     showBefore = false;
     undoStack = [];
     redoStack = [];
+    originalFileInput.value = '';
+    if (!form.dataset.editingPhotoId) editorStateInput.value = '';
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = null;
     sourceStage.style.aspectRatio = '';
@@ -241,6 +250,10 @@
       cropTitle.textContent = 'Square ' + side + ' correction';
       cropDescription.textContent =
         'Move each corner onto the sleeve edge. The four selected points are flattened into the square preview below.';
+    } else {
+      cropTitle.textContent = 'Photo framing correction';
+      cropDescription.textContent =
+        'Move the four corners to frame the visible photo. The corrected image keeps the selected photo proportions.';
     }
   }
 
@@ -328,6 +341,74 @@
     });
   }
 
+  function getProcessingDimensions() {
+    if (!image) return { width: 2, height: 2 };
+    const scale = Math.min(
+      PROCESS_MAX_DIMENSION / image.naturalWidth,
+      PROCESS_MAX_DIMENSION / image.naturalHeight,
+      1
+    );
+    return {
+      width: Math.max(2, Math.round(image.naturalWidth * scale)),
+      height: Math.max(2, Math.round(image.naturalHeight * scale)),
+    };
+  }
+
+  function getOutputDimensions(maximumDimension = OUTPUT_DIMENSION) {
+    if (isCoverRole()) return { width: maximumDimension, height: maximumDimension };
+    if (points.length !== 4) return { width: maximumDimension, height: maximumDimension };
+    const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
+    const width = (distance(points[0], points[1]) + distance(points[3], points[2])) / 2;
+    const height = (distance(points[0], points[3]) + distance(points[1], points[2])) / 2;
+    const aspect = width / Math.max(1, height);
+    if (!Number.isFinite(aspect) || aspect <= 0) return { width: maximumDimension, height: maximumDimension };
+    return aspect >= 1
+      ? { width: maximumDimension, height: Math.max(2, Math.round(maximumDimension / aspect)) }
+      : { width: Math.max(2, Math.round(maximumDimension * aspect)), height: maximumDimension };
+  }
+
+  function syncEditorState() {
+    if (!image || points.length !== 4) return;
+    const dimensions = getProcessingDimensions();
+    editorStateInput.value = JSON.stringify({
+      version: 1,
+      sourceWidth: dimensions.width,
+      sourceHeight: dimensions.height,
+      corners: points.map((point) => ({
+        x: point.x * dimensions.width / sourceCanvas.width,
+        y: point.y * dimensions.height / sourceCanvas.height,
+      })),
+      adjustments: readAdjustments(),
+    });
+  }
+
+  function applyStoredEditorState() {
+    if (!editorStateInput.value || !image) return false;
+    try {
+      const state = JSON.parse(editorStateInput.value);
+      const dimensions = getProcessingDimensions();
+      if (state.version !== 1 || state.sourceWidth !== dimensions.width ||
+          state.sourceHeight !== dimensions.height || !Array.isArray(state.corners) ||
+          state.corners.length !== 4 || !state.adjustments) return false;
+      const restoredPoints = state.corners.map((point) => ({
+        x: Number(point.x) * sourceCanvas.width / dimensions.width,
+        y: Number(point.y) * sourceCanvas.height / dimensions.height,
+      }));
+      if (!core.isValidQuad(restoredPoints, sourceCanvas.width, sourceCanvas.height)) return false;
+      points = restoredPoints;
+      adjustmentControls.forEach((control) => {
+        const key = control.dataset.photoAdjustment;
+        const value = state.adjustments[key];
+        if (typeof value !== 'number' || !Number.isFinite(value)) return;
+        control.value = String(key === 'exposure' ? value * 50 : key === 'gamma' ? value * 100 : value);
+      });
+      updateAdjustmentOutputs();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function renderPreview() {
     if (!image || !points.length) return;
     try {
@@ -351,6 +432,7 @@
           height
         );
         drawHistogram(source.data);
+        syncEditorState();
         setStatus('Original photo — your corner and tonal edits are preserved.');
         return;
       }
@@ -367,6 +449,7 @@
       resultContext.putImageData(frame, 0, 0);
       drawHistogram(result.data);
       updateAdjustmentOutputs();
+      syncEditorState();
       setStatus('Preview updated. The saved file will contain these pixel adjustments.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'The preview could not be rendered.', true);
@@ -413,11 +496,12 @@
       processingSource.canvas.width,
       processingSource.canvas.height
     );
+    const outputDimensions = getOutputDimensions(OUTPUT_DIMENSION);
     const output = core.rectifyImageData(
       source,
       processingSource.points,
-      OUTPUT_DIMENSION,
-      OUTPUT_DIMENSION,
+      outputDimensions.width,
+      outputDimensions.height,
       readAdjustments()
     );
     const canvas = document.createElement('canvas');
@@ -451,10 +535,16 @@
     if (!file) return;
 
     sourceFile = file;
+    if (!form.dataset.editingPhotoId) {
+      const originalTransfer = new DataTransfer();
+      originalTransfer.items.add(file);
+      originalFileInput.files = originalTransfer.files;
+    }
     selectionPreview.hidden = false;
     fileInfo.textContent = file.name + ' · ' + formatFileSize(file.size);
     const coverRole = isCoverRole();
-    cropper.hidden = !coverRole;
+    cropper.hidden = false;
+    if (!coverRole) updateRoleGuidance();
 
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type.toLowerCase())) {
       fileInfo.textContent += ' — choose a JPEG, PNG or WebP image.';
@@ -478,14 +568,14 @@
     objectUrl = currentUrl;
     const previewImage = new Image();
     image = previewImage;
-    if (coverRole) setStatus('Preparing your four-corner preview…');
+    setStatus('Preparing your four-corner preview…');
 
     previewImage.onload = () => {
       if (previewSequence !== currentSequence || image !== previewImage || objectUrl !== currentUrl) return;
       fileInfo.textContent = file.name + ' · ' + formatFileSize(file.size) + ' · ' +
         previewImage.naturalWidth + ' × ' + previewImage.naturalHeight + ' px';
 
-      if (coverRole) {
+      {
         const scale = Math.min(
           PREVIEW_MAX_DIMENSION / previewImage.naturalWidth,
           PREVIEW_MAX_DIMENSION / previewImage.naturalHeight,
@@ -497,14 +587,13 @@
         sourceContext.drawImage(previewImage, 0, 0, sourceCanvas.width, sourceCanvas.height);
         sourceStage.style.aspectRatio = sourceCanvas.width + ' / ' + sourceCanvas.height;
         points = core.createDefaultCorners(sourceCanvas.width, sourceCanvas.height);
-        resultCanvas.width = 512;
-        resultCanvas.height = 512;
+        if (form.dataset.editingPhotoId) applyStoredEditorState();
+        const previewDimensions = getOutputDimensions(512);
+        resultCanvas.width = previewDimensions.width;
+        resultCanvas.height = previewDimensions.height;
         updateOverlay();
         renderPreview();
         updateHistoryButtons();
-      } else {
-        originalPreview.src = currentUrl;
-        originalPreview.hidden = false;
       }
     };
 
@@ -514,7 +603,7 @@
       previewError = true;
       fileInfo.textContent = file.name + ' — this image could not be previewed. Choose a JPEG, PNG or WebP file.';
       fileInfo.style.color = 'var(--color-error-border)';
-      if (coverRole) setStatus('This photo cannot be previewed. Choose a JPEG, PNG or WebP file.', true);
+      setStatus('This photo cannot be previewed. Choose a JPEG, PNG or WebP file.', true);
     };
     previewImage.src = currentUrl;
   }
@@ -677,8 +766,6 @@
       }
       return;
     }
-    if (!isCoverRole()) return;
-
     event.preventDefault();
     if (processing) return;
     if (!image || !sourceFile || !image.complete || image.naturalWidth === 0 || image.naturalHeight === 0) {
