@@ -131,8 +131,15 @@ describe('Authentication & Session Handling', () => {
 
   describe('HTTP Auth Endpoints & Session Refresh with Mocked Supabase Auth Client', () => {
     let mockSupabase: any;
+    let originalBetaInviteOnlyEnabled: boolean;
+    let originalBetaAllowedEmails: string;
 
     beforeEach(() => {
+      originalBetaInviteOnlyEnabled = config.BETA_INVITE_ONLY_ENABLED;
+      originalBetaAllowedEmails = config.BETA_ALLOWED_EMAILS;
+      config.BETA_INVITE_ONLY_ENABLED = false;
+      config.BETA_ALLOWED_EMAILS = '';
+
       jest.clearAllMocks();
       mockIsPasswordPwned.mockResolvedValue(false);
       mockCreatePasswordCheckedSignupApproval.mockResolvedValue(undefined);
@@ -155,6 +162,11 @@ describe('Authentication & Session Handling', () => {
       };
 
       setSupabaseClient(mockSupabase);
+    });
+
+    afterEach(() => {
+      config.BETA_INVITE_ONLY_ENABLED = originalBetaInviteOnlyEnabled;
+      config.BETA_ALLOWED_EMAILS = originalBetaAllowedEmails;
     });
 
     it('GET /auth/signup should render signup form page', async () => {
@@ -198,7 +210,8 @@ describe('Authentication & Session Handling', () => {
       expect(res.text).toContain('Password must be at least 8 characters long');
     });
 
-    it('POST /auth/signup rejects missing Terms and 18+ confirmation before calling Supabase', async () => {
+    it('POST /auth/signup still rejects missing Terms and 18+ confirmation when invite-only is disabled', async () => {
+      expect(config.BETA_INVITE_ONLY_ENABLED).toBe(false);
       const app = createApp();
       const res = await request(app).post('/auth/signup').set('Origin', 'http://localhost:3000')
         .send({ username: 'adult_digger', email: 'adult@example.com', password: 'securepassword123' });
@@ -291,7 +304,10 @@ describe('Authentication & Session Handling', () => {
       expect(mockCreatePasswordCheckedSignupApproval).not.toHaveBeenCalled();
     });
 
-    it('POST /auth/signup should create user and set session cookies on immediate session', async () => {
+    it('POST /auth/signup with invite-only disabled allows an unlisted email while retaining password approval and consent checks', async () => {
+      expect(config.BETA_INVITE_ONLY_ENABLED).toBe(false);
+      expect(config.BETA_ALLOWED_EMAILS).toBe('');
+
       const mockUser = {
         id: '22222222-2222-2222-2222-222222222222',
         email: 'newuser@example.com',
@@ -567,7 +583,10 @@ describe('Authentication & Session Handling', () => {
       expect(res.text).toContain('Sign in with Google');
     });
 
-    it('POST /auth/login should set cookies and redirect on valid credentials', async () => {
+    it('POST /auth/login with invite-only disabled allows an unlisted existing member', async () => {
+      expect(config.BETA_INVITE_ONLY_ENABLED).toBe(false);
+      expect(config.BETA_ALLOWED_EMAILS).toBe('');
+
       const mockUser = {
         id: '33333333-3333-3333-3333-333333333333',
         email: 'user@example.com',
@@ -740,7 +759,10 @@ describe('Authentication & Session Handling', () => {
       }
     });
 
-    it('POST /auth/google/start carries signed registration consent through the OAuth callback', async () => {
+    it('POST /auth/google/start accepts an unlisted signup in public mode but still requires signed Terms and age consent', async () => {
+      expect(config.BETA_INVITE_ONLY_ENABLED).toBe(false);
+      expect(config.BETA_ALLOWED_EMAILS).toBe('');
+
       mockSupabase.auth.signInWithOAuth.mockResolvedValue({ data: { url: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=test' }, error: null });
       const app = createApp();
       const startResponse = await request(app).post('/auth/google/start').set('Origin', 'http://localhost:3000')

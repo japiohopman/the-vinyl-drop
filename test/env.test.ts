@@ -73,8 +73,19 @@ describe('Environment Validation', () => {
     expect(validateEnv({ ...staging, SHARED_RATE_LIMITS_ENABLED: 'false' }).SHARED_RATE_LIMITS_ENABLED).toBe(false);
   });
 
-  it('keeps invite-only access opt-in and reads the private runtime allowlist', () => {
+  it('keeps invite-only access opt-in outside production and reads the private runtime allowlist', () => {
     expect(validateEnv({ NODE_ENV: 'test' }).BETA_INVITE_ONLY_ENABLED).toBe(false);
+
+    const staging = {
+      NODE_ENV: 'staging' as const,
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/staging_db',
+      SUPABASE_URL: 'https://staging-project.supabase.co',
+      SUPABASE_ANON_KEY: 'some-staging-key',
+      APP_BASE_URL: 'https://staging.vinyldrop.onrender.com',
+      ALLOWED_REDIRECT_URLS: 'https://staging.vinyldrop.onrender.com',
+      RECOVERY_SIGNING_SECRET: 'custom-staging-recovery-secret-key-32-bytes',
+    };
+    expect(validateEnv(staging).BETA_INVITE_ONLY_ENABLED).toBe(false);
 
     const enabled = validateEnv({
       NODE_ENV: 'test',
@@ -83,6 +94,28 @@ describe('Environment Validation', () => {
     });
     expect(enabled.BETA_INVITE_ONLY_ENABLED).toBe(true);
     expect(enabled.BETA_ALLOWED_EMAILS).toBe('Tester@One.example, second@example.com, tester@one.example');
+  });
+
+  it('requires an explicit invite-only switch in production and honors either deliberate value', () => {
+    const production = {
+      NODE_ENV: 'production' as const,
+      DATABASE_URL: 'postgresql://postgres:postgres@prod-db:5432/prod',
+      SUPABASE_URL: 'https://prod-project.supabase.co',
+      SUPABASE_ANON_KEY: 'prod-key',
+      APP_BASE_URL: 'https://thevinyldrop.nl',
+      ALLOWED_REDIRECT_URLS: 'https://thevinyldrop.nl',
+      RECOVERY_SIGNING_SECRET: 'production-recovery-signing-secret-key-32-bytes',
+    };
+
+    expect(() => validateEnv(production)).toThrow('Invalid environment configuration');
+    expect(validateEnv({
+      ...production,
+      BETA_INVITE_ONLY_ENABLED: 'true',
+    }).BETA_INVITE_ONLY_ENABLED).toBe(true);
+    expect(validateEnv({
+      ...production,
+      BETA_INVITE_ONLY_ENABLED: 'false',
+    }).BETA_INVITE_ONLY_ENABLED).toBe(false);
   });
 
   it('accepts 13 unique beta testers, deduplicates case-insensitively, and rejects 14 or malformed addresses', () => {
