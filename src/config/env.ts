@@ -62,6 +62,14 @@ export const envSchema = z
       ),
     ];
 
+    if (data.NODE_ENV === 'production' && data.BETA_INVITE_ONLY_ENABLED === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['BETA_INVITE_ONLY_ENABLED'],
+        message: 'BETA_INVITE_ONLY_ENABLED must be explicitly set to true or false in production.',
+      });
+    }
+
     if (betaAllowedEmails.length > MAX_BETA_ALLOWED_EMAILS) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -266,8 +274,10 @@ export function validateEnv(envInput: Record<string, unknown> = process.env): En
     throw new Error('SHARED_RATE_LIMITS_SECRET must be at least 32 characters when shared rate limits are enabled');
   }
 
-  // Invite-only access is opt-in; deploying source alone must not silently change existing sign-up behavior.
-  // When enabled with an empty BETA_ALLOWED_EMAILS value, the allowlist helper intentionally denies everyone.
+  // Development, staging and tests retain the existing opt-in default.
+  // Production is separately required by envSchema to provide an explicit true/false value,
+  // so a missing deployment flag can never silently open public registration.
+  // When enabled with an empty BETA_ALLOWED_EMAILS value, the allowlist helper denies everyone.
   const defaultBetaInviteOnlyEnabled = result.data.BETA_INVITE_ONLY_ENABLED ?? false;
   const defaultBetaAllowedEmails = result.data.BETA_ALLOWED_EMAILS || '';
 
