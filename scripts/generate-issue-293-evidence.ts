@@ -281,24 +281,35 @@ async function run(): Promise<void> {
 
         if (viewport.width >= 768) {
           const metrics = await page.evaluate(() => {
-            const measure = (selector: string) => {
-              const element = document.querySelector(selector);
-              if (!element) throw new Error('Missing desktop Dig control: ' + selector);
-              const bounds = element.getBoundingClientRect();
-              return { height: bounds.height, centerY: bounds.top + bounds.height / 2 };
-            };
+            const searchElement = document.querySelector('#dig-primary-search');
+            const submitElement = document.querySelector('.dig-primary-search-form > button[type="submit"]');
+            const viewElement = document.querySelector('.dig-search-control-bar > .view-mode-toggle');
+            const formatElement = document.querySelector('.dig-responsive-desktop .browse-format-chip');
+            const genreElement = document.querySelector('.dig-responsive-desktop #filter-genre');
+            const sortElement = document.querySelector('.dig-responsive-desktop #filter-sort');
+            if (!searchElement || !submitElement || !viewElement || !formatElement || !genreElement || !sortElement) {
+              throw new Error('Missing one or more desktop Dig controls');
+            }
+
+            const searchBounds = searchElement.getBoundingClientRect();
+            const submitBounds = submitElement.getBoundingClientRect();
+            const viewBounds = viewElement.getBoundingClientRect();
+            const actions: number[] = [];
+            const actionElements = document.querySelectorAll(
+              '.dig-responsive-desktop .browse-filter-action-buttons .btn'
+            );
+            for (let index = 0; index < actionElements.length; index += 1) {
+              actions.push(actionElements[index].getBoundingClientRect().height);
+            }
+
             return {
-              search: measure('#dig-primary-search'),
-              submit: measure('.dig-primary-search-form > button[type="submit"]'),
-              view: measure('.dig-search-control-bar > .view-mode-toggle'),
-              format: measure('.dig-responsive-desktop .browse-format-chip'),
-              genre: measure('.dig-responsive-desktop #filter-genre'),
-              sort: measure('.dig-responsive-desktop #filter-sort'),
-              actions: Array.from(document.querySelectorAll('.dig-responsive-desktop .browse-filter-action-buttons .btn'))
-                .map((element) => {
-                  const bounds = element.getBoundingClientRect();
-                  return bounds.height;
-                }),
+              search: { height: searchBounds.height, centerY: searchBounds.top + searchBounds.height / 2 },
+              submit: { height: submitBounds.height, centerY: submitBounds.top + submitBounds.height / 2 },
+              view: { height: viewBounds.height, centerY: viewBounds.top + viewBounds.height / 2 },
+              format: formatElement.getBoundingClientRect().height,
+              genre: genreElement.getBoundingClientRect().height,
+              sort: sortElement.getBoundingClientRect().height,
+              actions,
             };
           });
           assert.deepEqual(
@@ -312,9 +323,9 @@ async function run(): Promise<void> {
             Math.max(...centers) - Math.min(...centers) <= 1,
             'Desktop Dig toolbar controls are not vertically aligned at ' + viewport.width + 'px'
           );
-          assert.equal(metrics.format.height, 44, 'Format filter height mismatch at ' + viewport.width + 'px');
-          assert.equal(metrics.genre.height, 44, 'Genre control height mismatch at ' + viewport.width + 'px');
-          assert.equal(metrics.sort.height, 44, 'Sort control height mismatch at ' + viewport.width + 'px');
+          assert.equal(metrics.format, 44, 'Format filter height mismatch at ' + viewport.width + 'px');
+          assert.equal(metrics.genre, 44, 'Genre control height mismatch at ' + viewport.width + 'px');
+          assert.equal(metrics.sort, 44, 'Sort control height mismatch at ' + viewport.width + 'px');
           assert.ok(
             metrics.actions.length > 0 && metrics.actions.every((height) => height === 44),
             'Filter action heights are not consistently 44px at ' + viewport.width + 'px'
