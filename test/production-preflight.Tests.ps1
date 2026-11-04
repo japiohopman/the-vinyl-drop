@@ -132,25 +132,27 @@ function Test-PinnedProductionMigrationPlans {
         }
     }
 
-    $invalidJournalPath = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-invalid-journal-" + [guid]::NewGuid().ToString('N') + '.json')
-    try {
-        $invalidJournal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
-        $invalidJournal.entries[21].tag = '0022_unexpected_migration'
-        $invalidJournal | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $invalidJournalPath
-        $threw = $false
+    foreach ($driftIndex in 21, 22, 23) {
+        $invalidJournalPath = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-invalid-journal-" + [guid]::NewGuid().ToString('N') + '.json')
         try {
-            Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $invalidJournalPath | Out-Null
+            $invalidJournal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
+            $invalidJournal.entries[$driftIndex].tag = "unexpected_migration_$driftIndex"
+            $invalidJournal | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $invalidJournalPath
+            $threw = $false
+            try {
+                Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $invalidJournalPath | Out-Null
+            }
+            catch {
+                $threw = $true
+            }
+            if (-not $threw) {
+                throw "ReleaseCandidate phase accepted a replaced migration entry at index $driftIndex."
+            }
         }
-        catch {
-            $threw = $true
-        }
-        if (-not $threw) {
-            throw 'ReleaseCandidate phase accepted a replaced migration 0021 entry.'
-        }
-    }
-    finally {
-        if (Test-Path -LiteralPath $invalidJournalPath) {
-            Remove-Item -LiteralPath $invalidJournalPath -Force
+        finally {
+            if (Test-Path -LiteralPath $invalidJournalPath) {
+                Remove-Item -LiteralPath $invalidJournalPath -Force
+            }
         }
     }
 
@@ -165,6 +167,8 @@ function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
         New-Item -ItemType Directory -Path (Join-Path $tempRoot 'drizzle/meta') -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $tempRoot 'scripts') -Force | Out-Null
         Copy-Item -LiteralPath $migrationPlanPath -Destination (Join-Path $tempRoot 'scripts/productionMigrationPlan.ps1')
+        Set-Content -LiteralPath (Join-Path $tempRoot 'scripts/productionStoragePolicies.ts') -Value 'export {}' -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot 'scripts/verifyProductionStoragePolicies.ts') -Value 'export {}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot 'package.json') -Value '{}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle.config.ts') -Value 'export default {}' -NoNewline
         Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle/meta/_journal.json') -Value '{}' -NoNewline
