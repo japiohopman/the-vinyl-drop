@@ -73,6 +73,7 @@ import {
   deleteListingPhotoSourceFromStorage,
   restoreListingPhotoSourceToStorage,
   listingPhotoSourceStoragePath,
+  listingPhotoStoragePath,
 } from './storageService';
 import { recordOrphanedStorageObject } from '../repositories/orphanRepository';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
@@ -673,13 +674,31 @@ export async function addPhotoToListing(
 
   const photoId = crypto.randomUUID();
   const sourceIsLegacy = !sourceFile;
-  const sourceStoragePath = await uploadListingPhotoSourceToStorage(
-    listingId,
-    photoId,
-    sourceMaster.buffer,
-    storageOptions
-  );
+  const expectedSourcePath = listingPhotoSourceStoragePath(listingId, photoId);
+  let sourceStoragePath: string;
+  try {
+    sourceStoragePath = await uploadListingPhotoSourceToStorage(
+      listingId,
+      photoId,
+      sourceMaster.buffer,
+      storageOptions
+    );
+  } catch (sourceUploadError) {
+    try {
+      await deleteListingPhotoSourceFromStorage(expectedSourcePath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        expectedSourcePath,
+        'PHOTO_SOURCE_UPLOAD_FAILED_SOURCE_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    throw sourceUploadError;
+  }
 
+  const expectedDisplayPath = listingPhotoStoragePath(listingId, photoId, processed.extension);
   let storagePath: string;
   try {
     storagePath = await uploadListingPhotoToStorage({
@@ -691,6 +710,17 @@ export async function addPhotoToListing(
       options: storageOptions,
     });
   } catch (uploadError) {
+    try {
+      await deleteListingPhotoFromStorage(expectedDisplayPath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        expectedDisplayPath,
+        'PHOTO_DISPLAY_UPLOAD_FAILED_DISPLAY_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
     try {
       await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
     } catch {
