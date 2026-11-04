@@ -9,7 +9,7 @@ import {
   createListingFromRelease,
   updateListing,
   addPhotoToListing,
-  getListingPhotoEditorSource,
+  getListingPhotoEditorSource as loadListingPhotoEditorSource,
   saveListingPhotoEditor,
   deletePhotoFromListing,
   reorderListingPhotos,
@@ -461,7 +461,7 @@ export async function getListingPhotoEditorSource(req: Request, res: Response, n
       res.status(401).json({ error: 'Authentication required' });
       return;
     }
-    const source = await getListingPhotoEditorSource(
+    const source = await loadListingPhotoEditorSource(
       req.params.id,
       req.params.photoId,
       req.user.id,
