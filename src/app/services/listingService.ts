@@ -605,17 +605,15 @@ export async function addPhotoToListing(
   altText?: string,
   dbOverride?: DbInstance,
   storageOptions?: StorageOptions,
-  roleInput?: unknown
+  roleInput?: unknown,
+  sourceFile?: { buffer: Buffer; mimetype: string; originalname?: string },
+  editorStateInput?: unknown
 ): Promise<ListingPhotoWithUrl> {
   const listing = await findListingById(listingId, dbOverride);
-  if (!listing) {
-    throw new NotFoundError('Listing not found');
-  }
-
+  if (!listing) throw new NotFoundError('Listing not found');
   if (listing.sellerId !== requestingUserId) {
     throw new AuthorizationError('You are not authorized to upload photos to this listing');
   }
-
   if (isTerminalListingStatus(listing.status)) {
     throw new ValidationError(`Cannot add photos to a listing in terminal state '${listing.status}'`);
   }
@@ -627,8 +625,8 @@ export async function addPhotoToListing(
 
   const roleResult = newListingPhotoRoleSchema.safeParse(roleInput);
   if (!roleResult.success) throw new ValidationError('Choose a photo role before uploading.');
-
   const role = roleResult.data;
+
   const submittedAltText = typeof altText === 'string' ? altText.trim() : '';
   const defaultAltText = role === 'front_cover'
     ? 'Front cover of the record sleeve'
@@ -639,77 +637,107 @@ export async function addPhotoToListing(
   if (!altTextResult.success) {
     throw new ValidationError(altTextResult.error.issues.map((issue) => issue.message).join('; '));
   }
-  const validatedAltText = altTextResult.data;
 
-  // Safe Sharp inspection and processing
+  if (sourceFile && (
+    !sourceFile.buffer.length ||
+    sourceFile.buffer.length > 5 * 1024 * 1024
+  )) {
+    throw new ValidationError('The original photo must be a valid image no larger than 5 MiB.');
+  }
+
   let processed: ProcessedImage;
+  let sourceMaster: ProcessedImage;
   try {
     processed = await processAndValidateImage(file.buffer, file.mimetype);
+    const original = sourceFile || file;
+    sourceMaster = await preserveListingPhotoSource(original.buffer, original.mimetype);
   } catch (err) {
     throw new ValidationError((err as Error).message);
   }
 
-  // Both sleeve faces must be stored as square pixels so Dig renders the two sides consistently.
-  // The seller confirms the crop in the browser; never guess a destructive server-side crop.
   if ((role === 'front_cover' || role === 'back_cover') && processed.width !== processed.height) {
     const side = role === 'front_cover' ? 'front-cover' : 'back-cover';
     throw new ValidationError('Crop the ' + side + ' photo to a square in the preview before uploading.');
   }
 
-  const photoId = crypto.randomUUID();
+  const editorState = parseEditorState(editorStateInput);
+  if (editorState && (
+    editorState.sourceWidth !== sourceMaster.width ||
+    editorState.sourceHeight !== sourceMaster.height
+  )) {
+    throw new ValidationError('The saved edit recipe does not match the selected original photo. Reopen the editor and try again.');
+  }
 
-  // Upload processed buffer to storage
-  const storagePath = await uploadListingPhotoToStorage({
+  const photoId = crypto.randomUUID();
+  const sourceIsLegacy = !sourceFile;
+  const sourceStoragePath = await uploadListingPhotoSourceToStorage(
     listingId,
     photoId,
-    buffer: processed.buffer,
-    contentType: processed.contentType,
-    extension: processed.extension,
-    options: storageOptions,
-  });
+    sourceMaster.buffer,
+    storageOptions
+  );
 
-  // Insert into DB with rollback handling if DB write fails
+  let storagePath: string;
   try {
-    const photoRecord = await createListingPhoto(
-      {
-        id: photoId,
+    storagePath = await uploadListingPhotoToStorage({
+      listingId,
+      photoId,
+      buffer: processed.buffer,
+      contentType: processed.contentType,
+      extension: processed.extension,
+      options: storageOptions,
+    });
+  } catch (uploadError) {
+    try {
+      await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
         listingId,
-        storagePath,
-        displayOrder: existingPhotoCount,
-        altText: validatedAltText,
-        role,
-      },
-      dbOverride
-    );
+        photoId,
+        sourceStoragePath,
+        'PHOTO_DISPLAY_UPLOAD_FAILED_SOURCE_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    throw uploadError;
+  }
 
-    return {
-      ...photoRecord,
-      publicUrl: getPhotoPublicUrl(storagePath),
-    };
+  try {
+    const photoRecord = await createListingPhoto({
+      id: photoId,
+      listingId,
+      storagePath,
+      sourceStoragePath,
+      sourceIsLegacy,
+      editorState,
+      displayOrder: existingPhotoCount,
+      altText: altTextResult.data,
+      role,
+    }, dbOverride);
+
+    return listingPhotoWithPublicUrl(photoRecord);
   } catch (dbErr) {
-    // Rollback: clean up orphaned file in storage if DB insert fails
     try {
       await deleteListingPhotoFromStorage(storagePath, storageOptions);
     } catch {
-      // Record durable orphan record in database for double-failure reconciliation
-      try {
-        await recordOrphanedStorageObject(
-          {
-            listingId,
-            photoId,
-            storagePath,
-            reason: 'UPLOAD_DB_INSERT_FAILED_AND_STORAGE_CLEANUP_FAILED',
-          },
-          dbOverride
-        );
-      } catch {
-        console.error(JSON.stringify({
-          event: 'storage_orphan_unresolved',
-          reason: 'UPLOAD_DB_INSERT_FAILED_AND_STORAGE_CLEANUP_FAILED',
-          listingId,
-          photoId,
-        }));
-      }
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        storagePath,
+        'UPLOAD_DB_INSERT_FAILED_DISPLAY_CLEANUP_FAILED',
+        dbOverride
+      );
+    }
+    try {
+      await deleteListingPhotoSourceFromStorage(sourceStoragePath, storageOptions);
+    } catch {
+      await recordPhotoStorageOrphan(
+        listingId,
+        photoId,
+        sourceStoragePath,
+        'UPLOAD_DB_INSERT_FAILED_SOURCE_CLEANUP_FAILED',
+        dbOverride
+      );
     }
     if ((dbErr as { code?: string }).code === '23505') {
       throw new ValidationError('This listing already has a photo assigned to that sleeve side. Reclassify the existing photo before adding another one.');
