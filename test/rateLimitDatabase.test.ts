@@ -117,12 +117,15 @@ describeWithPostgres('PostgreSQL shared rate-limit reservation release', () => {
     const expiresAt = new Date(nowMs - 60 * 1000);
     const valuePlaceholders = fixtureKeys.map((_, index) => {
       const firstParameter = index * 3 + 1;
-      return '(
+      return '($' + firstParameter + ', $' + (firstParameter + 1) +
+        ', 1, $' + (firstParameter + 2) + ')';
+    }).join(', ');
     const values = fixtureKeys.flatMap((bucketKey) => [
       bucketKey,
       windowStart,
       expiresAt,
     ]);
+    const keyPlaceholders = fixtureKeys.map((_, index) => '$' + (index + 1)).join(', ');
 
     try {
       await client.unsafe(
@@ -134,18 +137,17 @@ describeWithPostgres('PostgreSQL shared rate-limit reservation release', () => {
 
       await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
 
-      const keyPlaceholders = fixtureKeys.map((_, index) => '
       const remaining = await client.unsafe(
         'SELECT bucket_key FROM private.rate_limit_buckets ' +
-        `WHERE bucket_key IN (${keyPlaceholders})`,
+        'WHERE bucket_key IN (' + keyPlaceholders + ')',
         fixtureKeys
       );
 
       expect(remaining.length).toBeGreaterThanOrEqual(1);
     } finally {
-      const keyPlaceholders = fixtureKeys.map((_, index) => '
       await client.unsafe(
-        `DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (${keyPlaceholders})`,
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key IN (' +
+        keyPlaceholders + ')',
         fixtureKeys
       );
     }
