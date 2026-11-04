@@ -8,7 +8,6 @@ import {
   RateLimitBucket,
 } from '../src/app/services/rateLimitService';
 
-
 describe('shared rate-limit cleanup error classification', () => {
   it('exposes only a PostgreSQL SQLSTATE code and never a raw error message', () => {
     expect(getSafeRateLimitDatabaseErrorCode({
@@ -51,7 +50,6 @@ describeWithPostgres('PostgreSQL shared rate-limit reservation release', () => {
   afterAll(async () => {
     if (client) await client.end();
   });
-
 
   it('removes expired buckets and retains buckets that have not expired', async () => {
     const nowMs = Date.now();
