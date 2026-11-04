@@ -626,15 +626,15 @@ export async function verifyMigrations(): Promise<void> {
       cmd: 'SELECT',
       qualContains: "bucket_id = 'listing-photos'",
     },
-    'Authenticated Listing Owner Select for listing-photo-originals': {
+    'listing-photo-originals-select-owner': {
       cmd: 'SELECT',
       qualContains: "bucket_id = 'listing-photo-originals'",
     },
-    'Authenticated Listing Owner Insert for listing-photo-originals': {
+    'listing-photo-originals-insert-owner': {
       cmd: 'INSERT',
       checkContains: "bucket_id = 'listing-photo-originals'",
     },
-    'Authenticated Listing Owner Delete for listing-photo-originals': {
+    'listing-photo-originals-delete-owner': {
       cmd: 'DELETE',
       qualContains: "bucket_id = 'listing-photo-originals'",
     },
@@ -691,21 +691,21 @@ export async function verifyMigrations(): Promise<void> {
         "id)::text = (storage.foldername(objects.name))[2]",
       ],
     },
-    'Authenticated Listing Owner Select for listing-photo-originals': {
+    'listing-photo-originals-select-owner': {
       qualIncludes: [
         "bucket_id = 'listing-photo-originals'",
         "seller_id = ( SELECT auth.uid()",
         "id)::text = (storage.foldername(objects.name))[2]",
       ],
     },
-    'Authenticated Listing Owner Insert for listing-photo-originals': {
+    'listing-photo-originals-insert-owner': {
       checkIncludes: [
         "bucket_id = 'listing-photo-originals'",
         "seller_id = ( SELECT auth.uid()",
         "id)::text = (storage.foldername(objects.name))[2]",
       ],
     },
-    'Authenticated Listing Owner Delete for listing-photo-originals': {
+    'listing-photo-originals-delete-owner': {
       qualIncludes: [
         "bucket_id = 'listing-photo-originals'",
         "seller_id = ( SELECT auth.uid()",
