@@ -879,7 +879,8 @@ describe('Authentication & Session Handling', () => {
       const app = createApp();
       const res = await request(app).get('/auth/callback?code=mock-pkce-code-123&next=/profile');
       expect(res.status).toBe(400);
-      expect(res.text).toContain('complete registration');
+      expect(res.text).toContain('Create an account with email and password, confirm your email');
+      expect(res.text).toContain('same verified address');
       expect(createProfileSpy).not.toHaveBeenCalled();
       // This remains a defensive guard for legacy or externally-created Auth identities.
       // The updated Before User Created hook prevents new Google identities from being inserted.
