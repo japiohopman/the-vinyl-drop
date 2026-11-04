@@ -159,6 +159,26 @@ function Test-PinnedProductionMigrationPlans {
     Write-Host 'PASS: production migration phases select only their pinned index ranges and reject journal drift'
 }
 
+function Test-ReleaseCandidateStoragePreflightRunsBeforeDrizzle {
+    $runnerSource = Get-Content -LiteralPath $migrationRunnerPath -Raw
+    $firstPreflight = $runnerSource.IndexOf("verifyProductionStoragePolicies.ts")
+    $confirmation = $runnerSource.IndexOf('$confirmation = Read-Host')
+    $finalPreflight = $runnerSource.LastIndexOf("verifyProductionStoragePolicies.ts")
+    $drizzleMigration = $runnerSource.IndexOf('& $drizzleKitPath migrate')
+
+    if ($firstPreflight -lt 0 -or $finalPreflight -le $firstPreflight) {
+        throw 'ReleaseCandidate runner must perform an initial and a final Storage policy preflight.'
+    }
+    if ($firstPreflight -ge $confirmation) {
+        throw 'The initial Storage policy preflight must run before the typed migration confirmation.'
+    }
+    if ($finalPreflight -ge $drizzleMigration) {
+        throw 'The final Storage policy preflight must run immediately before Drizzle migration execution.'
+    }
+
+    Write-Host 'PASS: ReleaseCandidate checks exact Storage policies before confirmation and again before Drizzle starts'
+}
+
 function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
     $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-runner-preflight-" + [guid]::NewGuid().ToString('N'))
     $locationPushed = $false
@@ -208,6 +228,7 @@ function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
 Push-Location $repositoryRoot
 try {
     Test-PinnedProductionMigrationPlans
+    Test-ReleaseCandidateStoragePreflightRunsBeforeDrizzle
     Invoke-PreflightCase -Name 'approved production project with TLS' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 0
     Invoke-PreflightCase -Name 'known staging project is rejected' -ProjectRef 'xuhzhdjmgvqzjxijmksu' -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1
     Invoke-PreflightCase -Name 'valid-looking but unapproved project is rejected' -ProjectRef 'aaaaaaaaaaaaaaaaaaaa' -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1
