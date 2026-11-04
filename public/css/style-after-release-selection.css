@@ -107,6 +107,16 @@
   }
 }
 
+@media (min-width: 768px) {
+  .dig-responsive-desktop .browse-filter-actions .browse-filter-action-buttons .btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+}
+
 .mobile-you-info-section {
   padding-top: var(--space-4);
   border-top: var(--border-thick);
