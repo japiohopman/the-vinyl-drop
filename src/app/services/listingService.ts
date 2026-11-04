@@ -3,6 +3,8 @@ import { getDb } from '../../db';
 import { ListingStatus } from '../../db/schema/enums';
 import { ListingPhoto } from '../../db/schema/listingPhotos';
 import { ListingPhotoRole } from '../../domain/listingPhotoRole';
+import type { ListingPhotoEditorState } from '../../domain/listingPhotoEditor';
+import { listingPhotoEditorStateSchema } from '../../validators/listingPhotoEditor';
 import { resolveDigArtwork, DigArtworkFace } from '../../domain/digExperience';
 import { Listing } from '../../db/schema/listings';
 import { PhysicalCopy } from '../../db/schema/physicalCopies';
@@ -29,6 +31,8 @@ import {
   findPhotoById,
   findPhotosByListingId,
   findPhotosByListingIds,
+  updateListingPhotoEditor,
+  updateListingPhotoSource,
   updateListingPhotoRole as updatePhotoRoleInRepo,
   updatePhotoOrder,
 } from '../repositories/listingPhotoRepository';
@@ -56,11 +60,15 @@ import {
 } from '../repositories/physicalCopyRepository';
 import { findProfileById } from '../repositories/profileRepository';
 import { findReleaseById } from '../repositories/releaseRepository';
-import { ProcessedImage, processAndValidateImage } from '../utils/imageProcessor';
+import { ProcessedImage, preserveListingPhotoSource, processAndValidateImage, readImageDimensions } from '../utils/imageProcessor';
 import {
   deleteListingPhotoFromStorage,
   restoreListingPhotoToStorage,
   downloadListingPhotoFromStorage,
+  uploadListingPhotoSourceToStorage,
+  downloadListingPhotoSourceFromStorage,
+  deleteListingPhotoSourceFromStorage,
+  restoreListingPhotoSourceToStorage,
   getPhotoPublicUrl,
   StorageOptions,
   uploadListingPhotoToStorage,
@@ -72,8 +80,53 @@ import { recordListingPublishedEvent } from './activityService';
 
 type DbInstance = ReturnType<typeof getDb>;
 
-export interface ListingPhotoWithUrl extends ListingPhoto {
+export type ListingPhotoWithUrl = Omit<ListingPhoto, 'sourceStoragePath'> & {
   publicUrl: string;
+};
+
+/** Private Storage paths must never be passed into EJS or public listing view models. */
+function listingPhotoWithPublicUrl(photo: ListingPhoto): ListingPhotoWithUrl {
+  const { sourceStoragePath: _privateSourcePath, ...safePhoto } = photo;
+  return {
+    ...safePhoto,
+    publicUrl: getPhotoPublicUrl(photo.storagePath),
+  };
+}
+
+function parseEditorState(input: unknown): ListingPhotoEditorState | null {
+  if (input === undefined || input === null || input === '') return null;
+  let value = input;
+  if (typeof input === 'string') {
+    try {
+      value = JSON.parse(input);
+    } catch {
+      throw new ValidationError('The photo edit recipe is invalid. Please reopen the editor and try again.');
+    }
+  }
+  const parsed = listingPhotoEditorStateSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new ValidationError('The photo edit recipe is invalid. Please reopen the editor and try again.');
+  }
+  return parsed.data;
+}
+
+async function recordPhotoStorageOrphan(
+  listingId: string,
+  photoId: string,
+  storagePath: string,
+  reason: string,
+  dbOverride?: DbInstance
+): Promise<void> {
+  try {
+    await recordOrphanedStorageObject({ listingId, photoId, storagePath, reason }, dbOverride);
+  } catch {
+    console.error(JSON.stringify({
+      event: 'storage_orphan_unresolved',
+      reason,
+      listingId,
+      photoId,
+    }));
+  }
 }
 
 export interface DigListingViewModel extends ListingCardViewModel {
@@ -233,10 +286,7 @@ export async function getListingWithDetails(
   }
 
   const photoRecords = await findPhotosByListingId(listingId, dbOverride);
-  const photos: ListingPhotoWithUrl[] = photoRecords.map((photo) => ({
-    ...photo,
-    publicUrl: getPhotoPublicUrl(photo.storagePath),
-  }));
+  const photos: ListingPhotoWithUrl[] = photoRecords.map(listingPhotoWithPublicUrl);
 
   return {
     listing,
@@ -312,10 +362,7 @@ export async function searchDigListings(
   }
 
   const items: DigListingViewModel[] = result.records.map((record) => {
-    const photos = (photosByListingId.get(record.listing.id) || []).map((photo) => ({
-      ...photo,
-      publicUrl: getPhotoPublicUrl(photo.storagePath),
-    }));
+    const photos = (photosByListingId.get(record.listing.id) || []).map(listingPhotoWithPublicUrl);
     const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist, undefined, record.release.coverArtUrl);
     const base = recordToListingCardViewModel(record);
 
