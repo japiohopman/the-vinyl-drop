@@ -229,6 +229,14 @@ export default defineConfig({
         [System.Text.UTF8Encoding]::new($false)
     )
 
+    if ($Phase -eq 'ReleaseCandidate') {
+        Write-Host 'Repeating read-only Storage policy verification immediately before Drizzle starts...'
+        & $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionStoragePolicies.ts')
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Final production Storage policy verification failed. Drizzle was not started.'
+        }
+    }
+
     Write-Host "Applying only pinned production migrations $($phaseSettings[$Phase].Description)..."
     & $drizzleKitPath migrate "--config=$tempConfigFileName"
     if ($LASTEXITCODE -ne 0) {
