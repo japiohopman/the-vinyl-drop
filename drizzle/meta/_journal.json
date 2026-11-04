@@ -162,6 +162,13 @@
       "when": 1793746560000,
       "tag": "0022_listing_photo_source_versions",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793776875603,
+      "tag": "0023_block_new_google_oauth_identities",
+      "breakpoints": true
     }
   ]
 }
