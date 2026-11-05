@@ -232,8 +232,9 @@ describe('Route-specific CSS bundles (#252)', () => {
     const after = {
       general: routeMetrics(sharedBundles),
       home: routeMetrics([...sharedBundles, 'home.css']),
-      dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'dig-mobile-session.css', 'dig-mobile-crate.css']),
-      browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2)]),
+      dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'dig-mobile-session.css', 'people-search.css', 'dig-mobile-crate.css']),
+      browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'people-search.css']),
+      peopleSearch: routeMetrics([...sharedBundles, 'people-search.css']),
       myListings: routeMetrics(['style.css', 'my-listings.css', ...sharedBundles.slice(1)]),
       listingDetail: routeMetrics(['style.css', 'listing-detail.css', ...sharedBundles.slice(1), 'listing-interactions.css', 'listing-detail-polish.css']),
       listingComments: routeMetrics([...sharedBundles, 'listing-interactions.css']),
@@ -245,7 +246,7 @@ describe('Route-specific CSS bundles (#252)', () => {
     };
 
     const before = {
-      shared: baselineShared, home: baselineShared, dig: baselineDig, myListings: baselineShared,
+      shared: baselineShared, home: baselineShared, dig: baselineDig, browse: baselineShared, peopleSearch: baselineShared, myListings: baselineShared,
       listingDetail: baselineShared, listingComments: baselineShared,
       activity: baselineShared, selectRelease: baselineShared,
       listingForms: baselineShared, profile: baselineShared, profileEdit: baselineShared,
