@@ -47,8 +47,8 @@ export async function searchPeople(
     };
   }
 
-  const offset = (page - 1) * PEOPLE_SEARCH_PAGE_SIZE;
-  const result = await searchPublicPeople(
+  let offset = (page - 1) * PEOPLE_SEARCH_PAGE_SIZE;
+  let result = await searchPublicPeople(
     normalizedQuery,
     { limit: PEOPLE_SEARCH_PAGE_SIZE, offset },
     dbOverride
@@ -58,10 +58,21 @@ export async function searchPeople(
     Math.ceil(result.totalCount / PEOPLE_SEARCH_PAGE_SIZE)
   );
 
+  // Keep valid but out-of-range page URLs useful instead of returning a false empty state.
+  const resolvedPage = totalPages > 0 ? Math.min(page, totalPages) : 1;
+  if (resolvedPage !== page) {
+    offset = (resolvedPage - 1) * PEOPLE_SEARCH_PAGE_SIZE;
+    result = await searchPublicPeople(
+      normalizedQuery,
+      { limit: PEOPLE_SEARCH_PAGE_SIZE, offset },
+      dbOverride
+    );
+  }
+
   return {
     items: result.items,
     totalCount: result.totalCount,
-    page,
+    page: resolvedPage,
     pageSize: PEOPLE_SEARCH_PAGE_SIZE,
     totalPages,
     hasMore: result.totalCount > MAX_PEOPLE_SEARCH_PAGES * PEOPLE_SEARCH_PAGE_SIZE,
