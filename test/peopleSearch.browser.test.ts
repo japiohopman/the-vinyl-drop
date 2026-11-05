@@ -67,7 +67,7 @@ describe('People search browser experience — Issue #297', () => {
         expect(dimensions.viewport).toBe(width);
         expect(dimensions.document).toBeLessThanOrEqual(width);
         expect(dimensions.body).toBeLessThanOrEqual(width);
-        await expect(page.getByRole('search')).toBeVisible();
+        expect(await page.getByRole('search').isVisible()).toBe(true);
       }
     } finally {
       await context.close();
@@ -92,12 +92,12 @@ describe('People search browser experience — Issue #297', () => {
       await input.fill('cr');
 
       const firstSuggestion = page.getByRole('link', { name: /Crate Queen @crate_queen/ });
-      await expect(firstSuggestion).toBeVisible({ timeout: 5000 });
+      expect(await firstSuggestion.isVisible()).toBe(true);
       await input.press('ArrowDown');
-      await expect(firstSuggestion).toBeFocused();
+      expect(await firstSuggestion.evaluate((element) => document.activeElement === element)).toBe(true);
       await page.keyboard.press('Enter');
       await page.waitForURL('**/profiles/crate_queen');
-      await expect(page.getByText('Public profile')).toBeVisible();
+      expect(await page.getByText('Public profile').isVisible()).toBe(true);
     } finally {
       await context.close();
     }
