@@ -59,7 +59,7 @@
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/profile-editor.css') : '/css/profile-editor.css' %>">
   <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-profile-editor.css') : '/css/style-after-profile-editor.css' %>">
-  <% if (typeof currentPath !== 'undefined' && ['/people', '/browse', '/dig', '/browse/dig'].includes(currentPath)) { %>
+  <% if (typeof currentPath !== 'undefined' && ['/people', '/browse', '/search', '/dig', '/browse/dig'].includes(currentPath)) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/people-search.css') : '/css/people-search.css' %>">
   <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/install') { %>
