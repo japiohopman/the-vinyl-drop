@@ -30,7 +30,6 @@
   function hideSuggestions() {
     suggestions.replaceChildren();
     suggestions.hidden = true;
-    input.setAttribute('aria-expanded', 'false');
   }
 
   /** Dismiss suggestions and cancel scheduled or in-flight work so stale results cannot reopen them. */
@@ -82,7 +81,6 @@
 
     const count = suggestionLinks().length;
     suggestions.hidden = count === 0;
-    input.setAttribute('aria-expanded', String(count > 0));
     status.textContent = count
       ? count + (count === 1 ? ' suggestion. Use Tab or the arrow keys to open a profile.' : ' suggestions. Use Tab or the arrow keys to open a profile.')
       : 'No suggestions yet. Press Find people to see matching profiles.';
