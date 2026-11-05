@@ -113,6 +113,53 @@ describe('People search browser experience — Issue #297', () => {
     }
   });
 
+  it('normalizes compatibility characters before applying the live minimum query length', async () => {
+    const context = await browser.newContext({ serviceWorkers: 'block' });
+    const page = await context.newPage();
+    const suggestionRequests: string[] = [];
+
+    try {
+      await page.route('**/api/people-suggestions**', async (route) => {
+        suggestionRequests.push(route.request().url());
+        await route.continue();
+      });
+
+      await page.goto(baseUrl + '/people', { waitUntil: 'domcontentloaded' });
+      const input = page.getByRole('searchbox', { name: 'Search public profiles' });
+      await input.fill('ﬀ');
+
+      const firstSuggestion = page.getByRole('link', { name: /Crate Queen @crate_queen/ });
+      await firstSuggestion.waitFor({ state: 'visible', timeout: 5000 });
+      expect(suggestionRequests).toHaveLength(1);
+      expect(new URL(suggestionRequests[0]).searchParams.get('q')).toBe('ﬀ');
+    } finally {
+      await context.close();
+    }
+  });
+
+  it('cancels a pending debounce when the pointer leaves the search form', async () => {
+    const context = await browser.newContext({ serviceWorkers: 'block' });
+    const page = await context.newPage();
+    const suggestionRequests: string[] = [];
+
+    try {
+      await page.route('**/api/people-suggestions**', async (route) => {
+        suggestionRequests.push(route.request().url());
+        await route.continue();
+      });
+
+      await page.goto(baseUrl + '/people', { waitUntil: 'domcontentloaded' });
+      await page.getByRole('searchbox', { name: 'Search public profiles' }).fill('cr');
+      await page.getByRole('heading', { name: 'Find people' }).click();
+      await page.waitForTimeout(300);
+
+      expect(suggestionRequests).toHaveLength(0);
+      expect(await page.locator('#people-search-suggestions').isHidden()).toBe(true);
+    } finally {
+      await context.close();
+    }
+  });
+
   it('debounces live suggestions and supports arrow-key navigation to a public profile', async () => {
     const context = await browser.newContext({ serviceWorkers: 'block' });
     const page = await context.newPage();
@@ -128,11 +175,41 @@ describe('People search browser experience — Issue #297', () => {
 
       await page.goto(baseUrl + '/people', { waitUntil: 'domcontentloaded' });
       const input = page.getByRole('searchbox', { name: 'Search public profiles' });
-      await input.fill('cr');
+      const suggestionRequests: string[] = [];
+      await page.route('**/api/people-suggestions**', async (route) => {
+        suggestionRequests.push(route.request().url());
+        await route.continue();
+      });
+      const finalSuggestionRequest = page.waitForRequest((candidate) =>
+        candidate.url().includes('/api/people-suggestions')
+      );
+      await input.pressSequentially('crate', { delay: 70 });
+      const request = await finalSuggestionRequest;
 
       const firstSuggestion = page.getByRole('link', { name: /Crate Queen @crate_queen/ });
       await firstSuggestion.waitFor({ state: 'visible', timeout: 5000 });
       expect(await firstSuggestion.isVisible()).toBe(true);
+      await page.waitForTimeout(260);
+      expect(suggestionRequests).toHaveLength(1);
+      expect(new URL(request.url()).searchParams.get('q')).toBe('crate');
+
+      // IME-owned ArrowDown/Process keys must not move focus out of the input.
+      await input.evaluate((element) => {
+        element.dispatchEvent(new KeyboardEvent('keydown', {
+          key: 'ArrowDown',
+          isComposing: true,
+          bubbles: true,
+          cancelable: true,
+        }));
+        element.dispatchEvent(new KeyboardEvent('keydown', {
+          key: 'ArrowDown',
+          keyCode: 229,
+          bubbles: true,
+          cancelable: true,
+        }));
+      });
+      expect(await input.evaluate((element) => document.activeElement === element)).toBe(true);
+
       await input.press('ArrowDown');
       expect(await firstSuggestion.evaluate((element) => document.activeElement === element)).toBe(true);
       await page.keyboard.press('Enter');
