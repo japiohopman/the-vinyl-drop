@@ -16,19 +16,23 @@
   let activeRequest = null;
   let suggestionsDismissed = false;
 
+  /** Apply the same NFKC and whitespace normalization used by the People search service. */
   function normalizePeopleQuery(value) {
     return value.normalize('NFKC').trim();
   }
 
+  /** Return the current profile links in the suggestions list. */
   function suggestionLinks() {
     return Array.from(suggestions.querySelectorAll('a'));
   }
 
+  /** Clear and hide the suggestions list without changing the query value. */
   function hideSuggestions() {
     suggestions.replaceChildren();
     suggestions.hidden = true;
   }
 
+  /** Render only public suggestion fields as text nodes and safe profile links. */
   function renderSuggestions(records) {
     suggestions.replaceChildren();
 
@@ -72,6 +76,7 @@
       : 'No suggestions yet. Press Find people to see matching profiles.';
   }
 
+  /** Fetch bounded suggestions for the current query and ignore dismissed or stale responses. */
   async function requestSuggestions(query) {
     if (activeRequest) activeRequest.abort();
     activeRequest = new AbortController();
