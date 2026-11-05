@@ -12,7 +12,7 @@ export interface PublicPersonSearchRecord {
 
 export interface PublicPeopleSearchRows {
   items: PublicPersonSearchRecord[];
-  totalCount: number;
+  totalCount?: number;
 }
 
 /**
@@ -23,7 +23,7 @@ export interface PublicPeopleSearchRows {
  */
 export async function searchPublicPeople(
   normalizedQuery: string,
-  options: { limit: number; offset: number },
+  options: { limit: number; offset: number; includeTotalCount?: boolean },
   dbOverride?: DbInstance
 ): Promise<PublicPeopleSearchRows> {
   const database = dbOverride || getDb();
@@ -35,7 +35,7 @@ export async function searchPublicPeople(
 
   const exactUsername = sql`lower(${profiles.username}) = ${query}`;
   const usernamePrefix = sql`left(lower(${profiles.username}), char_length(${query})) = ${query}`;
-  const displayNameContains = sql`strpos(lower(coalesce(${profiles.displayName}, '')), ${query}) > 0`;
+  const displayNameContains = sql`strpos(lower(normalize(coalesce(${profiles.displayName}, ''), NFKC)), ${query}) > 0`;
   const predicate = or(exactUsername, usernamePrefix, displayNameContains);
 
   if (!predicate) return { items: [], totalCount: 0 };
@@ -51,22 +51,28 @@ export async function searchPublicPeople(
   const safeLimit = Math.min(20, Math.max(1, requestedLimit));
   const safeOffset = Math.min(20 * 20, Math.max(0, requestedOffset));
 
+  const rowsQuery = database
+    .select({
+      username: profiles.username,
+      displayName: profiles.displayName,
+      avatarUrl: profiles.avatarUrl,
+    })
+    .from(profiles)
+    .where(predicate)
+    .orderBy(
+      asc(rank),
+      asc(sql`lower(coalesce(${profiles.displayName}, ${profiles.username}))`),
+      asc(sql`lower(${profiles.username})`)
+    )
+    .limit(safeLimit)
+    .offset(safeOffset);
+
+  if (options.includeTotalCount === false) {
+    return { items: await rowsQuery };
+  }
+
   const [rows, countRows] = await Promise.all([
-    database
-      .select({
-        username: profiles.username,
-        displayName: profiles.displayName,
-        avatarUrl: profiles.avatarUrl,
-      })
-      .from(profiles)
-      .where(predicate)
-      .orderBy(
-        asc(rank),
-        asc(sql`lower(coalesce(${profiles.displayName}, ${profiles.username}))`),
-        asc(sql`lower(${profiles.username})`)
-      )
-      .limit(safeLimit)
-      .offset(safeOffset),
+    rowsQuery,
     database
       .select({ totalCount: count() })
       .from(profiles)
