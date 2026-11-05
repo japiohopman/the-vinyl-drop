@@ -87,6 +87,15 @@ describe('People search page and public suggestions API — Issue #297', () => {
       expect(peopleSearchService.searchPeople).not.toHaveBeenCalled();
     });
 
+    it('uses NFKC-normalized length to decide whether a query is searchable', async () => {
+      const response = await request(createApp()).get('/people?q=%EF%AC%80');
+
+      expect(response.status).toBe(200);
+      expect(response.text).not.toContain('Enter at least two characters');
+      expect(response.text).toContain('Crate Queen');
+      expect(peopleSearchService.searchPeople).toHaveBeenCalledWith('ﬀ', 1);
+    });
+
     it('rejects malformed page queries and does not search', async () => {
       const response = await request(createApp()).get('/people?q=crate&page=21');
 
