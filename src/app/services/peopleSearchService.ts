@@ -23,6 +23,7 @@ export function normalizePeopleSearchQuery(query: string): string {
   return query.normalize('NFKC').trim().toLowerCase();
 }
 
+/** Check the minimum query length after Unicode NFKC normalization and whitespace trimming. */
 export function isPeopleSearchQueryLongEnough(query: string): boolean {
   return Array.from(normalizePeopleSearchQuery(query)).length >= MIN_PEOPLE_SEARCH_QUERY_LENGTH;
 }
@@ -75,7 +76,7 @@ export async function searchPeople(
     page: resolvedPage,
     pageSize: PEOPLE_SEARCH_PAGE_SIZE,
     totalPages,
-    hasMore: result.totalCount > MAX_PEOPLE_SEARCH_PAGES * PEOPLE_SEARCH_PAGE_SIZE,
+    hasMore: (result.totalCount ?? 0) > MAX_PEOPLE_SEARCH_PAGES * PEOPLE_SEARCH_PAGE_SIZE,
   };
 }
 
@@ -89,7 +90,7 @@ export async function getPeopleSearchSuggestions(
 
   const result = await searchPublicPeople(
     normalizedQuery,
-    { limit: PEOPLE_SEARCH_SUGGESTION_LIMIT, offset: 0 },
+    { limit: PEOPLE_SEARCH_SUGGESTION_LIMIT, offset: 0, includeTotalCount: false },
     dbOverride
   );
   return result.items;
