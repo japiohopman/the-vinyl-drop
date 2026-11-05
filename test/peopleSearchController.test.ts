@@ -2,7 +2,11 @@ import request from 'supertest';
 import { createApp } from '../src/app';
 import * as peopleSearchService from '../src/app/services/peopleSearchService';
 
-jest.mock('../src/app/services/peopleSearchService');
+jest.mock('../src/app/services/peopleSearchService', () => ({
+  ...jest.requireActual('../src/app/services/peopleSearchService'),
+  getPeopleSearchSuggestions: jest.fn(),
+  searchPeople: jest.fn(),
+}));
 
 const publicPerson = {
   username: 'crate_queen',
