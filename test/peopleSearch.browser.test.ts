@@ -99,6 +99,7 @@ describe('People search browser experience — Issue #297', () => {
       await page.getByRole('searchbox', { name: 'Search public profiles' }).fill('cr');
 
       const suggestion = page.getByRole('link', { name: /Crate Queen @crate_queen/ });
+      await suggestion.waitFor({ state: 'visible', timeout: 5000 });
       expect(await suggestion.isVisible()).toBe(true);
       const bounds = await suggestion.boundingBox();
       expect(bounds).not.toBeNull();
@@ -130,6 +131,7 @@ describe('People search browser experience — Issue #297', () => {
       await input.fill('cr');
 
       const firstSuggestion = page.getByRole('link', { name: /Crate Queen @crate_queen/ });
+      await firstSuggestion.waitFor({ state: 'visible', timeout: 5000 });
       expect(await firstSuggestion.isVisible()).toBe(true);
       await input.press('ArrowDown');
       expect(await firstSuggestion.evaluate((element) => document.activeElement === element)).toBe(true);
