@@ -1,8 +1,8 @@
 # Production Deployment — The Vinyl Drop
 
 **Governing Issue:** [#278](https://github.com/japiohopman/the-vinyl-drop/issues/278)  
-**Status:** Production remains live on the separate Render/Supabase environment at the canonical apex domain and on the approved PR #286 baseline. Staging remains live on the manually deployed 4 November application revision `4102103623c1da85e7aec804fa95c4c7da54748e`; `main` has since advanced to `b39fa74bba0b12f1987d03fb80b0203221fcf7ed` through merged PR #354, which changes only migration preparation, tests and documentation. Post-merge CI on the new `main` revision passed. Production remains deliberately unchanged. Its Drizzle ledger is verified through migration 0019; migrations 0020–0023 are not applied. The latest migration, Storage and release-candidate findings are recorded in section 9 below. Public release remains gated on migration compatibility, authenticated DB/Storage smoke coverage, provider-level signup state, dependency-audit triage, backup/recovery readiness, privacy/legal decisions and Jaap's final release approval.  
-**Last checked:** 4 November 2026.
+**Status:** Production remains live on the separate Render/Supabase environment at the canonical apex domain and on approved PR #286 application runtime `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d`; Auto-Deploy remains off. On 5 November Jaap ran the reviewed `ReleaseCandidate` production migration phase successfully. Migrations `0020`–`0023` are now applied and independently verified: 24 exact sequential Drizzle ledger rows, matching migration hashes, all expected columns/constraints/indexes, `pg_trgm`, the seven-policy private Storage contract and the updated Before User Created hook. This did **not** deploy the application or change its live commit. Staging remains on `4102103623c1da85e7aec804fa95c4c7da54748e`; current `main` is `aff073396c23aebe3668dfeeb7f93cad0af1d3d9`, five migration-preparation/test/documentation commits ahead with no application-runtime file changes. Section 10 records the current post-migration verification and the corrected Session Pooler quota-incident status. Public release still requires release-candidate audit, authenticated DB/Storage smoke coverage, provider-level signup state, dependency-audit triage, backup/recovery readiness, privacy/legal decisions and Jaap's final application-deployment approval.  
+**Last checked:** 5 November 2026.
 
 ## 1. Owner-approved target and safety boundaries
 
@@ -33,12 +33,12 @@ Keep these gates closed until their separate checks and approvals are complete:
 The existing staging project `xuhzhdjmgvqzjxijmksu` remains separate and was not modified.
 
 Production database provisioning and read-only verification completed on 31 October 2026:
-- All 20 repository Drizzle migrations `0000`–`0019` applied with the repository runner.
-- `drizzle.__drizzle_migrations` contains 20 rows, 20 distinct hashes, and all 20 `created_at` timestamps match the repository journal.
-- Read-only checks on 3 November confirmed production is still at migration 0019. The new migrations 0020 and 0021 are **not** applied in production. Migration 0021 adds the `country_code`, `canonical_genres` and `format_characteristics` columns expected by current `main`; apply it before deploying current `main`. Migration 0020 installs `pg_trgm` and its GIN indexes for fuzzy catalogue suggestions; application code has a tested normalized-search fallback when it is absent.
+- All repository Drizzle migrations `0000`–`0023` are applied with the controlled repository runner.
+- `drizzle.__drizzle_migrations` contains exactly 24 sequential rows (IDs 1–24), without gaps or duplicates. The stored hashes for migrations 0020–0023 match the checked-in SQL files using Windows CRLF line endings, as used by the local migration environment.
+- Migrations 0020–0023 were successfully applied on 5 November and independently verified read-only. Migration 0020 installed `pg_trgm` 1.6 in `extensions` and all three artist/title/label GIN trigram indexes. Migration 0021 added `country_code`, `canonical_genres`, `format_characteristics`, the country-code CHECK constraint and the expected indexes. Migration 0022 added `source_storage_path`, `source_is_legacy`, `editor_state` and the partial unique source-path index. Migration 0023 changed the existing Before User Created hook function to deny first-time Google identities while retaining the one-use email/password approval requirement.
 - All 12 public application tables and all three private tables have RLS enabled.
 - The public `listing-photos` bucket is present with a 5 MiB limit and allowed MIME types `image/webp`, `image/jpeg`, and `image/png`.
-- Exactly four seller-scoped Storage object policies exist and pass the migration `0006` predicate checks.
+- Exactly seven Storage object policies exist and pass the shared exact production validator: four existing `listing-photos` policies and three authenticated seller-owner policies for `listing-photo-originals`. The private originals bucket remains private and `storage.objects` RLS is enabled.
 - No staging users, profiles, listings, listing-photo rows, Storage objects, credentials or OAuth secrets were copied into production.
 - Jaap reports that a production test account and two smoke-test listings were created manually (one published, one draft). This is test data, not an import from staging.
 - The private password-check function and production Before User Created Auth hook are reported enabled; the runtime flag is reported as `SIGNUP_PASSWORD_CHECK_APPROVAL_ENABLED=true`.
@@ -143,9 +143,9 @@ On 3 November, the protected production runtime check returned `database: pass` 
 Do not treat this checkpoint as approval to deploy, apply migrations, change provider settings, expand the allowlist, enable public signup or activate messaging. Production remains invite-only; `MESSAGING_ENABLED=false`; `SHARED_RATE_LIMITS_ENABLED=false`. The 13-person figure is capacity preparation only, not proof of 13 production allowlist entries or authorization to invite them.
 
 
-## 9. Controlled 13-tester release candidate — read-only checkpoint, 4 November 2026
+## 9. Controlled 13-tester release candidate — historical preparation checkpoint, 4 November 2026
 
-This section records preparation only; it does not authorize a production migration, environment change, deployment, allowlist edit or invitation.
+This is the historical 4 November pre-migration checkpoint. Its statements about the migration ledger and pending policies are superseded by the successful 5 November run and verification in section 10. It did not authorize or perform an application deployment, allowlist edit or invitation.
 
 ### Current service revisions
 
@@ -176,3 +176,36 @@ Before any separately authorized production execution:
 5. Only after verified migration state may a separate owner-approved application deploy be considered.
 
 No migration, Storage policy, Auth setting, environment variable, allowlist address, user, listing or production object was changed for this checkpoint.
+
+
+## 10. Production ReleaseCandidate migration and Session Pooler verification — 5 November 2026
+
+### Migration execution
+
+Jaap ran the approved Windows command from the repository root after updating `main`:
+
+```powershell
+git pull origin main
+.\run-production-migrations.ps1 -Phase ReleaseCandidate
+```
+
+The target preflight passed for production project `anxhmlalxjvatrufcjei` and the approved Shared Session Pooler host. The Storage preflight passed twice, including immediately before Drizzle started. Drizzle reported `[✓] migrations applied successfully!` and the runner confirmed that only migrations 0020–0023 were selected. No later journal entry was selected.
+
+### Independent read-only verification
+
+- Exactly 24 Drizzle ledger rows exist, IDs 1–24, with no gaps or duplicates.
+- Stored hashes for 0020–0023 match the checked-in SQL source using Windows CRLF line endings.
+- `pg_trgm` version 1.6 is installed in the `extensions` schema; the artist, title and label trigram GIN indexes exist.
+- Release metadata columns, country-code CHECK constraint and the three metadata indexes exist.
+- Listing-photo source/editor columns and the partial unique source-path index exist.
+- The private `listing-photo-originals` bucket remains private; Storage RLS is enabled and all seven policies match the exact reviewed policy contract.
+- The production Before User Created function now returns HTTP 403 for first-time Google identity creation, for email signup without a valid one-use password-check approval, and for unsupported providers. The function remains SECURITY INVOKER with an empty search path; required `supabase_auth_admin` execution and table/column privileges were checked. No test account or signup was created during these checks.
+- The `drizzle.__drizzle_migrations` table has RLS disabled, but the `drizzle` schema and ledger table are not accessible to either `anon` or `authenticated`; both roles have no schema USAGE and no table SELECT/UPDATE grants. The Supabase linter flag is therefore not currently an exposed Data API path. Do not add a policy or grant as part of this release without a separate review.
+
+### Application deployment boundary
+
+Production Render remains Live on PR #286 commit `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d`, with Auto-Deploy off. Production DB migrations are current through 0023, but the application has **not** been deployed to the new `main` revision. A separate exact-commit release-candidate audit, staging acceptance and Jaap's explicit application deployment approval are required before any Render deploy. The migration authorization did not authorize an application deployment, allowlist edit, invitations, account creation, rate-limit activation, messaging activation or opening public signup.
+
+### Session Pooler quota incident — owner-confirmed resolved 5 November 2026
+
+The 99.8% Session Pooler usage reading from 28 October was caused by an application bug: profile requests unnecessarily issued repeated profile-row updates even when no profile data had changed. Jaap confirms that this redundant write path was fixed on 4 November. Treat the 28 October figure as historical consumption from the now-fixed bug, not an ongoing application behavior or an unresolved release blocker. The Supabase banner may continue to refer to the previous billing cycle until its usage/billing window updates. Do not recommend a paid upgrade on the basis of that historical reading alone; check a fresh usage window after the fix before drawing conclusions about ongoing consumption.
