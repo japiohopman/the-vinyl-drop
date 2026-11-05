@@ -30,6 +30,13 @@
   function hideSuggestions() {
     suggestions.replaceChildren();
     suggestions.hidden = true;
+    input.setAttribute('aria-expanded', 'false');
+  }
+
+  /** Dismiss suggestions and cancel scheduled or in-flight work so stale results cannot reopen them. */
+  function dismissSuggestions() {
+    dismissSuggestions();
+    status.textContent = 'Suggestions closed.';
   }
 
   /** Render only public suggestion fields as text nodes and safe profile links. */
@@ -71,6 +78,7 @@
 
     const count = suggestionLinks().length;
     suggestions.hidden = count === 0;
+    input.setAttribute('aria-expanded', String(count > 0));
     status.textContent = count
       ? count + (count === 1 ? ' suggestion. Use Tab or the arrow keys to open a profile.' : ' suggestions. Use Tab or the arrow keys to open a profile.')
       : 'No suggestions yet. Press Find people to see matching profiles.';
@@ -128,8 +136,7 @@
 
     if (event.key === 'Escape' && !suggestions.hidden) {
       event.preventDefault();
-      hideSuggestions();
-      status.textContent = 'Suggestions closed.';
+      dismissSuggestions();
       return;
     }
 
@@ -155,9 +162,8 @@
       else links[currentIndex - 1].focus();
     } else if (event.key === 'Escape') {
       event.preventDefault();
-      hideSuggestions();
+      dismissSuggestions();
       input.focus();
-      status.textContent = 'Suggestions closed.';
     }
   });
 
