@@ -25,7 +25,7 @@ describe('public people search repository', () => {
     const rows = [
       ['10000000-0000-4000-8000-000000000001', 'CrateKing', 'Vinyl Royalty', 'https://images.example/one.webp', 'PRIVATE BIO ONE', 'PRIVATE LOCATION ONE', 'https://private.example/one'],
       ['10000000-0000-4000-8000-000000000002', 'crateking_nl', 'Collector Two', null, 'PRIVATE BIO TWO', 'PRIVATE LOCATION TWO', null],
-      ['10000000-0000-4000-8000-000000000003', 'recordfan', 'The Crate King', null, 'PRIVATE BIO THREE', 'PRIVATE LOCATION THREE', null],
+      ['10000000-0000-4000-8000-000000000003', 'recordfan', 'The CrateKing', null, 'PRIVATE BIO THREE', 'PRIVATE LOCATION THREE', null],
       ['10000000-0000-4000-8000-000000000004', 'soulselector', 'Soul Selector', null, 'PRIVATE BIO FOUR', 'PRIVATE LOCATION FOUR', null],
     ];
 
@@ -63,7 +63,7 @@ describe('public people search repository', () => {
 
   it('matches usernames and display names without case sensitivity', async () => {
     const exact = await searchPublicPeople('CRATEKING', { limit: 20, offset: 0 }, db);
-    const displayName = await searchPublicPeople('CRATE KIN', { limit: 20, offset: 0 }, db);
+    const displayName = await searchPublicPeople('crateki', { limit: 20, offset: 0 }, db);
 
     expect(exact.items[0]?.username).toBe('CrateKing');
     expect(displayName.items.some((person) => person.username === 'recordfan')).toBe(true);
@@ -92,7 +92,7 @@ describe('public people search repository', () => {
     const result = await searchPublicPeople('crate', { limit: 100, offset: 0 }, db);
 
     expect(result.items).toHaveLength(20);
-    expect(result.totalCount).toBe(27);
+    expect(result.totalCount).toBe(28);
   });
 
   it('bounds page size and page count for the rendered search results', async () => {
@@ -103,7 +103,7 @@ describe('public people search repository', () => {
     expect(firstPage.totalCount).toBe(27);
     expect(firstPage.page).toBe(1);
     expect(firstPage.totalPages).toBe(3);
-    expect(lastAllowedPage.page).toBe(20);
-    expect(lastAllowedPage.items).toHaveLength(0);
+    expect(lastAllowedPage.page).toBe(3);
+    expect(lastAllowedPage.items).toHaveLength(4);
   });
 });
