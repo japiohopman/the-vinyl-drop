@@ -413,6 +413,12 @@ export const rateLimits = {
   catalogueSuggestion: createRateLimitMiddleware([
     { name: 'catalogue-suggestion-ip', windowMs: MINUTE, maxHits: 30, identify: ip, required: true },
   ]),
+  peopleSuggestion: createRateLimitMiddleware([
+    { name: 'people-suggestion-ip', windowMs: MINUTE, maxHits: 30, identify: ip, required: true },
+  ]),
+  peoplePage: createRateLimitMiddleware([
+    { name: 'people-page-ip', windowMs: MINUTE, maxHits: 30, identify: ip, required: true },
+  ]),
   discogsSearch: createRateLimitMiddleware([
     { name: 'discogs-search-account', windowMs: 10 * MINUTE, maxHits: 30, identify: accountId, required: true },
   ]),
