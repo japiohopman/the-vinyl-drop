@@ -8,7 +8,7 @@ import {
   searchPeople,
 } from '../services/peopleSearchService';
 
-function isMalformedPeopleQuery(query: unknown): query is string {
+function isMalformedPeopleQuery(query: unknown): boolean {
   return typeof query !== 'string' ||
     query.length > MAX_PEOPLE_SEARCH_QUERY_LENGTH ||
     [...query].some((character) => {
@@ -48,7 +48,7 @@ export async function getPeopleSearchPage(
       return;
     }
 
-    const trimmedQuery = query.trim();
+    const trimmedQuery = typeof query === 'string' ? query.trim() : '';
     const results = isPeopleSearchQueryLongEnough(trimmedQuery)
       ? await searchPeople(trimmedQuery, requestedPage)
       : { items: [], totalCount: 0, page: 1, pageSize: 12, totalPages: 0, hasMore: false };
@@ -83,7 +83,7 @@ export async function getPeopleSuggestions(
     const query = req.query.q;
     res.set('Cache-Control', 'no-store');
 
-    if (isMalformedPeopleQuery(query)) {
+    if (typeof query !== 'string' || isMalformedPeopleQuery(query)) {
       res.status(400).json({ error: 'Provide a search query of at most 50 characters.' });
       return;
     }
