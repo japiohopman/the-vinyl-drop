@@ -137,6 +137,59 @@ describe('People search browser experience — Issue #297', () => {
     }
   });
 
+  it('aborts an in-flight suggestion request when the pointer leaves the search form', async () => {
+    const context = await browser.newContext({ serviceWorkers: 'block' });
+    const page = await context.newPage();
+    let resolveRequestStarted!: () => void;
+    const requestStarted = new Promise<void>((resolve) => {
+      resolveRequestStarted = resolve;
+    });
+
+    try {
+      await page.addInitScript(() => {
+        const nativeFetch = window.fetch.bind(window);
+        window.fetch = (input, init) => {
+          const url = typeof input === 'string'
+            ? input
+            : input instanceof Request
+              ? input.url
+              : String(input);
+          if (url.includes('/api/people-suggestions') && init?.signal) {
+            init.signal.addEventListener('abort', () => {
+              (window as Window & { __peopleSuggestionsAborted?: boolean }).__peopleSuggestionsAborted = true;
+            }, { once: true });
+          }
+          return nativeFetch(input, init);
+        };
+      });
+      await page.route('**/api/people-suggestions**', async (route) => {
+        resolveRequestStarted();
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        try {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ suggestions }),
+          });
+        } catch {
+          // The browser has already aborted the intercepted request.
+        }
+      });
+
+      await page.goto(baseUrl + '/people', { waitUntil: 'domcontentloaded' });
+      await page.getByRole('searchbox', { name: 'Search public profiles' }).fill('cr');
+      await requestStarted;
+      await page.getByRole('heading', { name: 'Find people' }).click();
+
+      expect(await page.evaluate(() => (
+        window as Window & { __peopleSuggestionsAborted?: boolean }
+      ).__peopleSuggestionsAborted)).toBe(true);
+      expect(await page.locator('#people-search-suggestions').isHidden()).toBe(true);
+    } finally {
+      await context.close();
+    }
+  });
+
   it('cancels a pending debounce when the pointer leaves the search form', async () => {
     const context = await browser.newContext({ serviceWorkers: 'block' });
     const page = await context.newPage();
