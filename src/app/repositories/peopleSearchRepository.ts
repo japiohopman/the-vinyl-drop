@@ -1,4 +1,4 @@
-import { and, asc, count, or, sql } from 'drizzle-orm';
+import { asc, count, or, sql } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { profiles } from '../../db/schema/profiles';
 
@@ -46,8 +46,10 @@ export async function searchPublicPeople(
     ELSE 2
   END`;
 
-  const safeLimit = Math.min(20, Math.max(1, Math.floor(options.limit)));
-  const safeOffset = Math.min(20 * 20, Math.max(0, Math.floor(options.offset)));
+  const requestedLimit = Number.isFinite(options.limit) ? Math.floor(options.limit) : 1;
+  const requestedOffset = Number.isFinite(options.offset) ? Math.floor(options.offset) : 0;
+  const safeLimit = Math.min(20, Math.max(1, requestedLimit));
+  const safeOffset = Math.min(20 * 20, Math.max(0, requestedOffset));
 
   const [rows, countRows] = await Promise.all([
     database
@@ -68,7 +70,7 @@ export async function searchPublicPeople(
     database
       .select({ totalCount: count() })
       .from(profiles)
-      .where(and(predicate)),
+      .where(predicate),
   ]);
 
   return {
