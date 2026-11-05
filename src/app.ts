@@ -29,6 +29,7 @@ const VERSIONED_CSS_ASSETS = [
   '/css/profile-pages.css',
   '/css/style-after-profile-pages.css',
   '/css/profile-editor.css',
+  '/css/people-search.css',
   '/css/style-after-profile-editor.css',
   '/css/listing-interactions.css',
   '/css/listing-detail-polish.css',
