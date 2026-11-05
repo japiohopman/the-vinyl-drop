@@ -74,6 +74,40 @@ describe('People search browser experience — Issue #297', () => {
     }
   });
 
+  it('keeps live suggestions easy to activate on a touch viewport', async () => {
+    const context = await browser.newContext({
+      serviceWorkers: 'block',
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+    });
+    const page = await context.newPage();
+
+    try {
+      await page.route('**/profiles/**', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'text/html',
+          body: '<!doctype html><html lang="en"><title>Profile test</title><body>Public profile</body></html>',
+        });
+      });
+
+      await page.goto(baseUrl + '/people', { waitUntil: 'domcontentloaded' });
+      await page.getByRole('searchbox', { name: 'Search public profiles' }).fill('cr');
+
+      const suggestion = page.getByRole('link', { name: /Crate Queen @crate_queen/ });
+      expect(await suggestion.isVisible()).toBe(true);
+      const bounds = await suggestion.boundingBox();
+      expect(bounds).not.toBeNull();
+      expect(bounds!.height).toBeGreaterThanOrEqual(44);
+
+      await suggestion.tap();
+      await page.waitForURL('**/profiles/crate_queen');
+      expect(await page.getByText('Public profile').isVisible()).toBe(true);
+    } finally {
+      await context.close();
+    }
+  });
+
   it('debounces live suggestions and supports arrow-key navigation to a public profile', async () => {
     const context = await browser.newContext({ serviceWorkers: 'block' });
     const page = await context.newPage();
