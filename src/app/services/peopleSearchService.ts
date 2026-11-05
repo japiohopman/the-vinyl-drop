@@ -54,9 +54,10 @@ export async function searchPeople(
     { limit: PEOPLE_SEARCH_PAGE_SIZE, offset },
     dbOverride
   );
+  const totalCount = result.totalCount ?? 0;
   const totalPages = Math.min(
     MAX_PEOPLE_SEARCH_PAGES,
-    Math.ceil(result.totalCount / PEOPLE_SEARCH_PAGE_SIZE)
+    Math.ceil(totalCount / PEOPLE_SEARCH_PAGE_SIZE)
   );
 
   // Keep valid but out-of-range page URLs useful instead of returning a false empty state.
@@ -72,7 +73,7 @@ export async function searchPeople(
 
   return {
     items: result.items,
-    totalCount: result.totalCount,
+    totalCount,
     page: resolvedPage,
     pageSize: PEOPLE_SEARCH_PAGE_SIZE,
     totalPages,
