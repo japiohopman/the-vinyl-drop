@@ -8,6 +8,7 @@ import {
   searchPeople,
 } from '../services/peopleSearchService';
 
+/** Reject non-string, oversized, or control-character query values from Express. */
 function isMalformedPeopleQuery(query: unknown): boolean {
   return typeof query !== 'string' ||
     query.length > MAX_PEOPLE_SEARCH_QUERY_LENGTH ||
@@ -17,6 +18,7 @@ function isMalformedPeopleQuery(query: unknown): boolean {
     });
 }
 
+/** Parse a positive page number and reject values outside the bounded search window. */
 function parsePage(value: unknown): number | null {
   if (value === undefined || value === null) return 1;
   if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value.trim())) return null;
@@ -26,6 +28,7 @@ function parsePage(value: unknown): number | null {
   return page;
 }
 
+/** Render bounded public profile matches, or the search prompt for an ineligible query. */
 export async function getPeopleSearchPage(
   req: Request,
   res: Response,
@@ -34,6 +37,7 @@ export async function getPeopleSearchPage(
   try {
     const rawQuery = req.query.q;
     const query = rawQuery === undefined ? '' : rawQuery;
+    const searchable = typeof query === 'string' && isPeopleSearchQueryLongEnough(query);
     const requestedPage = parsePage(req.query.page);
 
     if (isMalformedPeopleQuery(query) || requestedPage === null) {
@@ -41,6 +45,7 @@ export async function getPeopleSearchPage(
       renderWithLayout(res, 'people/index', {
         title: 'Find People — The Vinyl Drop',
         query: typeof query === 'string' ? query.trim() : '',
+        searchable,
         people: [],
         pagination: { totalCount: 0, page: 1, pageSize: 12, totalPages: 0, hasMore: false },
         errorMessage: 'Enter a valid search of up to 50 characters and a valid results page.',
@@ -49,7 +54,7 @@ export async function getPeopleSearchPage(
     }
 
     const trimmedQuery = typeof query === 'string' ? query.trim() : '';
-    const results = isPeopleSearchQueryLongEnough(trimmedQuery)
+    const results = searchable
       ? await searchPeople(trimmedQuery, requestedPage)
       : { items: [], totalCount: 0, page: 1, pageSize: 12, totalPages: 0, hasMore: false };
 
@@ -59,6 +64,7 @@ export async function getPeopleSearchPage(
         ? `People matching “${trimmedQuery}” — The Vinyl Drop`
         : 'Find People — The Vinyl Drop',
       query: trimmedQuery,
+      searchable,
       people: results.items,
       pagination: {
         totalCount: results.totalCount,
@@ -74,6 +80,7 @@ export async function getPeopleSearchPage(
 }
 
 /** Return only public profile identity fields for the live People search suggestions. */
+/** Serve normalized, no-store profile suggestions without returning private profile fields. */
 export async function getPeopleSuggestions(
   req: Request,
   res: Response,
