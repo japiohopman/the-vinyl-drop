@@ -114,7 +114,7 @@ describe('People search page and public suggestions API — Issue #297', () => {
       expect(response.status).toBe(200);
       expect(response.text).toContain('&lt;img src=x onerror=alert(1)&gt;');
       expect(response.text).not.toContain('<img src=x onerror=alert(1)>');
-      const resultsMarkup = response.text.match(/<section class="people-search-results"[\\s\\S]*?<\\/section>/)?.[0] || '';
+      const resultsMarkup = response.text.match(/<section class="people-search-results"[\s\S]*?<\/section>/)?.[0] || '';
       expect(resultsMarkup).not.toContain('bio');
       expect(resultsMarkup).not.toContain('location');
       expect(resultsMarkup).not.toContain('email');
