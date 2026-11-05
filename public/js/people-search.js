@@ -35,7 +35,11 @@
 
   /** Dismiss suggestions and cancel scheduled or in-flight work so stale results cannot reopen them. */
   function dismissSuggestions() {
-    dismissSuggestions();
+    suggestionsDismissed = true;
+    hideSuggestions();
+    window.clearTimeout(debounceHandle);
+    if (activeRequest) activeRequest.abort();
+    activeRequest = null;
     status.textContent = 'Suggestions closed.';
   }
 
@@ -169,11 +173,7 @@
 
   document.addEventListener('pointerdown', (event) => {
     if (!(event.target instanceof Node) || form.contains(event.target)) return;
-    suggestionsDismissed = true;
-    hideSuggestions();
-    window.clearTimeout(debounceHandle);
-    if (activeRequest) activeRequest.abort();
-    activeRequest = null;
+    dismissSuggestions();
   });
 
   form.addEventListener('submit', () => {
