@@ -79,7 +79,6 @@ export async function getPeopleSearchPage(
   }
 }
 
-/** Return only public profile identity fields for the live People search suggestions. */
 /** Serve normalized, no-store profile suggestions without returning private profile fields. */
 export async function getPeopleSuggestions(
   req: Request,
