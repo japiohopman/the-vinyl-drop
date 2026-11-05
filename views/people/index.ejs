@@ -1,0 +1,93 @@
+<section class="people-search-page" aria-labelledby="people-search-title">
+  <nav class="people-search-mode" aria-label="Search mode">
+    <a href="/browse">Records</a>
+    <a href="/people" aria-current="page">People</a>
+  </nav>
+
+  <header class="people-search-intro">
+    <p class="people-search-kicker">THE COMMUNITY</p>
+    <h1 id="people-search-title">Find people</h1>
+    <p>Find a collector by their public username or display name.</p>
+  </header>
+
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <p class="people-search-alert" role="alert"><%= errorMessage %></p>
+  <% } %>
+
+  <form class="people-search-form" action="/people" method="GET" role="search" data-people-search-form>
+    <div class="people-search-field">
+      <label for="people-search-query">Search public profiles</label>
+      <input
+        type="search"
+        id="people-search-query"
+        name="q"
+        value="<%= query || '' %>"
+        placeholder="Username or display name"
+        maxlength="50"
+        autocomplete="off"
+        aria-describedby="people-search-status"
+        aria-controls="people-search-suggestions"
+        data-people-search-input
+      >
+      <ul id="people-search-suggestions" class="people-search-suggestions" aria-label="People search suggestions" hidden></ul>
+      <p id="people-search-status" class="people-search-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    </div>
+    <button type="submit" class="btn btn-primary people-search-submit">Find people</button>
+  </form>
+
+  <section class="people-search-results" aria-labelledby="people-results-title">
+    <div class="people-search-results-heading">
+      <h2 id="people-results-title">People</h2>
+      <% if (searchable && pagination && pagination.totalCount > 0) { %>
+        <p><%= pagination.totalCount %> <%= pagination.totalCount === 1 ? 'match' : 'matches' %></p>
+      <% } %>
+    </div>
+
+    <% if (!searchable) { %>
+      <p class="people-search-empty">Enter at least two characters to search public profiles.</p>
+    <% } else if (!people || people.length === 0) { %>
+      <p class="people-search-empty">No public profiles matched “<%= query %>”. Try a username or a different name.</p>
+    <% } else { %>
+      <ul class="people-search-results-list">
+        <% people.forEach(function(person) {
+          const displayName = person.displayName || person.username;
+          const safeAvatarUrl = typeof person.avatarUrl === 'string' && /^https:\/\//i.test(person.avatarUrl)
+            ? person.avatarUrl
+            : '';
+        %>
+          <li>
+            <a class="people-search-result" href="/profiles/<%= encodeURIComponent(person.username) %>">
+              <span class="people-search-avatar" aria-hidden="true">
+                <% if (safeAvatarUrl) { %>
+                  <img src="<%= safeAvatarUrl %>" alt="" loading="lazy" referrerpolicy="no-referrer">
+                <% } else { %>
+                  <span><%= displayName.substring(0, 1).toUpperCase() %></span>
+                <% } %>
+              </span>
+              <span class="people-search-result-identity">
+                <strong><%= displayName %></strong>
+                <span>@<%= person.username %></span>
+              </span>
+              <span class="people-search-result-action">View profile <span aria-hidden="true">→</span></span>
+            </a>
+          </li>
+        <% }); %>
+      </ul>
+
+      <% if (pagination && pagination.totalPages > 1) { %>
+        <nav class="people-search-pagination" aria-label="People search result pages">
+          <% if (pagination.page > 1) { %>
+            <a href="/people?q=<%= encodeURIComponent(query) %>&amp;page=<%= pagination.page - 1 %>">Previous</a>
+          <% } %>
+          <span>Page <%= pagination.page %> of <%= pagination.totalPages %></span>
+          <% if (pagination.page < pagination.totalPages) { %>
+            <a href="/people?q=<%= encodeURIComponent(query) %>&amp;page=<%= pagination.page + 1 %>">Next</a>
+          <% } %>
+        </nav>
+        <% if (pagination.hasMore) { %>
+          <p class="people-search-limit-note">Showing the first 240 matches. Narrow your search to find someone specific.</p>
+        <% } %>
+      <% } %>
+    <% } %>
+  </section>
+</section>

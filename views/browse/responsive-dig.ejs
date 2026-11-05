@@ -20,6 +20,11 @@
 %>
 <div class="dig-responsive-page">
 
+  <nav class="people-search-mode dig-search-mode" aria-label="Search mode">
+    <a href="/dig" aria-current="page">Records</a>
+    <a href="/people">People</a>
+  </nav>
+
   <div class="dig-search-control-bar" role="group" aria-label="Dig search and display controls">
     <form action="/dig" method="GET" class="dig-primary-search-form">
       <input type="hidden" name="genre" value="<%= filters.genre || '' %>">

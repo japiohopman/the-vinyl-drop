@@ -1,4 +1,10 @@
 <div class="browse-page-container">
+  <% if (typeof responsiveDig === 'undefined' || !responsiveDig) { %>
+    <nav class="people-search-mode" aria-label="Search mode">
+      <a href="/browse" aria-current="page">Records</a>
+      <a href="/people">People</a>
+    </nav>
+  <% } %>
   <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
     <div class="alert alert-error" style="padding: var(--space-4); margin-bottom: var(--space-6); background: var(--color-error-bg); border: var(--border-thick) var(--color-error-border); border-radius: var(--radius-sm); color: var(--color-error-border); font-family: var(--font-body);">
       <%= errorMessage %>

@@ -4,6 +4,7 @@ import {
   createInMemoryRateLimitStoreForTests,
   createRateLimitMiddleware,
   getRateLimitClientIp,
+  rateLimits,
   RateLimitRule,
   setRateLimitStoreForTests,
 } from '../src/app/services/rateLimitService';
@@ -60,6 +61,30 @@ describe('shared rate-limit middleware', () => {
     expect(third.status).toBe(429);
     expect(third.headers['retry-after']).toBeDefined();
     expect(third.text).toContain('Too many requests');
+  });
+
+  it('keeps People page, People suggestions and catalogue suggestion quotas independent', async () => {
+    const app = express();
+    app.get('/people', rateLimits.peoplePage, (_req, res) => res.status(200).send('people'));
+    app.get('/people-suggestions', rateLimits.peopleSuggestion, (_req, res) => res.status(200).send('people suggestions'));
+    app.get('/catalogue-suggestions', rateLimits.catalogueSuggestion, (_req, res) => res.status(200).send('catalogue suggestions'));
+
+    for (let attempt = 0; attempt < 31; attempt += 1) {
+      const response = await request(app).get('/people-suggestions');
+      expect(response.status).toBe(attempt < 30 ? 200 : 429);
+    }
+
+    expect((await request(app).get('/people')).status).toBe(200);
+    expect((await request(app).get('/catalogue-suggestions')).status).toBe(200);
+
+    setRateLimitStoreForTests(createInMemoryRateLimitStoreForTests());
+    for (let attempt = 0; attempt < 31; attempt += 1) {
+      const response = await request(app).get('/people');
+      expect(response.status).toBe(attempt < 30 ? 200 : 429);
+    }
+
+    expect((await request(app).get('/people-suggestions')).status).toBe(200);
+    expect((await request(app).get('/catalogue-suggestions')).status).toBe(200);
   });
 
   it('uses a new fixed window after the previous window expires', async () => {

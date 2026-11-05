@@ -28,6 +28,7 @@ The central screenshot register and visual update process live in [`docs/verific
 | Home / discovery feed | `GET /` | `homeController.getHomePage` | `views/home/index.ejs` | Public; recent published listings and the Home empty state. |
 | Browse | `GET /browse` | `browseController.getBrowsePage` | `views/browse/index.ejs` | Public; desktop browse list/grid, filters, results and no-results state. |
 | Search results | `GET /search` | `browseController.getSearchPage` → `getBrowsePage` | `views/browse/index.ejs` | Public; same Browse surface with search parameters, not a separate `views/search/` template. |
+| People search | `GET /people` | `peopleSearchController.getPeopleSearchPage` | `views/people/index.ejs` | Public; searches public usernames and display names only, with bounded results and links to existing public profiles. |
 | Dig (responsive) | `GET /dig` | `browseController.getResponsiveDigPage` | `views/browse/responsive-dig.ejs` | Public; desktop grid/list and mobile crate/deck interaction share one route and normalized search/filter state. |
 | Dig (alternate template route) | `GET /browse/dig` | `browseController.getDigBrowsePage` | `views/browse/dig.ejs` | Public; separate Dig template route retained in route registration. Do not assume it is an alias for `/dig`. |
 | Activity | `GET /activity` | `activityController.getActivityPage` | `views/activity/index.ejs` | Public; populated and empty feed states. On feed-load failure the same view is rendered with a safe inline error at HTTP 500. |
@@ -91,6 +92,7 @@ These endpoints are part of the route contract but are **not screenshot surfaces
 | Endpoint | Method | Response / visual relationship |
 | --- | --- | --- |
 | `/api/catalogue-suggestions` | GET | JSON autocomplete suggestions; used inside release/search forms. |
+| `/api/people-suggestions` | GET | Bounded JSON suggestions using only public username, display name and avatar URL fields. |
 | `/releases/lookup-metadata` | GET | Authenticated Discogs lookup JSON; used within the release form. |
 | `/messages/widget/unread-count`, `/messages/widget/data`, `/messages/widget/:conversationId` | GET | Authenticated, feature-gated JSON for the embedded messaging widget. |
 | `/health` | GET | JSON health response; operational endpoint, not a visual screen. |
@@ -156,6 +158,8 @@ views/
   messages/
     index.ejs
     show.ejs
+  people/
+    index.ejs
   profiles/
     crate.ejs
     edit.ejs
