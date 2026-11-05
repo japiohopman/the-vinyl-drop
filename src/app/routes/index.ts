@@ -25,7 +25,7 @@ router.get('/browse', getBrowsePage);
 router.get('/search', getSearchPage);
 router.get('/api/catalogue-suggestions', rateLimits.catalogueSuggestion, getCatalogueSuggestions);
 router.get('/api/people-suggestions', rateLimits.catalogueSuggestion, getPeopleSuggestions);
-router.get('/people', getPeopleSearchPage);
+router.get('/people', rateLimits.catalogueSuggestion, getPeopleSearchPage);
 router.get('/activity', getActivityPage);
 router.get('/contact', getContactPage);
 router.get('/install', getInstallPage);
