@@ -130,8 +130,19 @@ describe('People search browser experience — Issue #297', () => {
 
       const firstSuggestion = page.getByRole('link', { name: /Crate Queen @crate_queen/ });
       await firstSuggestion.waitFor({ state: 'visible', timeout: 5000 });
+      expect(await firstSuggestion.isVisible()).toBe(true);
+      expect(await input.getAttribute('aria-controls')).toBe('people-search-suggestions');
+      expect(await input.getAttribute('aria-describedby')).toBe('people-search-status');
+      expect(await input.getAttribute('aria-expanded')).toBe('true');
+      expect(await page.locator('#people-search-suggestions').getAttribute('aria-label')).toBe('People search suggestions');
+      expect(await page.locator('#people-search-status').getAttribute('role')).toBe('status');
+      expect(await page.locator('#people-search-status').getAttribute('aria-live')).toBe('polite');
       expect(suggestionRequests).toHaveLength(1);
       expect(new URL(suggestionRequests[0]).searchParams.get('q')).toBe('ﬀ');
+      await input.press('Escape');
+      expect(await input.getAttribute('aria-expanded')).toBe('false');
+      expect(await page.locator('#people-search-suggestions').isHidden()).toBe(true);
+      expect(await page.locator('#people-search-status').textContent()).toBe('Suggestions closed.');
     } finally {
       await context.close();
     }
