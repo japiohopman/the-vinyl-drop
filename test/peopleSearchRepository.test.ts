@@ -44,6 +44,15 @@ describe('public people search repository', () => {
       );
     }
 
+    await pg.query(
+      'INSERT INTO public.profiles (id, username, display_name) VALUES ($1, $2, $3)',
+      ['10000000-0000-4000-8000-000000000030', 'unicode_fullwidth', 'Ｃａｔａｌｏｇｕｅ fan']
+    );
+    await pg.query(
+      'INSERT INTO public.profiles (id, username, display_name) VALUES ($1, $2, $3)',
+      ['10000000-0000-4000-8000-000000000031', 'unicode_decomposed', 'Cafe\u0301 collector']
+    );
+
     db = drizzle(pg) as unknown as ReturnType<typeof getDb>;
   });
 
@@ -67,6 +76,25 @@ describe('public people search repository', () => {
 
     expect(exact.items[0]?.username).toBe('CrateKing');
     expect(displayName.items.some((person) => person.username === 'recordfan')).toBe(true);
+  });
+
+  it('matches NFKC compatibility forms and decomposed stored display names', async () => {
+    const compatibility = await searchPublicPeople('catalogue', { limit: 20, offset: 0 }, db);
+    const decomposedAccent = await searchPublicPeople('café', { limit: 20, offset: 0 }, db);
+
+    expect(compatibility.items.some((person) => person.username === 'unicode_fullwidth')).toBe(true);
+    expect(decomposedAccent.items.some((person) => person.username === 'unicode_decomposed')).toBe(true);
+  });
+
+  it('skips the total-count query for bounded live suggestions', async () => {
+    const suggestions = await searchPublicPeople(
+      'crate',
+      { limit: 8, offset: 0, includeTotalCount: false },
+      db
+    );
+
+    expect(suggestions.items).toHaveLength(8);
+    expect(suggestions.totalCount).toBeUndefined();
   });
 
   it('returns no rows for an unmatched query', async () => {
@@ -100,10 +128,30 @@ describe('public people search repository', () => {
     const lastAllowedPage = await searchPeople('crate', 999, db);
 
     expect(firstPage.items).toHaveLength(12);
-    expect(firstPage.totalCount).toBe(27);
+    expect(firstPage.totalCount).toBe(28);
     expect(firstPage.page).toBe(1);
     expect(firstPage.totalPages).toBe(3);
     expect(lastAllowedPage.page).toBe(3);
     expect(lastAllowedPage.items).toHaveLength(4);
+  });
+
+  it('caps results at page 20 when more than 240 profiles match', async () => {
+    for (let index = 300; index <= 550; index += 1) {
+      await pg.query(
+        'INSERT INTO public.profiles (id, username, display_name) VALUES ($1, $2, $3)',
+        [
+          '10000000-0000-4000-8000-' + String(index).padStart(12, '0'),
+          'bulk_member_' + index,
+          'Bulk member ' + index,
+        ]
+      );
+    }
+
+    const lastAllowedPage = await searchPeople('bulk', 999, db);
+
+    expect(lastAllowedPage.page).toBe(20);
+    expect(lastAllowedPage.totalPages).toBe(20);
+    expect(lastAllowedPage.hasMore).toBe(true);
+    expect(lastAllowedPage.items).toHaveLength(12);
   });
 });
