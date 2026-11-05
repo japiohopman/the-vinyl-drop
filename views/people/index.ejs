@@ -39,12 +39,12 @@
   <section class="people-search-results" aria-labelledby="people-results-title">
     <div class="people-search-results-heading">
       <h2 id="people-results-title">People</h2>
-      <% if (query && query.length >= 2 && pagination && pagination.totalCount > 0) { %>
+      <% if (searchable && pagination && pagination.totalCount > 0) { %>
         <p><%= pagination.totalCount %> <%= pagination.totalCount === 1 ? 'match' : 'matches' %></p>
       <% } %>
     </div>
 
-    <% if (!query || query.length < 2) { %>
+    <% if (!searchable) { %>
       <p class="people-search-empty">Enter at least two characters to search public profiles.</p>
     <% } else if (!people || people.length === 0) { %>
       <p class="people-search-empty">No public profiles matched “<%= query %>”. Try a username or a different name.</p>
