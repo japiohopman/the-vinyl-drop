@@ -14,6 +14,11 @@
   const MIN_QUERY_LENGTH = 2;
   let debounceHandle = 0;
   let activeRequest = null;
+  let suggestionsDismissed = false;
+
+  function normalizePeopleQuery(value) {
+    return value.normalize('NFKC').trim();
+  }
 
   function suggestionLinks() {
     return Array.from(suggestions.querySelectorAll('a'));
@@ -80,7 +85,7 @@
 
       if (!response.ok) throw new Error('People suggestions request failed.');
       const data = await response.json();
-      if (input.value.trim() !== query) return;
+      if (suggestionsDismissed || normalizePeopleQuery(input.value) !== normalizePeopleQuery(query)) return;
 
       renderSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
     } catch (error) {
@@ -93,11 +98,14 @@
   input.addEventListener('input', () => {
     window.clearTimeout(debounceHandle);
     if (activeRequest) activeRequest.abort();
+    activeRequest = null;
+    suggestionsDismissed = false;
 
     const query = input.value.trim();
+    const normalizedQuery = normalizePeopleQuery(query);
     hideSuggestions();
 
-    if (Array.from(query).length < MIN_QUERY_LENGTH) {
+    if (Array.from(normalizedQuery).length < MIN_QUERY_LENGTH) {
       status.textContent = query
         ? 'Enter at least two characters to search.'
         : 'Search by public username or display name.';
@@ -111,6 +119,8 @@
   });
 
   input.addEventListener('keydown', (event) => {
+    if (event.isComposing || event.keyCode === 229) return;
+
     if (event.key === 'Escape' && !suggestions.hidden) {
       event.preventDefault();
       hideSuggestions();
@@ -148,11 +158,16 @@
 
   document.addEventListener('pointerdown', (event) => {
     if (!(event.target instanceof Node) || form.contains(event.target)) return;
+    suggestionsDismissed = true;
     hideSuggestions();
+    window.clearTimeout(debounceHandle);
+    if (activeRequest) activeRequest.abort();
+    activeRequest = null;
   });
 
   form.addEventListener('submit', () => {
     window.clearTimeout(debounceHandle);
     if (activeRequest) activeRequest.abort();
+    activeRequest = null;
   });
 })();
