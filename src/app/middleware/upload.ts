@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import Busboy from '@fastify/busboy';
 import { ValidationError } from '../services/errors';
+import { MAX_PHOTOS_PER_LISTING } from '../../domain/listingPhotoLimits';
+
+export { MAX_PHOTOS_PER_LISTING } from '../../domain/listingPhotoLimits';
 
 export interface UploadedFile {
   fieldname: string;
@@ -20,7 +23,6 @@ declare global {
 }
 
 export const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-export const MAX_PHOTOS_PER_LISTING = 5;
 export const MAX_FIELD_SIZE_BYTES = 10 * 1024; // 10 KB per text field
 
 /**

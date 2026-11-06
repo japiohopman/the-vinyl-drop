@@ -10,8 +10,8 @@ export const usernameSchema = z
   });
 
 export const registrationConsentSchema = z.object({
-  termsAccepted: z.literal('true', { errorMap: () => ({ message: 'You must accept the Terms of Use to create an account.' }) }),
-  ageConfirmed: z.literal('true', { errorMap: () => ({ message: 'You must confirm that you are at least 18 years old.' }) }),
+  termsAccepted: z.literal('true', { error: () => 'You must accept the Terms of Use to create an account.' }),
+  ageConfirmed: z.literal('true', { error: () => 'You must confirm that you are at least 18 years old.' }),
 });
 
 export const signUpSchema = z.object({
@@ -41,10 +41,7 @@ export const resetPasswordSchema = z
   .object({
     password: z.string().min(8, { message: 'Password must be at least 8 characters long' }),
     confirmPassword: z
-      .string({
-        required_error: 'Please confirm your new password',
-        invalid_type_error: 'Please confirm your new password',
-      })
+      .string({ error: 'Please confirm your new password' })
       .min(1, { message: 'Please confirm your new password' }),
   })
   .refine((data) => data.password === data.confirmPassword, {

@@ -3,6 +3,7 @@ import { getDb } from '../../db';
 import { ListingStatus } from '../../db/schema/enums';
 import { ListingPhoto } from '../../db/schema/listingPhotos';
 import { ListingPhotoRole } from '../../domain/listingPhotoRole';
+import { MAX_PHOTOS_PER_LISTING } from '../../domain/listingPhotoLimits';
 import type { ListingPhotoEditorState } from '../../domain/listingPhotoEditor';
 import { listingPhotoEditorStateSchema } from '../../validators/listingPhotoEditor';
 import { resolveDigArtwork, DigArtworkFace } from '../../domain/digExperience';
@@ -623,8 +624,8 @@ export async function addPhotoToListing(
   }
 
   const existingPhotoCount = await countPhotosByListingId(listingId, dbOverride);
-  if (existingPhotoCount >= 5) {
-    throw new ValidationError('Maximum photo limit (5 photos per listing) reached');
+  if (existingPhotoCount >= MAX_PHOTOS_PER_LISTING) {
+    throw new ValidationError(`Maximum photo limit (${MAX_PHOTOS_PER_LISTING} photos per listing) reached`);
   }
 
   const roleResult = newListingPhotoRoleSchema.safeParse(roleInput);

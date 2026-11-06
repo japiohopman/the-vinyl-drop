@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isKnownGenreInput, resolveCountry } from '../domain/releaseMetadata';
+import { VINYL_FORMAT_FILTERS } from '../domain/releaseFormat';
 
 export const releaseSchema = z.object({
   artist: z.string().trim().min(1, 'Artist is required'),
@@ -14,7 +15,9 @@ export const releaseSchema = z.object({
     .optional(),
   country: z.string().trim().optional(),
   format: z.string().trim().optional(),
-  formatCharacteristics: z.array(z.enum(['lp', '12-inch', '7-inch'])).optional(),
+  formatCharacteristics: z.array(z.enum(['lp', '12-inch', '7-inch'])).max(VINYL_FORMAT_FILTERS.length, {
+    error: `A release can have at most ${VINYL_FORMAT_FILTERS.length} format characteristics.`,
+  }).optional(),
   barcode: z.string().trim().optional(),
   genre: z.string().trim().optional(),
   coverArtUrl: z.string().trim().optional(),

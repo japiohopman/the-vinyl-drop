@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { RELEASE_GENRES } from '../../../domain/releaseMetadata';
+import { VINYL_FORMAT_FILTERS } from '../../../domain/releaseFormat';
 
 /**
  * Input evidence for identifying vinyl release candidates
@@ -46,14 +48,14 @@ export const candidateReleaseSchema = z.object({
   country: z.string().trim().optional(),
   countryCode: z.string().trim().regex(/^[A-Z]{2}$/).optional(),
   format: z.string().trim().optional(),
-  formatCharacteristics: z.array(z.enum(['lp', '12-inch', '7-inch'])).optional(),
+  formatCharacteristics: z.array(z.enum(['lp', '12-inch', '7-inch'])).max(VINYL_FORMAT_FILTERS.length).optional(),
   barcode: z.string().trim().optional(),
   genre: z.string().trim().optional(),
-  canonicalGenres: z.array(z.string()).optional(),
+  canonicalGenres: z.array(z.string()).max(RELEASE_GENRES.length).optional(),
   coverArtUrl: z.string().trim().optional(),
   sourceUrl: z.string().trim().optional(),
   matchScore: z.number().min(0).max(100).default(0),
-  matchedEvidence: z.array(z.string()).default([]),
+  matchedEvidence: z.array(z.string()).max(8).default([]),
   provenance: candidateProvenanceSchema,
 });
 

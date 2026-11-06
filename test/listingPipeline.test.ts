@@ -780,7 +780,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
           buffer: sampleImage,
           mimetype: 'image/jpeg',
         })
-      ).rejects.toThrow(ValidationError);
+      ).rejects.toThrow('Maximum photo limit (5 photos per listing) reached');
     });
 
     it('should enforce seller ownership for photo operations and state transitions', async () => {

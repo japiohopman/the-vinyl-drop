@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { conditionGradeSchema, listingStatusSchema } from './condition';
 import { LISTING_PHOTO_ROLES, NEW_LISTING_PHOTO_ROLES } from '../domain/listingPhotoRole';
+import { MAX_PHOTOS_PER_LISTING } from '../domain/listingPhotoLimits';
 
 export function parsePriceEurToCents(val?: string | number | null): number | null {
   if (val === undefined || val === null || val === '') {
@@ -20,7 +21,7 @@ export const listingSchema = z.object({
   physicalCopyId: z.string().uuid('Invalid physical copy ID'),
   sellerId: z.string().uuid('Invalid seller ID'),
   price: z
-    .number({ invalid_type_error: 'Price must be a valid number in minor currency units' })
+    .number({ error: 'Price must be a valid number in minor currency units' })
     .int('Price must be an integer (minor currency units)')
     .min(0, 'Price must be non-negative')
     .nullable()
@@ -34,14 +35,14 @@ export const listingSchema = z.object({
 export const createListingSchema = listingSchema.extend({
   status: z
     .literal('draft', {
-      errorMap: () => ({ message: 'New listings must be created in draft status' }),
+      error: () => 'New listings must be created in draft status',
     })
     .default('draft'),
 });
 
 export const updateListingSchema = z.object({
   price: z
-    .number({ invalid_type_error: 'Price must be a valid number in minor currency units' })
+    .number({ error: 'Price must be a valid number in minor currency units' })
     .int('Price must be an integer (minor currency units)')
     .min(0, 'Price must be non-negative')
     .nullable()
@@ -73,7 +74,9 @@ export const createListingFromReleaseSchema = z.object({
 });
 
 export const reorderPhotosSchema = z.object({
-  photoIds: z.array(z.string().uuid('Invalid photo ID')),
+  photoIds: z.array(z.string().uuid('Invalid photo ID')).max(MAX_PHOTOS_PER_LISTING, {
+    error: `A listing can contain at most ${MAX_PHOTOS_PER_LISTING} photos.`,
+  }),
 });
 
 export type ListingInput = z.input<typeof listingSchema>;
