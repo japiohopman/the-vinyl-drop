@@ -31,123 +31,123 @@ export const MAX_FIELD_SIZE_BYTES = 10 * 1024; // 10 KB per text field
  */
 function createMultipartUploadHandler(maxFiles: number, filesLimitMessage: string) {
   return (req: Request, res: Response, next: NextFunction): void => {
-  const contentType = req.headers['content-type'] || '';
-  if (!contentType.includes('multipart/form-data')) {
-    return next();
-  }
-
-  let busboy: InstanceType<typeof Busboy>;
-  try {
-    busboy = new Busboy({
-      headers: {
-        ...req.headers,
-        'content-type': contentType,
-      },
-      limits: {
-        fileSize: MAX_FILE_SIZE_BYTES,
-        files: maxFiles,
-        fieldSize: MAX_FIELD_SIZE_BYTES,
-        fields: 20,
-        parts: 30,
-      },
-    });
-  } catch (err) {
-    console.error('Busboy initialization error:', err);
-    res.status(400);
-    return next(new ValidationError('Invalid multipart upload request.'));
-  }
-
-  const files: UploadedFile[] = [];
-  const fields: Record<string, string | string[]> = {};
-  let limitExceededReason: string | null = null;
-  let hasError = false;
-
-  busboy.on('filesLimit', () => {
-    limitExceededReason = filesLimitMessage;
-  });
-
-  busboy.on('fieldsLimit', () => {
-    limitExceededReason = 'Maximum form field count limit exceeded';
-  });
-
-  busboy.on('fieldSizeLimit', () => {
-    limitExceededReason = `Form field size exceeds maximum limit of ${MAX_FIELD_SIZE_BYTES / 1024}KB`;
-  });
-
-  busboy.on('partsLimit', () => {
-    limitExceededReason = 'Maximum multipart request parts limit exceeded';
-  });
-
-  busboy.on('field', (fieldname: string, val: string, nameTruncated?: boolean, valTruncated?: boolean) => {
-    if (nameTruncated || valTruncated) {
-      limitExceededReason = `Form field '${fieldname}' size exceeds maximum limit of ${MAX_FIELD_SIZE_BYTES / 1024}KB`;
-      return;
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return next();
     }
 
-    if (fields[fieldname]) {
-      if (Array.isArray(fields[fieldname])) {
-        (fields[fieldname] as string[]).push(val);
-      } else {
-        fields[fieldname] = [fields[fieldname] as string, val];
-      }
-    } else {
-      fields[fieldname] = val;
-    }
-  });
-
-  busboy.on('file', (fieldname: string, fileStream: NodeJS.ReadableStream, filename: string, encoding: string, mimetype: string) => {
-    const chunks: Buffer[] = [];
-    let fileSizeBytes = 0;
-
-    fileStream.on('data', (chunk: Buffer) => {
-      fileSizeBytes += chunk.length;
-      if (fileSizeBytes > MAX_FILE_SIZE_BYTES) {
-        limitExceededReason = `File upload size exceeds maximum limit of ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB`;
-        fileStream.resume(); // Drain stream
-      } else {
-        chunks.push(chunk);
-      }
-    });
-
-    fileStream.on('limit', () => {
-      limitExceededReason = `File upload size exceeds maximum limit of ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB`;
-    });
-
-    fileStream.on('end', () => {
-      if (!limitExceededReason && filename && filename.trim().length > 0) {
-        files.push({
-          fieldname,
-          filename,
-          encoding,
-          mimetype,
-          buffer: Buffer.concat(chunks),
-        });
-      }
-    });
-  });
-
-  busboy.on('finish', () => {
-    if (hasError) return;
-
-    if (limitExceededReason) {
+    let busboy: InstanceType<typeof Busboy>;
+    try {
+      busboy = new Busboy({
+        headers: {
+          ...req.headers,
+          'content-type': contentType,
+        },
+        limits: {
+          fileSize: MAX_FILE_SIZE_BYTES,
+          files: maxFiles,
+          fieldSize: MAX_FIELD_SIZE_BYTES,
+          fields: 20,
+          parts: 30,
+        },
+      });
+    } catch (err) {
+      console.error('Busboy initialization error:', err);
       res.status(400);
-      return next(new ValidationError(limitExceededReason));
+      return next(new ValidationError('Invalid multipart upload request.'));
     }
 
-    req.body = { ...req.body, ...fields };
-    req.files = files;
-    next();
-  });
+    const files: UploadedFile[] = [];
+    const fields: Record<string, string | string[]> = {};
+    let limitExceededReason: string | null = null;
+    let hasError = false;
 
-  busboy.on('error', (err: Error) => {
-    if (hasError) return;
-    hasError = true;
-    console.error('Busboy parse error:', err);
-    res.status(400);
-    return next(new ValidationError('Malformed multipart upload request.'));
-  });
+    busboy.on('filesLimit', () => {
+      limitExceededReason = filesLimitMessage;
+    });
 
-  req.pipe(busboy);
+    busboy.on('fieldsLimit', () => {
+      limitExceededReason = 'Maximum form field count limit exceeded';
+    });
+
+    busboy.on('fieldSizeLimit', () => {
+      limitExceededReason = `Form field size exceeds maximum limit of ${MAX_FIELD_SIZE_BYTES / 1024}KB`;
+    });
+
+    busboy.on('partsLimit', () => {
+      limitExceededReason = 'Maximum multipart request parts limit exceeded';
+    });
+
+    busboy.on('field', (fieldname: string, val: string, nameTruncated?: boolean, valTruncated?: boolean) => {
+      if (nameTruncated || valTruncated) {
+        limitExceededReason = `Form field '${fieldname}' size exceeds maximum limit of ${MAX_FIELD_SIZE_BYTES / 1024}KB`;
+        return;
+      }
+
+      if (fields[fieldname]) {
+        if (Array.isArray(fields[fieldname])) {
+          (fields[fieldname] as string[]).push(val);
+        } else {
+          fields[fieldname] = [fields[fieldname] as string, val];
+        }
+      } else {
+        fields[fieldname] = val;
+      }
+    });
+
+    busboy.on('file', (fieldname: string, fileStream: NodeJS.ReadableStream, filename: string, encoding: string, mimetype: string) => {
+      const chunks: Buffer[] = [];
+      let fileSizeBytes = 0;
+
+      fileStream.on('data', (chunk: Buffer) => {
+        fileSizeBytes += chunk.length;
+        if (fileSizeBytes > MAX_FILE_SIZE_BYTES) {
+          limitExceededReason = `File upload size exceeds maximum limit of ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB`;
+          fileStream.resume(); // Drain stream
+        } else {
+          chunks.push(chunk);
+        }
+      });
+
+      fileStream.on('limit', () => {
+        limitExceededReason = `File upload size exceeds maximum limit of ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB`;
+      });
+
+      fileStream.on('end', () => {
+        if (!limitExceededReason && filename && filename.trim().length > 0) {
+          files.push({
+            fieldname,
+            filename,
+            encoding,
+            mimetype,
+            buffer: Buffer.concat(chunks),
+          });
+        }
+      });
+    });
+
+    busboy.on('finish', () => {
+      if (hasError) return;
+
+      if (limitExceededReason) {
+        res.status(400);
+        return next(new ValidationError(limitExceededReason));
+      }
+
+      req.body = { ...req.body, ...fields };
+      req.files = files;
+      next();
+    });
+
+    busboy.on('error', (err: Error) => {
+      if (hasError) return;
+      hasError = true;
+      console.error('Busboy parse error:', err);
+      res.status(400);
+      return next(new ValidationError('Malformed multipart upload request.'));
+    });
+
+    req.pipe(busboy);
   };
 }
 
