@@ -2,35 +2,72 @@ import { randomBytes } from 'crypto';
 import postgres from 'postgres';
 import {
   decrementRateLimitBucketWithClient,
-  getSafeRateLimitDatabaseErrorCode,
+  getSafeRateLimitCleanupFailureCategory,
   incrementRateLimitBucketWithClient,
   pruneExpiredRateLimitBucketsWithClient,
   RateLimitBucket,
 } from '../src/app/services/rateLimitService';
 
 describe('shared rate-limit cleanup error classification', () => {
-  it('exposes only a PostgreSQL SQLSTATE code and never a raw error message', () => {
-    expect(getSafeRateLimitDatabaseErrorCode({
+  it('exposes only allowlisted PostgreSQL SQLSTATE codes and never raw error details', () => {
+    expect(getSafeRateLimitCleanupFailureCategory({
       code: '42501',
       message: 'sensitive connection or query detail',
-    })).toBe('42501');
+    })).toBe('postgres_sqlstate:42501');
 
-    expect(getSafeRateLimitDatabaseErrorCode({
-      code: 'ECONNRESET',
-      message: 'sensitive connection detail',
-    })).toBe('unclassified');
-
-    expect(getSafeRateLimitDatabaseErrorCode(
+    expect(getSafeRateLimitCleanupFailureCategory(
       new Error('sensitive driver message')
     )).toBe('unclassified');
 
-    expect(getSafeRateLimitDatabaseErrorCode({
+    expect(getSafeRateLimitCleanupFailureCategory({
       code: 'abcde',
     })).toBe('unclassified');
 
-    expect(getSafeRateLimitDatabaseErrorCode({
+    expect(getSafeRateLimitCleanupFailureCategory({
       code: '4250\n',
     })).toBe('unclassified');
+  });
+
+  it('classifies known Postgres.js connection failures without exposing arbitrary codes', () => {
+    expect(getSafeRateLimitCleanupFailureCategory({
+      code: 'CONNECTION_CLOSED',
+      message: 'host:port and other sensitive connection detail',
+    })).toBe('postgres_js:CONNECTION_CLOSED');
+
+    expect(getSafeRateLimitCleanupFailureCategory({
+      code: 'CONNECT_TIMEOUT',
+      message: 'sensitive connection detail',
+    })).toBe('postgres_js:CONNECT_TIMEOUT');
+
+    expect(getSafeRateLimitCleanupFailureCategory({
+      code: 'UNDEFINED_VALUE',
+      message: 'sensitive query detail',
+    })).toBe('postgres_js:UNDEFINED_VALUE');
+
+    expect(getSafeRateLimitCleanupFailureCategory({
+      code: 'ECONNRESET',
+      message: 'sensitive socket detail',
+    })).toBe('node_network:ECONNRESET');
+
+    expect(getSafeRateLimitCleanupFailureCategory({
+      code: 'EPIPE',
+      message: 'sensitive broken-pipe detail',
+    })).toBe('node_network:EPIPE');
+
+    expect(getSafeRateLimitCleanupFailureCategory({
+      code: 'PRIVATE_DRIVER_ERROR',
+      message: 'this value must never be logged',
+    })).toBe('unclassified');
+  });
+
+  it('fails closed when a code property accessor throws', () => {
+    const malformedError = Object.defineProperty({}, 'code', {
+      get() {
+        throw new Error('sensitive accessor detail');
+      },
+    });
+
+    expect(getSafeRateLimitCleanupFailureCategory(malformedError)).toBe('unclassified');
   });
 });
 
