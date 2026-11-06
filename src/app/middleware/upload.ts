@@ -29,7 +29,8 @@ export const MAX_FIELD_SIZE_BYTES = 10 * 1024; // 10 KB per text field
  * Express middleware that safely streams multipart/form-data using @fastify/busboy.
  * Enforces file size, file count, field size, total parts, and populates req.body and req.files.
  */
-export function multipartUploadHandler(req: Request, res: Response, next: NextFunction): void {
+function createMultipartUploadHandler(maxFiles: number, filesLimitMessage: string) {
+  return (req: Request, res: Response, next: NextFunction): void => {
   const contentType = req.headers['content-type'] || '';
   if (!contentType.includes('multipart/form-data')) {
     return next();
@@ -44,7 +45,7 @@ export function multipartUploadHandler(req: Request, res: Response, next: NextFu
       },
       limits: {
         fileSize: MAX_FILE_SIZE_BYTES,
-        files: MAX_PHOTOS_PER_LISTING,
+        files: maxFiles,
         fieldSize: MAX_FIELD_SIZE_BYTES,
         fields: 20,
         parts: 30,
@@ -62,7 +63,7 @@ export function multipartUploadHandler(req: Request, res: Response, next: NextFu
   let hasError = false;
 
   busboy.on('filesLimit', () => {
-    limitExceededReason = `Maximum photo upload limit (${MAX_PHOTOS_PER_LISTING} photos per request) exceeded`;
+    limitExceededReason = filesLimitMessage;
   });
 
   busboy.on('fieldsLimit', () => {
@@ -147,4 +148,15 @@ export function multipartUploadHandler(req: Request, res: Response, next: NextFu
   });
 
   req.pipe(busboy);
+  };
 }
+
+export const multipartUploadHandler = createMultipartUploadHandler(
+  MAX_PHOTOS_PER_LISTING,
+  `Maximum photo upload limit (${MAX_PHOTOS_PER_LISTING} photos per request) exceeded`
+);
+
+export const singleFileMultipartUploadHandler = createMultipartUploadHandler(
+  1,
+  'Only one file is allowed per upload request.'
+);
