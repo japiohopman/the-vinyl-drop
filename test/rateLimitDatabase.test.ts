@@ -12,10 +12,22 @@ import {
 
 describe('shared rate-limit cleanup error classification', () => {
   it('exposes only allowlisted PostgreSQL SQLSTATE codes and never raw error details', () => {
-    expect(getSafeRateLimitCleanupFailureCategory({
+    const postgresError = new postgres.PostgresError({
       code: '42501',
       message: 'sensitive connection or query detail',
-    })).toBe('postgres_sqlstate:42501');
+    } as unknown as string);
+
+    expect(getSafeRateLimitCleanupFailureCategory(postgresError)).toBe('postgres_sqlstate:42501');
+
+    expect(getSafeRateLimitCleanupFailureCategory({
+      code: '42501',
+      message: 'arbitrary object with a SQLSTATE-shaped code',
+    })).toBe('unclassified');
+
+    expect(getSafeRateLimitCleanupFailureCategory({
+      code: 'TOKEN',
+      message: 'arbitrary five-character code',
+    })).toBe('unclassified');
 
     expect(getSafeRateLimitCleanupFailureCategory(
       new Error('sensitive driver message')
@@ -105,7 +117,10 @@ describe('shared rate-limit cleanup error classification', () => {
   it('classifies an allowlisted code no deeper than the second nested cause', () => {
     const error = new Error('sensitive outer detail', {
       cause: new Error('sensitive middle detail', {
-        cause: { code: '42501', message: 'sensitive database detail' },
+        cause: new postgres.PostgresError({
+          code: '42501',
+          message: 'sensitive database detail',
+        } as unknown as string),
       }),
     });
 
