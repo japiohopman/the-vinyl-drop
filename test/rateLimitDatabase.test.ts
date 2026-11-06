@@ -3,6 +3,7 @@ import postgres from 'postgres';
 import {
   decrementRateLimitBucketWithClient,
   getSafeRateLimitCleanupFailureCategory,
+  getSafeRateLimitCleanupFailureDiagnostics,
   incrementRateLimitBucketWithClient,
   pruneExpiredRateLimitBucketsWithClient,
   RateLimitBucket,
@@ -68,6 +69,88 @@ describe('shared rate-limit cleanup error classification', () => {
     });
 
     expect(getSafeRateLimitCleanupFailureCategory(malformedError)).toBe('unclassified');
+    expect(getSafeRateLimitCleanupFailureDiagnostics(malformedError)).toEqual({
+      failureCategory: 'unclassified',
+      failureType: 'other_object',
+      codeSource: 'unreadable',
+      codeState: 'unreadable',
+    });
+  });
+
+  it('records only a fixed built-in error type when no code is present', () => {
+    expect(getSafeRateLimitCleanupFailureDiagnostics(
+      new TypeError('sensitive driver detail')
+    )).toEqual({
+      failureCategory: 'unclassified',
+      failureType: 'type_error',
+      codeSource: 'none',
+      codeState: 'missing',
+    });
+  });
+
+  it('classifies an allowlisted code on the first nested cause', () => {
+    const error = new Error('sensitive outer detail', {
+      cause: Object.assign(new Error('sensitive inner detail'), { code: 'ECONNRESET' }),
+    });
+
+    expect(getSafeRateLimitCleanupFailureDiagnostics(error)).toEqual({
+      failureCategory: 'node_network:ECONNRESET',
+      failureType: 'error',
+      codeSource: 'cause_1',
+      codeState: 'recognized',
+    });
+  });
+
+  it('classifies an allowlisted code no deeper than the second nested cause', () => {
+    const error = new Error('sensitive outer detail', {
+      cause: new Error('sensitive middle detail', {
+        cause: { code: '42501', message: 'sensitive database detail' },
+      }),
+    });
+
+    expect(getSafeRateLimitCleanupFailureDiagnostics(error)).toEqual({
+      failureCategory: 'postgres_sqlstate:42501',
+      failureType: 'error',
+      codeSource: 'cause_2',
+      codeState: 'recognized',
+    });
+  });
+
+  it('does not expose arbitrary nested codes or messages', () => {
+    const error = new Error('sensitive outer detail', {
+      cause: { code: 'PRIVATE_DRIVER_ERROR', message: 'must never be logged' },
+    });
+
+    expect(getSafeRateLimitCleanupFailureDiagnostics(error)).toEqual({
+      failureCategory: 'unclassified',
+      failureType: 'error',
+      codeSource: 'cause_1',
+      codeState: 'unknown_string',
+    });
+  });
+
+  it('handles a throwing cause accessor and cyclic causes without throwing', () => {
+    const unreadableCause = Object.defineProperty({}, 'cause', {
+      get() {
+        throw new Error('sensitive cause detail');
+      },
+    });
+
+    expect(getSafeRateLimitCleanupFailureDiagnostics(unreadableCause)).toEqual({
+      failureCategory: 'unclassified',
+      failureType: 'other_object',
+      codeSource: 'unreadable',
+      codeState: 'unreadable',
+    });
+
+    const cyclicError: { cause?: unknown } = {};
+    cyclicError.cause = cyclicError;
+    expect(getSafeRateLimitCleanupFailureDiagnostics(cyclicError)).toEqual({
+      failureCategory: 'unclassified',
+      failureType: 'other_object',
+      codeSource: 'none',
+      codeState: 'missing',
+    });
   });
 });
 
