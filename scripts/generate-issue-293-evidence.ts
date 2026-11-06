@@ -70,7 +70,6 @@ async function renderBrowse(baseUrl: string, view: 'grid' | 'list' = 'grid'): Pr
     '<main class="main-content container">' + body + '</main></body></html>';
 }
 
-
 type LocationLayout = {
   text: string;
   clientWidth: number;
@@ -402,7 +401,7 @@ async function run(): Promise<void> {
       }
     }
 
-    assert.equal(failures.length, 0, failures.join('\\n'));
+    assert.equal(failures.length, 0, failures.join('\n'));
     console.log('[browse-evidence] Captured ' + viewports.length + ' Browse list-mode screenshots in ' + evidencePath);
 
     const digHtml = await renderDig(baseUrl);
