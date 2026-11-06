@@ -262,16 +262,26 @@ export async function processProfileAvatar(
         ? outputMetadata.loop === undefined
         : outputMetadata.loop === metadata.loop;
       const transparencyPreserved = !metadata.hasAlpha || outputMetadata.hasAlpha === true;
+      if (outputMetadata.format !== 'gif') {
+        throw new Error('The animated GIF output format could not be preserved.');
+      }
+      if (outputPages !== pages) {
+        throw new Error('The animated GIF frame count could not be preserved.');
+      }
+      if (!timingPreserved) {
+        throw new Error('The animated GIF frame timing could not be preserved.');
+      }
+      if (!loopPreserved) {
+        throw new Error('The animated GIF loop setting could not be preserved.');
+      }
+      if (!transparencyPreserved) {
+        throw new Error('The animated GIF transparency could not be preserved.');
+      }
       if (
-        outputMetadata.format !== 'gif' ||
-        outputPages !== pages ||
-        !timingPreserved ||
-        !loopPreserved ||
-        !transparencyPreserved ||
         outputMetadata.width > MAX_PROFILE_AVATAR_DIMENSION ||
         outputFrameHeight > MAX_PROFILE_AVATAR_DIMENSION
       ) {
-        throw new Error('The animated GIF could not preserve its frames, timing, loop and transparency.');
+        throw new Error('The processed animated GIF exceeds the maximum avatar dimensions.');
       }
     }
     if (!animated && outputMetadata.format !== 'webp') {
