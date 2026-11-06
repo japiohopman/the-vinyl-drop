@@ -240,6 +240,31 @@ async function run(): Promise<void> {
             viewport.width + 'px, got ' + cardColumns
         );
 
+        const locationLayouts = await page.locator('.listing-grid .listing-card-location').evaluateAll((elements) =>
+          elements.map((element) => {
+            const label = element.querySelector('.listing-card-location-name');
+            if (!(label instanceof HTMLElement)) {
+              return { text: '', clientWidth: 0, scrollWidth: Number.POSITIVE_INFINITY, clientHeight: 0, scrollHeight: Number.POSITIVE_INFINITY };
+            }
+            return {
+              text: label.textContent?.trim() || '',
+              clientWidth: label.clientWidth,
+              scrollWidth: label.scrollWidth,
+              clientHeight: label.clientHeight,
+              scrollHeight: label.scrollHeight,
+            };
+          })
+        );
+        assert.ok(locationLayouts.length > 0, 'Listing cards should expose seller locations at ' + viewport.width + 'px');
+        for (const location of locationLayouts) {
+          assert.ok(location.clientWidth > 0, 'Listing location has no visible width at ' + viewport.width + 'px');
+          assert.ok(
+            location.scrollWidth <= location.clientWidth + 1 &&
+              location.scrollHeight <= location.clientHeight + 1,
+            'Listing location text is clipped at ' + viewport.width + 'px: ' + location.text
+          );
+        }
+
         const screenshotPath = path.resolve(evidencePath, 'browse-' + viewport.width + 'px.png');
         await page.screenshot({ path: screenshotPath, fullPage: true, animations: 'disabled' });
         console.log('[browse-evidence] PASS Browse @ ' + viewport.width + 'px — ' +
