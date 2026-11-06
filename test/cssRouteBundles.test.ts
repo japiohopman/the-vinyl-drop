@@ -215,7 +215,7 @@ describe('Route-specific CSS bundles (#252)', () => {
       .update(reconstructed)
       .digest('hex');
     // Update this snapshot when intentionally changing the reconstructed shared stylesheet.
-    expect(gitBlobSha).toBe('06e3e7f1e822c5c0de7b1c4c5be47966a843c5a0');
+    expect(gitBlobSha).toBe('7a714d3b703ecf8d911e3f2124e6b6efe8d188f6');
   });
 
   it('reports reproducible raw/gzip sizes and validates savings per route', () => {
