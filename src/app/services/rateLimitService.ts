@@ -628,7 +628,7 @@ export const profileAvatarUploadRateLimit: RequestHandler = (req, res, next) => 
       const windowStartMs = Math.floor(nowMs / rule.windowMs) * rule.windowMs;
       const bucket: RateLimitBucket = {
         bucketKey: createHmac('sha256', config.RECOVERY_SIGNING_SECRET)
-          .update('the-vinyl-drop:profile-avatar-upload:v1\\u0000' + userId + '\\u0000' + rule.windowMs)
+          .update('the-vinyl-drop:profile-avatar-upload:v1\u0000' + userId + '\u0000' + rule.windowMs)
           .digest('hex'),
         windowStartMs,
         expiresAtMs: windowStartMs + rule.windowMs,
