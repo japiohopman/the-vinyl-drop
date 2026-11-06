@@ -101,11 +101,11 @@ export const demoListingFormSchema = z.object({
     .refine((val) => !val || !isNaN(Number(val)), 'Price must be a valid number')
     .refine((val) => !val || Number(val) >= 0, 'Price cannot be negative'),
   mediaCondition: z.enum(['M', 'NM', 'VG+', 'VG', 'VG-', 'G+', 'G', 'F', 'P'], {
-    errorMap: () => ({ message: 'Please select a valid media condition' }),
+    error: () => 'Please select a valid media condition',
   }),
   description: z.string().trim().max(500, 'Description cannot exceed 500 characters').optional(),
   acceptTerms: z.literal('on', {
-    errorMap: () => ({ message: 'You must confirm the listing accuracy' }),
+    error: () => 'You must confirm the listing accuracy',
   }),
 });
 
