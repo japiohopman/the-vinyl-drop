@@ -22,7 +22,7 @@ describe('production Storage policy preflight', () => {
 
   test('accepts the exact owner-scoped avatar insert/delete pair without changing listing policies', () => {
     const rows = validPolicyRows();
-    const ownerPredicate = "((bucket_id = 'profile-avatars') AND (storage.foldername(objects.name))[1] = 'profiles' AND (storage.foldername(objects.name))[2] = (SELECT auth.uid()::text))";
+    const ownerPredicate = "((bucket_id = 'profile-avatars'::text) AND (storage.foldername(objects.name))[1] = 'profiles'::text AND (storage.foldername(objects.name))[2] = (SELECT auth.uid()::text))";
     rows.push({
       policyname: 'profile-avatars-owner-insert',
       permissive: 'PERMISSIVE',
