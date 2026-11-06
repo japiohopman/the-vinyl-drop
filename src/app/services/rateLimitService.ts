@@ -205,18 +205,60 @@ async function decrementBucket(bucket: RateLimitBucket): Promise<void> {
 }
 
 /**
- * Expose only stable PostgreSQL SQLSTATE codes in operational logs. Never
- * forward driver messages, query text, connection details, or request data.
+ * Expose only allowlisted PostgreSQL, Postgres.js, and Node network error
+ * categories in operational logs. Never forward driver messages, query text,
+ * connection details, or request data.
  */
-export function getSafeRateLimitDatabaseErrorCode(error: unknown): string {
-  if (typeof error !== 'object' || error === null || !('code' in error)) {
+const SAFE_POSTGRES_JS_ERROR_CODES = new Set([
+  'CONNECTION_CLOSED',
+  'CONNECTION_ENDED',
+  'CONNECTION_DESTROYED',
+  'CONNECT_TIMEOUT',
+  'COPY_IN_PROGRESS',
+  'UNSAFE_TRANSACTION',
+  'UNDEFINED_VALUE',
+  'MESSAGE_NOT_SUPPORTED',
+  'MAX_PARAMETERS_EXCEEDED',
+  'SASL_SIGNATURE_MISMATCH',
+  'NOT_TAGGED_CALL',
+  'AUTH_TYPE_NOT_IMPLEMENTED',
+]);
+
+const SAFE_NODE_NETWORK_ERROR_CODES = new Set([
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'ECONNABORTED',
+  'ETIMEDOUT',
+  'EPIPE',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ENOTFOUND',
+]);
+
+export function getSafeRateLimitCleanupFailureCategory(error: unknown): string {
+  try {
+    if (typeof error !== 'object' || error === null || !('code' in error)) {
+      return 'unclassified';
+    }
+
+    const code = (error as { code?: unknown }).code;
+    if (typeof code !== 'string') return 'unclassified';
+
+    if (/^[0-9A-Z]{5}$/.test(code)) {
+      return `postgres_sqlstate:${code}`;
+    }
+    if (SAFE_POSTGRES_JS_ERROR_CODES.has(code)) {
+      return `postgres_js:${code}`;
+    }
+    if (SAFE_NODE_NETWORK_ERROR_CODES.has(code)) {
+      return `node_network:${code}`;
+    }
+
+    return 'unclassified';
+  } catch {
+    // Error objects may be wrapped or expose throwing property accessors.
     return 'unclassified';
   }
-
-  const code = (error as { code?: unknown }).code;
-  return typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code)
-    ? code
-    : 'unclassified';
 }
 
 /** Delete rows expiring at or before nowMs, in expiry order, up to the per-pass batch limit. */
@@ -255,7 +297,7 @@ export function startRateLimitCleanup(): void {
     void pruneExpiredBuckets(Date.now()).catch((error: unknown) => {
       // Keep maintenance failures isolated and log only a safe SQLSTATE code.
       console.error('Shared rate-limit expiry cleanup failed.', {
-        databaseErrorCode: getSafeRateLimitDatabaseErrorCode(error),
+        failureCategory: getSafeRateLimitCleanupFailureCategory(error),
       });
     });
   };
