@@ -211,8 +211,9 @@ describe('Profile Foundation & Server-Side Ownership', () => {
           bio: 'Updated bio details.',
           location: 'Amsterdam, NL',
           avatarUrl: '',
-
           websiteUrl: 'https://linktr.ee/alice_records',
+          soundcloudUrl: 'https://soundcloud.com/alice-new',
+          mixcloudUrl: 'https://www.mixcloud.com/alice-new',
         });
 
       expect(res.status).toBe(302);
