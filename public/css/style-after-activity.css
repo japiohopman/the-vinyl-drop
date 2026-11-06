@@ -482,7 +482,8 @@
 }
 
 .browse-page-container .listing-card-seller {
-  flex: 0 1 95px;
+  flex: 0 1 auto;
+  max-width: 45%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -512,6 +513,7 @@
 .browse-page-container .listing-card-list-mode .listing-card-seller,
 .browse-page-container .listing-card-list-mode .listing-card-location {
   flex: 0 1 auto;
+  max-width: 100%;
 }
 
 .browse-page-container .listing-card-list-mode .listing-card-location {
