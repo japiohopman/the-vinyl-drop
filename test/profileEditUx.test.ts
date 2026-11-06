@@ -19,13 +19,14 @@ describe('Profile edit UX (#351)', () => {
   const profile = {
     id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     username: 'crate_digger',
+    avatarStoragePath: 'profiles/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/current-avatar.webp',
   };
 
   const publicProfile = {
     id: profile.id,
     username: profile.username,
     displayName: 'Crate Digger',
-    avatarUrl: '',
+    avatarUrl: 'https://storage.example/avatar.gif',
     avatarStoragePath: null,
     websiteUrl: 'https://example.test',
     soundcloudUrl: 'https://soundcloud.com/crate-digger',
