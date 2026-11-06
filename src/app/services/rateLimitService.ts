@@ -3,6 +3,7 @@ import { isIP } from 'net';
 import { Request, RequestHandler } from 'express';
 import { config } from '../../config/env';
 import { queryClient } from '../../db';
+import postgres from 'postgres';
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -285,12 +286,16 @@ function getSafeRateLimitCleanupFailureType(error: unknown): SafeRateLimitCleanu
   }
 }
 
-/** Return a safe category only for a fixed driver/network code or SQLSTATE format. */
-function classifySafeRateLimitCleanupCode(code: string): string | null {
+/** Return a safe category only for real Postgres.js errors or fixed driver/network codes. */
+function classifySafeRateLimitCleanupCode(code: string, error: unknown): string | null {
   // Check network codes first: EPIPE is five uppercase characters but is
   // a Node socket error, not a PostgreSQL SQLSTATE.
   if (SAFE_NODE_NETWORK_ERROR_CODES.has(code)) return 'node_network:' + code;
-  if (/^[0-9A-Z]{5}$/.test(code)) return 'postgres_sqlstate:' + code;
+  // SQLSTATE-shaped strings are not sufficient: accept them only on the
+  // Postgres.js PostgresError class, never on arbitrary thrown objects.
+  if (error instanceof postgres.PostgresError && /^[0-9A-Z]{5}$/.test(code)) {
+    return 'postgres_sqlstate:' + code;
+  }
   if (SAFE_POSTGRES_JS_ERROR_CODES.has(code)) return 'postgres_js:' + code;
   return null;
 }
@@ -322,7 +327,7 @@ export function getSafeRateLimitCleanupFailureDiagnostics(
             codeState = 'non_string';
           }
         } else {
-          const category = classifySafeRateLimitCleanupCode(code);
+          const category = classifySafeRateLimitCleanupCode(code, current);
           if (category !== null) {
             return {
               failureCategory: category,
