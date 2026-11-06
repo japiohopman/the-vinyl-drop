@@ -244,7 +244,7 @@ async function run(): Promise<void> {
           elements.map((element) => {
             const label = element.querySelector('.listing-card-location-name');
             if (!(label instanceof HTMLElement)) {
-              return { text: '', clientWidth: 0, scrollWidth: Number.POSITIVE_INFINITY, clientHeight: 0, scrollHeight: Number.POSITIVE_INFINITY };
+              return { text: '', clientWidth: 0, scrollWidth: Number.POSITIVE_INFINITY, clientHeight: 0, scrollHeight: Number.POSITIVE_INFINITY, lineHeight: Number.POSITIVE_INFINITY };
             }
             return {
               text: label.textContent?.trim() || '',
