@@ -142,6 +142,11 @@ function makeBucketKey(scope: string, identity: string): string {
     .digest('hex');
 }
 
+/** Encode timestamps as ISO text for raw postgres.js calls shared with Drizzle. */
+function toTimestampParameter(valueMs: number): string {
+  return new Date(valueMs).toISOString();
+}
+
 export async function incrementRateLimitBucketWithClient(
   client: NonNullable<typeof queryClient>,
   bucket: RateLimitBucket
@@ -149,11 +154,11 @@ export async function incrementRateLimitBucketWithClient(
   const rows = await client.unsafe(
     'INSERT INTO private.rate_limit_buckets ' +
     '(bucket_key, window_start, hit_count, expires_at, updated_at) ' +
-    'VALUES ($1, $2, 1, $3, clock_timestamp()) ' +
+    'VALUES ($1, $2::timestamptz, 1, $3::timestamptz, clock_timestamp()) ' +
     'ON CONFLICT (bucket_key, window_start) DO UPDATE SET ' +
     'hit_count = private.rate_limit_buckets.hit_count + 1, ' +
     'updated_at = clock_timestamp() RETURNING hit_count',
-    [bucket.bucketKey, new Date(bucket.windowStartMs), new Date(bucket.expiresAtMs)]
+    [bucket.bucketKey, toTimestampParameter(bucket.windowStartMs), toTimestampParameter(bucket.expiresAtMs)]
   );
 
   if (!rows[0]) throw new Error('Rate-limit counter did not return a count.');
@@ -176,24 +181,24 @@ export async function decrementRateLimitBucketWithClient(
   await client.begin(async (transaction) => {
     const rows = await transaction.unsafe(
       'SELECT hit_count FROM private.rate_limit_buckets ' +
-      'WHERE bucket_key = $1 AND window_start = $2 FOR UPDATE',
-      [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      'WHERE bucket_key = $1 AND window_start = $2::timestamptz FOR UPDATE',
+      [bucket.bucketKey, toTimestampParameter(bucket.windowStartMs)]
     );
 
     if (!rows[0]) return;
 
     if (Number(rows[0].hit_count) <= 1) {
       await transaction.unsafe(
-        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2',
-        [bucket.bucketKey, new Date(bucket.windowStartMs)]
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1 AND window_start = $2::timestamptz',
+        [bucket.bucketKey, toTimestampParameter(bucket.windowStartMs)]
       );
       return;
     }
 
     await transaction.unsafe(
       'UPDATE private.rate_limit_buckets SET hit_count = hit_count - 1, updated_at = clock_timestamp() ' +
-      'WHERE bucket_key = $1 AND window_start = $2',
-      [bucket.bucketKey, new Date(bucket.windowStartMs)]
+      'WHERE bucket_key = $1 AND window_start = $2::timestamptz',
+      [bucket.bucketKey, toTimestampParameter(bucket.windowStartMs)]
     );
   });
 }
@@ -233,16 +238,6 @@ const SAFE_NODE_NETWORK_ERROR_CODES = new Set([
   'EHOSTUNREACH',
   'ENETUNREACH',
   'ENOTFOUND',
-]);
-
-const SAFE_NODE_TYPE_ERROR_CODES = new Set([
-  'ERR_ARG_NOT_ITERABLE',
-  'ERR_INVALID_ARG_TYPE',
-  'ERR_INVALID_ARG_VALUE',
-  'ERR_INVALID_RETURN_PROPERTY_VALUE',
-  'ERR_INVALID_RETURN_VALUE',
-  'ERR_INVALID_THIS',
-  'ERR_INVALID_TUPLE',
 ]);
 
 type SafeRateLimitCleanupFailureType =
@@ -288,7 +283,6 @@ function classifySafeRateLimitCleanupCode(code: string): string | null {
   // Check network codes first: EPIPE is five uppercase characters but is
   // a Node socket error, not a PostgreSQL SQLSTATE.
   if (SAFE_NODE_NETWORK_ERROR_CODES.has(code)) return 'node_network:' + code;
-  if (SAFE_NODE_TYPE_ERROR_CODES.has(code)) return 'node_type_error:' + code;
   if (/^[0-9A-Z]{5}$/.test(code)) return 'postgres_sqlstate:' + code;
   if (SAFE_POSTGRES_JS_ERROR_CODES.has(code)) return 'postgres_js:' + code;
   return null;
@@ -380,10 +374,10 @@ export async function pruneExpiredRateLimitBucketsWithClient(
   await client.unsafe(
     'WITH expired AS (' +
     'SELECT bucket_key, window_start FROM private.rate_limit_buckets ' +
-    'WHERE expires_at <= $1 ORDER BY expires_at LIMIT ' + CLEANUP_BATCH_SIZE +
+    'WHERE expires_at <= $1::timestamptz ORDER BY expires_at LIMIT ' + CLEANUP_BATCH_SIZE +
     ') DELETE FROM private.rate_limit_buckets AS bucket USING expired ' +
     'WHERE bucket.bucket_key = expired.bucket_key AND bucket.window_start = expired.window_start',
-    [new Date(nowMs)]
+    [toTimestampParameter(nowMs)]
   );
 }
 
