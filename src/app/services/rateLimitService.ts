@@ -235,39 +235,130 @@ const SAFE_NODE_NETWORK_ERROR_CODES = new Set([
   'ENOTFOUND',
 ]);
 
-/**
- * Convert a driver failure into a non-sensitive diagnostic category.
- *
- * Known Node network codes are checked before PostgreSQL SQLSTATE formatting
- * because some network codes (for example EPIPE) are also five uppercase
- * characters long. Unknown codes and malformed error objects fail closed.
- */
-export function getSafeRateLimitCleanupFailureCategory(error: unknown): string {
+type SafeRateLimitCleanupFailureType =
+  | 'error'
+  | 'type_error'
+  | 'range_error'
+  | 'reference_error'
+  | 'syntax_error'
+  | 'uri_error'
+  | 'eval_error'
+  | 'other_object'
+  | 'non_error'
+  | 'unreadable';
+
+type SafeRateLimitCleanupCodeSource = 'direct' | 'cause_1' | 'cause_2' | 'none' | 'unreadable';
+type SafeRateLimitCleanupCodeState = 'recognized' | 'unknown_string' | 'missing' | 'non_string' | 'unreadable';
+
+export interface SafeRateLimitCleanupFailureDiagnostics {
+  failureCategory: string;
+  failureType: SafeRateLimitCleanupFailureType;
+  codeSource: SafeRateLimitCleanupCodeSource;
+  codeState: SafeRateLimitCleanupCodeState;
+}
+
+/** Map built-in error classes to a fixed label; never log a supplied name string. */
+function getSafeRateLimitCleanupFailureType(error: unknown): SafeRateLimitCleanupFailureType {
   try {
-    if (typeof error !== 'object' || error === null || !('code' in error)) {
-      return 'unclassified';
-    }
-
-    const code = (error as { code?: unknown }).code;
-    if (typeof code !== 'string') return 'unclassified';
-
-    // Check network codes first: EPIPE is five uppercase characters but is
-    // a Node socket error, not a PostgreSQL SQLSTATE.
-    if (SAFE_NODE_NETWORK_ERROR_CODES.has(code)) {
-      return `node_network:${code}`;
-    }
-    if (/^[0-9A-Z]{5}$/.test(code)) {
-      return `postgres_sqlstate:${code}`;
-    }
-    if (SAFE_POSTGRES_JS_ERROR_CODES.has(code)) {
-      return `postgres_js:${code}`;
-    }
-
-    return 'unclassified';
+    if (error instanceof TypeError) return 'type_error';
+    if (error instanceof RangeError) return 'range_error';
+    if (error instanceof ReferenceError) return 'reference_error';
+    if (error instanceof SyntaxError) return 'syntax_error';
+    if (error instanceof URIError) return 'uri_error';
+    if (error instanceof EvalError) return 'eval_error';
+    if (error instanceof Error) return 'error';
+    return error !== null && typeof error === 'object' ? 'other_object' : 'non_error';
   } catch {
-    // Error objects may be wrapped or expose throwing property accessors.
-    return 'unclassified';
+    return 'unreadable';
   }
+}
+
+/** Return a safe category only for a fixed driver/network code or SQLSTATE format. */
+function classifySafeRateLimitCleanupCode(code: string): string | null {
+  // Check network codes first: EPIPE is five uppercase characters but is
+  // a Node socket error, not a PostgreSQL SQLSTATE.
+  if (SAFE_NODE_NETWORK_ERROR_CODES.has(code)) return 'node_network:' + code;
+  if (/^[0-9A-Z]{5}$/.test(code)) return 'postgres_sqlstate:' + code;
+  if (SAFE_POSTGRES_JS_ERROR_CODES.has(code)) return 'postgres_js:' + code;
+  return null;
+}
+
+/**
+ * Inspect the thrown value and at most two nested causes. Only fixed type
+ * labels and allowlisted codes are returned; messages, stacks, SQL, hosts,
+ * parameters, and arbitrary error properties are never copied into logs.
+ */
+export function getSafeRateLimitCleanupFailureDiagnostics(
+  error: unknown
+): SafeRateLimitCleanupFailureDiagnostics {
+  const failureType = getSafeRateLimitCleanupFailureType(error);
+  let codeSource: SafeRateLimitCleanupCodeSource = 'none';
+  let codeState: SafeRateLimitCleanupCodeState = 'missing';
+  let current: unknown = error;
+
+  for (let depth = 0; depth <= 2; depth += 1) {
+    if (typeof current !== 'object' || current === null) break;
+    const source: SafeRateLimitCleanupCodeSource =
+      depth === 0 ? 'direct' : depth === 1 ? 'cause_1' : 'cause_2';
+
+    try {
+      if ('code' in current) {
+        const code = (current as { code?: unknown }).code;
+        if (typeof code !== 'string') {
+          if (codeSource === 'none') {
+            codeSource = source;
+            codeState = 'non_string';
+          }
+        } else {
+          const category = classifySafeRateLimitCleanupCode(code);
+          if (category !== null) {
+            return {
+              failureCategory: category,
+              failureType,
+              codeSource: source,
+              codeState: 'recognized',
+            };
+          }
+          if (codeSource === 'none') {
+            codeSource = source;
+            codeState = 'unknown_string';
+          }
+        }
+      }
+    } catch {
+      if (codeSource === 'none') {
+        codeSource = 'unreadable';
+        codeState = 'unreadable';
+      }
+    }
+
+    if (depth === 2) break;
+
+    try {
+      if (!('cause' in current)) break;
+      const cause = (current as { cause?: unknown }).cause;
+      if (cause === null || typeof cause !== 'object') break;
+      current = cause;
+    } catch {
+      if (codeSource === 'none') {
+        codeSource = 'unreadable';
+        codeState = 'unreadable';
+      }
+      break;
+    }
+  }
+
+  return {
+    failureCategory: 'unclassified',
+    failureType,
+    codeSource,
+    codeState,
+  };
+}
+
+/** Preserve the category-only helper for callers that do not need diagnostics. */
+export function getSafeRateLimitCleanupFailureCategory(error: unknown): string {
+  return getSafeRateLimitCleanupFailureDiagnostics(error).failureCategory;
 }
 
 /** Delete rows expiring at or before nowMs, in expiry order, up to the per-pass batch limit. */
@@ -305,9 +396,10 @@ export function startRateLimitCleanup(): void {
   const runCleanup = (): void => {
     void pruneExpiredBuckets(Date.now()).catch((error: unknown) => {
       // Keep maintenance failures isolated and log only an allowlisted safe category.
-      console.error('Shared rate-limit expiry cleanup failed.', {
-        failureCategory: getSafeRateLimitCleanupFailureCategory(error),
-      });
+      console.error(
+        'Shared rate-limit expiry cleanup failed.',
+        getSafeRateLimitCleanupFailureDiagnostics(error)
+      );
     });
   };
 
