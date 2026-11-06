@@ -95,6 +95,8 @@ These endpoints are part of the route contract but are **not screenshot surfaces
 | `/api/people-suggestions` | GET | Bounded JSON suggestions using only public username, display name and avatar URL fields. |
 | `/releases/lookup-metadata` | GET | Authenticated Discogs lookup JSON; used within the release form. |
 | `/messages/widget/unread-count`, `/messages/widget/data`, `/messages/widget/:conversationId` | GET | Authenticated, feature-gated JSON for the embedded messaging widget. |
+| `/profile/avatar` | POST | Authenticated, same-origin and account-rate-limited multipart upload; stores a validated profile-avatar derivative and redirects to the profile or editor. |
+| `/profile/avatar/remove` | POST | Authenticated, same-origin and account-rate-limited action; removes the uploaded avatar and restores the legacy Avatar URL fallback. |
 | `/health` | GET | JSON health response; operational endpoint, not a visual screen. |
 | `/design-system/demo` | POST | Updates the design-system demo state in the existing showcase view. |
 | Auth, listing, photo, comment, favorite, release-import and messaging POST routes | POST | Mutations/redirects/JSON; validation or success feedback is normally shown in the owning existing screen, not a separate page. |

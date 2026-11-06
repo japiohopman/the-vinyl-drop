@@ -10,9 +10,9 @@ In the intended Supabase project (staging first, with production only after sepa
 2. Name it exactly `profile-avatars`.
 3. Enable **Public bucket** so public profile pages can render avatar images without an authenticated session.
 4. Set the maximum file size to **5 MiB (5,242,880 bytes)**.
-5. Allow only `image/jpeg`, `image/png`, `image/webp`, and `image/gif`.
+5. Allow only the two processed output MIME types: `image/webp` and `image/gif`.
 
-Application code still validates the actual file bytes, MIME match, image dimensions, total decoded animation pixels, frame count and processed output size. The bucket allowlist is an additional restriction, not a substitute for server-side validation.
+The profile form accepts JPEG, PNG, WebP and GIF input. The server verifies the file bytes and MIME match, converts static JPEG/PNG/WebP inputs to WebP, and preserves GIF input as GIF. Supabase Storage therefore receives only `image/webp` or `image/gif`. Application code also checks image dimensions, total decoded animation pixels, frame count and processed output size. The bucket allowlist is an additional restriction, not a substitute for server-side validation.
 
 ## Owner-scoped write/delete policies
 
@@ -34,7 +34,7 @@ Do **not** change any of the four existing `listing-photos` policies or the thre
 
 ## Required verification before enabling the feature on an environment
 
-- Bucket exists, public flag is on, 5 MiB limit and four MIME types match.
+- Bucket exists, public flag is on, 5 MiB limit and the two processed output MIME types match.
 - Exactly two policies named `profile-avatars-owner-insert` and `profile-avatars-owner-delete` exist.
 - Each predicate binds `profile-avatars` and `profiles/<uid>/...` to the authenticated caller.
 - A signed-in owner can upload/delete under their own UUID.

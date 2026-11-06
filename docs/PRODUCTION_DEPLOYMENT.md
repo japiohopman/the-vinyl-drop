@@ -209,3 +209,13 @@ Production Render remains Live on PR #286 commit `6c5feb809ffd6c71ad26d44fbd1f04
 ### Session Pooler quota incident — owner-confirmed resolved 5 November 2026
 
 The 99.8% Session Pooler usage reading from 28 October was caused by an application bug: profile requests unnecessarily issued repeated profile-row updates even when no profile data had changed. Jaap confirms that this redundant write path was fixed on 4 November. Treat the 28 October figure as historical consumption from the now-fixed bug, not an ongoing application behavior or an unresolved release blocker. The Supabase banner may continue to refer to the previous billing cycle until its usage/billing window updates. Do not recommend a paid upgrade on the basis of that historical reading alone; check a fresh usage window after the fix before drawing conclusions about ongoing consumption.
+
+## Profile media follow-up — Issue #351 (prepared, not applied)
+
+The application work for device-uploaded profile avatars (static JPEG/PNG/WebP converted to WebP, animated GIF retained) and optional SoundCloud/Mixcloud profile links is being prepared on its own feature branch.
+
+The additive Drizzle migration `0024_profile_avatars_and_music_links` is **not applied to production** in this checkpoint. Production's existing seven Storage policies (the four listing-photo policies and three private listing-photo-originals policies) remain the verified baseline and must not be changed for this feature.
+
+Before deploying the #351 application revision to an environment, the owner must separately create the dedicated public-read `profile-avatars` bucket (5 MiB; processed output types `image/webp` and `image/gif`) and provision exactly the two authenticated owner-scoped INSERT/DELETE policies documented in [the provisioning checklist](./verification/profile-avatar-storage-provisioning.md) and [the SQL policy file](./verification/profile-avatar-storage-policies.sql). The bucket's public setting provides avatar reads; writes/deletes remain restricted to `profiles/<auth-user-uuid>/...`.
+
+The migration and policies require separate environment-targeted review and approval. This issue's implementation/CI does not create a remote bucket, apply a production migration, modify production Storage policies, deploy the application, or change any live setting.
