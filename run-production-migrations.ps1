@@ -108,8 +108,8 @@ Write-Host "Production migration phase: $Phase ($($phaseSettings[$Phase].Descrip
 Write-Host "Project: $projectRef"
 Write-Host "Host: $poolerHost (Supabase Shared Session Pooler, port 5432; TLS required)"
 if ($Phase -eq 'ReleaseCandidate') {
-    Write-Host 'Precondition: production must have a private listing-photo-originals bucket and exactly seven approved storage.objects policies.'
-    Write-Host 'The seven-policy set is the four existing listing-photos policies plus the three authenticated seller-owner source policies.'
+    Write-Host 'Precondition: production must have a private listing-photo-originals bucket and the exact approved Storage policy set (seven base policies, optionally plus two owner-scoped profile-avatar policies).'
+    Write-Host 'The seven base policies are the four existing listing-photos policies plus the three authenticated seller-owner source policies. If profile avatars are provisioned, the validator also accepts only their exact owner-scoped insert/delete pair.'
     Write-Host 'A read-only preflight compares full predicates, roles, commands and permissive mode, and rejects missing, altered or extra policies before migrations start.'
     Write-Host 'Migration 0023 updates the existing Before User Created function; it does not change the Auth hook selection.'
 }
@@ -187,7 +187,7 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw 'Production Storage policy verification failed. No Drizzle migration command was started.'
         }
-        Write-Host 'PASS: exactly seven approved Storage policies are present; no extra or widened policy was found.'
+        Write-Host 'PASS: the exact approved Storage policy set is present; no extra or widened policy was found.'
     }
 
     $confirmation = Read-Host "Type exactly: $expectedConfirmation"
@@ -260,7 +260,7 @@ export default defineConfig({
         }
         'ReleaseCandidate' {
             Write-Host 'Only migrations 0020-0023 were selected. Later journal entries beginning at index 24 remain outside this phase.'
-            Write-Host 'The read-only preflight verified exactly seven Storage policies, including full predicates, roles, commands and permissive mode, before Drizzle started.'
+            Write-Host 'The read-only preflight verified full predicates, roles, commands and permissive mode for the seven base Storage policies and, if provisioned, the exact two profile-avatar owner policies before Drizzle started.'
             Write-Host 'Migration 0022 retains its historical private-source bucket/policy prerequisite; migration 0023 updates the existing private password-check hook function to reject new Google Auth identities.'
             Write-Host 'Next: verify all 24 Drizzle migration entries, pg_trgm indexes, release metadata columns, private-source policies, hook function/grants, RLS and Storage before deployment.'
         }
