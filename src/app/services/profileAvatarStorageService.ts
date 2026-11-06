@@ -63,7 +63,7 @@ export function getProfileAvatarPublicUrl(storagePath: string): string {
   if (config.NODE_ENV === 'test' && inMemoryStorage.has(storagePath)) {
     return '/mock-storage/profile-avatars/' + storagePath;
   }
-  if (config.SUPABASE_URL && !config.SUPABASE_URL.includes('example.co')) {
+  if (config.SUPABASE_URL && !config.SUPABASE_URL.includes('example.supabase.co')) {
     const encodedPath = storagePath.split('/').map(encodeURIComponent).join('/');
     return config.SUPABASE_URL + '/storage/v1/object/public/' + BUCKET_NAME + '/' + encodedPath;
   }
