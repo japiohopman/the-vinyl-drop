@@ -179,7 +179,7 @@ describe('Browse format filters — rendered state and responsive controls', () 
 
     // Eight distinct active filters are reflected in the visible summary and quick-filter state.
     expect(html).toContain('<strong class="browse-active-filter-count">8</strong>');
-    expect(html).toContain('8 active filters');
+    expect(html).toContain('<span>active filters</span>');
     expect(html).toContain('name="formatToggle" value="lp"');
     expect(html).toContain('name="formatToggle" value="7-inch"');
     expect(html).toContain('aria-pressed="true"');
