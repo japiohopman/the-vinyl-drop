@@ -10,7 +10,8 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    # Pin the verified LTS image; ubuntu-latest moved to a newer image whose Playwright apt setup timed out.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     services:
       postgres:
@@ -51,7 +52,7 @@ jobs:
 
       - name: Install Playwright system dependencies
         run: npx playwright install-deps chromium webkit
-        timeout-minutes: 10
+        timeout-minutes: 15
 
       - name: Install Playwright browsers
         run: npx playwright install chromium webkit
