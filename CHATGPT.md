@@ -7,6 +7,7 @@
 > - **Current status lives in GitHub**: open Issues, PRs, workflow runs. Never answer "where are we?" from this file.
 > - Precedence when sources disagree: assigned Issue > `.github/agents/*` > `AGENTS.md` > source code and tests > this file.
 > - Keep this file short. If a line is about "now", "next", or a specific PR/Issue number, it belongs in an Issue, not here.
+> - When Jaap corrects a durable preference, working agreement or project invariant, refresh this file as part of that workstream; do not wait for him to ask repeatedly. Update on meaningful changes, not on every PR or status update.
 
 ---
 
@@ -78,6 +79,15 @@ An Issue defines goal, scope, acceptance criteria, constraints, verification and
 `Issue → Jules → branch → PR → CI → review → continuation in PR body → Jules → … → human merge`
 
 When a review finds in-scope defects, keep the same branch and PR. The **PR body** is the control surface: address `@Jules`, state `NOT READY` while work remains, list exact changes, exact verification and explicit do-not-change boundaries. When the work is correct, set `READY FOR HUMAN REVIEW` and keep the Phase Safety Gate headings intact. Jules never merges.
+
+### Release-state and merge discipline
+
+- Check the latest Render production deployment before describing a release as pending. Once the intended production deploy is **Live**, that release is complete; treat later work as post-release maintenance, hardening and product polish unless Jaap explicitly starts another release.
+- Reconcile the latest owner-confirmed Issue updates, actual PR/workflow state and live Render deployment before raising blockers. Historical or unchecked checklist items are not automatically current blockers. Do not repeat prelaunch gates after the owner completed the release; raise only concrete blockers that affect the current task.
+- Keep the live project phase in GitHub, not in this file. Update the relevant Issue when its status becomes stale; do not turn this file into a live release dashboard.
+- Jaap saying **“merge PR #N”** or otherwise explicitly asking ChatGPT to merge a named PR is sufficient authorization. Check the exact diff, current CI, Phase Safety Gate and available CodeRabbit feedback; when no actionable blocker remains, merge without asking for a second confirmation. Merge permission does not authorize a Render deployment, production settings/data/flag/allowlist changes, or tester invitations; those remain separate operations.
+- When multiple PRs are ready together, merge shared CI/build foundations first, then application changes. Reconcile and verify dependent PRs against the updated `main` before merging; document-only exceptions must be assessed against their actual changed files and available verification.
+- Do not ask Jaap to fund optional metered tools such as TinyFish. If such a tool is unavailable or out of credit, disclose that once, do not retry it, and continue with other available sources. Mark only the specific manual check that genuinely remains.
 
 ### Review standard
 
