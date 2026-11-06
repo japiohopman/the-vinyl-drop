@@ -295,7 +295,7 @@ export function startRateLimitCleanup(): void {
 
   const runCleanup = (): void => {
     void pruneExpiredBuckets(Date.now()).catch((error: unknown) => {
-      // Keep maintenance failures isolated and log only a safe SQLSTATE code.
+      // Keep maintenance failures isolated and log only an allowlisted safe category.
       console.error('Shared rate-limit expiry cleanup failed.', {
         failureCategory: getSafeRateLimitCleanupFailureCategory(error),
       });
