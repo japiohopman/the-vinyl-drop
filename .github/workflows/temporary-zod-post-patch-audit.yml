@@ -1,0 +1,71 @@
+name: TEMP Zod post-patch npm audit
+
+on:
+  push:
+    branches:
+      - audit/issue-365-post-patch
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact post-patch source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.20.2'
+          cache: npm
+      - name: Clean install
+        run: npm ci
+      - name: Run complete npm audit and summarize
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > npm-audit.json
+          audit_exit=$?
+          set -e
+          echo "npm audit exit code: $audit_exit"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
+          const vulnerabilities = report.vulnerabilities || {};
+          const rows = Object.entries(vulnerabilities).map(([name, item]) => ({
+            name,
+            severity: item.severity,
+            range: item.range,
+            direct: item.isDirect,
+            via: (item.via || []).filter((entry) => typeof entry === 'object').map((entry) => ({
+              title: entry.title,
+              url: entry.url,
+              range: entry.range,
+            })),
+          }));
+          const summary = {
+            metadata: report.metadata?.vulnerabilities || {},
+            packages: rows,
+            zodAdvisoryPresent: rows.some((row) =>
+              row.name === 'zod' && row.via.some((entry) =>
+                (entry.url || '').includes('GHSA-mrhx-c7xc-m3w5')
+              )
+            ),
+          };
+          fs.writeFileSync('npm-audit-summary.json', JSON.stringify(summary, null, 2) + '\n');
+          console.log(JSON.stringify(summary, null, 2));
+          if (summary.zodAdvisoryPresent) {
+            console.error('The targeted Zod advisory is still present.');
+            process.exitCode = 1;
+          }
+          NODE
+      - name: Upload full npm audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zod-post-patch-npm-audit
+          path: |
+            npm-audit.json
+            npm-audit-summary.json
+          retention-days: 3
