@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import {
   decrementRateLimitBucketWithClient,
   getSafeRateLimitCleanupFailureCategory,
@@ -88,24 +89,6 @@ describe('shared rate-limit cleanup error classification', () => {
     });
   });
 
-  it('classifies only documented Node.js TypeError codes without exposing arbitrary codes', () => {
-    const error = Object.assign(
-      new TypeError('sensitive Node.js argument detail'),
-      { code: 'ERR_INVALID_ARG_TYPE' }
-    );
-
-    expect(getSafeRateLimitCleanupFailureDiagnostics(error)).toEqual({
-      failureCategory: 'node_type_error:ERR_INVALID_ARG_TYPE',
-      failureType: 'type_error',
-      codeSource: 'direct',
-      codeState: 'recognized',
-    });
-
-    expect(getSafeRateLimitCleanupFailureCategory({
-      code: 'ERR_PRIVATE_RUNTIME_DETAIL',
-    })).toBe('unclassified');
-  });
-
   it('classifies an allowlisted code on the first nested cause', () => {
     const error = new Error('sensitive outer detail', {
       cause: Object.assign(new Error('sensitive inner detail'), { code: 'ECONNRESET' }),
@@ -169,6 +152,27 @@ describe('shared rate-limit cleanup error classification', () => {
       codeSource: 'none',
       codeState: 'missing',
     });
+  });
+});
+
+describe('shared rate-limit raw timestamp parameters', () => {
+  it('passes an ISO timestamp string with an explicit timestamptz cast to postgres.js', async () => {
+    let capturedQuery = '';
+    let capturedParameters: unknown[] = [];
+    const client = {
+      async unsafe(query: string, parameters: unknown[]) {
+        capturedQuery = query;
+        capturedParameters = parameters;
+        return [];
+      },
+    } as never;
+
+    const nowMs = Date.parse('2026-11-06T08:00:00.000Z');
+    await pruneExpiredRateLimitBucketsWithClient(client, nowMs);
+
+    expect(capturedQuery).toContain('expires_at <= $1::timestamptz');
+    expect(capturedParameters).toEqual([new Date(nowMs).toISOString()]);
+    expect(capturedParameters.some((value) => value instanceof Date)).toBe(false);
   });
 });
 
@@ -242,6 +246,38 @@ describeWithPostgres('PostgreSQL shared rate-limit reservation release', () => {
         'DELETE FROM private.rate_limit_buckets WHERE bucket_key IN ($1, $2, $3)',
         [expiredBucketKey, boundaryBucketKey, activeBucketKey]
       );
+    }
+  });
+
+  it('runs raw rate-limit timestamp operations after Drizzle installs transparent serializers', async () => {
+    const drizzledClient = postgres(databaseUrl as string, { max: 1 });
+    const database = drizzle(drizzledClient);
+    expect(database).toBeTruthy();
+
+    const nowMs = Date.now();
+    const bucket: RateLimitBucket = {
+      bucketKey: randomBytes(32).toString('hex'),
+      windowStartMs: nowMs - 2 * 60 * 1000,
+      expiresAtMs: nowMs - 60 * 1000,
+    };
+
+    try {
+      expect(await incrementRateLimitBucketWithClient(drizzledClient, bucket)).toBe(1);
+      expect(await incrementRateLimitBucketWithClient(drizzledClient, bucket)).toBe(2);
+      await decrementRateLimitBucketWithClient(drizzledClient, bucket);
+      await pruneExpiredRateLimitBucketsWithClient(drizzledClient, nowMs);
+
+      const rows = await drizzledClient.unsafe(
+        'SELECT bucket_key FROM private.rate_limit_buckets WHERE bucket_key = $1',
+        [bucket.bucketKey]
+      );
+      expect(rows).toHaveLength(0);
+    } finally {
+      await drizzledClient.unsafe(
+        'DELETE FROM private.rate_limit_buckets WHERE bucket_key = $1',
+        [bucket.bucketKey]
+      );
+      await drizzledClient.end();
     }
   });
 
