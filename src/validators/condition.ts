@@ -2,15 +2,11 @@ import { z } from 'zod';
 import { CONDITION_GRADES, LISTING_STATUSES } from '../db/schema/enums';
 
 export const conditionGradeSchema = z.enum(CONDITION_GRADES, {
-  errorMap: () => ({
-    message: 'Invalid condition grade. Must be one of: M, NM, VG+, VG, VG-, G+, G, F, P',
-  }),
+  error: () => 'Invalid condition grade. Must be one of: M, NM, VG+, VG, VG-, G+, G, F, P',
 });
 
 export const listingStatusSchema = z.enum(LISTING_STATUSES, {
-  errorMap: () => ({
-    message: 'Invalid listing status. Must be one of: draft, published, reserved, sold, traded, archived',
-  }),
+  error: () => 'Invalid listing status. Must be one of: draft, published, reserved, sold, traded, archived',
 });
 
 export const conditionDescriptions: Record<(typeof CONDITION_GRADES)[number], string> = {
