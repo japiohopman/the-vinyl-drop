@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getProfileByUsername, getProfileById, updateProfile } from '../services/profileService';
+import { getProfileByUsername, getProfileById, updateProfile, setProfileAvatarStoragePath } from '../services/profileService';
 import { getSellerPublishedListings } from '../services/listingService';
 import { profileUpdateSchema } from '../../validators/profile';
 import { formatZodFormErrors, FormViewModel } from '../view-models/formViewModel';
@@ -7,6 +7,8 @@ import { renderWithLayout } from '../utils/render';
 import { setFlashCookie } from '../middleware/flash';
 import { config } from '../../config/env';
 import { savedPeopleService } from '../services/savedPeopleService';
+import { createProfileAvatarStoragePath, deleteProfileAvatarFromStorage, getProfileAvatarPublicUrl, uploadProfileAvatarToStorage } from '../services/profileAvatarStorageService';
+import { processProfileAvatar } from '../utils/imageProcessor';
 
 export async function getCurrentProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -79,6 +81,7 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
       renderWithLayout(res, 'profiles/show', {
         title,
         profile,
+        avatarPublicUrl: profile.avatarStoragePath ? getProfileAvatarPublicUrl(profile.avatarStoragePath) : null,
         isOwner: Boolean(req.user && req.user.id === profile.id),
         crateTotalCount: 0,
         errorMessage: 'Invalid page parameter provided.',
@@ -100,6 +103,7 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
     renderWithLayout(res, 'profiles/show', {
       title,
       profile,
+      avatarPublicUrl: profile.avatarStoragePath ? getProfileAvatarPublicUrl(profile.avatarStoragePath) : null,
       user: req.user,
       messagingEnabled: config.MESSAGING_ENABLED,
       isSavedPerson,
@@ -201,6 +205,8 @@ export async function getEditProfilePage(req: Request, res: Response, next: Next
         location: profile.location || '',
         avatarUrl: profile.avatarUrl || '',
         websiteUrl: profile.websiteUrl || '',
+        soundcloudUrl: profile.soundcloudUrl || '',
+        mixcloudUrl: profile.mixcloudUrl || '',
       },
       fieldErrors: {},
       generalErrors: [],
@@ -210,6 +216,7 @@ export async function getEditProfilePage(req: Request, res: Response, next: Next
       title: 'Edit Profile — The Vinyl Drop',
       form,
       profile,
+      avatarPublicUrl: profile.avatarStoragePath ? getProfileAvatarPublicUrl(profile.avatarStoragePath) : null,
     }, next);
   } catch (error) {
     next(error);
@@ -243,6 +250,8 @@ export async function postEditProfile(req: Request, res: Response, next: NextFun
         location: req.body.location || '',
         avatarUrl: req.body.avatarUrl || '',
         websiteUrl: req.body.websiteUrl || '',
+        soundcloudUrl: req.body.soundcloudUrl || '',
+        mixcloudUrl: req.body.mixcloudUrl || '',
       });
 
       res.status(400);
@@ -268,6 +277,8 @@ export async function postEditProfile(req: Request, res: Response, next: NextFun
           location: req.body.location || '',
           avatarUrl: req.body.avatarUrl || '',
           websiteUrl: req.body.websiteUrl || '',
+          soundcloudUrl: req.body.soundcloudUrl || '',
+          mixcloudUrl: req.body.mixcloudUrl || '',
         },
         fieldErrors: {},
         generalErrors: [errMessage],
@@ -282,6 +293,112 @@ export async function postEditProfile(req: Request, res: Response, next: NextFun
         profile,
       }, next);
     }
+  } catch (error) {
+    next(error);
+  }
+}
+
+
+/** Uploads one validated profile image to the owner's dedicated avatar namespace. */
+export async function postUploadProfileAvatar(req: Request, res: Response, next: NextFunction): Promise<void> {
+  let newStoragePath: string | null = null;
+  try {
+    if (!req.user) {
+      res.redirect('/auth/login');
+      return;
+    }
+
+    const profile = await getProfileById(req.user.id);
+    if (!profile) {
+      res.status(404);
+      renderWithLayout(res, 'errors/404', {
+        title: 'Profile Not Found',
+        message: 'Profile record does not exist.',
+        isStatusPage: true,
+      }, next);
+      return;
+    }
+
+    const files = req.files || [];
+    if (files.length !== 1 || files[0].fieldname !== 'avatar' || !files[0].filename) {
+      setFlashCookie(res, 'error', 'Choose one JPEG, PNG, WebP or GIF image to upload.');
+      res.redirect('/profile/edit');
+      return;
+    }
+
+    const uploaded = files[0];
+    const processed = await processProfileAvatar(uploaded.buffer, uploaded.mimetype);
+    newStoragePath = createProfileAvatarStoragePath(req.user.id, processed.extension);
+    await uploadProfileAvatarToStorage(newStoragePath, processed.buffer, processed.contentType, { req });
+
+    let previousStoragePath: string | null;
+    try {
+      const result = await setProfileAvatarStoragePath(profile.id, req.user.id, newStoragePath);
+      previousStoragePath = result.previousStoragePath;
+    } catch (databaseError) {
+      // A failed profile-row update must not strand the newly uploaded object.
+      try {
+        await deleteProfileAvatarFromStorage(newStoragePath, { req });
+      } catch {
+        console.error('Profile avatar rollback cleanup failed.');
+      }
+      newStoragePath = null;
+      throw databaseError;
+    }
+
+    if (previousStoragePath && previousStoragePath !== newStoragePath) {
+      try {
+        await deleteProfileAvatarFromStorage(previousStoragePath, { req });
+      } catch {
+        console.error('Previous profile avatar cleanup failed after successful replacement.');
+      }
+    }
+
+    setFlashCookie(res, 'success', 'Profile photo saved successfully.');
+    res.redirect('/profiles/' + encodeURIComponent(profile.username));
+  } catch (error) {
+    if (newStoragePath && req.user) {
+      try {
+        await deleteProfileAvatarFromStorage(newStoragePath, { req });
+      } catch {
+        console.error('Profile avatar rollback cleanup failed.');
+      }
+    }
+    const message = error instanceof Error ? error.message : 'Profile photo upload failed.';
+    setFlashCookie(res, 'error', message);
+    res.redirect('/profile/edit');
+  }
+}
+
+/** Clears the uploaded-avatar pointer before deleting the now-unreferenced object. */
+export async function postRemoveProfileAvatar(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user) {
+      res.redirect('/auth/login');
+      return;
+    }
+    const profile = await getProfileById(req.user.id);
+    if (!profile) {
+      res.status(404);
+      renderWithLayout(res, 'errors/404', {
+        title: 'Profile Not Found',
+        message: 'Profile record does not exist.',
+        isStatusPage: true,
+      }, next);
+      return;
+    }
+
+    const result = await setProfileAvatarStoragePath(profile.id, req.user.id, null);
+    if (result.previousStoragePath) {
+      try {
+        await deleteProfileAvatarFromStorage(result.previousStoragePath, { req });
+      } catch {
+        console.error('Removed profile avatar cleanup failed after profile update.');
+      }
+    }
+
+    setFlashCookie(res, 'success', 'Uploaded profile photo removed. Your Avatar URL fallback is unchanged.');
+    res.redirect('/profile/edit');
   } catch (error) {
     next(error);
   }
