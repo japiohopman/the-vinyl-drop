@@ -235,6 +235,16 @@ const SAFE_NODE_NETWORK_ERROR_CODES = new Set([
   'ENOTFOUND',
 ]);
 
+const SAFE_NODE_TYPE_ERROR_CODES = new Set([
+  'ERR_ARG_NOT_ITERABLE',
+  'ERR_INVALID_ARG_TYPE',
+  'ERR_INVALID_ARG_VALUE',
+  'ERR_INVALID_RETURN_PROPERTY_VALUE',
+  'ERR_INVALID_RETURN_VALUE',
+  'ERR_INVALID_THIS',
+  'ERR_INVALID_TUPLE',
+]);
+
 type SafeRateLimitCleanupFailureType =
   | 'error'
   | 'type_error'
@@ -278,6 +288,7 @@ function classifySafeRateLimitCleanupCode(code: string): string | null {
   // Check network codes first: EPIPE is five uppercase characters but is
   // a Node socket error, not a PostgreSQL SQLSTATE.
   if (SAFE_NODE_NETWORK_ERROR_CODES.has(code)) return 'node_network:' + code;
+  if (SAFE_NODE_TYPE_ERROR_CODES.has(code)) return 'node_type_error:' + code;
   if (/^[0-9A-Z]{5}$/.test(code)) return 'postgres_sqlstate:' + code;
   if (SAFE_POSTGRES_JS_ERROR_CODES.has(code)) return 'postgres_js:' + code;
   return null;
