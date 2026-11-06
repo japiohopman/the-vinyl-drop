@@ -138,6 +138,22 @@ async function inspectLocationLayouts(page: Page, selector: string): Promise<Loc
   );
 }
 
+/** Keeps the expanded desktop filter panel within a deliberate vertical footprint. */
+async function assertDesktopFilterPanelIsCompact(page: Page, viewportWidth: number): Promise<void> {
+  if (viewportWidth < 1280) return;
+
+  const panelHeight = await page.locator('.browse-filter-form').evaluate((element) =>
+    Math.round(element.getBoundingClientRect().height)
+  );
+  assert.ok(
+    panelHeight <= 430,
+    'Expanded desktop filter panel is too tall at ' + viewportWidth + 'px (' +
+      panelHeight + 'px; expected at most 430px)'
+  );
+  console.log('[browse-evidence] PASS compact desktop filter panel @ ' + viewportWidth + 'px — ' +
+    panelHeight + 'px');
+}
+
 /** Renders the combined Dig surface so desktop toolbar geometry is checked in its real EJS context. */
 async function renderDig(baseUrl: string): Promise<string> {
   const listings = [
@@ -254,6 +270,7 @@ async function run(): Promise<void> {
         await page.locator('.browse-mobile-filter-panel').evaluate((element) => {
           (element as HTMLDetailsElement).open = true;
         });
+        await assertDesktopFilterPanelIsCompact(page, viewport.width);
 
         const dimensions = await page.evaluate(() => ({
           viewport: window.innerWidth,
@@ -363,6 +380,7 @@ async function run(): Promise<void> {
         await page.locator('.browse-mobile-filter-panel').evaluate((element) => {
           (element as HTMLDetailsElement).open = true;
         });
+        await assertDesktopFilterPanelIsCompact(page, viewport.width);
 
         const locationLayouts = await inspectLocationLayouts(page, '.listing-list .listing-card-location');
         assert.ok(locationLayouts.length > 0, 'List-mode cards should expose seller locations at ' + viewport.width + 'px');
@@ -433,6 +451,7 @@ async function run(): Promise<void> {
         await page.locator('.browse-secondary-filters').evaluate((element) => {
           (element as HTMLDetailsElement).open = true;
         });
+        await assertDesktopFilterPanelIsCompact(page, viewport.width);
 
         const dimensions = await page.evaluate(() => ({
           viewport: window.innerWidth,
