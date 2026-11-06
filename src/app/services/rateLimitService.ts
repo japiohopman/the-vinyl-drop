@@ -597,6 +597,57 @@ export const rateLimits = {
   ]),
 };
 
+/**
+ * Always-on, account-scoped avatar limiter. It deliberately does not toggle
+ * the broader SHARED_RATE_LIMITS_ENABLED feature: profile uploads need their
+ * own bound while the owner keeps the general shared-rate-limit rollout off.
+ * It uses the already-provisioned private counter table and the required
+ * RECOVERY_SIGNING_SECRET, with a separate HMAC namespace.
+ */
+export const profileAvatarUploadRateLimit: RequestHandler = (req, res, next) => {
+  const isTest = config.NODE_ENV === 'test';
+  if (isTest && !testStore) {
+    next();
+    return;
+  }
+  const userId = req.user?.id;
+  if (!userId || (!isTest && !queryClient)) {
+    sendRateLimitResponse(req, res, 503, 60);
+    return;
+  }
+  void (async () => {
+    const nowMs = Date.now();
+    if (isTest) await testStore!.prune(nowMs);
+    else await pruneExpiredRateLimitBucketsWithClient(queryClient!, nowMs);
+    const rules = [
+      { windowMs: HOUR, maxHits: 5 },
+      { windowMs: DAY, maxHits: 10 },
+    ];
+    let retryAfterSeconds = 0;
+    for (const rule of rules) {
+      const windowStartMs = Math.floor(nowMs / rule.windowMs) * rule.windowMs;
+      const bucket: RateLimitBucket = {
+        bucketKey: createHmac('sha256', config.RECOVERY_SIGNING_SECRET)
+          .update(['the-vinyl-drop:profile-avatar-upload:v1', userId, String(rule.windowMs)].join(String.fromCharCode(0)))
+          .digest('hex'),
+        windowStartMs,
+        expiresAtMs: windowStartMs + rule.windowMs,
+      };
+      const count = isTest
+        ? await testStore!.increment(bucket)
+        : await incrementRateLimitBucketWithClient(queryClient!, bucket);
+      if (count > rule.maxHits) {
+        retryAfterSeconds = Math.max(retryAfterSeconds, Math.ceil((bucket.expiresAtMs - nowMs) / 1000));
+      }
+    }
+    if (retryAfterSeconds > 0) {
+      sendRateLimitResponse(req, res, 429, retryAfterSeconds);
+      return;
+    }
+    next();
+  })().catch(() => sendRateLimitResponse(req, res, 503, 60));
+};
+
 export const conditionalDiscogsSearchRateLimit: RequestHandler = (req, res, next) => {
   const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   if (!query) {

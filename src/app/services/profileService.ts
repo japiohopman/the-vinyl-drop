@@ -62,6 +62,8 @@ export async function updateProfile(
       location: input.location || null,
       avatarUrl: input.avatarUrl || null,
       websiteUrl: normalizedWebsiteUrl,
+      soundcloudUrl: input.soundcloudUrl && input.soundcloudUrl.trim() ? input.soundcloudUrl.trim() : null,
+      mixcloudUrl: input.mixcloudUrl && input.mixcloudUrl.trim() ? input.mixcloudUrl.trim() : null,
     },
     dbOverride
   );
@@ -71,4 +73,36 @@ export async function updateProfile(
   }
 
   return updated;
+}
+
+
+/**
+ * Changes the uploaded-avatar pointer only for the authenticated profile owner.
+ * The caller uploads the new immutable Storage object first and removes the
+ * previous object only after this database update succeeds.
+ */
+export async function setProfileAvatarStoragePath(
+  targetUserId: string,
+  requestingUserId: string,
+  storagePath: string | null,
+  dbOverride?: DbInstance
+): Promise<{ profile: Profile; previousStoragePath: string | null }> {
+  if (targetUserId !== requestingUserId) {
+    throw new AuthorizationError('You are not authorized to update this profile avatar');
+  }
+
+  const existingProfile = await findProfileById(targetUserId, dbOverride);
+  if (!existingProfile) throw new ValidationError('Profile not found');
+
+  const updated = await updateProfileInRepo(
+    targetUserId,
+    { avatarStoragePath: storagePath },
+    dbOverride
+  );
+  if (!updated) throw new Error('Failed to update profile avatar');
+
+  return {
+    profile: updated,
+    previousStoragePath: existingProfile.avatarStoragePath ?? null,
+  };
 }

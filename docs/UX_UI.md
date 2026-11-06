@@ -289,3 +289,10 @@ The supplied `public/assets/UI/dig_crate.webp` is the top-down crate source for 
 Place the full-width Filters trigger directly below the mobile crate/sleeve explorer. When a sleeve is flipped on mobile, keep both the reverse face and the offset deck-edge underlay transparent so the crate remains visible through areas not covered by the back-cover photo. Preserve the underlay's border/shadow cue, keep the front face opaque, and leave desktop styling unchanged. It opens an accessible dialog for the existing server-side `/dig` filters. Preserve query, genre, condition, price range, sort, format selections, white-label state, and the current view parameter. Cancel/Close discards unsaved dialog edits; Clear all resets the filters through `/dig`. When no records match, keep the existing filter controls available without showing the crate-only trigger/dialog.
 
 **Desktop is explicitly unchanged:** at widths of 768px and above, do not show the crate art, mobile filter trigger, or dialog. Preserve the existing desktop grid/list and filter controls.
+
+
+## Profile photo and music links — Issue #351
+
+The profile editor keeps the existing Avatar URL as a backwards-compatible fallback and adds a separate authenticated first-party upload flow. An uploaded avatar takes precedence; removing it reveals the URL fallback or initials. JPEG/PNG/WebP inputs become square transparent WebP assets; animated GIF remains GIF with its frame timing, transparency and looping preserved. The dedicated public-read `profile-avatars` bucket has owner-scoped upload/delete policies; do not reuse listing-photo buckets or relax their policies.
+
+Public profiles show SoundCloud and Mixcloud click-through cards only when a valid HTTPS URL for that provider is present. No player, iframe, autoplay or third-party request is loaded by rendering the profile.

@@ -16,8 +16,51 @@ function validPolicyRows(): StoragePolicyRow[] {
 }
 
 describe('production Storage policy preflight', () => {
-  test('accepts exactly the reviewed four listing-photo and three private-source policies', () => {
+  test('accepts the exact reviewed legacy seven-policy set', () => {
     expect(getStoragePolicyValidationErrors(validPolicyRows())).toEqual([]);
+  });
+
+  test('accepts the exact owner-scoped avatar insert/delete pair without changing listing policies', () => {
+    const rows = validPolicyRows();
+    const ownerPredicate = "((bucket_id = 'profile-avatars'::text) AND (storage.foldername(objects.name))[1] = 'profiles'::text AND (storage.foldername(objects.name))[2] = (SELECT auth.uid()::text))";
+    rows.push({
+      policyname: 'profile-avatars-owner-insert',
+      permissive: 'PERMISSIVE',
+      roles: '{authenticated}',
+      cmd: 'INSERT',
+      qual: null,
+      with_check: ownerPredicate,
+    });
+    rows.push({
+      policyname: 'profile-avatars-owner-delete',
+      permissive: 'PERMISSIVE',
+      roles: '{authenticated}',
+      cmd: 'DELETE',
+      qual: ownerPredicate,
+      with_check: null,
+    });
+    expect(getStoragePolicyValidationErrors(rows)).toEqual([]);
+  });
+
+  test('rejects a widened or incomplete profile-avatar policy pair', () => {
+    const rows = validPolicyRows();
+    rows.push({
+      policyname: 'profile-avatars-owner-insert',
+      permissive: 'PERMISSIVE',
+      roles: '{authenticated}',
+      cmd: 'INSERT',
+      qual: null,
+      with_check: "bucket_id = 'profile-avatars' OR true",
+    });
+    rows.push({
+      policyname: 'profile-avatars-owner-delete',
+      permissive: 'PERMISSIVE',
+      roles: '{authenticated}',
+      cmd: 'DELETE',
+      qual: "bucket_id = 'profile-avatars' OR true",
+      with_check: null,
+    });
+    expect(getStoragePolicyValidationErrors(rows).join(' ')).toMatch(/owner predicate/);
   });
 
   test('rejects any additional permissive policy, including a generic public reader', () => {
@@ -31,7 +74,7 @@ describe('production Storage policy preflight', () => {
       with_check: null,
     });
 
-    expect(getStoragePolicyValidationErrors(rows).join(' ')).toMatch(/exactly 7 policies/);
+    expect(getStoragePolicyValidationErrors(rows).join(' ')).toMatch(/exactly 7 legacy policies or 9 policies/);
     expect(getStoragePolicyValidationErrors(rows).join(' ')).toMatch(/unrecognized Storage policy/);
   });
 

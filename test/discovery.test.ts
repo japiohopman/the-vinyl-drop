@@ -30,7 +30,11 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     username: 'alice_records',
     displayName: 'Alice Vinyl',
     avatarUrl: 'https://example.com/alice.jpg',
+
     websiteUrl: null,
+    avatarStoragePath: null,
+    soundcloudUrl: null,
+    mixcloudUrl: null,
     bio: 'Crate digger & soul collector.',
     location: 'Berlin, DE',
     createdAt: new Date('2025-01-01'),
@@ -47,7 +51,11 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     username: 'bob_grooves',
     displayName: 'Bob Grooves',
     avatarUrl: null,
+
     websiteUrl: null,
+    avatarStoragePath: null,
+    soundcloudUrl: null,
+    mixcloudUrl: null,
     bio: null,
     location: null,
     createdAt: new Date('2025-01-01'),

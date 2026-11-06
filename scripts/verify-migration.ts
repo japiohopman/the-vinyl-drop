@@ -46,7 +46,8 @@ export async function verifyMigrations(): Promise<void> {
       public boolean NOT NULL DEFAULT false
     );
     INSERT INTO storage.buckets (id, name, public)
-    VALUES ('listing-photo-originals', 'listing-photo-originals', false)
+    VALUES ('listing-photo-originals', 'listing-photo-originals', false),
+           ('profile-avatars', 'profile-avatars', true)
     ON CONFLICT (id) DO NOTHING;
 
     CREATE TABLE IF NOT EXISTS storage.objects (
@@ -123,6 +124,16 @@ export async function verifyMigrations(): Promise<void> {
     throw new Error(
       `Drizzle migration history recorded ${migrationHistory.rows.length} entries, expected ${journal.entries.length}`
     );
+  }
+
+  const profileMediaColumns = await pg.query<{ column_name: string }>(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' ORDER BY column_name;"
+  );
+  const profileColumnNames = new Set(profileMediaColumns.rows.map((row) => row.column_name));
+  for (const column of ['avatar_storage_path', 'soundcloud_url', 'mixcloud_url']) {
+    if (!profileColumnNames.has(column)) {
+      throw new Error('Profile media migration is missing expected profiles.' + column);
+    }
   }
 
   const consentTable = await pg.query<{ relrowsecurity: boolean }>(
@@ -611,7 +622,29 @@ export async function verifyMigrations(): Promise<void> {
       ON storage.objects TO authenticated;
     ALTER POLICY "Authenticated Seller Update for listing-photos"
       ON storage.objects TO authenticated;
+
+    CREATE POLICY "profile-avatars-owner-insert"
+      ON storage.objects FOR INSERT TO authenticated
+      WITH CHECK (
+        bucket_id = 'profile-avatars'
+        AND (storage.foldername(name))[1] = 'profiles'
+        AND (storage.foldername(name))[2] = (SELECT auth.uid()::text)
+      );
+    CREATE POLICY "profile-avatars-owner-delete"
+      ON storage.objects FOR DELETE TO authenticated
+      USING (
+        bucket_id = 'profile-avatars'
+        AND (storage.foldername(name))[1] = 'profiles'
+        AND (storage.foldername(name))[2] = (SELECT auth.uid()::text)
+      );
   `);
+
+  const profileAvatarBucket = await pg.query<{ public: boolean }>(
+    "SELECT public FROM storage.buckets WHERE id = 'profile-avatars';"
+  );
+  if (profileAvatarBucket.rows.length !== 1 || !profileAvatarBucket.rows[0].public) {
+    throw new Error('The dedicated profile-avatars bucket must be configured as public-read.');
+  }
 
   const storagePoliciesRes = await pg.query<StoragePolicyRow>(
     `SELECT policyname, permissive, roles::text AS roles, cmd, qual, with_check

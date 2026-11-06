@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import request from 'supertest';
+import sharp from 'sharp';
 import { createApp } from '../src/app';
 import { setSupabaseClient } from '../src/lib/supabase';
 import * as profileRepository from '../src/app/repositories/profileRepository';
 import * as listingService from '../src/app/services/listingService';
 import { updateProfile, AuthorizationError } from '../src/app/services/profileService';
 import * as profileService from '../src/app/services/profileService';
+import * as profileAvatarStorage from '../src/app/services/profileAvatarStorageService';
 import { Profile } from '../src/db/schema/profiles';
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
@@ -28,7 +30,11 @@ describe('Profile Foundation & Server-Side Ownership', () => {
     username: 'alice_records',
     displayName: 'Alice Cooper',
     avatarUrl: 'https://example.com/alice.jpg',
+
     websiteUrl: null,
+    avatarStoragePath: null,
+    soundcloudUrl: null,
+    mixcloudUrl: null,
     bio: 'Jazz & Funk vinyl collector.',
     location: 'Berlin, DE',
     createdAt: new Date('2025-01-01'),
@@ -42,6 +48,8 @@ describe('Profile Foundation & Server-Side Ownership', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    profileAvatarStorage.clearInMemoryProfileAvatarStorage();
+    profileAvatarStorage.clearInMemoryProfileAvatarStorage();
     (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
       items: [],
       totalCount: 0,
@@ -108,6 +116,8 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       const profileWithWebsite: Profile = {
         ...mockProfileAlice,
         websiteUrl: 'https://djalice.example.com',
+        soundcloudUrl: 'https://soundcloud.com/alice-records',
+        mixcloudUrl: 'https://www.mixcloud.com/alice-records',
       };
       jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(profileWithWebsite);
 
@@ -118,6 +128,10 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       expect(res.text).toContain('https://djalice.example.com');
       expect(res.text).toContain('target="_blank"');
       expect(res.text).toContain('rel="noopener noreferrer"');
+      expect(res.text).toContain('SoundCloud');
+      expect(res.text).toContain('https://soundcloud.com/alice-records');
+      expect(res.text).toContain('Mixcloud');
+      expect(res.text).toContain('https://www.mixcloud.com/alice-records');
     });
 
     it('GET /design-system should resolve design system page without triggering profile username capture collision', async () => {
@@ -199,6 +213,8 @@ describe('Profile Foundation & Server-Side Ownership', () => {
           location: 'Amsterdam, NL',
           avatarUrl: '',
           websiteUrl: 'https://linktr.ee/alice_records',
+          soundcloudUrl: 'https://soundcloud.com/alice-new',
+          mixcloudUrl: 'https://www.mixcloud.com/alice-new',
         });
 
       expect(res.status).toBe(302);
@@ -211,7 +227,111 @@ describe('Profile Foundation & Server-Side Ownership', () => {
           bio: 'Updated bio details.',
           location: 'Amsterdam, NL',
           websiteUrl: 'https://linktr.ee/alice_records',
+          soundcloudUrl: 'https://soundcloud.com/alice-new',
+          mixcloudUrl: 'https://www.mixcloud.com/alice-new',
         }),
+        undefined
+      );
+    });
+
+
+    it('POST /profile/avatar should upload an owner-owned WebP derivative and update only that profile pointer', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      const updateSpy = jest.spyOn(profileRepository, 'updateProfile').mockImplementation(async (_id: string, data: any) => ({
+        ...mockProfileAlice,
+        ...data,
+      }));
+
+      const image = await sharp({
+        create: { width: 80, height: 120, channels: 3, background: { r: 20, g: 60, b: 100 } },
+      }).png().toBuffer();
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/profile/avatar')
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=alice-token'])
+        .attach('avatar', image, { filename: 'avatar.png', contentType: 'image/png' });
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/profiles/alice_records');
+      expect(updateSpy).toHaveBeenCalledWith(
+        mockUserAlice.id,
+        expect.objectContaining({
+          avatarStoragePath: expect.stringMatching(new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\.webp$')),
+        }),
+        undefined
+      );
+      const savedPath = updateSpy.mock.calls[0][1].avatarStoragePath as string;
+      expect(profileAvatarStorage.hasInMemoryProfileAvatar(savedPath)).toBe(true);
+    });
+
+    it('POST /profile/avatar should remove a newly uploaded Storage object when the profile database update fails', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      jest.spyOn(profileRepository, 'updateProfile').mockRejectedValue(new Error('database write failed'));
+      const deleteSpy = jest.spyOn(profileAvatarStorage, 'deleteProfileAvatarFromStorage');
+
+      const image = await sharp({
+        create: { width: 80, height: 80, channels: 3, background: { r: 80, g: 40, b: 20 } },
+      }).png().toBuffer();
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/profile/avatar')
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=alice-token'])
+        .attach('avatar', image, { filename: 'avatar.png', contentType: 'image/png' });
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/profile/edit');
+      expect(deleteSpy).toHaveBeenCalledWith(
+        expect.stringMatching(new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\.webp$')),
+        expect.objectContaining({ req: expect.any(Object) })
+      );
+      const attemptedPath = deleteSpy.mock.calls[0][0];
+      expect(profileAvatarStorage.hasInMemoryProfileAvatar(attemptedPath)).toBe(false);
+    });
+
+    it('POST /profile/avatar/remove restores the old database pointer when Storage deletion fails', async () => {
+      const oldPath = 'profiles/' + mockUserAlice.id + '/old-avatar.webp';
+      const profileWithAvatar = { ...mockProfileAlice, avatarStoragePath: oldPath };
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(profileWithAvatar);
+      const updateSpy = jest.spyOn(profileRepository, 'updateProfile').mockImplementation(async (_id: string, data: any) => ({
+        ...profileWithAvatar,
+        ...data,
+      }));
+      jest.spyOn(profileAvatarStorage, 'deleteProfileAvatarFromStorage').mockRejectedValueOnce(new Error('Storage delete unavailable'));
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/profile/avatar/remove')
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=alice-token']);
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/profile/edit');
+      expect(updateSpy).toHaveBeenNthCalledWith(
+        1,
+        mockUserAlice.id,
+        expect.objectContaining({ avatarStoragePath: null }),
+        undefined
+      );
+      expect(updateSpy).toHaveBeenNthCalledWith(
+        2,
+        mockUserAlice.id,
+        expect.objectContaining({ avatarStoragePath: oldPath }),
         undefined
       );
     });
@@ -337,7 +457,11 @@ describe('Profile Foundation & Server-Side Ownership', () => {
         username: 'bob_vinyl',
         displayName: 'Bob',
         avatarUrl: null,
+
         websiteUrl: null,
+        avatarStoragePath: null,
+        soundcloudUrl: null,
+        mixcloudUrl: null,
         bio: null,
         location: null,
         createdAt: new Date(),

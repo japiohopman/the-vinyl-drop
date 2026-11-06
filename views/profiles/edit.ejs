@@ -11,6 +11,34 @@
         : Object.values(form.fieldErrors)
     }) %>
 
+    <section class="profile-avatar-editor" aria-labelledby="profile-avatar-title">
+      <div class="profile-avatar-editor-copy">
+        <h2 id="profile-avatar-title">Profile photo</h2>
+        <p>Choose a photo or animated GIF. JPEG, PNG, WebP and GIF are supported (maximum 5 MiB).</p>
+      </div>
+      <div class="profile-avatar-editor-preview">
+        <% const currentAvatar = (typeof avatarPublicUrl !== 'undefined' && avatarPublicUrl) ? avatarPublicUrl : form.values.avatarUrl; %>
+        <% if (currentAvatar) { %>
+          <img src="<%= currentAvatar %>" alt="Current profile avatar" data-profile-avatar-preview>
+        <% } else { %>
+          <span class="profile-avatar-placeholder" data-profile-avatar-placeholder aria-hidden="true"><%= (form.values.displayName || form.values.username || '?').substring(0, 1).toUpperCase() %></span>
+          <img src="" alt="Selected profile avatar preview" data-profile-avatar-preview hidden>
+        <% } %>
+      </div>
+      <form action="/profile/avatar" method="POST" enctype="multipart/form-data" class="profile-avatar-upload-form" id="profile-avatar-upload-form">
+        <label for="profile-avatar-file">Choose a profile image</label>
+        <input id="profile-avatar-file" type="file" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif" required>
+        <p class="profile-avatar-file-name" data-profile-avatar-file-name aria-live="polite">No new image selected.</p>
+        <button type="submit" class="btn btn-primary btn-md mobile-compact-action">Upload profile photo</button>
+      </form>
+      <% if (profile.avatarStoragePath) { %>
+        <form action="/profile/avatar/remove" method="POST" class="profile-avatar-remove-form">
+          <button type="submit" class="btn btn-outline btn-sm mobile-compact-action">Remove uploaded photo</button>
+          <p>Your Avatar URL fallback remains available after removal.</p>
+        </form>
+      <% } %>
+    </section>
+
     <form action="/profile/edit" method="POST" class="profile-edit-form" novalidate>
       <div class="profile-edit-fields">
         <%- include('../partials/form-input', {
@@ -55,10 +83,31 @@
         <%- include('../partials/form-input', {
           type: 'url',
           name: 'avatarUrl',
-          label: 'Avatar URL',
+          label: 'Avatar URL fallback',
           value: form.values.avatarUrl,
           placeholder: 'https://example.com/avatar.jpg',
-          error: form.fieldErrors.avatarUrl
+          error: form.fieldErrors.avatarUrl,
+          helpText: 'Used only when no uploaded profile photo is set.'
+        }) %>
+
+        <%- include('../partials/form-input', {
+          type: 'url',
+          name: 'soundcloudUrl',
+          label: 'SoundCloud',
+          value: form.values.soundcloudUrl || '',
+          placeholder: 'https://soundcloud.com/your-name',
+          error: form.fieldErrors.soundcloudUrl,
+          helpText: 'Optional public SoundCloud profile or artist page.'
+        }) %>
+
+        <%- include('../partials/form-input', {
+          type: 'url',
+          name: 'mixcloudUrl',
+          label: 'Mixcloud',
+          value: form.values.mixcloudUrl || '',
+          placeholder: 'https://www.mixcloud.com/your-name',
+          error: form.fieldErrors.mixcloudUrl,
+          helpText: 'Optional public Mixcloud profile or show page.'
         }) %>
 
         <div class="profile-edit-bio">
@@ -87,3 +136,4 @@
     </form>
   </div>
 </div>
+<script src="/js/profile-avatar-upload.js" defer></script>

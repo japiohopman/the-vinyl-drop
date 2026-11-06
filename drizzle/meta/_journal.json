@@ -169,6 +169,13 @@
       "when": 1793776875603,
       "tag": "0023_block_new_google_oauth_identities",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793988000000,
+      "tag": "0024_profile_avatars_and_music_links",
+      "breakpoints": true
     }
   ]
 }

@@ -16,6 +16,7 @@ jest.mock('../src/app/services/rateLimitService', () => {
       get: () => passThrough,
     }),
     conditionalDiscogsSearchRateLimit: passThrough,
+    profileAvatarUploadRateLimit: passThrough,
   };
 });
 

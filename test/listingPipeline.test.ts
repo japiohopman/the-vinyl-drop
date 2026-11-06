@@ -5,7 +5,7 @@ import { createApp } from '../src/app';
 import { setSupabaseClient } from '../src/lib/supabase';
 import { parsePriceEurToCents } from '../src/validators/listing';
 import { processAndValidateImage } from '../src/app/utils/imageProcessor';
-import { multipartUploadHandler } from '../src/app/middleware/upload';
+import { multipartUploadHandler, singleFileMultipartUploadHandler } from '../src/app/middleware/upload';
 import {
   createListingFromRelease,
   addPhotoToListing,
@@ -1005,6 +1005,9 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       uploadTestApp.post('/test-upload', multipartUploadHandler, (req: Request, res: Response) => {
         res.status(200).json({ files: req.files?.length || 0, body: req.body });
       });
+      uploadTestApp.post('/test-upload-single', singleFileMultipartUploadHandler, (req: Request, res: Response) => {
+        res.status(200).json({ files: req.files?.length || 0 });
+      });
       uploadTestApp.use((err: Error, req: Request, res: Response, _next: express.NextFunction) => {
         res.status(400).json({ error: err.message });
       });
@@ -1208,6 +1211,17 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       const response = await req;
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('Maximum photo upload limit');
+    });
+
+    it('should reject a second file before buffering more profile media', async () => {
+      const smallBuffer = Buffer.from('fake image content');
+      const response = await supertest(uploadTestApp)
+        .post('/test-upload-single')
+        .attach('avatar', smallBuffer, { filename: 'avatar-one.jpg', contentType: 'image/jpeg' })
+        .attach('avatar', smallBuffer, { filename: 'avatar-two.jpg', contentType: 'image/jpeg' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Only one file is allowed');
     });
 
     it('should reject form fields exceeding 10KB size limit with 400 Bad Request (Blocker 2)', async () => {
