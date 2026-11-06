@@ -668,3 +668,31 @@
     min-width: 0;
   }
 }
+
+/* Issue #293: compact the desktop Browse filter footprint without shrinking controls. */
+@media (min-width: 1024px) {
+  .browse-filter-form {
+    margin-bottom: var(--space-6);
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .browse-mobile-filter-content {
+    gap: var(--space-3);
+  }
+
+  .browse-quick-filter-row {
+    padding-bottom: var(--space-3);
+  }
+
+  .browse-secondary-filters {
+    padding-top: var(--space-1);
+  }
+
+  .browse-secondary-grid {
+    margin-top: var(--space-2);
+  }
+
+  .browse-filter-actions {
+    padding-top: var(--space-2);
+  }
+}
