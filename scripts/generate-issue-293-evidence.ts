@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { AddressInfo, Server } from 'node:net';
 import ejs from 'ejs';
-import { chromium, type Browser } from '@playwright/test';
+import { chromium, type Browser, type Page } from '@playwright/test';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 import { VINYL_FORMAT_FILTERS } from '../src/domain/releaseFormat';
 import { readFullStylesheetSource } from '../test/stylesheetTestHelper';
@@ -17,7 +17,7 @@ const evidenceDirectory = process.env.BROWSE_EVIDENCE_DIR?.trim() || 'artifacts/
 const stylesheet = readFullStylesheetSource();
 
 /** Renders the Browse template with production styles and representative listing fixtures. */
-async function renderBrowse(baseUrl: string): Promise<string> {
+async function renderBrowse(baseUrl: string, view: 'grid' | 'list' = 'grid'): Promise<string> {
   const body = await ejs.renderFile(path.join(views, 'browse/index.ejs'), {
     getIconSvg,
     title: 'Browse — The Vinyl Drop',
@@ -56,7 +56,7 @@ async function renderBrowse(baseUrl: string): Promise<string> {
     ],
     filters: {
       q: 'De La Soul', genre: 'Hip Hop', condition: 'VG+', minPrice: '10',
-      maxPrice: '50', sort: 'price_asc', view: 'grid', formats: ['lp'], whiteLabel: false,
+      maxPrice: '50', sort: 'price_asc', view, formats: ['lp'], whiteLabel: false,
     },
     pagination: { totalCount: 25, page: 2, limit: 12, totalPages: 3 },
     formatOptions: VINYL_FORMAT_FILTERS,
@@ -68,6 +68,74 @@ async function renderBrowse(baseUrl: string): Promise<string> {
     '<base href="' + baseUrl + '/"><link rel="stylesheet" href="' + baseUrl + '/fonts/fonts.css">' +
     '<style>' + stylesheet + '</style></head><body>' +
     '<main class="main-content container">' + body + '</main></body></html>';
+}
+
+type LocationLayout = {
+  text: string;
+  clientWidth: number;
+  scrollWidth: number;
+  clientHeight: number;
+  scrollHeight: number;
+  lineHeight: number;
+  visible: boolean;
+  withinClippingBounds: boolean;
+};
+
+/** Measures location text visibility, intrinsic clipping and every clipping ancestor. */
+async function inspectLocationLayouts(page: Page, selector: string): Promise<LocationLayout[]> {
+  return page.locator(selector).evaluateAll((elements) =>
+    elements.map((element) => {
+      const label = element.querySelector('.listing-card-location-name');
+      if (!(label instanceof HTMLElement)) {
+        return {
+          text: '',
+          clientWidth: 0,
+          scrollWidth: Number.POSITIVE_INFINITY,
+          clientHeight: 0,
+          scrollHeight: Number.POSITIVE_INFINITY,
+          lineHeight: Number.POSITIVE_INFINITY,
+          visible: false,
+          withinClippingBounds: false,
+        };
+      }
+
+      const labelStyle = getComputedStyle(label);
+      const labelBounds = label.getBoundingClientRect();
+      let visible = labelStyle.visibility !== 'hidden' && Number(labelStyle.opacity) !== 0;
+      let withinClippingBounds = true;
+      let ancestor = label.parentElement;
+
+      while (ancestor) {
+        const style = getComputedStyle(ancestor);
+        if (style.visibility === 'hidden' || Number(style.opacity) === 0) {
+          visible = false;
+        }
+
+        const ancestorBounds = ancestor.getBoundingClientRect();
+        const clipsX = ['hidden', 'clip', 'auto', 'scroll'].includes(style.overflowX);
+        const clipsY = ['hidden', 'clip', 'auto', 'scroll'].includes(style.overflowY);
+        if (clipsX && (labelBounds.left < ancestorBounds.left - 1 || labelBounds.right > ancestorBounds.right + 1)) {
+          withinClippingBounds = false;
+        }
+        if (clipsY && (labelBounds.top < ancestorBounds.top - 1 || labelBounds.bottom > ancestorBounds.bottom + 1)) {
+          withinClippingBounds = false;
+        }
+
+        ancestor = ancestor.parentElement;
+      }
+
+      return {
+        text: label.textContent?.trim() || '',
+        clientWidth: label.clientWidth,
+        scrollWidth: label.scrollWidth,
+        clientHeight: label.clientHeight,
+        scrollHeight: label.scrollHeight,
+        lineHeight: Number.parseFloat(labelStyle.lineHeight),
+        visible,
+        withinClippingBounds,
+      };
+    })
+  );
 }
 
 /** Renders the combined Dig surface so desktop toolbar geometry is checked in its real EJS context. */
@@ -240,6 +308,37 @@ async function run(): Promise<void> {
             viewport.width + 'px, got ' + cardColumns
         );
 
+        const locationLayouts = await inspectLocationLayouts(page, '.listing-grid .listing-card-location');
+        assert.ok(locationLayouts.length > 0, 'Listing cards should expose seller locations at ' + viewport.width + 'px');
+        const firstLocationText = await page.locator(
+          '.listing-grid [data-listing-id="browse-evidence-1"] .listing-card-location-name'
+        ).textContent();
+        assert.equal(
+          firstLocationText?.trim(),
+          'Amsterdam Oost',
+          'The first Browse fixture location must remain intact at ' + viewport.width + 'px'
+        );
+        for (const location of locationLayouts) {
+          assert.ok(location.clientWidth > 0, 'Listing location has no visible width at ' + viewport.width + 'px');
+          assert.equal(location.visible, true, 'Listing location is hidden at ' + viewport.width + 'px: ' + location.text);
+          assert.equal(
+            location.withinClippingBounds,
+            true,
+            'Listing location extends beyond an ancestor clipping boundary at ' + viewport.width + 'px: ' + location.text
+          );
+          assert.ok(
+            location.scrollWidth <= location.clientWidth + 1 &&
+              location.scrollHeight <= location.clientHeight + 1,
+            'Listing location text is clipped at ' + viewport.width + 'px: ' + location.text
+          );
+          if (viewport.width >= 1280 && location.text === 'Amsterdam Oost') {
+            assert.ok(
+              location.clientHeight <= location.lineHeight + 1,
+              'A normal city location should remain on one line at ' + viewport.width + 'px (height ' + location.clientHeight + 'px; line height ' + location.lineHeight + 'px; width ' + location.clientWidth + 'px)'
+            );
+          }
+        }
+
         const screenshotPath = path.resolve(evidencePath, 'browse-' + viewport.width + 'px.png');
         await page.screenshot({ path: screenshotPath, fullPage: true, animations: 'disabled' });
         console.log('[browse-evidence] PASS Browse @ ' + viewport.width + 'px — ' +
@@ -254,7 +353,56 @@ async function run(): Promise<void> {
     }
 
     assert.equal(failures.length, 0, failures.join('\n'));
-    console.log('[browse-evidence] Captured ' + viewports.length + ' Browse screenshots in ' + evidencePath);
+    console.log('[browse-evidence] Captured ' + viewports.length + ' Browse grid screenshots in ' + evidencePath);
+
+    const listHtml = await renderBrowse(baseUrl, 'list');
+    for (const viewport of viewports) {
+      const page = await browser.newPage({ viewport });
+      try {
+        await page.setContent(listHtml, { waitUntil: 'load', timeout: 15000 });
+        await page.locator('.browse-mobile-filter-panel').evaluate((element) => {
+          (element as HTMLDetailsElement).open = true;
+        });
+
+        const locationLayouts = await inspectLocationLayouts(page, '.listing-list .listing-card-location');
+        assert.ok(locationLayouts.length > 0, 'List-mode cards should expose seller locations at ' + viewport.width + 'px');
+        const firstLocationText = await page.locator(
+          '.listing-list [data-listing-id="browse-evidence-1"] .listing-card-location-name'
+        ).textContent();
+        assert.equal(
+          firstLocationText?.trim(),
+          'Amsterdam Oost',
+          'The first list-mode fixture location must remain intact at ' + viewport.width + 'px'
+        );
+        for (const location of locationLayouts) {
+          assert.ok(location.clientWidth > 0, 'List-mode location has no visible width at ' + viewport.width + 'px: ' + location.text);
+          assert.equal(location.visible, true, 'List-mode location is hidden at ' + viewport.width + 'px: ' + location.text);
+          assert.equal(
+            location.withinClippingBounds,
+            true,
+            'List-mode location extends beyond an ancestor clipping boundary at ' + viewport.width + 'px: ' + location.text
+          );
+          assert.ok(
+            location.scrollWidth <= location.clientWidth + 1 &&
+              location.scrollHeight <= location.clientHeight + 1,
+            'List-mode location text is clipped at ' + viewport.width + 'px: ' + location.text
+          );
+        }
+
+        const screenshotPath = path.resolve(evidencePath, 'browse-list-' + viewport.width + 'px.png');
+        await page.screenshot({ path: screenshotPath, fullPage: true, animations: 'disabled' });
+        console.log('[browse-evidence] PASS Browse list mode @ ' + viewport.width + 'px — location labels visible and unclipped');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push(message);
+        console.error('[browse-evidence] FAIL Browse list mode @ ' + viewport.width + 'px: ' + message);
+      } finally {
+        await page.close();
+      }
+    }
+
+    assert.equal(failures.length, 0, failures.join('\n'));
+    console.log('[browse-evidence] Captured ' + viewports.length + ' Browse list-mode screenshots in ' + evidencePath);
 
     const digHtml = await renderDig(baseUrl);
     for (const viewport of viewports) {

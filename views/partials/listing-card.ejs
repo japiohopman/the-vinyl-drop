@@ -73,7 +73,7 @@
       <% if (sellerLocation) { %>
         <span class="listing-card-location">
           <%- include('./icon', { name: 'pin', size: '12px', ariaHidden: true }) %>
-          <%= sellerLocation %>
+          <span class="listing-card-location-name"><%= sellerLocation %></span>
         </span>
       <% } %>
     </div>
