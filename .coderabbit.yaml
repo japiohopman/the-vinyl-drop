@@ -1,0 +1,9 @@
+# Keep CodeRabbit settings version-controlled and inherit existing account/org defaults.
+# Schema: https://coderabbit.ai/integrations/schema.v2.json
+inheritance: true
+
+reviews:
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: true
