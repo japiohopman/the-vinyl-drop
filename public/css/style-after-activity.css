@@ -483,7 +483,7 @@
 
 .browse-page-container .listing-card-seller {
   flex: 0 1 auto;
-  max-width: 38%;
+  max-width: 30%;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -497,7 +497,7 @@
 }
 
 .browse-page-container .listing-card-location {
-  flex: 1 1 112px;
+  flex: 1 1 130px;
   overflow: visible;
   justify-content: flex-start;
 }
