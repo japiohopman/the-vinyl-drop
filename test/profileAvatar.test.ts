@@ -1,5 +1,4 @@
 import sharp from 'sharp';
-import request from 'supertest';
 import { profileUpdateSchema } from '../src/validators/profile';
 import {
   processProfileAvatar,
