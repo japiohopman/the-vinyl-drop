@@ -235,6 +235,13 @@ const SAFE_NODE_NETWORK_ERROR_CODES = new Set([
   'ENOTFOUND',
 ]);
 
+/**
+ * Convert a driver failure into a non-sensitive diagnostic category.
+ *
+ * Known Node network codes are checked before PostgreSQL SQLSTATE formatting
+ * because some network codes (for example EPIPE) are also five uppercase
+ * characters long. Unknown codes and malformed error objects fail closed.
+ */
 export function getSafeRateLimitCleanupFailureCategory(error: unknown): string {
   try {
     if (typeof error !== 'object' || error === null || !('code' in error)) {
@@ -244,14 +251,16 @@ export function getSafeRateLimitCleanupFailureCategory(error: unknown): string {
     const code = (error as { code?: unknown }).code;
     if (typeof code !== 'string') return 'unclassified';
 
+    // Check network codes first: EPIPE is five uppercase characters but is
+    // a Node socket error, not a PostgreSQL SQLSTATE.
+    if (SAFE_NODE_NETWORK_ERROR_CODES.has(code)) {
+      return `node_network:${code}`;
+    }
     if (/^[0-9A-Z]{5}$/.test(code)) {
       return `postgres_sqlstate:${code}`;
     }
     if (SAFE_POSTGRES_JS_ERROR_CODES.has(code)) {
       return `postgres_js:${code}`;
-    }
-    if (SAFE_NODE_NETWORK_ERROR_CODES.has(code)) {
-      return `node_network:${code}`;
     }
 
     return 'unclassified';
