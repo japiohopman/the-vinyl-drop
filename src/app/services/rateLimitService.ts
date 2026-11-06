@@ -570,6 +570,10 @@ export const rateLimits = {
     { name: 'listing-photo-account-hourly', windowMs: HOUR, maxHits: 5, identify: accountId, required: true },
     { name: 'listing-photo-account-daily', windowMs: DAY, maxHits: 10, identify: accountId, required: true },
   ]),
+  profileAvatarUpload: createRateLimitMiddleware([
+    { name: 'profile-avatar-account-hourly', windowMs: HOUR, maxHits: 5, identify: accountId, required: true },
+    { name: 'profile-avatar-account-daily', windowMs: DAY, maxHits: 10, identify: accountId, required: true },
+  ]),
   catalogueSuggestion: createRateLimitMiddleware([
     { name: 'catalogue-suggestion-ip', windowMs: MINUTE, maxHits: 30, identify: ip, required: true },
   ]),
