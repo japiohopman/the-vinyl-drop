@@ -52,10 +52,6 @@ jobs:
       - name: Run linter
         run: npm run lint
 
-      - name: Test production migration preflight guards
-        shell: pwsh
-        run: ./test/production-preflight.Tests.ps1
-
       - name: Run type checker
         run: npm run typecheck
 
@@ -124,6 +120,21 @@ jobs:
           path: artifacts/issue-300/
           if-no-files-found: warn
           retention-days: 14
+
+  production-preflight-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Test production migration preflight on Linux
+        shell: pwsh
+        run: ./test/production-preflight.Tests.ps1
 
   production-preflight-windows:
     runs-on: windows-latest
