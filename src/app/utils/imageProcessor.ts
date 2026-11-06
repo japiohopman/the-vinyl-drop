@@ -221,9 +221,8 @@ export async function processProfileAvatar(
 
     let output: Buffer;
     if (animated) {
-      const gifOptions: { loop: number; delay?: number | number[] } = {
-        loop: metadata.loop ?? 0,
-      };
+      const gifOptions: { loop?: number; delay?: number | number[] } = {};
+      if (metadata.loop !== undefined) gifOptions.loop = metadata.loop;
       if (metadata.delay !== undefined) gifOptions.delay = metadata.delay;
       output = await input
         .resize({
@@ -254,8 +253,26 @@ export async function processProfileAvatar(
     if (!outputMetadata.width || !outputMetadata.height) {
       throw new Error('The processed profile avatar could not be verified.');
     }
-    if (animated && (outputMetadata.format !== 'gif' || (outputMetadata.pages || 1) !== pages)) {
-      throw new Error('The animated GIF could not be preserved during processing.');
+    if (animated) {
+      const outputPages = outputMetadata.pages || 1;
+      const outputFrameHeight = outputMetadata.pageHeight || Math.floor(outputMetadata.height / outputPages);
+      const timingPreserved = metadata.delay === undefined ||
+        JSON.stringify(outputMetadata.delay || []) === JSON.stringify(metadata.delay);
+      const loopPreserved = metadata.loop === undefined
+        ? outputMetadata.loop === undefined
+        : outputMetadata.loop === metadata.loop;
+      const transparencyPreserved = !metadata.hasAlpha || outputMetadata.hasAlpha === true;
+      if (
+        outputMetadata.format !== 'gif' ||
+        outputPages !== pages ||
+        !timingPreserved ||
+        !loopPreserved ||
+        !transparencyPreserved ||
+        outputMetadata.width > MAX_PROFILE_AVATAR_DIMENSION ||
+        outputFrameHeight > MAX_PROFILE_AVATAR_DIMENSION
+      ) {
+        throw new Error('The animated GIF could not preserve its frames, timing, loop and transparency.');
+      }
     }
     if (!animated && outputMetadata.format !== 'webp') {
       throw new Error('The static profile avatar could not be converted to WebP.');

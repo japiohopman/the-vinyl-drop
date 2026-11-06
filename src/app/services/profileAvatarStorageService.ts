@@ -73,3 +73,9 @@ export function getProfileAvatarPublicUrl(storagePath: string): string {
 export function clearInMemoryProfileAvatarStorage(): void {
   inMemoryStorage.clear();
 }
+
+
+/** Test-only existence check without exposing stored image bytes. */
+export function hasInMemoryProfileAvatar(storagePath: string): boolean {
+  return config.NODE_ENV === 'test' && inMemoryStorage.has(storagePath);
+}

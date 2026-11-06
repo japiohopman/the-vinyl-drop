@@ -333,14 +333,15 @@ export async function postUploadProfileAvatar(req: Request, res: Response, next:
     newStoragePath = createProfileAvatarStoragePath(req.user.id, processed.extension);
     await uploadProfileAvatarToStorage(newStoragePath, processed.buffer, processed.contentType, { req });
 
+    const committedStoragePath = newStoragePath;
     let previousStoragePath: string | null;
     try {
-      const result = await setProfileAvatarStoragePath(profile.id, req.user.id, newStoragePath);
+      const result = await setProfileAvatarStoragePath(profile.id, req.user.id, committedStoragePath);
       previousStoragePath = result.previousStoragePath;
     } catch (databaseError) {
       // A failed profile-row update must not strand the newly uploaded object.
       try {
-        await deleteProfileAvatarFromStorage(newStoragePath, { req });
+        await deleteProfileAvatarFromStorage(committedStoragePath, { req });
       } catch {
         console.error('Profile avatar rollback cleanup failed.');
       }
@@ -348,11 +349,31 @@ export async function postUploadProfileAvatar(req: Request, res: Response, next:
       throw databaseError;
     }
 
-    if (previousStoragePath && previousStoragePath !== newStoragePath) {
+    // The database now references this immutable object: keep it alive after commit.
+    newStoragePath = null;
+    if (previousStoragePath && previousStoragePath !== committedStoragePath) {
       try {
         await deleteProfileAvatarFromStorage(previousStoragePath, { req });
       } catch {
-        console.error('Previous profile avatar cleanup failed after successful replacement.');
+        let oldPointerRestored = false;
+        try {
+          await setProfileAvatarStoragePath(profile.id, req.user.id, previousStoragePath);
+          oldPointerRestored = true;
+        } catch {
+          console.error('Profile avatar replacement rollback could not restore the previous database reference.');
+        }
+        if (oldPointerRestored) {
+          try {
+            await deleteProfileAvatarFromStorage(committedStoragePath, { req });
+          } catch {
+            console.error('Profile avatar replacement rollback could not remove the new object.');
+          }
+          setFlashCookie(res, 'error', 'The previous photo could not be removed. Your original avatar was restored.');
+        } else {
+          setFlashCookie(res, 'error', 'The new photo is saved, but cleanup of the previous photo needs attention.');
+        }
+        res.redirect('/profile/edit');
+        return;
       }
     }
 
@@ -395,7 +416,14 @@ export async function postRemoveProfileAvatar(req: Request, res: Response, next:
       try {
         await deleteProfileAvatarFromStorage(result.previousStoragePath, { req });
       } catch {
-        console.error('Removed profile avatar cleanup failed after profile update.');
+        try {
+          await setProfileAvatarStoragePath(profile.id, req.user.id, result.previousStoragePath);
+        } catch {
+          console.error('Profile avatar removal rollback could not restore the previous reference.');
+        }
+        setFlashCookie(res, 'error', 'The uploaded photo could not be removed safely. Your previous avatar was restored where possible.');
+        res.redirect('/profile/edit');
+        return;
       }
     }
 

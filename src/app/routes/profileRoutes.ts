@@ -19,7 +19,7 @@ router.get('/profile', requireAuth, getCurrentProfile);
 router.get('/profile/edit', requireAuth, getEditProfilePage);
 router.post('/profile/edit', requireAuth, validateSameOrigin, postEditProfile);
 router.post('/profile/avatar', requireAuth, validateSameOrigin, profileAvatarUploadRateLimit, multipartUploadHandler, postUploadProfileAvatar);
-router.post('/profile/avatar/remove', requireAuth, validateSameOrigin, rateLimits.profileAvatarUpload, postRemoveProfileAvatar);
+router.post('/profile/avatar/remove', requireAuth, validateSameOrigin, profileAvatarUploadRateLimit, postRemoveProfileAvatar);
 router.get('/profiles/:username/crate', getPublicProfileCrate);
 router.get('/profile/:username/crate', getPublicProfileCrate);
 router.get('/profiles/:username', getPublicProfile);
