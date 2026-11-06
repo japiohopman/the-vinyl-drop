@@ -570,10 +570,6 @@ export const rateLimits = {
     { name: 'listing-photo-account-hourly', windowMs: HOUR, maxHits: 5, identify: accountId, required: true },
     { name: 'listing-photo-account-daily', windowMs: DAY, maxHits: 10, identify: accountId, required: true },
   ]),
-  profileAvatarUpload: createRateLimitMiddleware([
-    { name: 'profile-avatar-account-hourly', windowMs: HOUR, maxHits: 5, identify: accountId, required: true },
-    { name: 'profile-avatar-account-daily', windowMs: DAY, maxHits: 10, identify: accountId, required: true },
-  ]),
   catalogueSuggestion: createRateLimitMiddleware([
     { name: 'catalogue-suggestion-ip', windowMs: MINUTE, maxHits: 30, identify: ip, required: true },
   ]),
@@ -599,6 +595,62 @@ export const rateLimits = {
     { name: 'messaging-send-account-short', windowMs: 10 * MINUTE, maxHits: 30, identify: accountId, required: true },
     { name: 'messaging-send-account-daily', windowMs: DAY, maxHits: 100, identify: accountId, required: true },
   ]),
+};
+
+/**
+ * Always-on, account-scoped avatar limiter. It deliberately does not toggle
+ * the broader SHARED_RATE_LIMITS_ENABLED feature: profile uploads need their
+ * own bound while the owner keeps the general shared-rate-limit rollout off.
+ * It uses the already-provisioned private counter table and the required
+ * RECOVERY_SIGNING_SECRET, with a separate HMAC namespace.
+ */
+export const profileAvatarUploadRateLimit: RequestHandler = (req, res, next) => {
+  if (config.NODE_ENV === 'test' && !testStore) {
+    next();
+    return;
+  }
+  const userId = req.user?.id;
+  if (!userId || !queryClient) {
+    sendRateLimitResponse(req, res, 503, 60);
+    return;
+  }
+
+  void (async () => {
+    const nowMs = Date.now();
+    await pruneExpiredRateLimitBucketsWithClient(queryClient, nowMs);
+    const rules = [
+      { windowMs: HOUR, maxHits: 5 },
+      { windowMs: DAY, maxHits: 10 },
+    ];
+    let retryAfterSeconds = 0;
+
+    for (const rule of rules) {
+      const windowStartMs = Math.floor(nowMs / rule.windowMs) * rule.windowMs;
+      const bucket: RateLimitBucket = {
+        bucketKey: createHmac('sha256', config.RECOVERY_SIGNING_SECRET)
+          .update('the-vinyl-drop:profile-avatar-upload:v1\\u0000' + userId + '\\u0000' + rule.windowMs)
+          .digest('hex'),
+        windowStartMs,
+        expiresAtMs: windowStartMs + rule.windowMs,
+      };
+      const count = await incrementRateLimitBucketWithClient(queryClient, bucket);
+      if (count > rule.maxHits) {
+        retryAfterSeconds = Math.max(
+          retryAfterSeconds,
+          Math.ceil((bucket.expiresAtMs - nowMs) / 1000)
+        );
+      }
+    }
+
+    if (retryAfterSeconds > 0) {
+      sendRateLimitResponse(req, res, 429, retryAfterSeconds);
+      return;
+    }
+    next();
+  })().catch(() => {
+    // Fail closed without exposing account identifiers or database details.
+    sendRateLimitResponse(req, res, 503, 60);
+  });
 };
 
 export const conditionalDiscogsSearchRateLimit: RequestHandler = (req, res, next) => {
