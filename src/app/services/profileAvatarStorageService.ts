@@ -1,4 +1,5 @@
 import { Request } from 'express';
+import { randomUUID } from 'crypto';
 import { getSupabaseClient } from '../../lib/supabase';
 import { config } from '../../config/env';
 
@@ -12,7 +13,7 @@ export interface ProfileAvatarStorageOptions {
 
 /** Object keys are immutable per upload and scoped to the matching Auth user. */
 export function createProfileAvatarStoragePath(userId: string, extension: 'webp' | 'gif'): string {
-  return 'profiles/' + userId + '/' + require('crypto').randomUUID() + '.' + extension;
+  return 'profiles/' + userId + '/' + randomUUID() + '.' + extension;
 }
 
 function assertOwnerPath(storagePath: string, options?: ProfileAvatarStorageOptions): void {
