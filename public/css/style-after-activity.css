@@ -647,3 +647,24 @@
     transition: none;
   }
 }
+
+/* Keep list-mode metadata inside the available card width on small screens. */
+@media (max-width: 600px) {
+  .browse-page-container .listing-card-list-mode .listing-card-body {
+    width: auto;
+    min-width: 0;
+    align-items: stretch;
+  }
+
+  .browse-page-container .listing-card-list-mode .listing-card-footer {
+    width: 100%;
+    min-width: 0;
+    align-items: flex-start;
+  }
+
+  .browse-page-container .listing-card-list-mode .listing-card-seller,
+  .browse-page-container .listing-card-list-mode .listing-card-location {
+    width: 100%;
+    min-width: 0;
+  }
+}
