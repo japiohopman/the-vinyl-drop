@@ -78,6 +78,8 @@ An Issue defines goal, scope, acceptance criteria, constraints, verification and
 
 `Issue → Jules → branch → PR → CI → review → continuation in PR body → Jules → … → human merge`
 
+When a review finds in-scope defects, keep the same branch and PR. The **PR body** is the control surface: address `@Jules`, state `NOT READY` while work remains, list exact changes, exact verification and explicit do-not-change boundaries. When the work is correct, set `READY FOR HUMAN REVIEW` and keep the Phase Safety Gate headings intact. Jules never merges.
+
 ### Release-state and merge discipline
 
 - Check the latest Render production deployment before describing a release as pending. Once the intended production deploy is **Live**, that release is complete; treat later work as post-release maintenance, hardening and product polish unless Jaap explicitly starts another release.
@@ -85,10 +87,6 @@ An Issue defines goal, scope, acceptance criteria, constraints, verification and
 - Keep the live project phase in GitHub, not in this file. Update the relevant Issue when its status becomes stale; do not turn this file into a live release dashboard.
 - Jaap saying **“merge PR #N”** or otherwise explicitly asking ChatGPT to merge a named PR is sufficient authorization. Check the exact diff, current CI, Phase Safety Gate and available CodeRabbit feedback; when no actionable blocker remains, merge without asking for a second confirmation. Merge permission does not authorize a Render deployment, production settings/data/flag/allowlist changes, or tester invitations; those remain separate operations.
 - Do not ask Jaap to fund optional metered tools such as TinyFish. If such a tool is unavailable or out of credit, disclose that once, do not retry it, and continue with other available sources. Mark only the specific manual check that genuinely remains.
-
-
-
-When a review finds in-scope defects, keep the same branch and PR. The **PR body** is the control surface: address `@Jules`, state `NOT READY` while work remains, list exact changes, exact verification and explicit do-not-change boundaries. When the work is correct, set `READY FOR HUMAN REVIEW` and keep the Phase Safety Gate headings intact. Jules never merges.
 
 ### Review standard
 
