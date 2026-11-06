@@ -59,6 +59,7 @@ jobs:
         timeout-minutes: 10
         env:
           ERROR_PAGE_EVIDENCE_DIR: artifacts/issue-315
+          PROFILE_EVIDENCE_DIR: artifacts/issue-351
         run: npm test
 
       - name: Upload Issue #315 error-page browser evidence
@@ -67,6 +68,15 @@ jobs:
         with:
           name: issue-315-error-pages-playwright-evidence
           path: artifacts/issue-315/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Issue #351 profile responsive browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-351-profile-playwright-evidence
+          path: artifacts/issue-351/
           if-no-files-found: warn
           retention-days: 14
 

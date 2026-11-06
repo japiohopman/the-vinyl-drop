@@ -2,11 +2,12 @@
 
 import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
+import fs from 'fs';
 import path from 'path';
 import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 
-describe('Profile edit UX (#237)', () => {
+describe('Profile edit UX (#351)', () => {
   jest.setTimeout(30000);
 
   const viewPath = path.join(__dirname, '../views/profiles/edit.ejs');
@@ -25,7 +26,7 @@ describe('Profile edit UX (#237)', () => {
       displayName: 'Crate Digger',
       location: 'Amsterdam',
       websiteUrl: 'https://example.test',
-      avatarUrl: 'https://example.test/avatar.jpg',
+      avatarUrl: '',
       soundcloudUrl: 'https://soundcloud.com/crate-digger',
       mixcloudUrl: 'https://mixcloud.com/crate-digger',
       bio: 'Hip-hop, soul and dusty samples.',
@@ -90,6 +91,37 @@ describe('Profile edit UX (#237)', () => {
     expect(html).toContain('action="/profile/avatar/remove"');
   });
 
+  it('previews a selected local image immediately and labels animated GIF input', async () => {
+    const page: Page = await browser.newPage();
+    await page.route('**/*', (route) => route.abort());
+    await page.setContent(documentHtml(await renderHeader(), await renderView()));
+    await page.addScriptTag({ path: path.join(__dirname, '../public/js/profile-avatar-upload.js') });
+
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64'
+    );
+    await page.locator('#profile-avatar-file').setInputFiles({
+      name: 'crate-digger.png',
+      mimeType: 'image/png',
+      buffer: png,
+    });
+
+    const preview = page.locator('[data-profile-avatar-preview]');
+    expect(await preview.isVisible()).toBe(true);
+    expect(await preview.getAttribute('src')).toMatch(/^blob:/);
+    expect(await page.locator('[data-profile-avatar-file-name]').textContent()).toBe('crate-digger.png');
+
+    const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==', 'base64');
+    await page.locator('#profile-avatar-file').setInputFiles({
+      name: 'crate-digger.gif',
+      mimeType: 'image/gif',
+      buffer: gif,
+    });
+    expect(await page.locator('[data-profile-avatar-file-name]').textContent()).toContain('animated GIF');
+    await page.close();
+  });
+
   it('keeps the editor and both actions within narrow phone, tablet, and desktop viewports', async () => {
     const page: Page = await browser.newPage();
     await page.route('**/*', (route) => route.abort());
@@ -139,6 +171,16 @@ describe('Profile edit UX (#237)', () => {
       }
       expect(await page.locator('#field-username').isVisible()).toBe(true);
       expect(await page.locator('#field-bio').isVisible()).toBe(true);
+
+      const evidenceWidths = new Set([360, 430, 768, 1280]);
+      const evidenceDirectory = process.env.PROFILE_EVIDENCE_DIR;
+      if (evidenceDirectory && evidenceWidths.has(viewport.width)) {
+        fs.mkdirSync(evidenceDirectory, { recursive: true });
+        await page.screenshot({
+          path: path.join(evidenceDirectory, `profile-edit-${viewport.width}.png`),
+          fullPage: true,
+        });
+      }
     }
 
     await page.close();
