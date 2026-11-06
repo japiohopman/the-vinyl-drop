@@ -142,7 +142,10 @@ function makeBucketKey(scope: string, identity: string): string {
     .digest('hex');
 }
 
-/** Encode timestamps as ISO text for raw postgres.js calls shared with Drizzle. */
+/**
+ * Drizzle 0.45.x replaces Postgres.js date serializers with transparent pass-throughs.
+ * Raw unsafe() calls must therefore receive ISO text, not JavaScript Date objects.
+ */
 function toTimestampParameter(valueMs: number): string {
   return new Date(valueMs).toISOString();
 }
@@ -158,7 +161,11 @@ export async function incrementRateLimitBucketWithClient(
     'ON CONFLICT (bucket_key, window_start) DO UPDATE SET ' +
     'hit_count = private.rate_limit_buckets.hit_count + 1, ' +
     'updated_at = clock_timestamp() RETURNING hit_count',
-    [bucket.bucketKey, toTimestampParameter(bucket.windowStartMs), toTimestampParameter(bucket.expiresAtMs)]
+    [
+      bucket.bucketKey,
+      toTimestampParameter(bucket.windowStartMs),
+      toTimestampParameter(bucket.expiresAtMs),
+    ]
   );
 
   if (!rows[0]) throw new Error('Rate-limit counter did not return a count.');
