@@ -259,6 +259,7 @@ export async function postEditProfile(req: Request, res: Response, next: NextFun
         title: 'Edit Profile — The Vinyl Drop',
         form,
         profile,
+        avatarPublicUrl: profile.avatarStoragePath ? getProfileAvatarPublicUrl(profile.avatarStoragePath) : null,
       }, next);
       return;
     }
@@ -291,6 +292,7 @@ export async function postEditProfile(req: Request, res: Response, next: NextFun
         title: 'Edit Profile — The Vinyl Drop',
         form,
         profile,
+        avatarPublicUrl: profile.avatarStoragePath ? getProfileAvatarPublicUrl(profile.avatarStoragePath) : null,
       }, next);
     }
   } catch (error) {
