@@ -125,6 +125,16 @@ export async function verifyMigrations(): Promise<void> {
     );
   }
 
+  const profileMediaColumns = await pg.query<{ column_name: string }>(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' ORDER BY column_name;"
+  );
+  const profileColumnNames = new Set(profileMediaColumns.rows.map((row) => row.column_name));
+  for (const column of ['avatar_storage_path', 'soundcloud_url', 'mixcloud_url']) {
+    if (!profileColumnNames.has(column)) {
+      throw new Error('Profile media migration is missing expected profiles.' + column);
+    }
+  }
+
   const consentTable = await pg.query<{ relrowsecurity: boolean }>(
     "SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'private' AND c.relname = 'registration_consents' AND c.relkind = 'r';"
   );
