@@ -10,6 +10,7 @@ import {
   createProfileAvatarStoragePath,
   deleteProfileAvatarFromStorage,
   getProfileAvatarPublicUrl,
+  hasInMemoryProfileAvatar,
   uploadProfileAvatarToStorage,
 } from '../src/app/services/profileAvatarStorageService';
 
@@ -23,10 +24,10 @@ function twoFrameGifFixture(): Buffer {
     0x47,0x49,0x46,0x38,0x39,0x61, 0x01,0x00,0x01,0x00, 0x80,0x00,0x00,
     0x00,0x00,0x00, 0xff,0xff,0xff,
     0x21,0xff,0x0b,0x4e,0x45,0x54,0x53,0x43,0x41,0x50,0x45,0x32,0x2e,0x30,0x03,0x01,0x00,0x00,0x00,
-    0x21,0xf9,0x04,0x00,0x0a,0x00,0x00,0x00,
+    0x21,0xf9,0x04,0x01,0x0a,0x00,0x00,0x00,
     0x2c,0x00,0x00,0x00,0x00,0x01,0x00,0x01,0x00,0x00,
     0x02,0x44,0x01,0x00,
-    0x21,0xf9,0x04,0x00,0x14,0x00,0x00,0x00,
+    0x21,0xf9,0x04,0x01,0x14,0x00,0x00,0x00,
     0x2c,0x00,0x00,0x00,0x00,0x01,0x00,0x01,0x00,0x00,
     0x02,0x44,0x01,0x00,
     0x3b,
@@ -67,6 +68,7 @@ describe('Profile avatar processing and Storage boundaries (#351)', () => {
     expect(originalMetadata.pages).toBe(2);
     expect(originalMetadata.loop).toBe(0);
     expect(originalMetadata.delay).toEqual([100, 200]);
+    expect(originalMetadata.hasAlpha).toBe(true);
 
     const output = await processProfileAvatar(original, 'image/gif');
     const outputMetadata = await sharp(output.buffer, { animated: true }).metadata();
@@ -78,6 +80,7 @@ describe('Profile avatar processing and Storage boundaries (#351)', () => {
     expect(outputMetadata.pages).toBe(2);
     expect(outputMetadata.loop).toBe(originalMetadata.loop);
     expect(outputMetadata.delay).toEqual(originalMetadata.delay);
+    expect(outputMetadata.hasAlpha).toBe(true);
   });
 
   test('rejects MIME spoofing, oversized inputs and malformed images', async () => {
@@ -134,6 +137,7 @@ describe('Profile avatar processing and Storage boundaries (#351)', () => {
 
     expect(getProfileAvatarPublicUrl(storagePath)).toContain('/mock-storage/profile-avatars/');
     expect(getProfileAvatarPublicUrl(storagePath)).not.toContain('example.supabase.co');
+    expect(hasInMemoryProfileAvatar(storagePath)).toBe(true);
   });
 
   test('prevents a different authenticated user from uploading or deleting an avatar', async () => {
@@ -157,5 +161,6 @@ describe('Profile avatar processing and Storage boundaries (#351)', () => {
       req: { user: { id: ownerId } } as never,
     });
     expect(getProfileAvatarPublicUrl(storagePath)).toContain('/mock-storage/profile-avatars/');
+    expect(hasInMemoryProfileAvatar(storagePath)).toBe(false);
   });
 });

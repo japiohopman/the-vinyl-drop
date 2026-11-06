@@ -5,6 +5,7 @@ import {
   createRateLimitMiddleware,
   getRateLimitClientIp,
   rateLimits,
+  profileAvatarUploadRateLimit,
   RateLimitRule,
   setRateLimitStoreForTests,
 } from '../src/app/services/rateLimitService';
@@ -195,4 +196,31 @@ describe('shared rate-limit middleware', () => {
     expect(response.text).toContain('temporarily unavailable');
     expect(response.text).not.toContain('database password');
   });
+  it('enforces an always-on avatar quota per authenticated account', async () => {
+    const app = express();
+    app.post('/avatar', (req, _res, next) => {
+      Object.assign(req, { user: { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' } });
+      next();
+    }, profileAvatarUploadRateLimit, (_req, res) => res.status(200).send('ok'));
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      expect((await request(app).post('/avatar')).status).toBe(attempt < 5 ? 200 : 429);
+    }
+
+    const otherAccount = express();
+    otherAccount.post('/avatar', (req, _res, next) => {
+      Object.assign(req, { user: { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' } });
+      next();
+    }, profileAvatarUploadRateLimit, (_req, res) => res.status(200).send('ok'));
+    expect((await request(otherAccount).post('/avatar')).status).toBe(200);
+  });
+
+  it('fails closed when the dedicated avatar limiter has no authenticated user', async () => {
+    const app = express();
+    app.post('/avatar', profileAvatarUploadRateLimit, (_req, res) => res.status(200).send('unexpected'));
+    const response = await request(app).post('/avatar');
+    expect(response.status).toBe(503);
+    expect(response.text).toContain('temporarily unavailable');
+  });
+
 });

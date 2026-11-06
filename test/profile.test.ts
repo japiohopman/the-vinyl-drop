@@ -49,6 +49,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     profileAvatarStorage.clearInMemoryProfileAvatarStorage();
+    profileAvatarStorage.clearInMemoryProfileAvatarStorage();
     (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
       items: [],
       totalCount: 0,
@@ -261,207 +262,15 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       expect(updateSpy).toHaveBeenCalledWith(
         mockUserAlice.id,
         expect.objectContaining({
-          avatarStoragePath: expect.stringMatching(
-            new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\.webp
-      mockSupabase.auth.getUser.mockResolvedValue({
-        data: { user: mockUserAlice },
-        error: null,
-      });
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
-      const updateSpy = jest.spyOn(profileService, 'updateProfile').mockResolvedValue(mockProfileAlice);
-
-      try {
-        const app = createApp();
-        const res = await request(app)
-          .post('/profile/edit')
-          .set('Cookie', ['sb-access-token=alice-token'])
-          .set('Origin', 'https://attacker.example')
-          .send({ username: 'attacker_changed' });
-
-        expect(res.status).toBe(403);
-        expect(res.body).toEqual({ error: 'CSRF Forbidden: Origin mismatch' });
-        expect(updateSpy).not.toHaveBeenCalled();
-      } finally {
-        updateSpy.mockRestore();
-      }
-    });
-
-    it('POST /profile/edit should reject missing Origin and Referer before any profile mutation', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
-        data: { user: mockUserAlice },
-        error: null,
-      });
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
-      const updateSpy = jest.spyOn(profileService, 'updateProfile').mockResolvedValue(mockProfileAlice);
-
-      try {
-        const app = createApp();
-        const res = await request(app)
-          .post('/profile/edit')
-          .set('Cookie', ['sb-access-token=alice-token'])
-          .send({ username: 'attacker_changed' });
-
-        expect(res.status).toBe(403);
-        expect(res.body).toEqual({ error: 'CSRF Forbidden: Missing Origin and Referer headers' });
-        expect(updateSpy).not.toHaveBeenCalled();
-      } finally {
-        updateSpy.mockRestore();
-      }
-    });
-
-    it('POST /profile/edit with whitespace-only websiteUrl should normalize websiteUrl to null and update successfully', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
-        data: { user: mockUserAlice },
-        error: null,
-      });
-
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
-      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
-      const updateSpy = jest.spyOn(profileRepository, 'updateProfile').mockImplementation(async (id: string, data: any) => ({
-        ...mockProfileAlice,
-        ...data,
-      }));
-
-      const app = createApp();
-      const res = await request(app)
-        .post('/profile/edit')
-        .set('Origin', 'http://localhost:3000')
-        .set('Cookie', ['sb-access-token=alice-token'])
-        .send({
-          username: 'alice_records',
-          displayName: 'Alice Cooper',
-          websiteUrl: '   ',
-        });
-
-      expect(res.status).toBe(302);
-      expect(updateSpy).toHaveBeenCalledWith(
-        mockUserAlice.id,
-        expect.objectContaining({
-          websiteUrl: null,
+          avatarStoragePath: expect.stringMatching(new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\\\.webp$')),
         }),
         undefined
       );
+      const savedPath = updateSpy.mock.calls[0][1].avatarStoragePath as string;
+      expect(profileAvatarStorage.hasInMemoryProfileAvatar(savedPath)).toBe(true);
     });
 
-    it('POST /profile/edit should reject invalid websiteUrl schemes (javascript:, data:, file:) with 400 Bad Request', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
-        data: { user: mockUserAlice },
-        error: null,
-      });
-
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
-
-      const app = createApp();
-
-      for (const badUrl of ['javascript:alert(1)', 'data:text/html,hack', 'file:///etc/passwd', 'ftp://example.com', 'not-a-url']) {
-        const res = await request(app)
-          .post('/profile/edit')
-          .set('Origin', 'http://localhost:3000')
-          .set('Cookie', ['sb-access-token=alice-token'])
-          .send({
-            username: 'alice_records',
-            displayName: 'Alice Cooper',
-            websiteUrl: badUrl,
-          });
-
-        expect(res.status).toBe(400);
-        expect(res.text).toContain('External URL');
-      }
-    });
-
-    it('updateProfile service should throw AuthorizationError when requestingUserId does not match targetUserId', async () => {
-      await expect(
-        updateProfile(mockUserAlice.id, mockUserBob.id, {
-          username: 'hacked_username',
-        })
-      ).rejects.toThrow(AuthorizationError);
-    });
-
-    it('updateProfile service should throw ValidationError when attempting to change username to a case-variant of an existing occupant', async () => {
-      const existingBobProfile: Profile = {
-        id: mockUserBob.id,
-        username: 'bob_vinyl',
-        displayName: 'Bob',
-        avatarUrl: null,
-
-        websiteUrl: null,
-        avatarStoragePath: null,
-        soundcloudUrl: null,
-        mixcloudUrl: null,
-        bio: null,
-        location: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
-      jest.spyOn(profileRepository, 'findProfileByUsername').mockImplementation(async (username: string) => {
-        if (username.toLowerCase() === 'bob_vinyl') {
-          return existingBobProfile;
-        }
-        return null;
-      });
-
-      // Alice tries to rename her handle to "BOB_VINYL" (case-variant of bob_vinyl)
-      await expect(
-        updateProfile(mockUserAlice.id, mockUserAlice.id, {
-          username: 'BOB_VINYL',
-        })
-      ).rejects.toThrow('Username is already taken');
-    });
-  });
-
-  describe('Database Boundary Invariant (profiles_username_lower_idx)', () => {
-    it('should enforce case-insensitive unique constraint at the database boundary via profiles_username_lower_idx', async () => {
-      const pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
-      await pg.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
-      await pg.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
-      await pg.exec(`
-        CREATE SCHEMA IF NOT EXISTS auth;
-        CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
-        BEGIN
-          RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
-        EXCEPTION WHEN OTHERS THEN
-          RETURN NULL;
-        END;
-        $$ LANGUAGE plpgsql STABLE;
-      `);
-
-      const drizzleDir = path.join(process.cwd(), 'drizzle');
-      const db = drizzle(pg);
-      await migrate(db, { migrationsFolder: drizzleDir });
-
-      const user1Id = '11111111-1111-1111-1111-111111111111';
-      const user2Id = '22222222-2222-2222-2222-222222222222';
-
-      // Insert first profile
-      await pg.query(
-        `INSERT INTO profiles (id, username, display_name) VALUES ($1, $2, $3);`,
-        [user1Id, 'jaapJeKentHem', 'Jaap']
-      );
-
-      // Attempting to insert second profile with case-variant username 'JaapJeKentHem' must throw unique constraint error
-      try {
-        await expect(
-          pg.query(
-            `INSERT INTO profiles (id, username, display_name) VALUES ($1, $2, $3);`,
-            [user2Id, 'JaapJeKentHem', 'Jaap Duplicate']
-          )
-        ).rejects.toThrow();
-      } finally {
-        await pg.close();
-      }
-    });
-  });
-});
-)
-          ),
-        }),
-        undefined
-      );
-    });
-
-    it('POST /profile/avatar should remove a new Storage object when the profile database update fails', async () => {
+    it('POST /profile/avatar should remove a newly uploaded Storage object when the profile database update fails', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: mockUserAlice },
         error: null,
@@ -484,200 +293,46 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       expect(res.status).toBe(302);
       expect(res.header.location).toBe('/profile/edit');
       expect(deleteSpy).toHaveBeenCalledWith(
-        expect.stringMatching(new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\.webp
-      mockSupabase.auth.getUser.mockResolvedValue({
-        data: { user: mockUserAlice },
-        error: null,
-      });
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
-      const updateSpy = jest.spyOn(profileService, 'updateProfile').mockResolvedValue(mockProfileAlice);
-
-      try {
-        const app = createApp();
-        const res = await request(app)
-          .post('/profile/edit')
-          .set('Cookie', ['sb-access-token=alice-token'])
-          .set('Origin', 'https://attacker.example')
-          .send({ username: 'attacker_changed' });
-
-        expect(res.status).toBe(403);
-        expect(res.body).toEqual({ error: 'CSRF Forbidden: Origin mismatch' });
-        expect(updateSpy).not.toHaveBeenCalled();
-      } finally {
-        updateSpy.mockRestore();
-      }
+        expect.stringMatching(new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\\\.webp$')),
+        expect.objectContaining({ req: expect.any(Object) })
+      );
+      const attemptedPath = deleteSpy.mock.calls[0][0];
+      expect(profileAvatarStorage.hasInMemoryProfileAvatar(attemptedPath)).toBe(false);
     });
 
-    it('POST /profile/edit should reject missing Origin and Referer before any profile mutation', async () => {
+    it('POST /profile/avatar/remove restores the old database pointer when Storage deletion fails', async () => {
+      const oldPath = 'profiles/' + mockUserAlice.id + '/old-avatar.webp';
+      const profileWithAvatar = { ...mockProfileAlice, avatarStoragePath: oldPath };
       mockSupabase.auth.getUser.mockResolvedValue({
         data: { user: mockUserAlice },
         error: null,
       });
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
-      const updateSpy = jest.spyOn(profileService, 'updateProfile').mockResolvedValue(mockProfileAlice);
-
-      try {
-        const app = createApp();
-        const res = await request(app)
-          .post('/profile/edit')
-          .set('Cookie', ['sb-access-token=alice-token'])
-          .send({ username: 'attacker_changed' });
-
-        expect(res.status).toBe(403);
-        expect(res.body).toEqual({ error: 'CSRF Forbidden: Missing Origin and Referer headers' });
-        expect(updateSpy).not.toHaveBeenCalled();
-      } finally {
-        updateSpy.mockRestore();
-      }
-    });
-
-    it('POST /profile/edit with whitespace-only websiteUrl should normalize websiteUrl to null and update successfully', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
-        data: { user: mockUserAlice },
-        error: null,
-      });
-
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
-      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
-      const updateSpy = jest.spyOn(profileRepository, 'updateProfile').mockImplementation(async (id: string, data: any) => ({
-        ...mockProfileAlice,
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(profileWithAvatar);
+      const updateSpy = jest.spyOn(profileRepository, 'updateProfile').mockImplementation(async (_id: string, data: any) => ({
+        ...profileWithAvatar,
         ...data,
       }));
+      jest.spyOn(profileAvatarStorage, 'deleteProfileAvatarFromStorage').mockRejectedValueOnce(new Error('Storage delete unavailable'));
 
       const app = createApp();
       const res = await request(app)
-        .post('/profile/edit')
+        .post('/profile/avatar/remove')
         .set('Origin', 'http://localhost:3000')
-        .set('Cookie', ['sb-access-token=alice-token'])
-        .send({
-          username: 'alice_records',
-          displayName: 'Alice Cooper',
-          websiteUrl: '   ',
-        });
+        .set('Cookie', ['sb-access-token=alice-token']);
 
       expect(res.status).toBe(302);
-      expect(updateSpy).toHaveBeenCalledWith(
+      expect(res.header.location).toBe('/profile/edit');
+      expect(updateSpy).toHaveBeenNthCalledWith(
+        1,
         mockUserAlice.id,
-        expect.objectContaining({
-          websiteUrl: null,
-        }),
+        expect.objectContaining({ avatarStoragePath: null }),
         undefined
       );
-    });
-
-    it('POST /profile/edit should reject invalid websiteUrl schemes (javascript:, data:, file:) with 400 Bad Request', async () => {
-      mockSupabase.auth.getUser.mockResolvedValue({
-        data: { user: mockUserAlice },
-        error: null,
-      });
-
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
-
-      const app = createApp();
-
-      for (const badUrl of ['javascript:alert(1)', 'data:text/html,hack', 'file:///etc/passwd', 'ftp://example.com', 'not-a-url']) {
-        const res = await request(app)
-          .post('/profile/edit')
-          .set('Origin', 'http://localhost:3000')
-          .set('Cookie', ['sb-access-token=alice-token'])
-          .send({
-            username: 'alice_records',
-            displayName: 'Alice Cooper',
-            websiteUrl: badUrl,
-          });
-
-        expect(res.status).toBe(400);
-        expect(res.text).toContain('External URL');
-      }
-    });
-
-    it('updateProfile service should throw AuthorizationError when requestingUserId does not match targetUserId', async () => {
-      await expect(
-        updateProfile(mockUserAlice.id, mockUserBob.id, {
-          username: 'hacked_username',
-        })
-      ).rejects.toThrow(AuthorizationError);
-    });
-
-    it('updateProfile service should throw ValidationError when attempting to change username to a case-variant of an existing occupant', async () => {
-      const existingBobProfile: Profile = {
-        id: mockUserBob.id,
-        username: 'bob_vinyl',
-        displayName: 'Bob',
-        avatarUrl: null,
-
-        websiteUrl: null,
-        avatarStoragePath: null,
-        soundcloudUrl: null,
-        mixcloudUrl: null,
-        bio: null,
-        location: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
-      jest.spyOn(profileRepository, 'findProfileByUsername').mockImplementation(async (username: string) => {
-        if (username.toLowerCase() === 'bob_vinyl') {
-          return existingBobProfile;
-        }
-        return null;
-      });
-
-      // Alice tries to rename her handle to "BOB_VINYL" (case-variant of bob_vinyl)
-      await expect(
-        updateProfile(mockUserAlice.id, mockUserAlice.id, {
-          username: 'BOB_VINYL',
-        })
-      ).rejects.toThrow('Username is already taken');
-    });
-  });
-
-  describe('Database Boundary Invariant (profiles_username_lower_idx)', () => {
-    it('should enforce case-insensitive unique constraint at the database boundary via profiles_username_lower_idx', async () => {
-      const pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
-      await pg.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
-      await pg.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
-      await pg.exec(`
-        CREATE SCHEMA IF NOT EXISTS auth;
-        CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
-        BEGIN
-          RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
-        EXCEPTION WHEN OTHERS THEN
-          RETURN NULL;
-        END;
-        $$ LANGUAGE plpgsql STABLE;
-      `);
-
-      const drizzleDir = path.join(process.cwd(), 'drizzle');
-      const db = drizzle(pg);
-      await migrate(db, { migrationsFolder: drizzleDir });
-
-      const user1Id = '11111111-1111-1111-1111-111111111111';
-      const user2Id = '22222222-2222-2222-2222-222222222222';
-
-      // Insert first profile
-      await pg.query(
-        `INSERT INTO profiles (id, username, display_name) VALUES ($1, $2, $3);`,
-        [user1Id, 'jaapJeKentHem', 'Jaap']
-      );
-
-      // Attempting to insert second profile with case-variant username 'JaapJeKentHem' must throw unique constraint error
-      try {
-        await expect(
-          pg.query(
-            `INSERT INTO profiles (id, username, display_name) VALUES ($1, $2, $3);`,
-            [user2Id, 'JaapJeKentHem', 'Jaap Duplicate']
-          )
-        ).rejects.toThrow();
-      } finally {
-        await pg.close();
-      }
-    });
-  });
-});
-)),
-        expect.objectContaining({ req: expect.any(Object) })
+      expect(updateSpy).toHaveBeenNthCalledWith(
+        2,
+        mockUserAlice.id,
+        expect.objectContaining({ avatarStoragePath: oldPath }),
+        undefined
       );
     });
 
