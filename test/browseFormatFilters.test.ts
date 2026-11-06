@@ -138,6 +138,107 @@ describe('Browse format filters — rendered state and responsive controls', () 
     expect(html).toContain('page=2'); // View-mode links preserve current page as well as every filter.
   });
 
+  it.each([
+    { surface: 'Browse', responsiveDig: false, route: '/browse' },
+    { surface: 'responsive Dig desktop results', responsiveDig: true, route: '/dig' },
+  ])('shows active filter state and preserves filters across $surface navigation', async ({ responsiveDig, route }) => {
+    const html = await ejs.renderFile(path.join(process.cwd(), 'views/browse/index.ejs'), {
+      title: 'Browse filter navigation',
+      listings: [{
+        id: 'browse-filter-navigation-1',
+        title: '3 Feet High and Rising',
+        artist: 'De La Soul',
+        releaseYear: 1989,
+        format: 'LP',
+        priceFormatted: '€25.00',
+        isTrade: false,
+        mediaCondition: 'VG+',
+        sleeveCondition: 'VG',
+        sellerUsername: 'crate_digger',
+        sellerLocation: 'Amsterdam Oost',
+        imageUrl: '/assets/vinyl-placeholder.svg',
+        url: '/listings/browse-filter-navigation-1',
+      }],
+      filters: {
+        q: 'De La Soul',
+        genre: 'Hip Hop',
+        condition: 'VG+',
+        minPrice: '5',
+        maxPrice: '500',
+        sort: 'price_asc',
+        view: 'list',
+        formats: ['lp', '7-inch'],
+        whiteLabel: true,
+      },
+      pagination: { totalCount: 37, page: 2, limit: 12, totalPages: 4 },
+      formatOptions: VINYL_FORMAT_FILTERS,
+      genreOptions: ['Hip Hop'],
+      whiteLabelAvailable: true,
+      responsiveDig,
+    });
+
+    // Eight distinct active filters are reflected in the visible summary and quick-filter state.
+    expect(html).toContain('<strong class="browse-active-filter-count">8</strong>');
+    expect(html).toContain('8 active filters');
+    expect(html).toContain('name="formatToggle" value="lp"');
+    expect(html).toContain('name="formatToggle" value="7-inch"');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain('<option value="Hip Hop" selected>Hip Hop</option>');
+
+    const normalizeHref = (href: string): URL =>
+      new URL(href.replace(/&amp;/g, '&'), 'https://thevinyldrop.test');
+
+    const clearAllHref = html.match(
+      /<a href="([^"]+)" class="btn btn-outline btn-sm">Clear all<\/a>/
+    )?.[1];
+    expect(clearAllHref).toBeDefined();
+    const clearAllUrl = normalizeHref(clearAllHref!);
+    expect(clearAllUrl.pathname).toBe(route);
+    expect(Array.from(clearAllUrl.searchParams.entries())).toEqual([['view', 'list']]);
+
+    const viewLinks = Array.from(html.matchAll(
+      /<a\s+href="([^"]+)"\s+class="view-toggle-btn[^"]*"/g
+    ), (match) => normalizeHref(match[1]));
+    expect(viewLinks).toHaveLength(2);
+    expect(viewLinks.map((url) => url.searchParams.get('view'))).toEqual(['grid', 'list']);
+    for (const url of viewLinks) {
+      expect(url.pathname).toBe(route);
+      expect(url.searchParams.get('q')).toBe('De La Soul');
+      expect(url.searchParams.get('genre')).toBe('Hip Hop');
+      expect(url.searchParams.get('condition')).toBe('VG+');
+      expect(url.searchParams.get('minPrice')).toBe('5');
+      expect(url.searchParams.get('maxPrice')).toBe('500');
+      expect(url.searchParams.get('sort')).toBe('price_asc');
+      expect(url.searchParams.getAll('format')).toEqual(['lp', '7-inch']);
+      expect(url.searchParams.get('whiteLabel')).toBe('1');
+      expect(url.searchParams.get('page')).toBe('2');
+    }
+
+    const previousHref = html.match(
+      /<a href="([^"]+)" class="btn btn-outline btn-sm">\s*← Previous\s*<\/a>/
+    )?.[1];
+    const nextHref = html.match(
+      /<a href="([^"]+)" class="btn btn-outline btn-sm">\s*Next →\s*<\/a>/
+    )?.[1];
+    expect(previousHref).toBeDefined();
+    expect(nextHref).toBeDefined();
+
+    for (const [href, expectedPage] of [[previousHref!, '1'], [nextHref!, '3']] as const) {
+      const url = normalizeHref(href);
+      expect(url.pathname).toBe(route);
+      expect(url.searchParams.get('q')).toBe('De La Soul');
+      expect(url.searchParams.get('genre')).toBe('Hip Hop');
+      expect(url.searchParams.get('condition')).toBe('VG+');
+      expect(url.searchParams.get('minPrice')).toBe('5');
+      expect(url.searchParams.get('maxPrice')).toBe('500');
+      expect(url.searchParams.get('sort')).toBe('price_asc');
+      expect(url.searchParams.getAll('format')).toEqual(['lp', '7-inch']);
+      expect(url.searchParams.get('whiteLabel')).toBe('1');
+      expect(url.searchParams.get('view')).toBe('list');
+      expect(url.searchParams.get('page')).toBe(expectedPage);
+    }
+  });
+
   it('keeps responsive inputs shrinkable and quick-filter touch targets at least 44px', () => {
     const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     expect(css).toContain('.browse-keyword-control input');
