@@ -180,6 +180,7 @@ describe('Authentication & Session Handling', () => {
       expect(res.text).toContain('name="termsAccepted"');
       expect(res.text).toContain('name="ageConfirmed"');
       expect(res.text).toContain('href="/privacy"');
+      expect(res.text).not.toContain('review draft');
       expect(res.text).toContain('New accounts start with email and password.');
       expect(res.text).not.toContain('Sign up with Google');
       expect(res.text).toContain('New accounts start with email and password.');
