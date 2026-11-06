@@ -267,7 +267,7 @@ async function run(): Promise<void> {
           if (viewport.width >= 1280 && location.text === 'Amsterdam Oost') {
             assert.ok(
               location.clientHeight <= location.lineHeight + 1,
-              'A normal city location should remain on one line at ' + viewport.width + 'px'
+              'A normal city location should remain on one line at ' + viewport.width + 'px (height ' + location.clientHeight + 'px; line height ' + location.lineHeight + 'px; width ' + location.clientWidth + 'px)'
             );
           }
         }
