@@ -88,6 +88,24 @@ describe('shared rate-limit cleanup error classification', () => {
     });
   });
 
+  it('classifies only documented Node.js TypeError codes without exposing arbitrary codes', () => {
+    const error = Object.assign(
+      new TypeError('sensitive Node.js argument detail'),
+      { code: 'ERR_INVALID_ARG_TYPE' }
+    );
+
+    expect(getSafeRateLimitCleanupFailureDiagnostics(error)).toEqual({
+      failureCategory: 'node_type_error:ERR_INVALID_ARG_TYPE',
+      failureType: 'type_error',
+      codeSource: 'direct',
+      codeState: 'recognized',
+    });
+
+    expect(getSafeRateLimitCleanupFailureCategory({
+      code: 'ERR_PRIVATE_RUNTIME_DETAIL',
+    })).toBe('unclassified');
+  });
+
   it('classifies an allowlisted code on the first nested cause', () => {
     const error = new Error('sensitive outer detail', {
       cause: Object.assign(new Error('sensitive inner detail'), { code: 'ECONNRESET' }),
