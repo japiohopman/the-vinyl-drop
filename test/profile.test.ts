@@ -28,8 +28,12 @@ describe('Profile Foundation & Server-Side Ownership', () => {
     username: 'alice_records',
     displayName: 'Alice Cooper',
     avatarUrl: 'https://example.com/alice.jpg',
+
     websiteUrl: null,
-    bio: 'Jazz & Funk vinyl collector.',
+    avatarStoragePath: null,
+    soundcloudUrl: null,
+    mixcloudUrl: null,
+bio: 'Jazz & Funk vinyl collector.',
     location: 'Berlin, DE',
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
@@ -198,6 +202,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
           bio: 'Updated bio details.',
           location: 'Amsterdam, NL',
           avatarUrl: '',
+
           websiteUrl: 'https://linktr.ee/alice_records',
         });
 
@@ -337,8 +342,12 @@ describe('Profile Foundation & Server-Side Ownership', () => {
         username: 'bob_vinyl',
         displayName: 'Bob',
         avatarUrl: null,
+
         websiteUrl: null,
-        bio: null,
+        avatarStoragePath: null,
+        soundcloudUrl: null,
+        mixcloudUrl: null,
+bio: null,
         location: null,
         createdAt: new Date(),
         updatedAt: new Date(),
