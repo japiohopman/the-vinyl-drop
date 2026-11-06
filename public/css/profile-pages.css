@@ -342,7 +342,7 @@ body.messaging-mobile-panel-open {
   text-decoration: none;
 }
 .profile-music-link:hover {
-  background: var(--color-surface-hover);
+  background: var(--color-paper-muted);
   text-decoration: none;
 }
 .profile-music-link:focus-visible {
