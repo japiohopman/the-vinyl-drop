@@ -33,7 +33,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
     avatarStoragePath: null,
     soundcloudUrl: null,
     mixcloudUrl: null,
-bio: 'Jazz & Funk vinyl collector.',
+    bio: 'Jazz & Funk vinyl collector.',
     location: 'Berlin, DE',
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
@@ -112,6 +112,8 @@ bio: 'Jazz & Funk vinyl collector.',
       const profileWithWebsite: Profile = {
         ...mockProfileAlice,
         websiteUrl: 'https://djalice.example.com',
+        soundcloudUrl: 'https://soundcloud.com/alice-records',
+        mixcloudUrl: 'https://www.mixcloud.com/alice-records',
       };
       jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(profileWithWebsite);
 
@@ -122,6 +124,10 @@ bio: 'Jazz & Funk vinyl collector.',
       expect(res.text).toContain('https://djalice.example.com');
       expect(res.text).toContain('target="_blank"');
       expect(res.text).toContain('rel="noopener noreferrer"');
+      expect(res.text).toContain('SoundCloud');
+      expect(res.text).toContain('https://soundcloud.com/alice-records');
+      expect(res.text).toContain('Mixcloud');
+      expect(res.text).toContain('https://www.mixcloud.com/alice-records');
     });
 
     it('GET /design-system should resolve design system page without triggering profile username capture collision', async () => {
@@ -216,6 +222,8 @@ bio: 'Jazz & Funk vinyl collector.',
           bio: 'Updated bio details.',
           location: 'Amsterdam, NL',
           websiteUrl: 'https://linktr.ee/alice_records',
+          soundcloudUrl: 'https://soundcloud.com/alice-new',
+          mixcloudUrl: 'https://www.mixcloud.com/alice-new',
         }),
         undefined
       );
@@ -347,7 +355,7 @@ bio: 'Jazz & Funk vinyl collector.',
         avatarStoragePath: null,
         soundcloudUrl: null,
         mixcloudUrl: null,
-bio: null,
+        bio: null,
         location: null,
         createdAt: new Date(),
         updatedAt: new Date(),
