@@ -18,8 +18,9 @@ export interface ExpectedStoragePolicy {
 }
 
 /**
- * The controlled release accepts only the four existing listing-photo policies
- * and the three seller-owner policies for the private originals bucket.
+ * The controlled release accepts the original seven listing-photo/private-source
+ * policies, or that exact set plus the two owner-scoped profile-avatar write policies.
+ * The profile-avatars bucket is public-read; no additional SELECT policy is needed.
  *
  * Predicate strings are PostgreSQL's normalized pg_policies expressions,
  * whitespace-insensitive but otherwise compared exactly. This deliberately
@@ -116,13 +117,20 @@ export function getStoragePolicyValidationErrors(rows: readonly StoragePolicyRow
     }
   }
 
-  if (rows.length !== EXPECTED_STORAGE_POLICIES.length) {
-    errors.push(
-      `expected exactly ${EXPECTED_STORAGE_POLICIES.length} policies on storage.objects, found ${rows.length}`
-    );
+  const profileAvatarPolicyNames = new Set([
+    'profile-avatars-owner-insert',
+    'profile-avatars-owner-delete',
+  ]);
+  const hasProfileAvatarPolicies = [...found.keys()].some((name) => profileAvatarPolicyNames.has(name));
+  if (rows.length !== EXPECTED_STORAGE_POLICIES.length && rows.length !== EXPECTED_STORAGE_POLICIES.length + 2) {
+    errors.push(`expected exactly 7 legacy policies or 9 policies including profile avatars, found ${rows.length}`);
+  }
+  if (hasProfileAvatarPolicies && [...profileAvatarPolicyNames].some((name) => !found.has(name))) {
+    errors.push('profile avatar Storage policies must be present as a complete insert/delete pair');
   }
 
   const expectedNames = new Set(EXPECTED_STORAGE_POLICIES.map((policy) => policy.name));
+  for (const name of profileAvatarPolicyNames) expectedNames.add(name);
   for (const policy of EXPECTED_STORAGE_POLICIES) {
     const actual = found.get(policy.name);
     if (!actual) {
@@ -155,6 +163,34 @@ export function getStoragePolicyValidationErrors(rows: readonly StoragePolicyRow
   for (const normalizedName of found.keys()) {
     if (!expectedNames.has(normalizedName)) {
       errors.push(`unrecognized Storage policy: ${normalizedName}`);
+      continue;
+    }
+    if (!profileAvatarPolicyNames.has(normalizedName)) continue;
+    const actual = found.get(normalizedName);
+    if (!actual) continue;
+    const isInsert = normalizedName === 'profile-avatars-owner-insert';
+    if (
+      actual.policyname !== normalizedName ||
+      actual.permissive !== 'PERMISSIVE' ||
+      actual.roles !== '{authenticated}' ||
+      actual.cmd !== (isInsert ? 'INSERT' : 'DELETE') ||
+      (isInsert ? actual.qual !== null : actual.with_check !== null)
+    ) {
+      errors.push(`${normalizedName}: expected a PERMISSIVE authenticated ${isInsert ? 'INSERT' : 'DELETE'} policy`);
+      continue;
+    }
+    const predicate = normalizePredicate(isInsert ? actual.with_check : actual.qual) || '';
+    const requiredFragments = [
+      "bucket_id='profile-avatars'::text",
+      "(storage.foldername(objects.name))[1]='profiles'::text",
+      "(storage.foldername(objects.name))[2]=",
+      "auth.uid()",
+    ];
+    if (
+      requiredFragments.some((fragment) => !predicate.includes(fragment)) ||
+      /OR|TRUE|NOT/.test(predicate)
+    ) {
+      errors.push(`${normalizedName}: owner predicate must bind the profile-avatars bucket and the caller's profiles/<uid> path`);
     }
   }
 
