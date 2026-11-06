@@ -50,6 +50,11 @@ describe('shared rate-limit cleanup error classification', () => {
     })).toBe('node_network:ECONNRESET');
 
     expect(getSafeRateLimitCleanupFailureCategory({
+      code: 'EPIPE',
+      message: 'sensitive broken-pipe detail',
+    })).toBe('node_network:EPIPE');
+
+    expect(getSafeRateLimitCleanupFailureCategory({
       code: 'PRIVATE_DRIVER_ERROR',
       message: 'this value must never be logged',
     })).toBe('unclassified');
