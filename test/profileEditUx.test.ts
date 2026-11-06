@@ -26,6 +26,8 @@ describe('Profile edit UX (#237)', () => {
       location: 'Amsterdam',
       websiteUrl: 'https://example.test',
       avatarUrl: 'https://example.test/avatar.jpg',
+      soundcloudUrl: 'https://soundcloud.com/crate-digger',
+      mixcloudUrl: 'https://mixcloud.com/crate-digger',
       bio: 'Hip-hop, soul and dusty samples.',
     },
     fieldErrors: {},
@@ -72,7 +74,7 @@ describe('Profile edit UX (#237)', () => {
   it('keeps the existing profile fields and save/cancel destinations without introducing Saved People controls', async () => {
     const html = await renderView();
     expect(html).toContain('action="/profile/edit" method="POST"');
-    for (const field of ['username', 'displayName', 'location', 'websiteUrl', 'avatarUrl', 'bio']) {
+    for (const field of ['username', 'displayName', 'location', 'websiteUrl', 'avatarUrl', 'soundcloudUrl', 'mixcloudUrl', 'bio']) {
       expect(html).toContain(`name="${field}"`);
     }
     expect(html).toContain('href="/profiles/crate_digger"');
@@ -83,6 +85,9 @@ describe('Profile edit UX (#237)', () => {
     expect(html).not.toContain('Follow');
     expect(html).toContain('class="profile-edit-fields"');
     expect(html).toContain('class="profile-edit-card"');
+    expect(html).toContain('action="/profile/avatar" method="POST" enctype="multipart/form-data"');
+    expect(html).toContain('accept="image/jpeg,image/png,image/webp,image/gif');
+    expect(html).toContain('action="/profile/avatar/remove"');
   });
 
   it('keeps the editor and both actions within narrow phone, tablet, and desktop viewports', async () => {
