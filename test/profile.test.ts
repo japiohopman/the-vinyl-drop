@@ -262,7 +262,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       expect(updateSpy).toHaveBeenCalledWith(
         mockUserAlice.id,
         expect.objectContaining({
-          avatarStoragePath: expect.stringMatching(new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\\\.webp$')),
+          avatarStoragePath: expect.stringMatching(new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\.webp$')),
         }),
         undefined
       );
@@ -293,7 +293,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
       expect(res.status).toBe(302);
       expect(res.header.location).toBe('/profile/edit');
       expect(deleteSpy).toHaveBeenCalledWith(
-        expect.stringMatching(new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\\\.webp$')),
+        expect.stringMatching(new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\.webp$')),
         expect.objectContaining({ req: expect.any(Object) })
       );
       const attemptedPath = deleteSpy.mock.calls[0][0];
