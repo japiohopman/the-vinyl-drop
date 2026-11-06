@@ -221,7 +221,10 @@ export async function processProfileAvatar(
 
     let output: Buffer;
     if (animated) {
-      const gifOptions: { loop?: number; delay?: number | number[] } = {};
+      const gifOptions: { loop?: number; delay?: number | number[]; keepDuplicateFrames?: boolean } = {
+        // Do not let Sharp coalesce visually identical input frames and their independent delays.
+        keepDuplicateFrames: true,
+      };
       if (metadata.loop !== undefined) gifOptions.loop = metadata.loop;
       if (metadata.delay !== undefined) gifOptions.delay = metadata.delay;
       output = await input
