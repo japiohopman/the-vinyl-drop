@@ -179,11 +179,11 @@ export function getStoragePolicyValidationErrors(rows: readonly StoragePolicyRow
       errors.push(`${normalizedName}: expected a PERMISSIVE authenticated ${isInsert ? 'INSERT' : 'DELETE'} policy`);
       continue;
     }
-    const predicate = normalizePredicate(isInsert ? actual.with_check : actual.qual) || '';
+    const predicate = (normalizePredicate(isInsert ? actual.with_check : actual.qual) || '').replace(/\\bobjects\\./g, '');
     const requiredFragments = [
       "bucket_id='profile-avatars'::text",
-      "(storage.foldername(objects.name))[1]='profiles'::text",
-      "(storage.foldername(objects.name))[2]=",
+      "(storage.foldername(name))[1]='profiles'::text",
+      "(storage.foldername(name))[2]=",
       "auth.uid()",
     ];
     if (
