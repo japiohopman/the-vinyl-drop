@@ -142,7 +142,7 @@ describe('Browse format filters — rendered state and responsive controls', () 
     { surface: 'Browse', responsiveDig: false, route: '/browse' },
     { surface: 'responsive Dig desktop results', responsiveDig: true, route: '/dig' },
   ])('shows active filter state and preserves filters across $surface navigation', async ({ responsiveDig, route }) => {
-    const html = await ejs.renderFile(path.join(process.cwd(), 'views/browse/index.ejs'), {
+    const renderData = {
       title: 'Browse filter navigation',
       listings: [{
         id: 'browse-filter-navigation-1',
@@ -175,7 +175,17 @@ describe('Browse format filters — rendered state and responsive controls', () 
       genreOptions: ['Hip Hop'],
       whiteLabelAvailable: true,
       responsiveDig,
-    });
+      errorMessage: null,
+    };
+    const viewPath = path.join(
+      process.cwd(),
+      'views/browse',
+      responsiveDig ? 'responsive-dig.ejs' : 'index.ejs'
+    );
+    const html = await ejs.renderFile(viewPath, responsiveDig
+      ? { ...renderData, items: [], totalCount: 37, hasMore: false }
+      : renderData
+    );
 
     // Eight distinct active filters are reflected in the visible summary and quick-filter state.
     expect(html).toContain('<strong class="browse-active-filter-count">8</strong>');
