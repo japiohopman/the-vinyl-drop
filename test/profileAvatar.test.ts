@@ -127,7 +127,7 @@ describe('Profile avatar processing and Storage boundaries (#351)', () => {
     }).success).toBe(false);
   });
 
-  test('stores the image under the owner's profile namespace and returns a public URL', async () => {
+  test("stores the image under the owner's profile namespace and returns a public URL", async () => {
     const storagePath = createProfileAvatarStoragePath(ownerId, 'gif');
     expect(storagePath).toMatch(new RegExp('^profiles/' + ownerId + '/[0-9a-f-]+\\.gif$'));
 
