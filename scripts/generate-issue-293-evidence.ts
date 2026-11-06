@@ -252,6 +252,7 @@ async function run(): Promise<void> {
               scrollWidth: label.scrollWidth,
               clientHeight: label.clientHeight,
               scrollHeight: label.scrollHeight,
+              lineHeight: Number.parseFloat(getComputedStyle(label).lineHeight),
             };
           })
         );
@@ -263,6 +264,12 @@ async function run(): Promise<void> {
               location.scrollHeight <= location.clientHeight + 1,
             'Listing location text is clipped at ' + viewport.width + 'px: ' + location.text
           );
+          if (viewport.width >= 1280 && location.text === 'Amsterdam Oost') {
+            assert.ok(
+              location.clientHeight <= location.lineHeight + 1,
+              'A normal city location should remain on one line at ' + viewport.width + 'px'
+            );
+          }
         }
 
         const screenshotPath = path.resolve(evidencePath, 'browse-' + viewport.width + 'px.png');
