@@ -467,28 +467,28 @@
 .browse-page-container .listing-card-footer {
   gap: var(--space-3);
   min-width: 0;
-}
-
-.browse-page-container .listing-card-footer {
   flex-wrap: wrap;
 }
 
 .browse-page-container .listing-card-seller,
 .browse-page-container .listing-card-location {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-1);
   min-width: 0;
+  max-width: 100%;
   line-height: var(--line-height-base);
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .browse-page-container .listing-card-seller {
+  flex: 0 1 95px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .browse-page-container .listing-card-seller-name {
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -496,9 +496,27 @@
 }
 
 .browse-page-container .listing-card-location {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 1 1 112px;
+  overflow: visible;
+  justify-content: flex-start;
+}
+
+.browse-page-container .listing-card-location-name {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.browse-page-container .listing-card-list-mode .listing-card-seller,
+.browse-page-container .listing-card-list-mode .listing-card-location {
+  flex: 0 1 auto;
+}
+
+.browse-page-container .listing-card-list-mode .listing-card-location {
   justify-content: flex-end;
+  text-align: right;
 }
 
 .browse-page-container .listing-card-seller .icon,
