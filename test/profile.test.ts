@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import request from 'supertest';
+import sharp from 'sharp';
 import { createApp } from '../src/app';
 import { setSupabaseClient } from '../src/lib/supabase';
 import * as profileRepository from '../src/app/repositories/profileRepository';
 import * as listingService from '../src/app/services/listingService';
 import { updateProfile, AuthorizationError } from '../src/app/services/profileService';
 import * as profileService from '../src/app/services/profileService';
+import * as profileAvatarStorage from '../src/app/services/profileAvatarStorageService';
 import { Profile } from '../src/db/schema/profiles';
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
@@ -46,6 +48,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    profileAvatarStorage.clearInMemoryProfileAvatarStorage();
     (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
       items: [],
       totalCount: 0,
@@ -226,6 +229,454 @@ describe('Profile Foundation & Server-Side Ownership', () => {
           mixcloudUrl: 'https://www.mixcloud.com/alice-new',
         }),
         undefined
+      );
+    });
+
+
+    it('POST /profile/avatar should upload an owner-owned WebP derivative and update only that profile pointer', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      const updateSpy = jest.spyOn(profileRepository, 'updateProfile').mockImplementation(async (_id: string, data: any) => ({
+        ...mockProfileAlice,
+        ...data,
+      }));
+
+      const image = await sharp({
+        create: { width: 80, height: 120, channels: 3, background: { r: 20, g: 60, b: 100 } },
+      }).png().toBuffer();
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/profile/avatar')
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=alice-token'])
+        .attach('avatar', image, { filename: 'avatar.png', contentType: 'image/png' });
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/profiles/alice_records');
+      expect(updateSpy).toHaveBeenCalledWith(
+        mockUserAlice.id,
+        expect.objectContaining({
+          avatarStoragePath: expect.stringMatching(
+            new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\.webp
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      const updateSpy = jest.spyOn(profileService, 'updateProfile').mockResolvedValue(mockProfileAlice);
+
+      try {
+        const app = createApp();
+        const res = await request(app)
+          .post('/profile/edit')
+          .set('Cookie', ['sb-access-token=alice-token'])
+          .set('Origin', 'https://attacker.example')
+          .send({ username: 'attacker_changed' });
+
+        expect(res.status).toBe(403);
+        expect(res.body).toEqual({ error: 'CSRF Forbidden: Origin mismatch' });
+        expect(updateSpy).not.toHaveBeenCalled();
+      } finally {
+        updateSpy.mockRestore();
+      }
+    });
+
+    it('POST /profile/edit should reject missing Origin and Referer before any profile mutation', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      const updateSpy = jest.spyOn(profileService, 'updateProfile').mockResolvedValue(mockProfileAlice);
+
+      try {
+        const app = createApp();
+        const res = await request(app)
+          .post('/profile/edit')
+          .set('Cookie', ['sb-access-token=alice-token'])
+          .send({ username: 'attacker_changed' });
+
+        expect(res.status).toBe(403);
+        expect(res.body).toEqual({ error: 'CSRF Forbidden: Missing Origin and Referer headers' });
+        expect(updateSpy).not.toHaveBeenCalled();
+      } finally {
+        updateSpy.mockRestore();
+      }
+    });
+
+    it('POST /profile/edit with whitespace-only websiteUrl should normalize websiteUrl to null and update successfully', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+      const updateSpy = jest.spyOn(profileRepository, 'updateProfile').mockImplementation(async (id: string, data: any) => ({
+        ...mockProfileAlice,
+        ...data,
+      }));
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/profile/edit')
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=alice-token'])
+        .send({
+          username: 'alice_records',
+          displayName: 'Alice Cooper',
+          websiteUrl: '   ',
+        });
+
+      expect(res.status).toBe(302);
+      expect(updateSpy).toHaveBeenCalledWith(
+        mockUserAlice.id,
+        expect.objectContaining({
+          websiteUrl: null,
+        }),
+        undefined
+      );
+    });
+
+    it('POST /profile/edit should reject invalid websiteUrl schemes (javascript:, data:, file:) with 400 Bad Request', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+
+      const app = createApp();
+
+      for (const badUrl of ['javascript:alert(1)', 'data:text/html,hack', 'file:///etc/passwd', 'ftp://example.com', 'not-a-url']) {
+        const res = await request(app)
+          .post('/profile/edit')
+          .set('Origin', 'http://localhost:3000')
+          .set('Cookie', ['sb-access-token=alice-token'])
+          .send({
+            username: 'alice_records',
+            displayName: 'Alice Cooper',
+            websiteUrl: badUrl,
+          });
+
+        expect(res.status).toBe(400);
+        expect(res.text).toContain('External URL');
+      }
+    });
+
+    it('updateProfile service should throw AuthorizationError when requestingUserId does not match targetUserId', async () => {
+      await expect(
+        updateProfile(mockUserAlice.id, mockUserBob.id, {
+          username: 'hacked_username',
+        })
+      ).rejects.toThrow(AuthorizationError);
+    });
+
+    it('updateProfile service should throw ValidationError when attempting to change username to a case-variant of an existing occupant', async () => {
+      const existingBobProfile: Profile = {
+        id: mockUserBob.id,
+        username: 'bob_vinyl',
+        displayName: 'Bob',
+        avatarUrl: null,
+
+        websiteUrl: null,
+        avatarStoragePath: null,
+        soundcloudUrl: null,
+        mixcloudUrl: null,
+        bio: null,
+        location: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockImplementation(async (username: string) => {
+        if (username.toLowerCase() === 'bob_vinyl') {
+          return existingBobProfile;
+        }
+        return null;
+      });
+
+      // Alice tries to rename her handle to "BOB_VINYL" (case-variant of bob_vinyl)
+      await expect(
+        updateProfile(mockUserAlice.id, mockUserAlice.id, {
+          username: 'BOB_VINYL',
+        })
+      ).rejects.toThrow('Username is already taken');
+    });
+  });
+
+  describe('Database Boundary Invariant (profiles_username_lower_idx)', () => {
+    it('should enforce case-insensitive unique constraint at the database boundary via profiles_username_lower_idx', async () => {
+      const pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
+      await pg.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
+      await pg.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
+      await pg.exec(`
+        CREATE SCHEMA IF NOT EXISTS auth;
+        CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+        BEGIN
+          RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+        EXCEPTION WHEN OTHERS THEN
+          RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql STABLE;
+      `);
+
+      const drizzleDir = path.join(process.cwd(), 'drizzle');
+      const db = drizzle(pg);
+      await migrate(db, { migrationsFolder: drizzleDir });
+
+      const user1Id = '11111111-1111-1111-1111-111111111111';
+      const user2Id = '22222222-2222-2222-2222-222222222222';
+
+      // Insert first profile
+      await pg.query(
+        `INSERT INTO profiles (id, username, display_name) VALUES ($1, $2, $3);`,
+        [user1Id, 'jaapJeKentHem', 'Jaap']
+      );
+
+      // Attempting to insert second profile with case-variant username 'JaapJeKentHem' must throw unique constraint error
+      try {
+        await expect(
+          pg.query(
+            `INSERT INTO profiles (id, username, display_name) VALUES ($1, $2, $3);`,
+            [user2Id, 'JaapJeKentHem', 'Jaap Duplicate']
+          )
+        ).rejects.toThrow();
+      } finally {
+        await pg.close();
+      }
+    });
+  });
+});
+)
+          ),
+        }),
+        undefined
+      );
+    });
+
+    it('POST /profile/avatar should remove a new Storage object when the profile database update fails', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      jest.spyOn(profileRepository, 'updateProfile').mockRejectedValue(new Error('database write failed'));
+      const deleteSpy = jest.spyOn(profileAvatarStorage, 'deleteProfileAvatarFromStorage');
+
+      const image = await sharp({
+        create: { width: 80, height: 80, channels: 3, background: { r: 80, g: 40, b: 20 } },
+      }).png().toBuffer();
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/profile/avatar')
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=alice-token'])
+        .attach('avatar', image, { filename: 'avatar.png', contentType: 'image/png' });
+
+      expect(res.status).toBe(302);
+      expect(res.header.location).toBe('/profile/edit');
+      expect(deleteSpy).toHaveBeenCalledWith(
+        expect.stringMatching(new RegExp('^profiles/' + mockUserAlice.id + '/[0-9a-f-]+\\.webp
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      const updateSpy = jest.spyOn(profileService, 'updateProfile').mockResolvedValue(mockProfileAlice);
+
+      try {
+        const app = createApp();
+        const res = await request(app)
+          .post('/profile/edit')
+          .set('Cookie', ['sb-access-token=alice-token'])
+          .set('Origin', 'https://attacker.example')
+          .send({ username: 'attacker_changed' });
+
+        expect(res.status).toBe(403);
+        expect(res.body).toEqual({ error: 'CSRF Forbidden: Origin mismatch' });
+        expect(updateSpy).not.toHaveBeenCalled();
+      } finally {
+        updateSpy.mockRestore();
+      }
+    });
+
+    it('POST /profile/edit should reject missing Origin and Referer before any profile mutation', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      const updateSpy = jest.spyOn(profileService, 'updateProfile').mockResolvedValue(mockProfileAlice);
+
+      try {
+        const app = createApp();
+        const res = await request(app)
+          .post('/profile/edit')
+          .set('Cookie', ['sb-access-token=alice-token'])
+          .send({ username: 'attacker_changed' });
+
+        expect(res.status).toBe(403);
+        expect(res.body).toEqual({ error: 'CSRF Forbidden: Missing Origin and Referer headers' });
+        expect(updateSpy).not.toHaveBeenCalled();
+      } finally {
+        updateSpy.mockRestore();
+      }
+    });
+
+    it('POST /profile/edit with whitespace-only websiteUrl should normalize websiteUrl to null and update successfully', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+      const updateSpy = jest.spyOn(profileRepository, 'updateProfile').mockImplementation(async (id: string, data: any) => ({
+        ...mockProfileAlice,
+        ...data,
+      }));
+
+      const app = createApp();
+      const res = await request(app)
+        .post('/profile/edit')
+        .set('Origin', 'http://localhost:3000')
+        .set('Cookie', ['sb-access-token=alice-token'])
+        .send({
+          username: 'alice_records',
+          displayName: 'Alice Cooper',
+          websiteUrl: '   ',
+        });
+
+      expect(res.status).toBe(302);
+      expect(updateSpy).toHaveBeenCalledWith(
+        mockUserAlice.id,
+        expect.objectContaining({
+          websiteUrl: null,
+        }),
+        undefined
+      );
+    });
+
+    it('POST /profile/edit should reject invalid websiteUrl schemes (javascript:, data:, file:) with 400 Bad Request', async () => {
+      mockSupabase.auth.getUser.mockResolvedValue({
+        data: { user: mockUserAlice },
+        error: null,
+      });
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+
+      const app = createApp();
+
+      for (const badUrl of ['javascript:alert(1)', 'data:text/html,hack', 'file:///etc/passwd', 'ftp://example.com', 'not-a-url']) {
+        const res = await request(app)
+          .post('/profile/edit')
+          .set('Origin', 'http://localhost:3000')
+          .set('Cookie', ['sb-access-token=alice-token'])
+          .send({
+            username: 'alice_records',
+            displayName: 'Alice Cooper',
+            websiteUrl: badUrl,
+          });
+
+        expect(res.status).toBe(400);
+        expect(res.text).toContain('External URL');
+      }
+    });
+
+    it('updateProfile service should throw AuthorizationError when requestingUserId does not match targetUserId', async () => {
+      await expect(
+        updateProfile(mockUserAlice.id, mockUserBob.id, {
+          username: 'hacked_username',
+        })
+      ).rejects.toThrow(AuthorizationError);
+    });
+
+    it('updateProfile service should throw ValidationError when attempting to change username to a case-variant of an existing occupant', async () => {
+      const existingBobProfile: Profile = {
+        id: mockUserBob.id,
+        username: 'bob_vinyl',
+        displayName: 'Bob',
+        avatarUrl: null,
+
+        websiteUrl: null,
+        avatarStoragePath: null,
+        soundcloudUrl: null,
+        mixcloudUrl: null,
+        bio: null,
+        location: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      jest.spyOn(profileRepository, 'findProfileByUsername').mockImplementation(async (username: string) => {
+        if (username.toLowerCase() === 'bob_vinyl') {
+          return existingBobProfile;
+        }
+        return null;
+      });
+
+      // Alice tries to rename her handle to "BOB_VINYL" (case-variant of bob_vinyl)
+      await expect(
+        updateProfile(mockUserAlice.id, mockUserAlice.id, {
+          username: 'BOB_VINYL',
+        })
+      ).rejects.toThrow('Username is already taken');
+    });
+  });
+
+  describe('Database Boundary Invariant (profiles_username_lower_idx)', () => {
+    it('should enforce case-insensitive unique constraint at the database boundary via profiles_username_lower_idx', async () => {
+      const pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
+      await pg.exec('CREATE ROLE supabase_auth_admin NOLOGIN;');
+      await pg.exec('CREATE ROLE service_role NOLOGIN BYPASSRLS;');
+      await pg.exec(`
+        CREATE SCHEMA IF NOT EXISTS auth;
+        CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+        BEGIN
+          RETURN NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+        EXCEPTION WHEN OTHERS THEN
+          RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql STABLE;
+      `);
+
+      const drizzleDir = path.join(process.cwd(), 'drizzle');
+      const db = drizzle(pg);
+      await migrate(db, { migrationsFolder: drizzleDir });
+
+      const user1Id = '11111111-1111-1111-1111-111111111111';
+      const user2Id = '22222222-2222-2222-2222-222222222222';
+
+      // Insert first profile
+      await pg.query(
+        `INSERT INTO profiles (id, username, display_name) VALUES ($1, $2, $3);`,
+        [user1Id, 'jaapJeKentHem', 'Jaap']
+      );
+
+      // Attempting to insert second profile with case-variant username 'JaapJeKentHem' must throw unique constraint error
+      try {
+        await expect(
+          pg.query(
+            `INSERT INTO profiles (id, username, display_name) VALUES ($1, $2, $3);`,
+            [user2Id, 'JaapJeKentHem', 'Jaap Duplicate']
+          )
+        ).rejects.toThrow();
+      } finally {
+        await pg.close();
+      }
+    });
+  });
+});
+)),
+        expect.objectContaining({ req: expect.any(Object) })
       );
     });
 
