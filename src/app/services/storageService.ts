@@ -34,6 +34,17 @@ export interface UploadPhotoParams {
 }
 
 /**
+ * Keep mutable public object paths short-lived in browsers, while allowing
+ * versioned derivative paths to be reused for one day. Replacements use a new
+ * versioned path, so a browser never confuses a prior image with the new image.
+ */
+export function getListingPhotoCacheControl(storagePath: string): string {
+  return /\.v-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\.(?:webp|png|jpe?g)$/i.test(storagePath)
+    ? '86400'
+    : '3600';
+}
+
+/**
  * Uploads a processed photo buffer to Supabase Storage using authenticated Supabase client context.
  * In `test` environment, uses in-memory storage adapter.
  * In `development` / `production`, requires successful Supabase Storage upload or throws an error.
@@ -50,6 +61,7 @@ export async function uploadListingPhotoToStorage(params: UploadPhotoParams): Pr
   const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
   const { error } = await supabase.storage.from(BUCKET_NAME).upload(storagePath, buffer, {
     contentType,
+    cacheControl: getListingPhotoCacheControl(storagePath),
     upsert: !version,
   });
 
@@ -245,6 +257,7 @@ export async function restoreListingPhotoToStorage(
   const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
   const { error } = await supabase.storage.from(BUCKET_NAME).upload(storagePath, buffer, {
     contentType,
+    cacheControl: getListingPhotoCacheControl(storagePath),
     upsert: true,
   });
   if (error) {
