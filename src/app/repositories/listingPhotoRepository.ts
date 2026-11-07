@@ -137,6 +137,31 @@ export async function updateListingPhotoEditor(
   return results[0] || null;
 }
 
+/**
+ * Repoint a listing photo only when its stored URL is still the snapshot URL.
+ * This compare-and-set prevents a failed-delete rollback from overwriting a
+ * concurrent photo edit that has already moved the row to a newer URL.
+ */
+export async function updateListingPhotoStoragePath(
+  listingId: string,
+  photoId: string,
+  expectedStoragePath: string,
+  storagePath: string,
+  dbOverride?: DbInstance
+): Promise<ListingPhoto | null> {
+  const db = dbOverride || getDb();
+  const results = await db
+    .update(listingPhotos)
+    .set({ storagePath, updatedAt: new Date() })
+    .where(and(
+      eq(listingPhotos.listingId, listingId),
+      eq(listingPhotos.id, photoId),
+      eq(listingPhotos.storagePath, expectedStoragePath)
+    ))
+    .returning();
+  return results[0] || null;
+}
+
 export async function updateListingPhotoSource(
   listingId: string,
   photoId: string,
