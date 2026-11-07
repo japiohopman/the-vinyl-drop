@@ -351,11 +351,19 @@ export async function hasExplicitWhiteLabelInventory(dbOverride?: DbInstance): P
   return hasWhiteLabelInRepo(dbOverride);
 }
 
+export const DIG_LISTINGS_PRELOAD_LIMIT = 100;
+
 export async function searchDigListings(
   params: SearchListingsParams,
   dbOverride?: DbInstance
 ): Promise<DigListingsResult> {
-  const result = await searchListings({ ...params, page: 1, limit: 100 }, dbOverride);
+  // Dig already loads all listing photos below. Skip the repository's separate
+  // front-cover lookup and derive the primary photo from that same batch instead.
+  const result = await searchListings(
+    { ...params, page: 1, limit: DIG_LISTINGS_PRELOAD_LIMIT },
+    dbOverride,
+    { includePrimaryPhotoPaths: false }
+  );
   const listingIds = result.records.map((record) => record.listing.id);
   const photoRecords = await findPhotosByListingIds(listingIds, dbOverride);
   const photosByListingId = new Map<string, ListingPhoto[]>();
@@ -367,9 +375,11 @@ export async function searchDigListings(
   }
 
   const items: DigListingViewModel[] = result.records.map((record) => {
-    const photos = (photosByListingId.get(record.listing.id) || []).map(listingPhotoWithPublicUrl);
+    const storedPhotos = photosByListingId.get(record.listing.id) || [];
+    const primaryPhotoPath = storedPhotos.find((photo) => photo.role === 'front_cover')?.storagePath || null;
+    const photos = storedPhotos.map(listingPhotoWithPublicUrl);
     const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist, undefined, record.release.coverArtUrl);
-    const base = recordToListingCardViewModel(record);
+    const base = recordToListingCardViewModel({ ...record, primaryPhotoPath });
 
     return {
       ...base,
