@@ -305,10 +305,18 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
 
     // The same normalized filters feed both presentations. The desktop grid keeps
     // conventional pagination; mobile preloads the Dig session stack (up to 100).
-    const [gridResults, digResults] = await Promise.all([
-      searchBrowseListings({ ...searchParams, page, limit: 12 }),
-      searchDigListings({ ...searchParams, page: 1, limit: 100 }),
-    ]);
+    // Page one is shared by the desktop grid and mobile crate. Reuse Dig's
+    // bounded result set instead of issuing a second count/rows/photo query chain.
+    const digResults = await searchDigListings({ ...searchParams, page: 1, limit: 100 });
+    const gridResults = page === 1
+      ? {
+          items: digResults.items.slice(0, 12),
+          totalCount: digResults.totalCount,
+          page: 1,
+          limit: 12,
+          totalPages: Math.ceil(digResults.totalCount / 12) || 1,
+        }
+      : await searchBrowseListings({ ...searchParams, page, limit: 12 });
 
     renderWithLayout(res, 'browse/responsive-dig', {
       title: q ? `Search: "${q}" — Dig — The Vinyl Drop` : 'Dig — The Vinyl Drop',
