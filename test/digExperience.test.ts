@@ -725,6 +725,13 @@ describe('searchDigListings PGlite database integration', () => {
       INSERT INTO public.listing_photos (id, listing_id, storage_path, display_order, role, alt_text) VALUES
         ('55555555-5555-4555-8555-555555555555', '${listingId}', 'listings/photos/front.webp', 0, 'front_cover', 'Physical front cover'),
         ('66666666-6666-4666-8666-666666666666', '${listingId}', 'listings/photos/back.webp', 1, 'back_cover', 'Physical back cover');
+
+      INSERT INTO public.physical_copies (id, release_id, owner_id, media_condition, sleeve_condition)
+        VALUES ('77777777-7777-4777-8777-777777777777', '${releaseId}', '${sellerId}', 'VG+', 'VG+');
+      INSERT INTO public.listings (id, physical_copy_id, seller_id, price, status)
+        VALUES ('88888888-8888-4888-8888-888888888888', '77777777-7777-4777-8777-777777777777', '${sellerId}', 1800, 'published');
+      INSERT INTO public.listing_photos (id, listing_id, storage_path, display_order, role, alt_text)
+        VALUES ('99999999-9999-4999-8999-999999999999', '88888888-8888-4888-8888-888888888888', 'listings/photos/front-second.webp', 0, 'front_cover', 'Second physical front cover');
     `);
 
     const selectSpy = jest.spyOn(db, 'select');
@@ -732,16 +739,21 @@ describe('searchDigListings PGlite database integration', () => {
 
     expect(selectSpy).toHaveBeenCalledTimes(3);
     selectSpy.mockRestore();
-    expect(result.items.length).toBe(1);
-    const item = result.items[0];
-    expect(item.title).toBe('Kind of Blue');
-    expect(item.frontArtwork.sourceKind).toBe('seller_front');
-    expect(item.frontArtwork.src).toContain('listings/photos/front.webp');
-    expect(item.backArtwork?.sourceKind).toBe('seller_back');
-    expect(item.backArtwork?.src).toContain('listings/photos/back.webp');
-    expect(item.imageUrl).toContain('listings/photos/front.webp');
-    expect(item.fallbackImageUrl).toBe('https://catalog.example/miles.jpg');
-    expect(JSON.stringify(item)).not.toContain('sourceStoragePath');
+    expect(result.items).toHaveLength(2);
+    const item = result.items.find((candidate) => candidate.id === listingId);
+    const secondItem = result.items.find((candidate) => candidate.id === '88888888-8888-4888-8888-888888888888');
+    expect(item).toBeDefined();
+    expect(secondItem).toBeDefined();
+    expect(item?.title).toBe('Kind of Blue');
+    expect(item?.frontArtwork.sourceKind).toBe('seller_front');
+    expect(item?.frontArtwork.src).toContain('listings/photos/front.webp');
+    expect(item?.backArtwork?.sourceKind).toBe('seller_back');
+    expect(item?.backArtwork?.src).toContain('listings/photos/back.webp');
+    expect(item?.imageUrl).toContain('listings/photos/front.webp');
+    expect(item?.fallbackImageUrl).toBe('https://catalog.example/miles.jpg');
+    expect(secondItem?.frontArtwork.sourceKind).toBe('seller_front');
+    expect(secondItem?.frontArtwork.src).toContain('listings/photos/front-second.webp');
+    expect(JSON.stringify(result.items)).not.toContain('sourceStoragePath');
   });
 
   it('skips the photo metadata query when Dig has no matching listings', async () => {
@@ -870,6 +882,47 @@ describe('GET /browse/dig HTTP route integration', () => {
 });
 
 describe('GET /dig responsive presentation', () => {
+  it('starts the desktop fallback search while the mobile Dig preload is still pending', async () => {
+    let resolveDigResults!: (value: {
+      items: [];
+      totalCount: number;
+      hasMore: boolean;
+    }) => void;
+    const pendingDigResults = new Promise<{
+      items: [];
+      totalCount: number;
+      hasMore: boolean;
+    }>((resolve) => {
+      resolveDigResults = resolve;
+    });
+    const digSpy = jest.spyOn(listingService, 'searchDigListings').mockReturnValueOnce(pendingDigResults);
+    const browseSpy = jest.spyOn(listingService, 'searchBrowseListings').mockResolvedValueOnce({
+      items: [],
+      totalCount: 13,
+      page: 2,
+      limit: 12,
+      totalPages: 2,
+    });
+    const whiteLabelSpy = jest.spyOn(listingService, 'hasExplicitWhiteLabelInventory').mockResolvedValueOnce(false);
+
+    try {
+      const responsePromise = supertest(app).get('/dig?page=2');
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+      expect(digSpy).toHaveBeenCalled();
+      expect(browseSpy).toHaveBeenCalledWith(expect.objectContaining({ page: 2, limit: 12 }));
+
+      resolveDigResults({ items: [], totalCount: 13, hasMore: true });
+      const response = await responsePromise;
+      expect(response.status).toBe(200);
+    } finally {
+      digSpy.mockRestore();
+      browseSpy.mockRestore();
+      whiteLabelSpy.mockRestore();
+    }
+  });
+
+
   it('renders the desktop grid and the mobile swipe stack from the same filter URL', async () => {
     const commonItem = {
       id: 'listing-responsive-1',
