@@ -17,6 +17,7 @@ export interface SafeErrorLocation {
   column: number;
 }
 
+/** Read an error's cause defensively without trusting getter implementations. */
 function readCause(error: unknown): unknown {
   if (!error || (typeof error !== 'object' && typeof error !== 'function')) return undefined;
   try {
