@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import postgres from 'postgres';
 import { renderWithLayout } from '../utils/render';
+import { getSafeErrorTypeChain, getSafeSqlState } from '../utils/safeErrorDiagnostics';
 import { ValidationError, AuthorizationError, NotFoundError } from '../services/errors';
 
 export function notFoundHandler(req: Request, res: Response): void {
@@ -23,18 +23,13 @@ function getSafeErrorType(error: Error): string {
   if (error instanceof ValidationError) return 'ValidationError';
   if (error instanceof AuthorizationError) return 'AuthorizationError';
   if (error instanceof NotFoundError) return 'NotFoundError';
-  if (error instanceof postgres.PostgresError) return 'PostgresError';
-  if (error instanceof TypeError) return 'TypeError';
-  if (error instanceof RangeError) return 'RangeError';
-  if (error instanceof SyntaxError) return 'SyntaxError';
-  return 'Error';
+  return getSafeErrorTypeChain(error)[0] || 'Error';
 }
 
-function getSafeDiagnosticCode(error: Error & { code?: unknown }): string | undefined {
-  // Only the database driver's PostgresError class can contribute a diagnostic SQLSTATE.
-  // Network/system errors can also carry short codes (for example EPIPE), which are omitted.
-  if (!(error instanceof postgres.PostgresError)) return undefined;
-  return typeof error.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code) ? error.code : undefined;
+function getSafeDiagnosticCode(error: Error): string | undefined {
+  // Only a validated SQLSTATE from a real postgres.js driver error is exposed.
+  // The shared helper safely follows Drizzle's bounded cause chain.
+  return getSafeSqlState(error);
 }
 
 function getGenericClientErrorMessage(statusCode: number): string {
@@ -108,6 +103,10 @@ export function errorHandler(
     /^[A-Za-z0-9_/:.*-]+$/.test(routePath)
   ) {
     logEntry.route = routePath;
+  }
+  const safeCauseTypes = getSafeErrorTypeChain(err);
+  if (safeCauseTypes.length > 1) {
+    logEntry.causeTypes = safeCauseTypes.join('>');
   }
   const diagnosticCode = getSafeDiagnosticCode(err);
   if (diagnosticCode) {
