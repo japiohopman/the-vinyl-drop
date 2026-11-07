@@ -6,7 +6,7 @@ import { ListingPhotoRole } from '../../domain/listingPhotoRole';
 import { MAX_PHOTOS_PER_LISTING } from '../../domain/listingPhotoLimits';
 import type { ListingPhotoEditorState } from '../../domain/listingPhotoEditor';
 import { listingPhotoEditorStateSchema } from '../../validators/listingPhotoEditor';
-import { resolveDigArtwork, DigArtworkFace } from '../../domain/digExperience';
+import { resolveDigArtwork, DigArtworkFace, DigPhotoCandidate } from '../../domain/digExperience';
 import { Listing } from '../../db/schema/listings';
 import { PhysicalCopy } from '../../db/schema/physicalCopies';
 import { Profile } from '../../db/schema/profiles';
@@ -31,7 +31,7 @@ import {
   deleteListingPhoto,
   findPhotoById,
   findPhotosByListingId,
-  findPhotosByListingIds,
+  findDigPhotosByListingIds,
   updateListingPhotoEditor,
   updateListingPhotoSource,
   updateListingPhotoRole as updatePhotoRoleInRepo,
@@ -45,6 +45,7 @@ import {
   findRecentPublishedListings as findRecentInRepo,
   findHomeDiscoveryListingsByCursor as findHomeDiscoveryInRepo,
   JoinedListingRecord,
+  ListingSearchRecord,
   searchListings,
   hasExplicitWhiteLabelInventory as hasWhiteLabelInRepo,
   SearchListingsParams,
@@ -156,7 +157,7 @@ export interface DetailedListing {
   photos: ListingPhotoWithUrl[];
 }
 
-function recordToListingCardViewModel(record: JoinedListingRecord): ListingCardViewModel {
+function recordToListingCardViewModel(record: JoinedListingRecord | ListingSearchRecord): ListingCardViewModel {
   const imageUrl = record.primaryPhotoPath
     ? getPhotoPublicUrl(record.primaryPhotoPath)
     : (record.release.coverArtUrl || undefined);
@@ -355,21 +356,38 @@ export async function searchDigListings(
   params: SearchListingsParams,
   dbOverride?: DbInstance
 ): Promise<DigListingsResult> {
-  const result = await searchListings({ ...params, page: 1, limit: 100 }, dbOverride);
+  const result = await searchListings(
+    { ...params, page: 1, limit: 100 },
+    dbOverride,
+    { attachPrimaryPhotoPaths: false }
+  );
   const listingIds = result.records.map((record) => record.listing.id);
-  const photoRecords = await findPhotosByListingIds(listingIds, dbOverride);
-  const photosByListingId = new Map<string, ListingPhoto[]>();
+  const photoRecords = await findDigPhotosByListingIds(listingIds, dbOverride);
+  const photosByListingId = new Map<string, Array<DigPhotoCandidate & { storagePath: string }>>();
 
   for (const photo of photoRecords) {
     const current = photosByListingId.get(photo.listingId) || [];
-    current.push(photo);
+    current.push({
+      role: photo.role,
+      displayOrder: photo.displayOrder,
+      publicUrl: getPhotoPublicUrl(photo.storagePath),
+      altText: photo.altText,
+      storagePath: photo.storagePath,
+    });
     photosByListingId.set(photo.listingId, current);
   }
 
   const items: DigListingViewModel[] = result.records.map((record) => {
-    const photos = (photosByListingId.get(record.listing.id) || []).map(listingPhotoWithPublicUrl);
-    const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist, undefined, record.release.coverArtUrl);
-    const base = recordToListingCardViewModel(record);
+    const photoCandidates = photosByListingId.get(record.listing.id) || [];
+    const artworkPhotos: DigPhotoCandidate[] = photoCandidates.map(({ role, displayOrder, publicUrl, altText }) => ({
+      role,
+      displayOrder,
+      publicUrl,
+      altText,
+    }));
+    const primaryPhotoPath = photoCandidates.find((photo) => photo.role === 'front_cover')?.storagePath || null;
+    const artwork = resolveDigArtwork(artworkPhotos, record.release.title, record.release.artist, undefined, record.release.coverArtUrl);
+    const base = recordToListingCardViewModel({ ...record, primaryPhotoPath });
 
     return {
       ...base,
