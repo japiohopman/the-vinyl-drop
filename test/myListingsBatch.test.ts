@@ -1,8 +1,13 @@
+import ejs from 'ejs';
+import path from 'path';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import type { getDb } from '../src/db';
 import { getMyListings } from '../src/app/services/listingService';
 import { getPhotoPublicUrl } from '../src/app/services/storageService';
+import { getIconSvg } from '../src/app/utils/iconRegistry';
+
+const listingsTemplatePath = path.join(__dirname, '../views/listings/index.ejs');
 
 const SELLER_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const OTHER_SELLER_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -22,6 +27,7 @@ const RELEASE_VISIBLE_ART = '10000000-0000-4000-8000-000000000002';
 const RELEASE_HIDDEN = '10000000-0000-4000-8000-000000000003';
 const RELEASE_OTHER_SELLER = '10000000-0000-4000-8000-000000000004';
 
+/** Counts Drizzle select-builder invocations without changing the isolated test database behavior. */
 function countSelectQueries(database: ReturnType<typeof getDb>): {
   db: ReturnType<typeof getDb>;
   count: () => number;
@@ -193,6 +199,15 @@ describe('My Listings batched database reads (#380)', () => {
     expect(withCatalogueArtFallback?.priceFormatted).toBe('TRADE ONLY');
     expect(withCatalogueArtFallback?.release.coverArtUrl).toBe('https://catalog.example/midnight-marauders.jpg');
     expect(withCatalogueArtFallback?.photos.map((photo) => photo.role)).toEqual(['record']);
+
+    const visibleHtml = await ejs.renderFile(
+      listingsTemplatePath,
+      { getIconSvg, listings: result, viewHidden: false },
+      { filename: listingsTemplatePath }
+    );
+    expect(visibleHtml).toContain('The Low End Theory');
+    expect(visibleHtml).toContain('Midnight Marauders');
+    expect(visibleHtml).toContain(`href="/listings/${LISTING_VISIBLE_PHOTO}/preview"`);
   });
 
   it('keeps the hidden view restricted to dismissed listings and includes no visible rows', async () => {
@@ -205,6 +220,14 @@ describe('My Listings batched database reads (#380)', () => {
     expect(result[0]?.status).toBe('sold');
     expect(result[0]?.priceFormatted).toBe('€15.00');
     expect(result[0]?.photos).toEqual([]);
+
+    const hiddenHtml = await ejs.renderFile(
+      listingsTemplatePath,
+      { getIconSvg, listings: result, viewHidden: true },
+      { filename: listingsTemplatePath }
+    );
+    expect(hiddenHtml).toContain('Doggystyle');
+    expect(hiddenHtml).toContain(`href="/listings/${LISTING_HIDDEN}/restore-dismissed"`);
   });
 
   it('performs only the joined listing query when the seller has no results', async () => {

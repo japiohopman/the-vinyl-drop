@@ -35,6 +35,7 @@ import { parsePriceEurToCents } from '../../validators/listing';
 import { ValidationError, NotFoundError, AuthorizationError } from '../services/errors';
 import { LISTING_PHOTO_ROLE_GUIDANCE, LISTING_PHOTO_ROLE_LABELS, LISTING_PHOTO_ROLES, NEW_LISTING_PHOTO_ROLES } from '../../domain/listingPhotoRole';
 
+/** Renders the authenticated seller's visible or hidden listings from the batched My Listings read model. */
 export async function getSellerListings(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
