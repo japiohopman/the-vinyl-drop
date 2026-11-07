@@ -35,26 +35,42 @@ export interface JoinedListingRecord {
   primaryPhotoPath: string | null;
 }
 
+export interface ListingSearchRecord {
+  listing: Pick<Listing, 'id' | 'price' | 'tradeAvailable'>;
+  physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition'>;
+  release: Pick<Release, 'title' | 'artist' | 'releaseYear' | 'format' | 'coverArtUrl'>;
+  seller: Pick<Profile, 'username' | 'location'>;
+  primaryPhotoPath: string | null;
+}
+
 export interface SearchListingsResult {
-  records: JoinedListingRecord[];
+  records: ListingSearchRecord[];
   totalCount: number;
   page: number;
   limit: number;
   totalPages: number;
 }
 
+export interface SearchListingsOptions {
+  /** Skip the separate front-photo lookup when the caller already loads all Dig photos. */
+  attachPrimaryPhotoPaths?: boolean;
+}
+
 type JoinedListingRow = Omit<JoinedListingRecord, 'primaryPhotoPath'>;
 
 /** Attach the preferred front-cover path with one bounded bulk photo lookup. */
-async function attachPrimaryPhotoPaths(
-  rows: JoinedListingRow[],
+async function attachPrimaryPhotoPaths<T extends { listing: { id: string } }>(
+  rows: T[],
   db: DbInstance
-): Promise<JoinedListingRecord[]> {
+): Promise<Array<T & { primaryPhotoPath: string | null }>> {
   if (rows.length === 0) return [];
 
   const listingIds = rows.map((row) => row.listing.id);
   const photoRecords = await db
-    .select()
+    .select({
+      listingId: listingPhotos.listingId,
+      storagePath: listingPhotos.storagePath,
+    })
     .from(listingPhotos)
     .where(and(
       inArray(listingPhotos.listingId, listingIds),
@@ -223,7 +239,8 @@ export async function updateListingStatus(
 
 export async function searchListings(
   params: SearchListingsParams,
-  dbOverride?: DbInstance
+  dbOverride?: DbInstance,
+  options: SearchListingsOptions = {}
 ): Promise<SearchListingsResult> {
   const db = dbOverride || getDb();
   const conditions: SQL[] = [];
@@ -367,10 +384,26 @@ export async function searchListings(
 
   const rows = await db
     .select({
-      listing: listings,
-      physicalCopy: physicalCopies,
-      release: releases,
-      seller: profiles,
+      listing: {
+        id: listings.id,
+        price: listings.price,
+        tradeAvailable: listings.tradeAvailable,
+      },
+      physicalCopy: {
+        mediaCondition: physicalCopies.mediaCondition,
+        sleeveCondition: physicalCopies.sleeveCondition,
+      },
+      release: {
+        title: releases.title,
+        artist: releases.artist,
+        releaseYear: releases.releaseYear,
+        format: releases.format,
+        coverArtUrl: releases.coverArtUrl,
+      },
+      seller: {
+        username: profiles.username,
+        location: profiles.location,
+      },
     })
     .from(listings)
     .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
@@ -381,7 +414,9 @@ export async function searchListings(
     .limit(limit)
     .offset(offset);
 
-  const records = await attachPrimaryPhotoPaths(rows, db);
+  const records = options.attachPrimaryPhotoPaths === false
+    ? rows.map((row) => ({ ...row, primaryPhotoPath: null }))
+    : await attachPrimaryPhotoPaths(rows, db);
 
   return {
     records,
