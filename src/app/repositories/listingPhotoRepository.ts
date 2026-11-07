@@ -74,6 +74,34 @@ export async function updatePhotoOrder(
   }
 }
 
+export interface DigPhotoRecord {
+  listingId: string;
+  storagePath: string;
+  role: ListingPhotoRole;
+  displayOrder: number;
+  altText: string | null;
+}
+
+/** Fetch only the public-facing metadata needed to render Dig and desktop listing cards. */
+export async function findDigPhotosByListingIds(
+  listingIds: string[],
+  dbOverride?: DbInstance
+): Promise<DigPhotoRecord[]> {
+  if (listingIds.length === 0) return [];
+  const db = dbOverride || getDb();
+  return db
+    .select({
+      listingId: listingPhotos.listingId,
+      storagePath: listingPhotos.storagePath,
+      role: listingPhotos.role,
+      displayOrder: listingPhotos.displayOrder,
+      altText: listingPhotos.altText,
+    })
+    .from(listingPhotos)
+    .where(inArray(listingPhotos.listingId, listingIds))
+    .orderBy(asc(listingPhotos.listingId), asc(listingPhotos.displayOrder), asc(listingPhotos.createdAt));
+}
+
 export async function findPhotosByListingIds(
   listingIds: string[],
   dbOverride?: DbInstance
