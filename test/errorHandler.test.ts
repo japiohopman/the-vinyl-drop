@@ -199,6 +199,79 @@ describe('Centralized Error Handler Middleware', () => {
     expect(logged).not.toContain('Error:');
   });
 
+  it('logs a wrapped Postgres SQLSTATE and safe cause chain without private error text', async () => {
+    const app = express();
+    const privateValue = 'never-log-this-database-secret';
+    const postgresError = new Error(`query failed: ${privateValue}`) as Error & { code?: unknown };
+    Object.setPrototypeOf(postgresError, postgres.PostgresError.prototype);
+    postgresError.name = 'PostgresError';
+    postgresError.code = '42703';
+    const wrappedError = Object.assign(new Error(`Drizzle wrapper: ${privateValue}`), { cause: postgresError });
+
+    app.get('/wrapped-postgres-error', (_req: Request, _res: Response, next: NextFunction) => next(wrappedError));
+    app.use(errorHandler);
+
+    const response = await request(app).get('/wrapped-postgres-error').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\\n');
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: 'Internal Server Error' });
+    expect(logged).toContain('"causeChain":"Error>PostgresError"');
+    expect(logged).toContain('"diagnosticCode":"42703"');
+    expect(logged).not.toContain(privateValue);
+    expect(logged).not.toContain('Drizzle wrapper');
+    expect(logged).not.toContain('query failed');
+  });
+
+  it('stops at the configured cause-chain depth before a nested Postgres error', async () => {
+    const app = express();
+    const driverError = new Error('nested query detail must stay private') as Error & { code?: unknown };
+    Object.setPrototypeOf(driverError, postgres.PostgresError.prototype);
+    driverError.name = 'PostgresError';
+    driverError.code = '42703';
+
+    let wrappedError: Error = driverError;
+    for (let depth = 0; depth < 8; depth += 1) {
+      const nextError = new Error(`private wrapper ${depth}`);
+      Object.defineProperty(nextError, 'cause', { value: wrappedError });
+      wrappedError = nextError;
+    }
+
+    app.get('/deep-wrapped-error', (_req: Request, _res: Response, next: NextFunction) => next(wrappedError));
+    app.use(errorHandler);
+
+    const response = await request(app).get('/deep-wrapped-error').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: 'Internal Server Error' });
+    expect(logged).toContain('"causeChain":"Error>Error>Error>Error>Error>Error>Error>Error"');
+    expect(logged).not.toContain('"diagnosticCode"');
+    expect(logged).not.toContain('nested query detail');
+    expect(logged).not.toContain('private wrapper');
+  });
+
+  it('stops safely when a wrapped error cause chain contains a cycle', async () => {
+    const app = express();
+    const outer = new Error('private outer wrapper');
+    const inner = new Error('private inner wrapper');
+    Object.defineProperty(outer, 'cause', { value: inner });
+    Object.defineProperty(inner, 'cause', { value: outer });
+
+    app.get('/cyclic-wrapped-error', (_req: Request, _res: Response, next: NextFunction) => next(outer));
+    app.use(errorHandler);
+
+    const response = await request(app).get('/cyclic-wrapped-error').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: 'Internal Server Error' });
+    expect(logged).toContain('"causeChain":"Error>Error"');
+    expect(logged).not.toContain('"diagnosticCode"');
+    expect(logged).not.toContain('private outer wrapper');
+    expect(logged).not.toContain('private inner wrapper');
+  });
+
   it('should not log arbitrary non-SQLSTATE error codes', async () => {
     const app = express();
     const error = new Error('Sensitive diagnostic detail') as Error & { code?: unknown };

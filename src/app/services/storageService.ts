@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Request } from 'express';
 import { getSupabaseClient } from '../../lib/supabase';
 import { config } from '../../config/env';
@@ -34,6 +35,17 @@ export interface UploadPhotoParams {
 }
 
 /**
+ * Keep mutable public object paths short-lived in browsers, while allowing
+ * versioned derivative paths to be reused for one day. Replacements use a new
+ * versioned path, so a browser never confuses a prior image with the new image.
+ */
+export function getListingPhotoCacheControl(storagePath: string): string {
+  return /\.v-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\.(?:webp|png|jpe?g)$/i.test(storagePath)
+    ? '86400'
+    : '3600';
+}
+
+/**
  * Uploads a processed photo buffer to Supabase Storage using authenticated Supabase client context.
  * In `test` environment, uses in-memory storage adapter.
  * In `development` / `production`, requires successful Supabase Storage upload or throws an error.
@@ -50,6 +62,7 @@ export async function uploadListingPhotoToStorage(params: UploadPhotoParams): Pr
   const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
   const { error } = await supabase.storage.from(BUCKET_NAME).upload(storagePath, buffer, {
     contentType,
+    cacheControl: getListingPhotoCacheControl(storagePath),
     upsert: !version,
   });
 
@@ -224,12 +237,61 @@ export function clearInMemoryStorage(): void {
 }
 
 
-/** Restore a removed processed listing photo when a permanent delete transaction fails. */
+/**
+ * Creates a fresh immutable URL for a restored photo when its old URL already
+ * contains different bytes. Existing version identifiers are replaced rather
+ * than nested, and the recognized image extension is retained.
+ */
+function createDistinctRestorationPath(storagePath: string): string {
+  const match = storagePath.match(
+    /^(.*?)(?:\.v-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})?(\.(?:webp|png|jpe?g))$/i
+  );
+  if (!match) {
+    throw new Error('Cannot create a versioned URL for this listing photo path.');
+  }
+  return `${match[1]}.v-${crypto.randomUUID()}${match[2]}`;
+}
+
+/**
+ * Restores an object without overwriting bytes at an existing public URL.
+ * A failed upload is checked by reading back the target, covering timeouts
+ * after a successful Storage write without making the path mutable.
+ */
+async function uploadRestoredPhotoWithoutOverwrite(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  storagePath: string,
+  buffer: Buffer,
+  contentType: string
+): Promise<'restored' | 'different'> {
+  const bucket = supabase.storage.from(BUCKET_NAME);
+  const { error } = await bucket.upload(storagePath, buffer, {
+    contentType,
+    cacheControl: getListingPhotoCacheControl(storagePath),
+    upsert: false,
+  });
+  if (!error) return 'restored';
+
+  const { data, error: readError } = await bucket.download(storagePath);
+  if (readError || !data) {
+    throw new Error(`Supabase Storage restoration failed: ${error.message}`);
+  }
+
+  const existingBuffer = Buffer.from(await data.arrayBuffer());
+  return existingBuffer.equals(buffer) ? 'restored' : 'different';
+}
+
+/**
+ * Restore a removed processed listing photo without mutating an immutable URL.
+ * Identical bytes retain the original URL; different bytes receive a fresh
+ * UUID-versioned URL so browsers and the CDN cannot serve a stale cached image.
+ *
+ * @returns The URL path that now contains the restored bytes.
+ */
 export async function restoreListingPhotoToStorage(
   storagePath: string,
   buffer: Buffer,
   options?: StorageOptions
-): Promise<void> {
+): Promise<string> {
   const extension = storagePath.split('.').pop()?.toLowerCase();
   const contentType = extension === 'png'
     ? 'image/png'
@@ -238,16 +300,47 @@ export async function restoreListingPhotoToStorage(
       : 'image/webp';
 
   if (config.NODE_ENV === 'test') {
-    inMemoryStorage.set(storagePath, { buffer: Buffer.from(buffer), contentType });
-    return;
+    const existing = inMemoryStorage.get(storagePath);
+    if (existing?.buffer.equals(buffer)) return storagePath;
+
+    const restoredPath = existing
+      ? createDistinctRestorationPath(storagePath)
+      : storagePath;
+    inMemoryStorage.set(restoredPath, { buffer: Buffer.from(buffer), contentType });
+    return restoredPath;
   }
 
   const supabase = getSupabaseClient(options?.req, undefined, options?.accessToken);
-  const { error } = await supabase.storage.from(BUCKET_NAME).upload(storagePath, buffer, {
-    contentType,
-    upsert: true,
-  });
-  if (error) {
-    throw new Error(`Supabase Storage restoration failed: ${error.message}`);
+  const bucket = supabase.storage.from(BUCKET_NAME);
+  const { data, error } = await bucket.download(storagePath);
+
+  if (!error && data) {
+    const existingBuffer = Buffer.from(await data.arrayBuffer());
+    if (existingBuffer.equals(buffer)) return storagePath;
   }
+
+  // Uploads use upsert:false, so a missing-object read racing with another
+  // restore cannot overwrite that concurrent writer's bytes.
+  const originalPathResult = await uploadRestoredPhotoWithoutOverwrite(
+    supabase,
+    storagePath,
+    buffer,
+    contentType
+  );
+  if (originalPathResult === 'restored') return storagePath;
+
+  // The original URL already contains different bytes. Preserve it and store
+  // the snapshot under a new immutable URL instead.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const restoredPath = createDistinctRestorationPath(storagePath);
+    const result = await uploadRestoredPhotoWithoutOverwrite(
+      supabase,
+      restoredPath,
+      buffer,
+      contentType
+    );
+    if (result === 'restored') return restoredPath;
+  }
+
+  throw new Error('Supabase Storage could not allocate a distinct restoration URL.');
 }

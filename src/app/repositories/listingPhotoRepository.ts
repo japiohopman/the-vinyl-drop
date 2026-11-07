@@ -74,6 +74,34 @@ export async function updatePhotoOrder(
   }
 }
 
+export interface DigPhotoRecord {
+  listingId: string;
+  storagePath: string;
+  role: ListingPhotoRole;
+  displayOrder: number;
+  altText: string | null;
+}
+
+/** Fetch only the public-facing metadata needed to render Dig and desktop listing cards. */
+export async function findDigPhotosByListingIds(
+  listingIds: string[],
+  dbOverride?: DbInstance
+): Promise<DigPhotoRecord[]> {
+  if (listingIds.length === 0) return [];
+  const db = dbOverride || getDb();
+  return db
+    .select({
+      listingId: listingPhotos.listingId,
+      storagePath: listingPhotos.storagePath,
+      role: listingPhotos.role,
+      displayOrder: listingPhotos.displayOrder,
+      altText: listingPhotos.altText,
+    })
+    .from(listingPhotos)
+    .where(inArray(listingPhotos.listingId, listingIds))
+    .orderBy(asc(listingPhotos.listingId), asc(listingPhotos.displayOrder), asc(listingPhotos.createdAt));
+}
+
 export async function findPhotosByListingIds(
   listingIds: string[],
   dbOverride?: DbInstance
@@ -100,6 +128,31 @@ export async function updateListingPhotoEditor(
   const results = await db
     .update(listingPhotos)
     .set({ storagePath, editorState: editorState ?? null, altText, updatedAt: new Date() })
+    .where(and(
+      eq(listingPhotos.listingId, listingId),
+      eq(listingPhotos.id, photoId),
+      eq(listingPhotos.storagePath, expectedStoragePath)
+    ))
+    .returning();
+  return results[0] || null;
+}
+
+/**
+ * Repoint a listing photo only when its stored URL is still the snapshot URL.
+ * This compare-and-set prevents a failed-delete rollback from overwriting a
+ * concurrent photo edit that has already moved the row to a newer URL.
+ */
+export async function updateListingPhotoStoragePath(
+  listingId: string,
+  photoId: string,
+  expectedStoragePath: string,
+  storagePath: string,
+  dbOverride?: DbInstance
+): Promise<ListingPhoto | null> {
+  const db = dbOverride || getDb();
+  const results = await db
+    .update(listingPhotos)
+    .set({ storagePath, updatedAt: new Date() })
     .where(and(
       eq(listingPhotos.listingId, listingId),
       eq(listingPhotos.id, photoId),

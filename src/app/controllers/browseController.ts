@@ -303,12 +303,23 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
       sort,
     };
 
-    // The same normalized filters feed both presentations. The desktop grid keeps
-    // conventional pagination; mobile preloads the Dig session stack (up to 100).
-    const [gridResults, digResults] = await Promise.all([
-      searchBrowseListings({ ...searchParams, page, limit: 12 }),
+    // Page one is shared by the desktop grid and mobile crate. Later pages need
+    // the complete paginated desktop result, but that fallback can run alongside
+    // the bounded mobile preload rather than waiting for it to finish.
+    const browseResultsPromise = page === 1
+      ? Promise.resolve(null)
+      : searchBrowseListings({ ...searchParams, page, limit: 12 });
+    const [digResults, browseResults] = await Promise.all([
       searchDigListings({ ...searchParams, page: 1, limit: 100 }),
+      browseResultsPromise,
     ]);
+    const gridResults = browseResults || {
+      items: digResults.items.slice(0, 12),
+      totalCount: digResults.totalCount,
+      page: 1,
+      limit: 12,
+      totalPages: Math.ceil(digResults.totalCount / 12) || 1,
+    };
 
     renderWithLayout(res, 'browse/responsive-dig', {
       title: q ? `Search: "${q}" — Dig — The Vinyl Drop` : 'Dig — The Vinyl Drop',

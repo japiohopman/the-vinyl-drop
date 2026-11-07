@@ -6,7 +6,7 @@ import { ListingPhotoRole } from '../../domain/listingPhotoRole';
 import { MAX_PHOTOS_PER_LISTING } from '../../domain/listingPhotoLimits';
 import type { ListingPhotoEditorState } from '../../domain/listingPhotoEditor';
 import { listingPhotoEditorStateSchema } from '../../validators/listingPhotoEditor';
-import { resolveDigArtwork, DigArtworkFace } from '../../domain/digExperience';
+import { resolveDigArtwork, DigArtworkFace, DigPhotoCandidate } from '../../domain/digExperience';
 import { Listing } from '../../db/schema/listings';
 import { PhysicalCopy } from '../../db/schema/physicalCopies';
 import { Profile } from '../../db/schema/profiles';
@@ -31,8 +31,9 @@ import {
   deleteListingPhoto,
   findPhotoById,
   findPhotosByListingId,
-  findPhotosByListingIds,
+  findDigPhotosByListingIds,
   updateListingPhotoEditor,
+  updateListingPhotoStoragePath,
   updateListingPhotoSource,
   updateListingPhotoRole as updatePhotoRoleInRepo,
   updatePhotoOrder,
@@ -45,6 +46,7 @@ import {
   findRecentPublishedListings as findRecentInRepo,
   findHomeDiscoveryListingsByCursor as findHomeDiscoveryInRepo,
   JoinedListingRecord,
+  ListingSearchRecord,
   searchListings,
   hasExplicitWhiteLabelInventory as hasWhiteLabelInRepo,
   SearchListingsParams,
@@ -134,6 +136,53 @@ async function recordPhotoStorageOrphan(
   }
 }
 
+/**
+ * Restores a deleted photo snapshot and compare-and-sets its database URL when
+ * byte differences require a fresh immutable Storage path. If the photo row
+ * changed or disappeared meanwhile, the unreferenced restored object is
+ * recorded for cleanup instead of overwriting the concurrent photo state.
+ */
+async function restoreListingPhotoSnapshot(
+  listingId: string,
+  photoId: string,
+  expectedStoragePath: string,
+  displayBuffer: Buffer,
+  dbOverride: DbInstance | undefined,
+  storageOptions: StorageOptions | undefined,
+  orphanReason: string
+): Promise<void> {
+  const restoredStoragePath = await restoreListingPhotoToStorage(
+    expectedStoragePath,
+    displayBuffer,
+    storageOptions
+  );
+  if (restoredStoragePath === expectedStoragePath) return;
+
+  let updated: ListingPhoto | null = null;
+  try {
+    updated = await updateListingPhotoStoragePath(
+      listingId,
+      photoId,
+      expectedStoragePath,
+      restoredStoragePath,
+      dbOverride
+    );
+  } catch {
+    // The orphan record below preserves the new object if the compare-and-set
+    // cannot be completed because the database is unavailable.
+  }
+
+  if (!updated) {
+    await recordPhotoStorageOrphan(
+      listingId,
+      photoId,
+      restoredStoragePath,
+      orphanReason,
+      dbOverride
+    );
+  }
+}
+
 export interface DigListingViewModel extends ListingCardViewModel {
   frontArtwork: DigArtworkFace;
   backArtwork: DigArtworkFace | null;
@@ -156,7 +205,8 @@ export interface DetailedListing {
   photos: ListingPhotoWithUrl[];
 }
 
-function recordToListingCardViewModel(record: JoinedListingRecord): ListingCardViewModel {
+/** Build a public listing-card view model from either a full join or the narrow shared search projection. */
+function recordToListingCardViewModel(record: JoinedListingRecord | ListingSearchRecord): ListingCardViewModel {
   const imageUrl = record.primaryPhotoPath
     ? getPhotoPublicUrl(record.primaryPhotoPath)
     : (record.release.coverArtUrl || undefined);
@@ -351,25 +401,43 @@ export async function hasExplicitWhiteLabelInventory(dbOverride?: DbInstance): P
   return hasWhiteLabelInRepo(dbOverride);
 }
 
+/** Load a bounded Dig result set and attach its public front/back photo metadata in one batch. */
 export async function searchDigListings(
   params: SearchListingsParams,
   dbOverride?: DbInstance
 ): Promise<DigListingsResult> {
-  const result = await searchListings({ ...params, page: 1, limit: 100 }, dbOverride);
+  const result = await searchListings(
+    { ...params, page: 1, limit: 100 },
+    dbOverride,
+    { attachPrimaryPhotoPaths: false }
+  );
   const listingIds = result.records.map((record) => record.listing.id);
-  const photoRecords = await findPhotosByListingIds(listingIds, dbOverride);
-  const photosByListingId = new Map<string, ListingPhoto[]>();
+  const photoRecords = await findDigPhotosByListingIds(listingIds, dbOverride);
+  const photosByListingId = new Map<string, Array<DigPhotoCandidate & { storagePath: string }>>();
 
   for (const photo of photoRecords) {
     const current = photosByListingId.get(photo.listingId) || [];
-    current.push(photo);
+    current.push({
+      role: photo.role,
+      displayOrder: photo.displayOrder,
+      publicUrl: getPhotoPublicUrl(photo.storagePath),
+      altText: photo.altText,
+      storagePath: photo.storagePath,
+    });
     photosByListingId.set(photo.listingId, current);
   }
 
   const items: DigListingViewModel[] = result.records.map((record) => {
-    const photos = (photosByListingId.get(record.listing.id) || []).map(listingPhotoWithPublicUrl);
-    const artwork = resolveDigArtwork(photos, record.release.title, record.release.artist, undefined, record.release.coverArtUrl);
-    const base = recordToListingCardViewModel(record);
+    const photoCandidates = photosByListingId.get(record.listing.id) || [];
+    const artworkPhotos: DigPhotoCandidate[] = photoCandidates.map(({ role, displayOrder, publicUrl, altText }) => ({
+      role,
+      displayOrder,
+      publicUrl,
+      altText,
+    }));
+    const primaryPhotoPath = photoCandidates.find((photo) => photo.role === 'front_cover')?.storagePath || null;
+    const artwork = resolveDigArtwork(artworkPhotos, record.release.title, record.release.artist, undefined, record.release.coverArtUrl);
+    const base = recordToListingCardViewModel({ ...record, primaryPhotoPath });
 
     return {
       ...base,
@@ -1133,7 +1201,15 @@ export async function deletePhotoFromListing(
   const restoreObjects = async (): Promise<void> => {
     if (attemptedDisplayDelete) {
       try {
-        await restoreListingPhotoToStorage(photo.storagePath, displayBuffer, storageOptions);
+        await restoreListingPhotoSnapshot(
+          listingId,
+          photoId,
+          photo.storagePath,
+          displayBuffer,
+          dbOverride,
+          storageOptions,
+          'PHOTO_DELETE_DISPLAY_RESTORE_REPOINT_FAILED'
+        );
       } catch {
         await recordPhotoStorageOrphan(
           listingId,
@@ -1221,7 +1297,15 @@ export async function permanentlyDeleteArchivedListing(
   const restoreRemovedPhotos = async (): Promise<void> => {
     for (const snapshot of attemptedRemovals) {
       try {
-        await restoreListingPhotoToStorage(snapshot.photo.storagePath, snapshot.displayBuffer, storageOptions);
+        await restoreListingPhotoSnapshot(
+          listingId,
+          snapshot.photo.id,
+          snapshot.photo.storagePath,
+          snapshot.displayBuffer,
+          dbOverride,
+          storageOptions,
+          'ARCHIVED_LISTING_DELETE_DISPLAY_RESTORE_REPOINT_FAILED'
+        );
       } catch {
         await recordPhotoStorageOrphan(
           listingId,

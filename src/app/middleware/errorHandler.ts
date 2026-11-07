@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import postgres from 'postgres';
 import { renderWithLayout } from '../utils/render';
 import { ValidationError, AuthorizationError, NotFoundError } from '../services/errors';
+import { getSafeErrorLocations, getSafeErrorTypeChain, getSafeSqlState } from '../utils/safeErrorDiagnostics';
 
 export function notFoundHandler(req: Request, res: Response): void {
   res.status(404);
@@ -28,13 +29,6 @@ function getSafeErrorType(error: Error): string {
   if (error instanceof RangeError) return 'RangeError';
   if (error instanceof SyntaxError) return 'SyntaxError';
   return 'Error';
-}
-
-function getSafeDiagnosticCode(error: Error & { code?: unknown }): string | undefined {
-  // Only the database driver's PostgresError class can contribute a diagnostic SQLSTATE.
-  // Network/system errors can also carry short codes (for example EPIPE), which are omitted.
-  if (!(error instanceof postgres.PostgresError)) return undefined;
-  return typeof error.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code) ? error.code : undefined;
 }
 
 function getGenericClientErrorMessage(statusCode: number): string {
@@ -109,9 +103,19 @@ export function errorHandler(
   ) {
     logEntry.route = routePath;
   }
-  const diagnosticCode = getSafeDiagnosticCode(err);
+  const causeChain = getSafeErrorTypeChain(err);
+  if (causeChain.length > 1) {
+    logEntry.causeChain = causeChain.join('>');
+  }
+  const diagnosticCode = getSafeSqlState(err);
   if (diagnosticCode) {
     logEntry.diagnosticCode = diagnosticCode;
+  }
+  const locations = getSafeErrorLocations(err);
+  if (locations.length > 0) {
+    logEntry.diagnosticLocations = locations
+      .map(({ source, line, column }) => `${source}:${line}:${column}`)
+      .join(',');
   }
   console.error(JSON.stringify(logEntry));
 
