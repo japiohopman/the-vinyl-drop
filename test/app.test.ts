@@ -97,6 +97,29 @@ describe('App Routes and Error Handling', () => {
       expect(listingService.searchBrowseListings).not.toHaveBeenCalled();
     });
 
+    it('falls back to the paginated Browse query when page 9 extends beyond the 100-record preload', async () => {
+      (listingService.hasExplicitWhiteLabelInventory as jest.Mock).mockResolvedValue(false);
+      (listingService.searchDigListings as jest.Mock).mockResolvedValue({
+        items: [],
+        totalCount: 110,
+        hasMore: true,
+      });
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [],
+        totalCount: 110,
+        page: 9,
+        limit: 12,
+        totalPages: 10,
+      });
+
+      const response = await request(app).get('/dig?page=9').set('Accept', 'text/html');
+
+      expect(response.status).toBe(200);
+      expect(listingService.searchBrowseListings).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 9, limit: 12 })
+      );
+    });
+
     it('falls back to the paginated Browse query beyond the 100-record Dig preload', async () => {
       (listingService.hasExplicitWhiteLabelInventory as jest.Mock).mockResolvedValue(false);
       (listingService.searchDigListings as jest.Mock).mockResolvedValue({
