@@ -5,6 +5,8 @@ import {
   deleteListingPhotoFromStorage,
   getListingPhotoCacheControl,
   getPhotoPublicUrl,
+  restoreListingPhotoToStorage,
+  downloadListingPhotoFromStorage,
   clearInMemoryStorage,
 } from '../src/app/services/storageService';
 import { config } from '../src/config/env';
@@ -97,6 +99,44 @@ describe('Storage Authorization and Service Boundaries (Issue #61)', () => {
 
     it('does not treat an unrelated dotted filename as a versioned derivative', () => {
       expect(getListingPhotoCacheControl('listings/listing-123/photo-456.v-not-a-uuid.webp')).toBe('3600');
+    });
+  });
+
+  describe('Listing photo restoration preserves immutable URLs', () => {
+    it('keeps the existing URL when the restored bytes are unchanged', async () => {
+      const original = Buffer.from('same photo bytes');
+      const storagePath = await uploadListingPhotoToStorage({
+        listingId: 'l1',
+        photoId: 'p-identical',
+        buffer: original,
+        contentType: 'image/webp',
+      });
+
+      const restoredPath = await restoreListingPhotoToStorage(storagePath, Buffer.from(original));
+
+      expect(restoredPath).toBe(storagePath);
+      await expect(downloadListingPhotoFromStorage(storagePath)).resolves.toEqual(original);
+    });
+
+    it('uses a new versioned URL when existing bytes differ from the restore snapshot', async () => {
+      const currentBytes = Buffer.from('newer photo bytes');
+      const snapshotBytes = Buffer.from('older snapshot bytes');
+      const storagePath = await uploadListingPhotoToStorage({
+        listingId: 'l1',
+        photoId: 'p-different',
+        buffer: currentBytes,
+        contentType: 'image/webp',
+      });
+
+      const restoredPath = await restoreListingPhotoToStorage(storagePath, snapshotBytes);
+
+      expect(restoredPath).not.toBe(storagePath);
+      expect(restoredPath).toMatch(
+        /^listings\\/l1\\/p-different\\.v-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\\.webp$/i
+      );
+      expect(getListingPhotoCacheControl(restoredPath)).toBe('86400');
+      await expect(downloadListingPhotoFromStorage(storagePath)).resolves.toEqual(currentBytes);
+      await expect(downloadListingPhotoFromStorage(restoredPath)).resolves.toEqual(snapshotBytes);
     });
   });
 
