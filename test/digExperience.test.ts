@@ -918,11 +918,21 @@ describe('GET /dig responsive presentation', () => {
       const responsePromise = supertest(app).get('/dig?page=2').then((response) => response);
       drainResponse = responsePromise.then(() => undefined, () => undefined);
 
-      // Wait for the route to enter the Dig service instead of guessing when
-      // Supertest's HTTP request has reached Express with a zero-delay timer.
-      // The Dig promise remains pending while we assert that the desktop
-      // fallback has already started independently.
-      await digStarted;
+      // Race the route signal against either outcome of the request. This
+      // surfaces failures that happen before the controller reaches Dig
+      // instead of leaving the test waiting for a signal that cannot arrive.
+      const requestOutcome = responsePromise.then(
+        (response) => ({ kind: 'response' as const, response }),
+        (error: unknown) => ({ kind: 'error' as const, error })
+      );
+      const startOutcome = await Promise.race([
+        digStarted.then(() => ({ kind: 'dig-started' as const })),
+        requestOutcome,
+      ]);
+      if (startOutcome.kind === 'error') throw startOutcome.error;
+      if (startOutcome.kind === 'response') {
+        throw new Error('The /dig request completed before the Dig preload started.');
+      }
 
       expect(digSpy).toHaveBeenCalled();
       expect(browseSpy).toHaveBeenCalledWith(expect.objectContaining({ page: 2, limit: 12 }));
