@@ -103,6 +103,16 @@ describe('Storage Authorization and Service Boundaries (Issue #61)', () => {
   });
 
   describe('Listing photo restoration preserves immutable URLs', () => {
+    it('restores a missing object at its original URL', async () => {
+      const storagePath = 'listings/l1/p-missing.webp';
+      const snapshotBytes = Buffer.from('restored photo bytes');
+
+      const restoredPath = await restoreListingPhotoToStorage(storagePath, snapshotBytes);
+
+      expect(restoredPath).toBe(storagePath);
+      await expect(downloadListingPhotoFromStorage(storagePath)).resolves.toEqual(snapshotBytes);
+    });
+
     it('keeps the existing URL when the restored bytes are unchanged', async () => {
       const original = Buffer.from('same photo bytes');
       const storagePath = await uploadListingPhotoToStorage({
@@ -126,6 +136,7 @@ describe('Storage Authorization and Service Boundaries (Issue #61)', () => {
         photoId: 'p-different',
         buffer: currentBytes,
         contentType: 'image/webp',
+        version: '123e4567-e89b-42d3-a456-426614174000',
       });
 
       const restoredPath = await restoreListingPhotoToStorage(storagePath, snapshotBytes);
