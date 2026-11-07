@@ -1,5 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import { hasExplicitWhiteLabelInventory, searchBrowseListings, searchDigListings } from '../services/listingService';
+import {
+  DIG_LISTINGS_PRELOAD_LIMIT,
+  hasExplicitWhiteLabelInventory,
+  searchBrowseListings,
+  searchDigListings,
+} from '../services/listingService';
 import { parseVinylFormatFilters, resolveWhiteLabelFilter, toggleVinylFormatFilter, VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
 import { renderWithLayout } from '../utils/render';
 import { ConditionGrade, CONDITION_GRADES } from '../../db/schema/enums';
@@ -303,12 +308,21 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
       sort,
     };
 
-    // The same normalized filters feed both presentations. The desktop grid keeps
-    // conventional pagination; mobile preloads the Dig session stack (up to 100).
-    const [gridResults, digResults] = await Promise.all([
-      searchBrowseListings({ ...searchParams, page, limit: 12 }),
-      searchDigListings({ ...searchParams, page: 1, limit: 100 }),
-    ]);
+    // One Dig result set feeds both presentations for the first 100 records.
+    // The desktop grid is a 12-record slice of that same ordered set, avoiding a
+    // second count + listing-row + primary-photo query on the common page path.
+    const digResults = await searchDigListings(searchParams);
+    const desktopPageLimit = 12;
+    const lastReusableDigPage = Math.ceil(DIG_LISTINGS_PRELOAD_LIMIT / desktopPageLimit);
+    const gridResults = page <= lastReusableDigPage
+      ? {
+          items: digResults.items.slice((page - 1) * desktopPageLimit, page * desktopPageLimit),
+          totalCount: digResults.totalCount,
+          page,
+          limit: desktopPageLimit,
+          totalPages: Math.ceil(digResults.totalCount / desktopPageLimit) || 1,
+        }
+      : await searchBrowseListings({ ...searchParams, page, limit: desktopPageLimit });
 
     renderWithLayout(res, 'browse/responsive-dig', {
       title: q ? `Search: "${q}" — Dig — The Vinyl Drop` : 'Dig — The Vinyl Drop',
