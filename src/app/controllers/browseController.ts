@@ -313,7 +313,9 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
     // second count + listing-row + primary-photo query on the common page path.
     const digResults = await searchDigListings(searchParams);
     const desktopPageLimit = 12;
-    const lastReusableDigPage = Math.ceil(DIG_LISTINGS_PRELOAD_LIMIT / desktopPageLimit);
+    // Only reuse fully covered pages. With 100 preloaded records, page 9 is
+    // partial (records 97–100 only), so it must use the complete Browse query.
+    const lastReusableDigPage = Math.floor(DIG_LISTINGS_PRELOAD_LIMIT / desktopPageLimit);
     const gridResults = page <= lastReusableDigPage
       ? {
           items: digResults.items.slice((page - 1) * desktopPageLimit, page * desktopPageLimit),
