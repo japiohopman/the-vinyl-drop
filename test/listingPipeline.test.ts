@@ -342,7 +342,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       const storage = await import('../src/app/services/storageService');
       const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
       const deleteStorageSpy = jest.spyOn(storage, 'deleteListingPhotoFromStorage');
-      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValue(undefined);
+      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValue(storagePath);
 
       await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('PostgreSQL write lock timeout');
 
@@ -370,7 +370,7 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       const deleteStorageSpy = jest
         .spyOn(storage, 'deleteListingPhotoFromStorage')
         .mockRejectedValueOnce(new Error('Supabase Storage deletion failed: 500 Internal Server Error'));
-      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValue(undefined);
+      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValue(samplePhoto.storagePath);
 
       await expect(deletePhotoFromListing(listingId, photoId, sellerId)).rejects.toThrow('Supabase Storage deletion failed');
 
@@ -888,7 +888,9 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       const remove = jest.spyOn(storage, 'deleteListingPhotoFromStorage')
         .mockResolvedValueOnce(true)
         .mockRejectedValueOnce(new Error('Storage timeout after delete'));
-      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValue(undefined);
+      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage')
+        .mockResolvedValueOnce(photos[0].storagePath)
+        .mockResolvedValueOnce(photos[1].storagePath);
 
       await expect(permanentlyDeleteArchivedListing(listingId, sellerId)).rejects.toThrow('Storage timeout after delete');
       expect(remove).toHaveBeenCalledTimes(2);
@@ -909,11 +911,20 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       const storage = await import('../src/app/services/storageService');
       const download = jest.spyOn(storage, 'downloadListingPhotoFromStorage').mockResolvedValue(Buffer.from('photo'));
       const remove = jest.spyOn(storage, 'deleteListingPhotoFromStorage').mockResolvedValue(true);
-      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValue(undefined);
+      const restoredPath = `listings/${listingId}/front.v-123e4567-e89b-42d3-a456-426614174000.webp`;
+      const restore = jest.spyOn(storage, 'restoreListingPhotoToStorage').mockResolvedValueOnce(restoredPath);
+      (photoRepo.updateListingPhotoStoragePath as jest.Mock).mockResolvedValueOnce({ ...photo, storagePath: restoredPath });
 
       await expect(permanentlyDeleteArchivedListing(listingId, sellerId)).rejects.toThrow('Database transaction failed');
       expect(remove).toHaveBeenCalledTimes(1);
       expect(restore).toHaveBeenCalledWith(photo.storagePath, Buffer.from('photo'), undefined);
+      expect(photoRepo.updateListingPhotoStoragePath).toHaveBeenCalledWith(
+        listingId,
+        photo.id,
+        photo.storagePath,
+        restoredPath,
+        undefined
+      );
       download.mockRestore();
       remove.mockRestore();
       restore.mockRestore();
