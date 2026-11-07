@@ -54,6 +54,73 @@ describe('App Routes and Error Handling', () => {
     });
   });
 
+  describe('GET /dig shared result set', () => {
+    const digListing = {
+      id: 'listing-377',
+      title: 'Kind of Blue',
+      artist: 'Miles Davis',
+      releaseYear: 1959,
+      format: 'Vinyl, LP',
+      priceFormatted: '€25.00',
+      isTrade: false,
+      mediaCondition: 'NM',
+      sleeveCondition: 'VG+',
+      imageUrl: 'https://storage.example/front.webp',
+      fallbackImageUrl: 'https://catalog.example/cover.jpg',
+      imageAlt: 'Physical front cover',
+      sellerUsername: 'record_collector',
+      sellerLocation: 'Eindhoven',
+      url: '/listings/listing-377',
+      frontArtwork: {
+        src: 'https://storage.example/front.webp',
+        altText: 'Physical front cover',
+        sourceLabel: 'Photo of the front cover of this physical copy',
+        sourceKind: 'seller_front' as const,
+      },
+      backArtwork: null,
+      conditionSummary: 'Media NM · hoes VG+',
+    };
+
+    it('reuses the Dig preload for desktop page 1 instead of issuing a second Browse search', async () => {
+      (listingService.hasExplicitWhiteLabelInventory as jest.Mock).mockResolvedValue(false);
+      (listingService.searchDigListings as jest.Mock).mockResolvedValue({
+        items: [digListing],
+        totalCount: 1,
+        hasMore: false,
+      });
+
+      const response = await request(app).get('/dig').set('Accept', 'text/html');
+
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('Kind of Blue');
+      expect(response.text).toContain('https://storage.example/front.webp');
+      expect(listingService.searchBrowseListings).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the paginated Browse query beyond the 100-record Dig preload', async () => {
+      (listingService.hasExplicitWhiteLabelInventory as jest.Mock).mockResolvedValue(false);
+      (listingService.searchDigListings as jest.Mock).mockResolvedValue({
+        items: [],
+        totalCount: 150,
+        hasMore: true,
+      });
+      (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
+        items: [],
+        totalCount: 150,
+        page: 10,
+        limit: 12,
+        totalPages: 13,
+      });
+
+      const response = await request(app).get('/dig?page=10').set('Accept', 'text/html');
+
+      expect(response.status).toBe(200);
+      expect(listingService.searchBrowseListings).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 10, limit: 12 })
+      );
+    });
+  });
+
   describe('GET /dig trailing slash', () => {
     it('normalizes the route before selecting Dig stylesheets', async () => {
       (listingService.hasExplicitWhiteLabelInventory as jest.Mock).mockResolvedValue(false);
