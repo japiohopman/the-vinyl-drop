@@ -744,6 +744,17 @@ describe('searchDigListings PGlite database integration', () => {
     expect(JSON.stringify(item)).not.toContain('sourceStoragePath');
   });
 
+  it('skips the photo metadata query when Dig has no matching listings', async () => {
+    const selectSpy = jest.spyOn(db, 'select');
+    const result = await listingService.searchDigListings({ q: 'no-such-release-for-issue-377' }, db);
+
+    expect(selectSpy).toHaveBeenCalledTimes(1);
+    selectSpy.mockRestore();
+    expect(result.items).toHaveLength(0);
+    expect(result.totalCount).toBe(0);
+    expect(result.hasMore).toBe(false);
+  });
+
   it('uses catalog release.cover_art_url as Dig front when no seller front photo exists in DB', async () => {
     const sellerId = '11111111-1111-4111-8111-222222222222';
     const releaseId = '22222222-2222-4222-8222-333333333333';
