@@ -205,6 +205,7 @@ export interface DetailedListing {
   photos: ListingPhotoWithUrl[];
 }
 
+/** Build a public listing-card view model from either a full join or the narrow shared search projection. */
 function recordToListingCardViewModel(record: JoinedListingRecord | ListingSearchRecord): ListingCardViewModel {
   const imageUrl = record.primaryPhotoPath
     ? getPhotoPublicUrl(record.primaryPhotoPath)
@@ -400,6 +401,7 @@ export async function hasExplicitWhiteLabelInventory(dbOverride?: DbInstance): P
   return hasWhiteLabelInRepo(dbOverride);
 }
 
+/** Load a bounded Dig result set and attach its public front/back photo metadata in one batch. */
 export async function searchDigListings(
   params: SearchListingsParams,
   dbOverride?: DbInstance
