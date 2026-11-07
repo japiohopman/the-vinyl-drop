@@ -199,6 +199,56 @@ describe('Centralized Error Handler Middleware', () => {
     expect(logged).not.toContain('Error:');
   });
 
+  it('logs a validated SQLSTATE from a wrapped Postgres cause without exposing private details', async () => {
+    const app = express();
+    const privateValue = 'wrapped-driver-secret-token';
+    const driverError = new Error(`Query failed with ${privateValue}`) as Error & { code?: unknown };
+    Object.setPrototypeOf(driverError, postgres.PostgresError.prototype);
+    driverError.name = 'PostgresError';
+    driverError.code = '42703';
+
+    const wrappedError = new Error(`Drizzle query failed ${privateValue}`);
+    Object.defineProperty(wrappedError, 'cause', { value: driverError });
+
+    app.get('/wrapped-database-error', (_req: Request, _res: Response, next: NextFunction) => {
+      next(wrappedError);
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).get('/wrapped-database-error').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
+
+    expect(response.status).toBe(500);
+    expect(logged).toContain('"errorName":"Error"');
+    expect(logged).toContain('"causeTypes":"Error>PostgresError"');
+    expect(logged).toContain('"diagnosticCode":"42703"');
+    expect(logged).not.toContain(privateValue);
+    expect(logged).not.toContain('Query failed');
+    expect(logged).not.toContain('Drizzle query failed');
+  });
+
+  it('bounds and safely stops on cyclic error causes', async () => {
+    const app = express();
+    const outerError = new Error('private outer message');
+    const innerError = new Error('private inner message');
+    Object.defineProperty(outerError, 'cause', { value: innerError });
+    Object.defineProperty(innerError, 'cause', { value: outerError });
+
+    app.get('/cyclic-error-cause', (_req: Request, _res: Response, next: NextFunction) => {
+      next(outerError);
+    });
+    app.use(errorHandler);
+
+    const response = await request(app).get('/cyclic-error-cause').set('Accept', 'application/json');
+    const logged = consoleErrorSpy.mock.calls.map(([message]) => String(message)).join('\n');
+
+    expect(response.status).toBe(500);
+    expect(logged).toContain('"causeTypes":"Error>Error"');
+    expect(logged).not.toContain('"diagnosticCode"');
+    expect(logged).not.toContain('private outer message');
+    expect(logged).not.toContain('private inner message');
+  });
+
   it('should not log arbitrary non-SQLSTATE error codes', async () => {
     const app = express();
     const error = new Error('Sensitive diagnostic detail') as Error & { code?: unknown };
