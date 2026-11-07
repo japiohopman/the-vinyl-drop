@@ -1,6 +1,8 @@
 import 'dotenv/config';
-import postgres from 'postgres';
 import { basename } from 'node:path';
+import { getSafeErrorTypeChain, getSafeSqlState } from '../src/app/utils/safeErrorDiagnostics';
+
+export { getSafeErrorTypeChain, getSafeSqlState };
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 const MIGRATION_0004_TIMESTAMP = 1791449804969;
@@ -23,74 +25,6 @@ export function isLoopbackPostgresUrl(value: string | undefined): boolean {
  * Exposes only a validated SQLSTATE from a real postgres.js PostgresError.
  * Never return the driver's message, detail, query, or connection information.
  */
-export function getSafeSqlState(error: unknown): string | undefined {
-  // Drizzle wraps driver failures in an Error with the original postgres.js
-  // error in `cause`. Walk a short, cycle-safe cause chain so the diagnostic
-  // can report a validated SQLSTATE without exposing raw error text.
-  const seen = new Set<unknown>();
-  let current: unknown = error;
-
-  for (let depth = 0; depth < 8; depth += 1) {
-    if (
-      !current ||
-      (typeof current !== 'object' && typeof current !== 'function') ||
-      seen.has(current)
-    ) {
-      return undefined;
-    }
-
-    seen.add(current);
-
-    if (current instanceof postgres.PostgresError) {
-      const code = (current as Error & { code?: unknown }).code;
-      return typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code) ? code : undefined;
-    }
-
-    current = 'cause' in current ? (current as { cause?: unknown }).cause : undefined;
-  }
-
-  return undefined;
-}
-
-/**
- * Returns only allowlisted error type labels from a bounded cause chain.
- * Never returns error messages, SQL, connection data, or arbitrary class names.
- */
-export function getSafeErrorTypeChain(error: unknown): string[] {
-  const seen = new Set<unknown>();
-  const types: string[] = [];
-  let current: unknown = error;
-
-  for (let depth = 0; depth < 8; depth += 1) {
-    if (
-      !current ||
-      (typeof current !== 'object' && typeof current !== 'function') ||
-      seen.has(current)
-    ) {
-      break;
-    }
-
-    seen.add(current);
-
-    if (current instanceof postgres.PostgresError || (current instanceof Error && current.name === 'PostgresError')) {
-      types.push('PostgresError');
-    } else if (current instanceof Error) {
-      const name = current.name;
-      types.push(
-        ['DrizzleQueryError', 'TypeError', 'ReferenceError', 'RangeError', 'SyntaxError', 'Error'].includes(name)
-          ? name
-          : 'OtherError'
-      );
-    } else {
-      types.push('NonErrorObject');
-    }
-
-    current = 'cause' in current ? (current as { cause?: unknown }).cause : undefined;
-  }
-
-  return types.length > 0 ? types : ['UnknownError'];
-}
-
 export type SafeErrorLocationSource =
   | 'listingService'
   | 'listingRepository'
