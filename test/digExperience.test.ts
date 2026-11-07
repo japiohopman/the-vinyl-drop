@@ -913,7 +913,7 @@ describe('GET /dig responsive presentation', () => {
     const whiteLabelSpy = jest.spyOn(listingService, 'hasExplicitWhiteLabelInventory').mockResolvedValueOnce(false);
 
     try {
-      const responsePromise = supertest(app).get('/dig?page=2');
+      const responsePromise = supertest(app).get('/dig?page=2').then((response) => response);
 
       // Wait for the route to enter the Dig service instead of guessing when
       // Supertest's HTTP request has reached Express with a zero-delay timer.
