@@ -3,7 +3,7 @@ import { renderWithLayout } from '../utils/render';
 import { setFlashCookie } from '../middleware/flash';
 import { listReleases, findReleaseById } from '../repositories/releaseRepository';
 import {
-  getUserListings,
+  getMyListings,
   getListingWithDetails,
   getListingWithDetailsForView,
   createListingFromRelease,
@@ -42,22 +42,7 @@ export async function getSellerListings(req: Request, res: Response, next: NextF
     }
 
     const viewHidden = req.query.view === 'hidden';
-    const rawListings = await getUserListings(req.user.id, undefined, viewHidden);
-    const detailedListings = [];
-
-    for (const listing of rawListings) {
-      const details = await getListingWithDetails(listing.id);
-      if (details) {
-        const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
-        detailedListings.push({
-          ...details,
-          id: details.listing.id,
-          status: details.listing.status,
-          tradeAvailable: details.listing.tradeAvailable,
-          priceFormatted: formatPrice(details.listing.price, isTradeOnly),
-        });
-      }
-    }
+    const detailedListings = await getMyListings(req.user.id, viewHidden);
 
     renderWithLayout(res, 'listings/index', {
       title: 'My Listings - The Vinyl Drop',

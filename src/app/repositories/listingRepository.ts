@@ -43,6 +43,13 @@ export interface ListingSearchRecord {
   primaryPhotoPath: string | null;
 }
 
+/** Narrow joined projection used only by the seller's My Listings page. */
+export interface MyListingsRecord {
+  listing: Pick<Listing, 'id' | 'status' | 'price' | 'tradeAvailable'>;
+  physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition'>;
+  release: Pick<Release, 'title' | 'artist' | 'releaseYear' | 'coverArtUrl'>;
+}
+
 export interface SearchListingsResult {
   records: ListingSearchRecord[];
   totalCount: number;
@@ -128,6 +135,44 @@ export async function findListingsBySellerId(
         includeDismissed ? isNotNull(listings.dismissedAt) : isNull(listings.dismissedAt)
       )
     );
+}
+
+/**
+ * Load a seller's My Listings rows with one narrow join instead of re-reading
+ * each listing, physical copy, release, and seller profile individually.
+ */
+export async function findMyListingsBySellerId(
+  sellerId: string,
+  dbOverride?: DbInstance,
+  includeDismissed = false
+): Promise<MyListingsRecord[]> {
+  const db = dbOverride || getDb();
+  return db
+    .select({
+      listing: {
+        id: listings.id,
+        status: listings.status,
+        price: listings.price,
+        tradeAvailable: listings.tradeAvailable,
+      },
+      physicalCopy: {
+        mediaCondition: physicalCopies.mediaCondition,
+        sleeveCondition: physicalCopies.sleeveCondition,
+      },
+      release: {
+        title: releases.title,
+        artist: releases.artist,
+        releaseYear: releases.releaseYear,
+        coverArtUrl: releases.coverArtUrl,
+      },
+    })
+    .from(listings)
+    .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
+    .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
+    .where(and(
+      eq(listings.sellerId, sellerId),
+      includeDismissed ? isNotNull(listings.dismissedAt) : isNull(listings.dismissedAt)
+    ));
 }
 
 export async function findPublishedListingsBySellerId(
