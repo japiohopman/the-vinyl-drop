@@ -244,7 +244,7 @@ export function clearInMemoryStorage(): void {
  */
 function createDistinctRestorationPath(storagePath: string): string {
   const match = storagePath.match(
-    /^(.*?)(?:\\.v-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})?(\\.(?:webp|png|jpe?g))$/i
+    /^(.*?)(?:\.v-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})?(\.(?:webp|png|jpe?g))$/i
   );
   if (!match) {
     throw new Error('Cannot create a versioned URL for this listing photo path.');
