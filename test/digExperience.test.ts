@@ -672,12 +672,19 @@ describe('Dig photo-role contract', () => {
 
 describe('searchDigListings PGlite database integration', () => {
   let pglite: PGlite;
+  const executedQueries: string[] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let db: any;
 
   beforeAll(async () => {
     pglite = new PGlite();
-    db = drizzle(pglite);
+    db = drizzle(pglite, {
+      logger: {
+        logQuery(query: string) {
+          executedQueries.push(query);
+        },
+      },
+    });
 
     const migrationsToApply = [
       '0000_grey_living_tribunal.sql',
@@ -727,13 +734,16 @@ describe('searchDigListings PGlite database integration', () => {
         ('66666666-6666-4666-8666-666666666666', '${listingId}', 'listings/photos/back.webp', 1, 'back_cover', 'Physical back cover');
     `);
 
+    executedQueries.length = 0;
     const result = await listingService.searchDigListings({ q: 'Miles Davis' }, db);
 
+    expect(executedQueries).toHaveLength(3);
     expect(result.items.length).toBe(1);
     const item = result.items[0];
     expect(item.title).toBe('Kind of Blue');
     expect(item.frontArtwork.sourceKind).toBe('seller_front');
     expect(item.frontArtwork.src).toContain('listings/photos/front.webp');
+    expect(item.imageUrl).toBe(item.frontArtwork.src);
     expect(item.backArtwork?.sourceKind).toBe('seller_back');
     expect(item.backArtwork?.src).toContain('listings/photos/back.webp');
   });
