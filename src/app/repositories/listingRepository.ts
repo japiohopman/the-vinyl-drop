@@ -56,8 +56,6 @@ export interface SearchListingsOptions {
   attachPrimaryPhotoPaths?: boolean;
 }
 
-type JoinedListingRow = Omit<JoinedListingRecord, 'primaryPhotoPath'>;
-
 /** Attach the preferred front-cover path with one bounded bulk photo lookup. */
 async function attachPrimaryPhotoPaths<T extends { listing: { id: string } }>(
   rows: T[],
