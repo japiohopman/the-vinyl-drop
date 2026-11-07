@@ -895,7 +895,14 @@ describe('GET /dig responsive presentation', () => {
     }>((resolve) => {
       resolveDigResults = resolve;
     });
-    const digSpy = jest.spyOn(listingService, 'searchDigListings').mockReturnValueOnce(pendingDigResults);
+    let signalDigStarted!: () => void;
+    const digStarted = new Promise<void>((resolve) => {
+      signalDigStarted = resolve;
+    });
+    const digSpy = jest.spyOn(listingService, 'searchDigListings').mockImplementationOnce(() => {
+      signalDigStarted();
+      return pendingDigResults;
+    });
     const browseSpy = jest.spyOn(listingService, 'searchBrowseListings').mockResolvedValueOnce({
       items: [],
       totalCount: 13,
@@ -907,7 +914,12 @@ describe('GET /dig responsive presentation', () => {
 
     try {
       const responsePromise = supertest(app).get('/dig?page=2');
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+      // Wait for the route to enter the Dig service instead of guessing when
+      // Supertest's HTTP request has reached Express with a zero-delay timer.
+      // The Dig promise remains pending while we assert that the desktop
+      // fallback has already started independently.
+      await digStarted;
 
       expect(digSpy).toHaveBeenCalled();
       expect(browseSpy).toHaveBeenCalledWith(expect.objectContaining({ page: 2, limit: 12 }));
@@ -916,6 +928,8 @@ describe('GET /dig responsive presentation', () => {
       const response = await responsePromise;
       expect(response.status).toBe(200);
     } finally {
+      // Always release the request, including when an assertion fails.
+      resolveDigResults({ items: [], totalCount: 13, hasMore: true });
       digSpy.mockRestore();
       browseSpy.mockRestore();
       whiteLabelSpy.mockRestore();
