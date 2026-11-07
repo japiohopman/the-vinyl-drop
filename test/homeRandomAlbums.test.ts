@@ -1,7 +1,7 @@
 import { PgDialect } from 'drizzle-orm/pg-core';
 import {
   findHomeDiscoveryListingsByCursor,
-  JoinedListingRecord,
+  ListingSearchRecord,
 } from '../src/app/repositories/listingRepository';
 
 type QueryRecord = {
@@ -9,14 +9,21 @@ type QueryRecord = {
   limits: number[];
   orderByCalls: number;
   orderByExpressions: unknown[][];
+  selection: Record<string, unknown>;
 };
 
 function createFakeDatabase(responses: unknown[][]) {
   const queries: QueryRecord[] = [];
   const db = {
-    select: jest.fn(() => {
+    select: jest.fn((selection: unknown) => {
       const response = responses.shift() || [];
-      const queryRecord: QueryRecord = { where: [], limits: [], orderByCalls: 0, orderByExpressions: [] };
+      const queryRecord: QueryRecord = {
+        where: [],
+        limits: [],
+        orderByCalls: 0,
+        orderByExpressions: [],
+        selection: selection as Record<string, unknown>,
+      };
       queries.push(queryRecord);
 
       const builder: any = {
@@ -46,12 +53,12 @@ function createFakeDatabase(responses: unknown[][]) {
   return { db, queries };
 }
 
-function makeRecord(id: string): JoinedListingRecord {
+function makeRecord(id: string): ListingSearchRecord {
   return {
-    listing: { id } as JoinedListingRecord['listing'],
-    physicalCopy: {} as JoinedListingRecord['physicalCopy'],
-    release: {} as JoinedListingRecord['release'],
-    seller: {} as JoinedListingRecord['seller'],
+    listing: { id, price: 1200, tradeAvailable: false },
+    physicalCopy: { mediaCondition: 'VG+', sleeveCondition: 'VG' },
+    release: { title: 'Test Album', artist: 'Test Artist', releaseYear: 1990, format: 'Vinyl, LP', coverArtUrl: null },
+    seller: { username: 'test-seller', location: 'Eindhoven' },
     primaryPhotoPath: null,
   };
 }
@@ -88,6 +95,12 @@ describe('Home Random Albums selection (#258)', () => {
 
     // One initial range, one bounded wrap query, and one bulk photo query.
     expect(db.select).toHaveBeenCalledTimes(3);
+    const firstProjection = queries[0].selection;
+    expect(Object.keys(firstProjection)).toEqual(['listing', 'physicalCopy', 'release', 'seller']);
+    expect(Object.keys(firstProjection.listing as object)).toEqual(['id', 'price', 'tradeAvailable']);
+    expect(Object.keys(firstProjection.physicalCopy as object)).toEqual(['mediaCondition', 'sleeveCondition']);
+    expect(Object.keys(firstProjection.release as object)).toEqual(['title', 'artist', 'releaseYear', 'format', 'coverArtUrl']);
+    expect(Object.keys(firstProjection.seller as object)).toEqual(['username', 'location']);
     expect(queries[0].limits).toEqual([2]);
     expect(queries[1].limits).toEqual([1]);
     expect(queries[0].orderByCalls).toBe(1);
