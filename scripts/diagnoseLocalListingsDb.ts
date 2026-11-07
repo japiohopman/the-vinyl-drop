@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { basename } from 'node:path';
-import { getSafeErrorLocations, getSafeErrorTypeChain, getSafeSqlState } from '../src/app/utils/safeErrorDiagnostics';
+import { getSafeSqlState } from '../src/app/utils/safeErrorDiagnostics';
 
 export { getSafeErrorLocations, getSafeErrorTypeChain, getSafeSqlState } from '../src/app/utils/safeErrorDiagnostics';
 export type { SafeErrorLocation, SafeErrorLocationSource } from '../src/app/utils/safeErrorDiagnostics';
