@@ -3,6 +3,7 @@ import { createExpressSupabaseClient, getSupabaseClient } from '../src/lib/supab
 import {
   uploadListingPhotoToStorage,
   deleteListingPhotoFromStorage,
+  getListingPhotoCacheControl,
   getPhotoPublicUrl,
   clearInMemoryStorage,
 } from '../src/app/services/storageService';
@@ -82,6 +83,20 @@ describe('Storage Authorization and Service Boundaries (Issue #61)', () => {
       } else {
         expect(url).toBe(`/mock-storage/${path}`);
       }
+    });
+  });
+
+  describe('Listing photo cache policy', () => {
+    it('uses short-lived browser caching for mutable public paths', () => {
+      expect(getListingPhotoCacheControl('listings/listing-123/photo-456.webp')).toBe('3600');
+    });
+
+    it('allows one-day browser caching for UUID-versioned public derivatives', () => {
+      expect(getListingPhotoCacheControl('listings/listing-123/photo-456.v-123e4567-e89b-42d3-a456-426614174000.webp')).toBe('86400');
+    });
+
+    it('does not treat an unrelated dotted filename as a versioned derivative', () => {
+      expect(getListingPhotoCacheControl('listings/listing-123/photo-456.v-not-a-uuid.webp')).toBe('3600');
     });
   });
 
