@@ -912,8 +912,11 @@ describe('GET /dig responsive presentation', () => {
     });
     const whiteLabelSpy = jest.spyOn(listingService, 'hasExplicitWhiteLabelInventory').mockResolvedValueOnce(false);
 
+    let drainResponse: Promise<void> = Promise.resolve();
+
     try {
       const responsePromise = supertest(app).get('/dig?page=2').then((response) => response);
+      drainResponse = responsePromise.then(() => undefined, () => undefined);
 
       // Wait for the route to enter the Dig service instead of guessing when
       // Supertest's HTTP request has reached Express with a zero-delay timer.
@@ -928,8 +931,10 @@ describe('GET /dig responsive presentation', () => {
       const response = await responsePromise;
       expect(response.status).toBe(200);
     } finally {
-      // Always release the request, including when an assertion fails.
+      // Always release and drain the request, including when an assertion fails,
+      // before restoring mocks that the following test also uses.
       resolveDigResults({ items: [], totalCount: 13, hasMore: true });
+      await drainResponse;
       digSpy.mockRestore();
       browseSpy.mockRestore();
       whiteLabelSpy.mockRestore();
