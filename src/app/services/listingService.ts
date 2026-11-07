@@ -42,6 +42,8 @@ import {
   createListing as createListingInRepo,
   findListingById,
   findListingsBySellerId,
+  findMyListingsBySellerId,
+  MyListingsRecord,
   findPublishedListingsBySellerId,
   findRecentPublishedListings as findRecentInRepo,
   findHomeDiscoveryListingsByCursor as findHomeDiscoveryInRepo,
@@ -205,6 +207,23 @@ export interface DetailedListing {
   photos: ListingPhotoWithUrl[];
 }
 
+/** Public photo fields required by the My Listings page; no private source or editor metadata. */
+export interface MyListingsPhotoViewModel {
+  role: ListingPhotoRole;
+  displayOrder: number;
+  altText: string | null;
+  publicUrl: string;
+}
+
+/** Existing My Listings template shape backed by a narrow, batched data projection. */
+export interface MyListingsItemViewModel extends MyListingsRecord {
+  id: string;
+  status: ListingStatus;
+  tradeAvailable: boolean;
+  priceFormatted: string;
+  photos: MyListingsPhotoViewModel[];
+}
+
 /** Build a public listing-card view model from either a full join or the narrow shared search projection. */
 function recordToListingCardViewModel(record: JoinedListingRecord | ListingSearchRecord): ListingCardViewModel {
   const imageUrl = record.primaryPhotoPath
@@ -244,6 +263,50 @@ export async function getUserListings(
   includeDismissed = false
 ): Promise<Listing[]> {
   return findListingsBySellerId(sellerId, dbOverride, includeDismissed);
+}
+
+/**
+ * Build the My Listings page from one joined listing query and one batched,
+ * minimal public-photo query. Empty results deliberately skip the photo read.
+ */
+export async function getMyListings(
+  sellerId: string,
+  includeDismissed = false,
+  dbOverride?: DbInstance
+): Promise<MyListingsItemViewModel[]> {
+  const records = await findMyListingsBySellerId(sellerId, dbOverride, includeDismissed);
+  if (records.length === 0) {
+    return [];
+  }
+
+  const photoRecords = await findDigPhotosByListingIds(
+    records.map((record) => record.listing.id),
+    dbOverride
+  );
+  const photosByListingId = new Map<string, MyListingsPhotoViewModel[]>();
+
+  for (const photo of photoRecords) {
+    const photos = photosByListingId.get(photo.listingId) || [];
+    photos.push({
+      role: photo.role,
+      displayOrder: photo.displayOrder,
+      altText: photo.altText,
+      publicUrl: getPhotoPublicUrl(photo.storagePath),
+    });
+    photosByListingId.set(photo.listingId, photos);
+  }
+
+  return records.map((record) => {
+    const isTradeOnly = record.listing.tradeAvailable && record.listing.price === null;
+    return {
+      ...record,
+      id: record.listing.id,
+      status: record.listing.status,
+      tradeAvailable: record.listing.tradeAvailable,
+      priceFormatted: formatPrice(record.listing.price, isTradeOnly),
+      photos: photosByListingId.get(record.listing.id) || [],
+    };
+  });
 }
 
 const DISMISSIBLE_LISTING_STATUSES: ListingStatus[] = ['sold', 'traded', 'archived'];

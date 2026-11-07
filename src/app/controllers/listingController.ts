@@ -3,7 +3,7 @@ import { renderWithLayout } from '../utils/render';
 import { setFlashCookie } from '../middleware/flash';
 import { listReleases, findReleaseById } from '../repositories/releaseRepository';
 import {
-  getUserListings,
+  getMyListings,
   getListingWithDetails,
   getListingWithDetailsForView,
   createListingFromRelease,
@@ -35,6 +35,7 @@ import { parsePriceEurToCents } from '../../validators/listing';
 import { ValidationError, NotFoundError, AuthorizationError } from '../services/errors';
 import { LISTING_PHOTO_ROLE_GUIDANCE, LISTING_PHOTO_ROLE_LABELS, LISTING_PHOTO_ROLES, NEW_LISTING_PHOTO_ROLES } from '../../domain/listingPhotoRole';
 
+/** Renders the authenticated seller's visible or hidden listings from the batched My Listings read model. */
 export async function getSellerListings(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
@@ -42,22 +43,7 @@ export async function getSellerListings(req: Request, res: Response, next: NextF
     }
 
     const viewHidden = req.query.view === 'hidden';
-    const rawListings = await getUserListings(req.user.id, undefined, viewHidden);
-    const detailedListings = [];
-
-    for (const listing of rawListings) {
-      const details = await getListingWithDetails(listing.id);
-      if (details) {
-        const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
-        detailedListings.push({
-          ...details,
-          id: details.listing.id,
-          status: details.listing.status,
-          tradeAvailable: details.listing.tradeAvailable,
-          priceFormatted: formatPrice(details.listing.price, isTradeOnly),
-        });
-      }
-    }
+    const detailedListings = await getMyListings(req.user.id, viewHidden);
 
     renderWithLayout(res, 'listings/index', {
       title: 'My Listings - The Vinyl Drop',
