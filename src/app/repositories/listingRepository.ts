@@ -223,7 +223,8 @@ export async function updateListingStatus(
 
 export async function searchListings(
   params: SearchListingsParams,
-  dbOverride?: DbInstance
+  dbOverride?: DbInstance,
+  options: { includePrimaryPhotoPaths?: boolean } = {}
 ): Promise<SearchListingsResult> {
   const db = dbOverride || getDb();
   const conditions: SQL[] = [];
@@ -381,7 +382,9 @@ export async function searchListings(
     .limit(limit)
     .offset(offset);
 
-  const records = await attachPrimaryPhotoPaths(rows, db);
+  const records = options.includePrimaryPhotoPaths === false
+    ? rows.map((row) => ({ ...row, primaryPhotoPath: null }))
+    : await attachPrimaryPhotoPaths(rows, db);
 
   return {
     records,
