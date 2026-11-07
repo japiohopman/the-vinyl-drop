@@ -168,7 +168,7 @@ export async function findHomeDiscoveryListingsByCursor(
   limit = 6,
   excludedListingIds: string[] = [],
   dbOverride?: DbInstance
-): Promise<JoinedListingRecord[]> {
+): Promise<ListingSearchRecord[]> {
   const db = dbOverride || getDb();
   const safeLimit = Number.isFinite(limit) ? Math.min(6, Math.max(1, Math.floor(limit))) : 6;
   const exclusion = excludedListingIds.length > 0
@@ -177,10 +177,26 @@ export async function findHomeDiscoveryListingsByCursor(
 
   const selectRange = (afterCursor: boolean, rangeLimit: number) => db
     .select({
-      listing: listings,
-      physicalCopy: physicalCopies,
-      release: releases,
-      seller: profiles,
+      listing: {
+        id: listings.id,
+        price: listings.price,
+        tradeAvailable: listings.tradeAvailable,
+      },
+      physicalCopy: {
+        mediaCondition: physicalCopies.mediaCondition,
+        sleeveCondition: physicalCopies.sleeveCondition,
+      },
+      release: {
+        title: releases.title,
+        artist: releases.artist,
+        releaseYear: releases.releaseYear,
+        format: releases.format,
+        coverArtUrl: releases.coverArtUrl,
+      },
+      seller: {
+        username: profiles.username,
+        location: profiles.location,
+      },
     })
     .from(listings)
     .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
