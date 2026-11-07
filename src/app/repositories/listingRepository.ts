@@ -251,6 +251,7 @@ export async function updateListingStatus(
   return results[0] || null;
 }
 
+/** Search listing cards with a narrow projection and an optional single batched primary-photo lookup. */
 export async function searchListings(
   params: SearchListingsParams,
   dbOverride?: DbInstance,
