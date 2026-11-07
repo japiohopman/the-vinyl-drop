@@ -227,7 +227,7 @@ describe('My Listings batched database reads (#380)', () => {
       { filename: listingsTemplatePath }
     );
     expect(hiddenHtml).toContain('Doggystyle');
-    expect(hiddenHtml).toContain(`href="/listings/${LISTING_HIDDEN}/restore-dismissed"`);
+    expect(hiddenHtml).toContain(`action="/listings/${LISTING_HIDDEN}/restore-dismissed"`);
   });
 
   it('performs only the joined listing query when the seller has no results', async () => {
