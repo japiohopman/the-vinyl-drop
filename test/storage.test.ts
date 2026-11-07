@@ -132,7 +132,7 @@ describe('Storage Authorization and Service Boundaries (Issue #61)', () => {
 
       expect(restoredPath).not.toBe(storagePath);
       expect(restoredPath).toMatch(
-        /^listings\\/l1\\/p-different\\.v-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\\.webp$/i
+        /^listings\/l1\/p-different\.v-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\.webp$/i
       );
       expect(getListingPhotoCacheControl(restoredPath)).toBe('86400');
       await expect(downloadListingPhotoFromStorage(storagePath)).resolves.toEqual(currentBytes);
