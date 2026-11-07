@@ -727,8 +727,11 @@ describe('searchDigListings PGlite database integration', () => {
         ('66666666-6666-4666-8666-666666666666', '${listingId}', 'listings/photos/back.webp', 1, 'back_cover', 'Physical back cover');
     `);
 
+    const selectSpy = jest.spyOn(db, 'select');
     const result = await listingService.searchDigListings({ q: 'Miles Davis' }, db);
 
+    expect(selectSpy).toHaveBeenCalledTimes(3);
+    selectSpy.mockRestore();
     expect(result.items.length).toBe(1);
     const item = result.items[0];
     expect(item.title).toBe('Kind of Blue');
@@ -736,6 +739,9 @@ describe('searchDigListings PGlite database integration', () => {
     expect(item.frontArtwork.src).toContain('listings/photos/front.webp');
     expect(item.backArtwork?.sourceKind).toBe('seller_back');
     expect(item.backArtwork?.src).toContain('listings/photos/back.webp');
+    expect(item.imageUrl).toContain('listings/photos/front.webp');
+    expect(item.fallbackImageUrl).toBe('https://catalog.example/miles.jpg');
+    expect(JSON.stringify(item)).not.toContain('sourceStoragePath');
   });
 
   it('uses catalog release.cover_art_url as Dig front when no seller front photo exists in DB', async () => {
@@ -906,6 +912,7 @@ describe('GET /dig responsive presentation', () => {
       expect(response.text).toContain('action="/dig"');
       expect(response.text).toContain('data-dig-experience');
       expect(response.text).toContain('https://seller.example/front.webp');
+      expect(browseSpy).not.toHaveBeenCalled();
       expect(response.text).toContain('href="/dig?');
       expect(response.text).not.toContain('>BROWSE</a>');
     } finally {
