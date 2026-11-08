@@ -17,6 +17,7 @@ import {
   recordListingPublishedEvent,
   recordCommentCreatedEvent,
 } from '../src/app/services/activityService';
+import { getRecentActivityEvents } from '../src/app/repositories/activityRepository';
 import { addFavorite, removeFavorite } from '../src/app/services/favoriteService';
 import { getActivityPage } from '../src/app/controllers/activityController';
 import { profiles } from '../src/db/schema/profiles';
@@ -202,6 +203,107 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
   test('activity feed is bounded and deterministic', async () => {
     const feedBounded = await getRecentActivityFeed(userBId, 2, testDb);
     expect(feedBounded.length).toBeLessThanOrEqual(2);
+  });
+
+  describe('Issue #386 projection trimming & cardinality invariants', () => {
+    test('getRecentActivityEvents repository projection strictly omits actorId, actorDisplayName, listingStatus, commentId', async () => {
+      const records = await getRecentActivityEvents({ requestingUserId: userBId, limit: 50 }, testDb);
+      expect(records.length).toBeGreaterThan(0);
+
+      const expectedKeys = [
+        'id',
+        'eventType',
+        'actorUsername',
+        'actorAvatarUrl',
+        'listingId',
+        'listingPrice',
+        'listingTradeAvailable',
+        'releaseTitle',
+        'releaseArtist',
+        'releaseCoverArtUrl',
+        'youtubeVideoId',
+        'listingFrontPhotoPath',
+        'commentContent',
+        'createdAt',
+      ].sort();
+
+      for (const record of records) {
+        const actualKeys = Object.keys(record).sort();
+        expect(actualKeys).toEqual(expectedKeys);
+        const recordUnknown = record as unknown as Record<string, unknown>;
+        expect(recordUnknown.actorId).toBeUndefined();
+        expect(recordUnknown.actorDisplayName).toBeUndefined();
+        expect(recordUnknown.listingStatus).toBeUndefined();
+        expect(recordUnknown.commentId).toBeUndefined();
+      }
+    });
+
+    test('getRecentActivityFeed view models strictly omit actorDisplayName, actorId, listingStatus, commentId', async () => {
+      const feed = await getRecentActivityFeed(userBId, 50, testDb);
+      expect(feed.length).toBeGreaterThan(0);
+
+      for (const item of feed) {
+        const itemUnknown = item as unknown as Record<string, unknown>;
+        expect(itemUnknown.actorDisplayName).toBeUndefined();
+        expect(itemUnknown.actorId).toBeUndefined();
+        expect(itemUnknown.listingStatus).toBeUndefined();
+        expect(itemUnknown.commentId).toBeUndefined();
+      }
+    });
+
+    test('multiple non-front-cover photos do not duplicate activity feed events (cardinality 1:1)', async () => {
+      // Add extra photos with non-front_cover roles to publishedListing1Id
+      await testDb.insert(listingPhotos).values([
+        {
+          listingId: publishedListing1Id,
+          storagePath: 'community/rumours-back.webp',
+          displayOrder: 1,
+          altText: 'Back sleeve of Rumours',
+          role: 'back_cover',
+        },
+        {
+          listingId: publishedListing1Id,
+          storagePath: 'community/rumours-record.webp',
+          displayOrder: 2,
+          altText: 'Vinyl disc of Rumours',
+          role: 'record',
+        },
+        {
+          listingId: publishedListing1Id,
+          storagePath: 'community/rumours-detail.webp',
+          displayOrder: 3,
+          altText: 'Label detail of Rumours',
+          role: 'detail',
+        },
+        {
+          listingId: publishedListing1Id,
+          storagePath: 'community/rumours-other.webp',
+          displayOrder: 4,
+          altText: 'Insert of Rumours',
+          role: 'other',
+        },
+      ]);
+
+      const records = await getRecentActivityEvents({ requestingUserId: userBId, limit: 50 }, testDb);
+      const publishedRecords = records.filter(
+        (r) => r.eventType === 'listing.published' && r.listingId === publishedListing1Id
+      );
+      expect(publishedRecords).toHaveLength(1);
+      expect(publishedRecords[0].listingFrontPhotoPath).toBe('community/rumours-front.webp');
+
+      const feed = await getRecentActivityFeed(userBId, 50, testDb);
+      const publishedFeedItems = feed.filter(
+        (f) => f.eventType === 'listing.published' && f.listingId === publishedListing1Id
+      );
+      expect(publishedFeedItems).toHaveLength(1);
+
+      // Verify descending createdAt order
+      for (let i = 1; i < records.length; i++) {
+        expect(new Date(records[i - 1].createdAt).getTime()).toBeGreaterThanOrEqual(
+          new Date(records[i].createdAt).getTime()
+        );
+      }
+    });
   });
 
   describe('Activity Page HTTP Controller Boundaries (GET /activity)', () => {
