@@ -1,4 +1,4 @@
-import { and, eq, desc, or } from 'drizzle-orm';
+import { and, desc, eq, or } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { comments, Comment, NewComment } from '../../db/schema/comments';
 import type { Listing } from '../../db/schema/listings';
