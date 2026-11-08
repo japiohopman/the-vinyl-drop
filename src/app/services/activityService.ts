@@ -14,6 +14,7 @@ export interface ActivityItemViewModel {
   eventType: 'listing.published' | 'comment.created' | 'favorite.created';
   eventDescription: string;
   actorUsername: string;
+  actorDisplayName: string | null;
   actorAvatarUrl: string | null;
   listingId: string;
   listingUrl: string;
@@ -68,6 +69,7 @@ export function formatActivityRecord(record: JoinedActivityRecord): ActivityItem
     eventType: record.eventType as ActivityItemViewModel['eventType'],
     eventDescription,
     actorUsername: record.actorUsername,
+    actorDisplayName: record.actorDisplayName,
     actorAvatarUrl: record.actorAvatarUrl,
     listingId: record.listingId,
     listingUrl: `/listings/${record.listingId}`,

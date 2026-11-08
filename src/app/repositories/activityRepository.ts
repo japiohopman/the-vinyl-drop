@@ -13,16 +13,20 @@ type DbInstance = ReturnType<typeof getDb>;
 export interface JoinedActivityRecord {
   id: string;
   eventType: string;
+  actorId: string;
   actorUsername: string;
+  actorDisplayName: string | null;
   actorAvatarUrl: string | null;
   listingId: string;
   listingPrice: number | null;
   listingTradeAvailable: boolean;
+  listingStatus: string;
   releaseTitle: string;
   releaseArtist: string;
   releaseCoverArtUrl: string | null;
   youtubeVideoId: string | null;
   listingFrontPhotoPath: string | null;
+  commentId: string | null;
   commentContent: string | null;
   createdAt: Date;
 }
@@ -98,16 +102,20 @@ export async function getRecentActivityEvents(
   const selectQuery = db.select ? db.select({
     id: activityEvents.id,
     eventType: activityEvents.eventType,
+    actorId: activityEvents.actorId,
     actorUsername: profiles.username,
+    actorDisplayName: profiles.displayName,
     actorAvatarUrl: profiles.avatarUrl,
     listingId: listings.id,
     listingPrice: listings.price,
     listingTradeAvailable: listings.tradeAvailable,
+    listingStatus: listings.status,
     releaseTitle: releases.title,
     releaseArtist: releases.artist,
     releaseCoverArtUrl: releases.coverArtUrl,
     youtubeVideoId: releases.youtubeVideoId,
     listingFrontPhotoPath: listingPhotos.storagePath,
+    commentId: activityEvents.commentId,
     commentContent: comments.content,
     createdAt: activityEvents.createdAt,
   }) : null;
