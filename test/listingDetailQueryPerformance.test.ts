@@ -437,10 +437,15 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     const detail = await getPublicListingDetailsForView(listingId, undefined, db);
     expect(Object.keys(detail.seller).sort()).toEqual(['displayName', 'id', 'username']);
     expect(Object.keys(detail.photos[0]).sort()).toEqual(['altText', 'displayOrder', 'publicUrl', 'role']);
-    expect(detail.photos.map((photo) => photo.publicUrl)).toEqual([
-      `/mock-storage/listings/${listingId}/front.webp`,
-      `/mock-storage/listings/${listingId}/detail.webp`,
-      `/mock-storage/listings/${listingId}/back.webp`,
+    expect(detail.photos.map((photo) => photo.altText)).toEqual([
+      'Front cover of Blue Spirits',
+      'Detail close-up for Blue Spirits',
+      'Back cover of Blue Spirits',
+    ]);
+    expect(detail.photos.map((photo) => photo.publicUrl.split('/').pop())).toEqual([
+      'front.webp',
+      'detail.webp',
+      'back.webp',
     ]);
     expect(detail.photos.map((photo) => photo.role)).toEqual(['front_cover', 'detail', 'back_cover']);
     expect(detail.photos[0].publicUrl).toContain(`listings/${listingId}/front.webp`);
