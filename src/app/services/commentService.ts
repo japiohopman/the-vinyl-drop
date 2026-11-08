@@ -1,4 +1,5 @@
 import { getDb } from '../../db';
+import type { Listing } from '../../db/schema/listings';
 import { createCommentSchema } from '../../validators/comment';
 import {
   CommentWithAuthor,
@@ -30,6 +31,28 @@ export async function getListingComments(
   }
 
   return findCommentsByListingId(listingId, { limit: 50 }, dbOverride);
+}
+
+/**
+ * Load comments after a detail query has already resolved the listing. The ID
+ * match and published-or-owner check remain in the service layer, but no second
+ * listing SELECT is needed.
+ */
+export async function getListingCommentsForResolvedListing(
+  expectedListingId: string,
+  listing: Pick<Listing, 'id' | 'status' | 'sellerId'>,
+  requestingUserId?: string,
+  dbOverride?: DbInstance
+): Promise<CommentWithAuthor[]> {
+  if (listing.id !== expectedListingId) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  if (listing.status !== 'published' && listing.sellerId !== requestingUserId) {
+    throw new AuthorizationError('You do not have access to comments on this listing');
+  }
+
+  return findCommentsByListingId(expectedListingId, { limit: 50 }, dbOverride);
 }
 
 export async function addComment(
