@@ -281,6 +281,7 @@ describe('Browse format filters — repository query integration', () => {
       formats: ['lp', '12-inch'],
       whiteLabel: true,
       genre: 'Hip Hop',
+      style: 'Disco',
     }, db);
 
     expect(result.totalCount).toBe(0);
@@ -295,6 +296,10 @@ describe('Browse format filters — repository query integration', () => {
     expect(where.params).toContain(getVinylFormatPostgresPattern('12-inch'));
     expect(where.params).toContain(WHITE_LABEL_POSTGRES_PATTERN);
     expect(where.sql).toContain('regexp_replace');
+    expect(where.sql).toContain('"releases"."canonical_styles"');
+    expect(where.sql).toContain('"releases"."styles"');
+    expect(where.sql.toLowerCase()).toContain('unnest');
+    expect(JSON.stringify(where.params)).toContain('Disco');
     expect(where.params).toContain('%Hip Hop%');
     expect(where.params).toContain('% hip hop %');
   });
