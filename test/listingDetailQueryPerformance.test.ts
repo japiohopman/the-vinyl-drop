@@ -444,7 +444,9 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     try {
       const response = await request(createApp()).get(route);
       expect(response.status).toBe(404);
-      expect(response.text).toContain('The requested record listing was not found or is no longer available.');
+      expect(response.text).toContain('class="status-page status-page-404"');
+      expect(response.text).toContain("This record isn't here.");
+      expect(response.text).toContain('href="/browse">Browse records</a>');
       expect(response.text).not.toContain('403 Forbidden');
     } finally {
       commentsSpy.mockRestore();
