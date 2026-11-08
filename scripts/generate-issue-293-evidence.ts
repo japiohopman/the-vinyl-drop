@@ -15,6 +15,10 @@ const views = path.join(root, 'views');
 const publicDirectory = path.join(root, 'public');
 const evidenceDirectory = process.env.BROWSE_EVIDENCE_DIR?.trim() || 'artifacts/issue-293';
 const stylesheet = readFullStylesheetSource();
+// Match the route-specific CSS loaded by the production /browse layout.
+const browseCatalogueExplorerStylesheet = fs
+  .readFileSync(path.join(publicDirectory, 'css', 'browse-catalogue-explorer.css'), 'utf8')
+  .replace(/\r\n|\r/g, '\n');
 
 /** Renders the Browse template with production styles and representative listing fixtures. */
 async function renderBrowse(baseUrl: string, view: 'grid' | 'list' = 'grid'): Promise<string> {
@@ -66,7 +70,7 @@ async function renderBrowse(baseUrl: string, view: 'grid' | 'list' = 'grid'): Pr
   return '<!doctype html><html lang="en"><head>' +
     '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<base href="' + baseUrl + '/"><link rel="stylesheet" href="' + baseUrl + '/fonts/fonts.css">' +
-    '<style>' + stylesheet + '</style></head><body>' +
+    '<style>' + stylesheet + browseCatalogueExplorerStylesheet + '</style></head><body>' +
     '<main class="main-content container">' + body + '</main></body></html>';
 }
 
@@ -255,9 +259,11 @@ async function run(): Promise<void> {
     { width: 360, height: 800, minimumColumns: 1 },
     { width: 430, height: 932, minimumColumns: 1 },
     { width: 768, height: 1024, minimumColumns: 2 },
-    { width: 1024, height: 900, minimumColumns: 3 },
-    { width: 1280, height: 900, minimumColumns: 4 },
-    { width: 1440, height: 1000, minimumColumns: 4 },
+    // The desktop Explorer rail intentionally leaves room for two readable cards at 1024px.
+    { width: 1024, height: 900, minimumColumns: 2 },
+    // At 1280px and above, the rail + result area uses the approved three-column layout.
+    { width: 1280, height: 900, minimumColumns: 3 },
+    { width: 1440, height: 1000, minimumColumns: 3 },
   ];
 
   try {
@@ -317,7 +323,7 @@ async function run(): Promise<void> {
 
         const cardColumns = await page.locator('.listing-grid').evaluate((element) => {
           const template = getComputedStyle(element).gridTemplateColumns;
-          return template.split(' ').filter(Boolean).length;
+          return template.trim().split(/\\s+/).filter(Boolean).length;
         });
         assert.ok(
           cardColumns >= viewport.minimumColumns,
