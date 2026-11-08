@@ -8,17 +8,19 @@ import { chromium, Browser, Page } from 'playwright';
 import type { NextFunction, Request, Response } from 'express';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 import { getListingCommentsPage, postCreateComment } from '../src/app/controllers/listingController';
-import { addComment, getListingCommentsForResolvedListing } from '../src/app/services/commentService';
-import { getPublicListingDetailsForView } from '../src/app/services/listingService';
+import { addComment, getListingComments, getListingCommentsForResolvedListing } from '../src/app/services/commentService';
+import { getListingWithDetailsForView, getPublicListingDetailsForView } from '../src/app/services/listingService';
 import { renderWithLayout } from '../src/app/utils/render';
 import { ValidationError } from '../src/app/services/errors';
 
 jest.mock('../src/app/services/commentService', () => ({
+  getListingComments: jest.fn(),
   getListingCommentsForResolvedListing: jest.fn(),
   addComment: jest.fn(),
 }));
 
 jest.mock('../src/app/services/listingService', () => ({
+  getListingWithDetailsForView: jest.fn(),
   getPublicListingDetailsForView: jest.fn(),
 }));
 
@@ -114,6 +116,8 @@ describe('Listing comments UX (#220)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     lastRender = null;
+    (getListingWithDetailsForView as jest.Mock).mockResolvedValue(listingDetails);
+    (getListingComments as jest.Mock).mockResolvedValue([sampleComment]);
     (getPublicListingDetailsForView as jest.Mock).mockResolvedValue(listingDetails);
     (getListingCommentsForResolvedListing as jest.Mock).mockResolvedValue([sampleComment]);
     (addComment as jest.Mock).mockResolvedValue(sampleComment);
