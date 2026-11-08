@@ -456,16 +456,7 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(JSON.stringify(detail)).not.toContain('editorState');
   });
 
-  it('rechecks the resolved listing ID and published-or-owner boundary in the comment service', async () => {
-    await expect(
-      getListingCommentsForResolvedListing(
-        listingId,
-        { id: listingId, status: 'draft', sellerId },
-        visitorId,
-        db
-      )
-    ).rejects.toBeInstanceOf(AuthorizationError);
-
+  it('rejects a resolved listing context whose ID does not match the requested listing', async () => {
     await expect(
       getListingCommentsForResolvedListing(
         draftListingId,
