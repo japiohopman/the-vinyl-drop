@@ -708,7 +708,24 @@ export async function getListingCommentsPage(req: Request, res: Response, next: 
       throw err;
     }
 
-    const comments = await getListingCommentsForResolvedListing(listingId, details.listing, requestingUserId);
+    let comments;
+    try {
+      comments = await getListingCommentsForResolvedListing(listingId, details.listing, requestingUserId);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        res.status(404);
+        return renderWithLayout(
+          res,
+          'errors/404',
+          {
+            title: 'Listing Not Found',
+            message: 'The requested record listing was not found or is no longer available.',
+          },
+          next
+        );
+      }
+      throw err;
+    }
     const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
 
     return renderWithLayout(
@@ -759,7 +776,24 @@ export async function getListingDetailPage(req: Request, res: Response, next: Ne
       throw err;
     }
 
-    const comments = await getListingCommentsForResolvedListing(listingId, details.listing, requestingUserId);
+    let comments;
+    try {
+      comments = await getListingCommentsForResolvedListing(listingId, details.listing, requestingUserId);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        res.status(404);
+        return renderWithLayout(
+          res,
+          'errors/404',
+          {
+            title: 'Listing Not Found',
+            message: 'The requested record listing was not found or is no longer available.',
+          },
+          next
+        );
+      }
+      throw err;
+    }
     const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
     const priceFormatted = formatPrice(details.listing.price, isTradeOnly);
 
