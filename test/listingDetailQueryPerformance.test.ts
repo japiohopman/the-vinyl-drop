@@ -436,11 +436,11 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
   it('returns only public photo and seller projections from the service view model', async () => {
     const detail = await getPublicListingDetailsForView(listingId, undefined, db);
     expect(Object.keys(detail.seller).sort()).toEqual(['displayName', 'id', 'username']);
-    expect(Object.keys(detail.photos[0]).sort()).toEqual(['altText', 'displayOrder', 'id', 'publicUrl', 'role']);
-    expect(detail.photos.map((photo) => photo.id)).toEqual([
-      '85000000-0000-4000-8000-000000000001',
-      '85000000-0000-4000-8000-000000000003',
-      '85000000-0000-4000-8000-000000000002',
+    expect(Object.keys(detail.photos[0]).sort()).toEqual(['altText', 'displayOrder', 'publicUrl', 'role']);
+    expect(detail.photos.map((photo) => photo.publicUrl)).toEqual([
+      `/mock-storage/listings/${listingId}/front.webp`,
+      `/mock-storage/listings/${listingId}/detail.webp`,
+      `/mock-storage/listings/${listingId}/back.webp`,
     ]);
     expect(detail.photos.map((photo) => photo.role)).toEqual(['front_cover', 'detail', 'back_cover']);
     expect(detail.photos[0].publicUrl).toContain(`listings/${listingId}/front.webp`);
