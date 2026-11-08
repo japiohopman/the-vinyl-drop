@@ -134,7 +134,8 @@ describe('Desktop Browse Catalogue Explorer', () => {
     expect(html).toContain('<span class="browse-explorer-summary-selection">Funk / Soul · 12-inch</span>');
     expect(html).toContain('data-explorer-genre="Funk / Soul"');
     expect(html).toContain('aria-current="page"');
-    expect(html).toMatch(/data-explorer-format="12-inch"[\s\S]*?aria-current="page"/);
+    expect(html).toContain('data-explorer-format="12-inch"');
+    expect(html).toContain('aria-label="12-inch, selected"');
     expect(html).toContain('aria-label="Catalogue explorer"');
     expect(html).toContain('aria-label="Browse catalogue"');
   });
