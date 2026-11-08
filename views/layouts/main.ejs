@@ -62,6 +62,9 @@
   <% if (typeof currentPath !== 'undefined' && ['/people', '/browse', '/search', '/dig', '/browse/dig'].includes(currentPath)) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/people-search.css') : '/css/people-search.css' %>">
   <% } %>
+  <% if (typeof currentPath !== 'undefined' && currentPath === '/browse') { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/browse-catalogue-explorer.css') : '/css/browse-catalogue-explorer.css' %>">
+  <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/install') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/install.css') : '/css/install.css' %>">
   <% } %>
