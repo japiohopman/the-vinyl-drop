@@ -197,8 +197,14 @@
         });
         return '/browse?' + params.join('&');
       }; %>
+      <% const availableExplorerFormats = typeof formatOptions !== 'undefined' && Array.isArray(formatOptions)
+        ? formatOptions
+        : []; %>
+      <% const availableExplorerGenres = typeof genreOptions !== 'undefined' && Array.isArray(genreOptions)
+        ? genreOptions
+        : []; %>
       <% const selectedExplorerFormatLabels = selectedFormats.map(function(format) {
-        const option = (Array.isArray(formatOptions) ? formatOptions : []).find(function(item) {
+        const option = availableExplorerFormats.find(function(item) {
           return item.value === format;
         });
         return option ? option.label : '';
@@ -222,7 +228,7 @@
           <section class="browse-explorer-group" aria-labelledby="browse-explorer-genres">
             <h2 id="browse-explorer-genres">Genres</h2>
             <ul>
-              <% (Array.isArray(genreOptions) ? genreOptions : []).forEach(function(genreOption) { %>
+              <% availableExplorerGenres.forEach(function(genreOption) { %>
                 <li>
                   <a
                     data-explorer-genre="<%= genreOption %>"
@@ -238,7 +244,7 @@
           <section class="browse-explorer-group" aria-labelledby="browse-explorer-formats">
             <h2 id="browse-explorer-formats">Formats</h2>
             <ul>
-              <% (Array.isArray(formatOptions) ? formatOptions : []).forEach(function(option) {
+              <% availableExplorerFormats.forEach(function(option) {
                 const selected = selectedFormats.includes(option.value);
                 const nextFormats = selected
                   ? selectedFormats.filter(function(format) { return format !== option.value; })
