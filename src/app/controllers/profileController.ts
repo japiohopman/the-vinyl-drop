@@ -1,6 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { getProfileByUsername, getProfileById, updateProfile, setProfileAvatarStoragePath } from '../services/profileService';
-import { getSellerPublishedListings } from '../services/listingService';
+import {
+  getPublicProfileByUsername,
+  getProfileById,
+  updateProfile,
+  setProfileAvatarStoragePath,
+} from '../services/profileService';
+import { getSellerPublishedListings, countSellerPublishedListings } from '../services/listingService';
 import { profileUpdateSchema } from '../../validators/profile';
 import { formatZodFormErrors, FormViewModel } from '../view-models/formViewModel';
 import { renderWithLayout } from '../utils/render';
@@ -61,7 +66,7 @@ function parseProfilePageParameter(value: unknown): ParsedProfilePage {
 export async function getPublicProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const username = req.params.username;
-    const profile = await getProfileByUsername(username);
+    const profile = await getPublicProfileByUsername(username);
 
     if (!profile) {
       res.status(404);
@@ -81,7 +86,7 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
       renderWithLayout(res, 'profiles/show', {
         title,
         profile,
-        avatarPublicUrl: profile.avatarStoragePath ? getProfileAvatarPublicUrl(profile.avatarStoragePath) : null,
+        avatarPublicUrl: profile.avatarPublicUrl,
         isOwner: Boolean(req.user && req.user.id === profile.id),
         crateTotalCount: 0,
         errorMessage: 'Invalid page parameter provided.',
@@ -95,7 +100,7 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
       return;
     }
 
-    const listingsResult = await getSellerPublishedListings(profile.username, { page: 1 });
+    const crateTotalCount = await countSellerPublishedListings(profile.id);
     const isSavedPerson = Boolean(
       req.user && config.MESSAGING_ENABLED && req.user.id !== profile.id &&
       await savedPeopleService.isSavedPerson(req.user.id, profile.id)
@@ -103,12 +108,12 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
     renderWithLayout(res, 'profiles/show', {
       title,
       profile,
-      avatarPublicUrl: profile.avatarStoragePath ? getProfileAvatarPublicUrl(profile.avatarStoragePath) : null,
+      avatarPublicUrl: profile.avatarPublicUrl,
       user: req.user,
       messagingEnabled: config.MESSAGING_ENABLED,
       isSavedPerson,
       isOwner: Boolean(req.user && req.user.id === profile.id),
-      crateTotalCount: listingsResult.totalCount,
+      crateTotalCount,
     }, next);
   } catch (error) {
     next(error);
@@ -119,7 +124,7 @@ export async function getPublicProfile(req: Request, res: Response, next: NextFu
 export async function getPublicProfileCrate(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const username = req.params.username;
-    const profile = await getProfileByUsername(username);
+    const profile = await getPublicProfileByUsername(username);
 
     if (!profile) {
       res.status(404);

@@ -70,7 +70,8 @@ describe('Profile Foundation & Server-Side Ownership', () => {
 
   describe('Public Profile Display', () => {
     it('GET /profiles/:username should render public profile details for existing username', async () => {
-      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(mockProfileAlice);
+      jest.spyOn(profileRepository, 'findPublicProfileByUsername').mockResolvedValue(mockProfileAlice);
+      (listingService.countSellerPublishedListings as jest.Mock).mockResolvedValue(0);
 
       const app = createApp();
       const res = await request(app).get('/profiles/alice_records');
@@ -89,8 +90,9 @@ describe('Profile Foundation & Server-Side Ownership', () => {
         error: null,
       });
 
-      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(mockProfileAlice);
+      jest.spyOn(profileRepository, 'findPublicProfileByUsername').mockResolvedValue(mockProfileAlice);
       jest.spyOn(profileRepository, 'findProfileById').mockResolvedValue(mockProfileAlice);
+      (listingService.countSellerPublishedListings as jest.Mock).mockResolvedValue(0);
 
       const app = createApp();
       const res = await request(app)
@@ -102,7 +104,7 @@ describe('Profile Foundation & Server-Side Ownership', () => {
     });
 
     it('GET /profiles/:username should return 404 when profile does not exist', async () => {
-      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(null);
+      jest.spyOn(profileRepository, 'findPublicProfileByUsername').mockResolvedValue(null);
 
       const app = createApp();
       const res = await request(app).get('/profiles/nonexistent_user_profile_123');
@@ -119,7 +121,8 @@ describe('Profile Foundation & Server-Side Ownership', () => {
         soundcloudUrl: 'https://soundcloud.com/alice-records',
         mixcloudUrl: 'https://www.mixcloud.com/alice-records',
       };
-      jest.spyOn(profileRepository, 'findProfileByUsername').mockResolvedValue(profileWithWebsite);
+      jest.spyOn(profileRepository, 'findPublicProfileByUsername').mockResolvedValue(profileWithWebsite);
+      (listingService.countSellerPublishedListings as jest.Mock).mockResolvedValue(0);
 
       const app = createApp();
       const res = await request(app).get('/profiles/alice_records');
