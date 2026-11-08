@@ -8,18 +8,18 @@ import { chromium, Browser, Page } from 'playwright';
 import type { NextFunction, Request, Response } from 'express';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 import { getListingCommentsPage, postCreateComment } from '../src/app/controllers/listingController';
-import { addComment, getListingComments } from '../src/app/services/commentService';
-import { getListingWithDetailsForView } from '../src/app/services/listingService';
+import { addComment, getListingCommentsForResolvedListing } from '../src/app/services/commentService';
+import { getPublicListingDetailsForView } from '../src/app/services/listingService';
 import { renderWithLayout } from '../src/app/utils/render';
 import { ValidationError } from '../src/app/services/errors';
 
 jest.mock('../src/app/services/commentService', () => ({
-  getListingComments: jest.fn(),
+  getListingCommentsForResolvedListing: jest.fn(),
   addComment: jest.fn(),
 }));
 
 jest.mock('../src/app/services/listingService', () => ({
-  getListingWithDetailsForView: jest.fn(),
+  getPublicListingDetailsForView: jest.fn(),
 }));
 
 jest.mock('../src/app/services/favoriteService', () => ({
@@ -114,8 +114,8 @@ describe('Listing comments UX (#220)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     lastRender = null;
-    (getListingWithDetailsForView as jest.Mock).mockResolvedValue(listingDetails);
-    (getListingComments as jest.Mock).mockResolvedValue([sampleComment]);
+    (getPublicListingDetailsForView as jest.Mock).mockResolvedValue(listingDetails);
+    (getListingCommentsForResolvedListing as jest.Mock).mockResolvedValue([sampleComment]);
     (addComment as jest.Mock).mockResolvedValue(sampleComment);
     (renderWithLayout as jest.Mock).mockImplementation((_res: Response, view: string, locals: Record<string, unknown>) => {
       lastRender = { view, locals };
@@ -191,8 +191,8 @@ describe('Listing comments UX (#220)', () => {
 
     await getListingCommentsPage(req, res, next);
 
-    expect(getListingWithDetailsForView).toHaveBeenCalledWith(listingId, undefined);
-    expect(getListingComments).toHaveBeenCalledWith(listingId, undefined);
+    expect(getPublicListingDetailsForView).toHaveBeenCalledWith(listingId, undefined);
+    expect(getListingCommentsForResolvedListing).toHaveBeenCalledWith(listingId, listingDetails.listing, undefined);
     expect(renderWithLayout).toHaveBeenCalledWith(res, 'listings/comments', expect.objectContaining({
       commentsPage: true,
       listing: listingDetails.listing,
