@@ -197,8 +197,20 @@
         });
         return '/browse?' + params.join('&');
       }; %>
+      <% const selectedExplorerFormatLabels = selectedFormats.map(function(format) {
+        const option = (Array.isArray(formatOptions) ? formatOptions : []).find(function(item) {
+          return item.value === format;
+        });
+        return option ? option.label : '';
+      }).filter(Boolean); %>
+      <% const currentExplorerSelection = [filters.genre, ...selectedExplorerFormatLabels]
+        .filter(Boolean)
+        .join(' · ') || 'All records'; %>
       <details class="browse-explorer-disclosure" open>
-        <summary>CATALOGUE EXPLORER</summary>
+        <summary>
+          <span class="browse-explorer-summary-title">CATALOGUE EXPLORER</span>
+          <span class="browse-explorer-summary-selection"><%= currentExplorerSelection %></span>
+        </summary>
         <nav class="browse-explorer-navigation" aria-label="Browse catalogue">
           <a
             data-explorer-all
