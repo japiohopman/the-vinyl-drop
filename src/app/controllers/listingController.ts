@@ -683,6 +683,7 @@ export async function postArchiveListing(req: Request, res: Response, next: Next
   }
 }
 
+/** Render the public listing discussion using the narrow detail projection and current comment visibility check. */
 export async function getListingCommentsPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const listingId = req.params.id;
@@ -733,6 +734,7 @@ export async function getListingCommentsPage(req: Request, res: Response, next: 
   }
 }
 
+/** Render a public listing detail page from the bounded joined view model. */
 export async function getListingDetailPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const listingId = req.params.id;
