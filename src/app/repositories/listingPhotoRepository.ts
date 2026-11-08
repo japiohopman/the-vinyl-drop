@@ -17,6 +17,29 @@ export async function findPhotosByListingId(
     .orderBy(asc(listingPhotos.displayOrder), asc(listingPhotos.createdAt));
 }
 
+export type PublicListingPhotoRecord = Pick<
+  ListingPhoto,
+  'storagePath' | 'role' | 'displayOrder' | 'altText'
+>;
+
+/** Fetch only the ordered fields required to render public listing photography. */
+export async function findPublicListingPhotosByListingId(
+  listingId: string,
+  dbOverride?: DbInstance
+): Promise<PublicListingPhotoRecord[]> {
+  const db = dbOverride || getDb();
+  return db
+    .select({
+      storagePath: listingPhotos.storagePath,
+      role: listingPhotos.role,
+      displayOrder: listingPhotos.displayOrder,
+      altText: listingPhotos.altText,
+    })
+    .from(listingPhotos)
+    .where(eq(listingPhotos.listingId, listingId))
+    .orderBy(asc(listingPhotos.displayOrder), asc(listingPhotos.createdAt));
+}
+
 export async function findPhotoById(
   photoId: string,
   dbOverride?: DbInstance

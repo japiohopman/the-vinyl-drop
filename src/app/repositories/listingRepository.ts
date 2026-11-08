@@ -35,6 +35,14 @@ export interface JoinedListingRecord {
   primaryPhotoPath: string | null;
 }
 
+/** Minimal one-listing projection used by the public detail and comments GET routes. */
+export interface PublicListingDetailRecord {
+  listing: Pick<Listing, 'id' | 'sellerId' | 'price' | 'tradeAvailable' | 'description' | 'status'>;
+  physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition' | 'notes'>;
+  release: Pick<Release, 'title' | 'artist' | 'label' | 'catalogueNumber' | 'releaseYear' | 'format' | 'genre' | 'coverArtUrl' | 'youtubeVideoId'>;
+  seller: Pick<Profile, 'id' | 'username' | 'displayName'>;
+}
+
 export interface ListingSearchRecord {
   listing: Pick<Listing, 'id' | 'price' | 'tradeAvailable'>;
   physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition'>;
@@ -99,6 +107,56 @@ async function attachPrimaryPhotoPaths<T extends { listing: { id: string } }>(
 export async function findListingById(id: string, dbOverride?: DbInstance): Promise<Listing | null> {
   const db = dbOverride || getDb();
   const results = await db.select().from(listings).where(eq(listings.id, id)).limit(1);
+  return results[0] || null;
+}
+
+/**
+ * Read the one-to-one public listing detail graph in one joined query.
+ * Photos and comments deliberately stay separate to avoid row multiplication.
+ */
+export async function findPublicListingDetailById(
+  id: string,
+  dbOverride?: DbInstance
+): Promise<PublicListingDetailRecord | null> {
+  const db = dbOverride || getDb();
+  const results = await db
+    .select({
+      listing: {
+        id: listings.id,
+        sellerId: listings.sellerId,
+        price: listings.price,
+        tradeAvailable: listings.tradeAvailable,
+        description: listings.description,
+        status: listings.status,
+      },
+      physicalCopy: {
+        mediaCondition: physicalCopies.mediaCondition,
+        sleeveCondition: physicalCopies.sleeveCondition,
+        notes: physicalCopies.notes,
+      },
+      release: {
+        title: releases.title,
+        artist: releases.artist,
+        label: releases.label,
+        catalogueNumber: releases.catalogueNumber,
+        releaseYear: releases.releaseYear,
+        format: releases.format,
+        genre: releases.genre,
+        coverArtUrl: releases.coverArtUrl,
+        youtubeVideoId: releases.youtubeVideoId,
+      },
+      seller: {
+        id: profiles.id,
+        username: profiles.username,
+        displayName: profiles.displayName,
+      },
+    })
+    .from(listings)
+    .innerJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
+    .innerJoin(releases, eq(physicalCopies.releaseId, releases.id))
+    .innerJoin(profiles, eq(listings.sellerId, profiles.id))
+    .where(eq(listings.id, id))
+    .limit(1);
   return results[0] || null;
 }
 

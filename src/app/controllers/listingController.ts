@@ -6,6 +6,7 @@ import {
   getMyListings,
   getListingWithDetails,
   getListingWithDetailsForView,
+  getPublicListingDetailsForView,
   createListingFromRelease,
   updateListing,
   addPhotoToListing,
@@ -21,7 +22,7 @@ import {
   permanentlyDeleteArchivedListing,
   transitionListingStatus,
 } from '../services/listingService';
-import { getListingComments, addComment } from '../services/commentService';
+import { getListingComments, getListingCommentsForResolvedListing, addComment } from '../services/commentService';
 import { isListingFavorited } from '../services/favoriteService';
 import {
   updateReleaseYouTubePreviewForListing,
@@ -682,6 +683,7 @@ export async function postArchiveListing(req: Request, res: Response, next: Next
   }
 }
 
+/** Render the public listing discussion using the narrow detail projection and current comment visibility check. */
 export async function getListingCommentsPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const listingId = req.params.id;
@@ -689,7 +691,7 @@ export async function getListingCommentsPage(req: Request, res: Response, next: 
 
     let details;
     try {
-      details = await getListingWithDetailsForView(listingId, requestingUserId);
+      details = await getPublicListingDetailsForView(listingId, requestingUserId);
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof AuthorizationError) {
         res.status(404);
@@ -706,7 +708,24 @@ export async function getListingCommentsPage(req: Request, res: Response, next: 
       throw err;
     }
 
-    const comments = await getListingComments(listingId, requestingUserId);
+    let comments;
+    try {
+      comments = await getListingCommentsForResolvedListing(listingId, details.listing, requestingUserId);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        res.status(404);
+        return renderWithLayout(
+          res,
+          'errors/404',
+          {
+            title: 'Listing Not Found',
+            message: 'The requested record listing was not found or is no longer available.',
+          },
+          next
+        );
+      }
+      throw err;
+    }
     const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
 
     return renderWithLayout(
@@ -732,6 +751,7 @@ export async function getListingCommentsPage(req: Request, res: Response, next: 
   }
 }
 
+/** Render a public listing detail page from the bounded joined view model. */
 export async function getListingDetailPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const listingId = req.params.id;
@@ -739,7 +759,7 @@ export async function getListingDetailPage(req: Request, res: Response, next: Ne
 
     let details;
     try {
-      details = await getListingWithDetailsForView(listingId, requestingUserId);
+      details = await getPublicListingDetailsForView(listingId, requestingUserId);
     } catch (err) {
       if (err instanceof NotFoundError || err instanceof AuthorizationError) {
         res.status(404);
@@ -756,7 +776,24 @@ export async function getListingDetailPage(req: Request, res: Response, next: Ne
       throw err;
     }
 
-    const comments = await getListingComments(listingId, requestingUserId);
+    let comments;
+    try {
+      comments = await getListingCommentsForResolvedListing(listingId, details.listing, requestingUserId);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        res.status(404);
+        return renderWithLayout(
+          res,
+          'errors/404',
+          {
+            title: 'Listing Not Found',
+            message: 'The requested record listing was not found or is no longer available.',
+          },
+          next
+        );
+      }
+      throw err;
+    }
     const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
     const priceFormatted = formatPrice(details.listing.price, isTradeOnly);
 

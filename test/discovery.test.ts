@@ -170,6 +170,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
   beforeEach(() => {
     jest.clearAllMocks();
     (listingService.getHomeDiscoveryListings as jest.Mock).mockResolvedValue([]);
+    (listingService.getPublicListingDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
+    (commentService.getListingCommentsForResolvedListing as jest.Mock).mockResolvedValue([mockComment]);
 
     mockSupabase = {
       auth: {
@@ -472,8 +474,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     });
 
     it('should render compact record context banner in comment thread on listing detail page', async () => {
-      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
-      (commentService.getListingComments as jest.Mock).mockResolvedValue([mockComment]);
+      (listingService.getPublicListingDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
+      (commentService.getListingCommentsForResolvedListing as jest.Mock).mockResolvedValue([mockComment]);
 
       const app = createApp();
       const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
@@ -488,8 +490,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
 
   describe('Listing Detail View & Authorization Boundaries (GET /listings/:id)', () => {
     it('should render public listing detail page for published listings with object-fit: contain for artwork', async () => {
-      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
-      (commentService.getListingComments as jest.Mock).mockResolvedValue([mockComment]);
+      (listingService.getPublicListingDetailsForView as jest.Mock).mockResolvedValue(mockDetailedListing);
+      (commentService.getListingCommentsForResolvedListing as jest.Mock).mockResolvedValue([mockComment]);
 
       const app = createApp();
       const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
@@ -539,8 +541,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
           coverArtUrl: 'https://example.com/cover-art.jpg',
         },
       };
-      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(detailedListingWithCoverArt);
-      (commentService.getListingComments as jest.Mock).mockResolvedValue([]);
+      (listingService.getPublicListingDetailsForView as jest.Mock).mockResolvedValue(detailedListingWithCoverArt);
+      (commentService.getListingCommentsForResolvedListing as jest.Mock).mockResolvedValue([]);
 
       const app = createApp();
       const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
@@ -571,8 +573,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
           coverArtUrl: 'https://example.com/cover-art.jpg',
         },
       };
-      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(detailedListingWithCoverArt);
-      (commentService.getListingComments as jest.Mock).mockResolvedValue([]);
+      (listingService.getPublicListingDetailsForView as jest.Mock).mockResolvedValue(detailedListingWithCoverArt);
+      (commentService.getListingCommentsForResolvedListing as jest.Mock).mockResolvedValue([]);
 
       const app = createApp();
       const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
@@ -592,8 +594,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
           coverArtUrl: null,
         },
       };
-      (listingService.getListingWithDetailsForView as jest.Mock).mockResolvedValue(detailedListingWithoutPhotosOrCover);
-      (commentService.getListingComments as jest.Mock).mockResolvedValue([]);
+      (listingService.getPublicListingDetailsForView as jest.Mock).mockResolvedValue(detailedListingWithoutPhotosOrCover);
+      (commentService.getListingCommentsForResolvedListing as jest.Mock).mockResolvedValue([]);
 
       const app = createApp();
       const res = await request(app).get(`/listings/${mockPublishedListing.id}`);
@@ -604,7 +606,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     });
 
     it('should return 404 Not Found when attempting to view non-existent or unpublished listing as unauthorized user', async () => {
-      (listingService.getListingWithDetailsForView as jest.Mock).mockRejectedValue(
+      (listingService.getPublicListingDetailsForView as jest.Mock).mockRejectedValue(
         new NotFoundError('Listing not found')
       );
 

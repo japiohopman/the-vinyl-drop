@@ -1,9 +1,11 @@
 import { getDb } from '../../db';
+import type { Listing } from '../../db/schema/listings';
 import { createCommentSchema } from '../../validators/comment';
 import {
   CommentWithAuthor,
   createComment as createCommentInRepo,
   findCommentsByListingId,
+  findCommentsWithCurrentListingVisibility,
 } from '../repositories/commentRepository';
 import { findListingById } from '../repositories/listingRepository';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
@@ -30,6 +32,45 @@ export async function getListingComments(
   }
 
   return findCommentsByListingId(listingId, { limit: 50 }, dbOverride);
+}
+
+/**
+ * Load comments after a detail query has already resolved the listing. The ID
+ * match and published-or-owner check remain in the service layer, but no second
+ * listing SELECT is needed.
+ */
+export async function getListingCommentsForResolvedListing(
+  expectedListingId: string,
+  listing: Pick<Listing, 'id' | 'status' | 'sellerId'>,
+  requestingUserId?: string,
+  dbOverride?: DbInstance
+): Promise<CommentWithAuthor[]> {
+  // PostgreSQL accepts equivalent UUID text representations (including uppercase
+  // and unhyphenated input). Compare the canonical IDs returned by both reads.
+  // Fetch current listing status and comments in the same SQL statement.
+  // This closes the race where a listing is unpublished after detail resolution
+  // but before comments are read, without reintroducing a second listing SELECT.
+  const result = await findCommentsWithCurrentListingVisibility(
+    expectedListingId,
+    requestingUserId,
+    { limit: 50 },
+    dbOverride
+  );
+  if (!result) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  if (result.listing.id !== listing.id) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  if (result.listing.status !== 'published' && result.listing.sellerId !== requestingUserId) {
+    // This helper is used by public GET routes; unavailable listings must keep
+    // the same not-found response as the initial public detail lookup.
+    throw new NotFoundError('Listing not found');
+  }
+
+  return result.comments;
 }
 
 export async function addComment(
