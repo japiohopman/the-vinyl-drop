@@ -1,5 +1,5 @@
 import { CandidateRelease, IdentificationQuery, MetadataProvider } from './types';
-import { normalizeCanonicalGenres, resolveCountry } from '../../../domain/releaseMetadata';
+import { normalizeCanonicalGenres, normalizeCanonicalStyles, resolveCountry } from '../../../domain/releaseMetadata';
 import { normalizeVinylFormatCharacteristics } from '../../../domain/releaseFormat';
 
 
@@ -172,6 +172,7 @@ export class DiscogsMetadataProvider implements MetadataProvider {
             cover_image?: string;
             thumb?: string;
             genre?: string[];
+            style?: string[];
             uri?: string;
           }>;
         };
@@ -201,6 +202,7 @@ export class DiscogsMetadataProvider implements MetadataProvider {
           const barcodeStr = item.barcode && item.barcode.length > 0 ? item.barcode[0] : undefined;
           const formatStr = item.format && item.format.length > 0 ? item.format.join(', ') : undefined;
           const genreStr = item.genre && item.genre.length > 0 ? item.genre.join(', ') : undefined;
+          const rawStyles = item.style && item.style.length > 0 ? item.style : undefined;
 
           const externalId = String(item.id);
           const sourceUrl = item.uri
@@ -225,6 +227,8 @@ export class DiscogsMetadataProvider implements MetadataProvider {
             barcode: barcodeStr || query.barcode,
             genre: genreStr,
             canonicalGenres: normalizeCanonicalGenres(item.genre || []),
+            styles: rawStyles,
+            canonicalStyles: normalizeCanonicalStyles(rawStyles || []),
             coverArtUrl: item.cover_image || item.thumb,
             sourceUrl,
             matchScore: 0,

@@ -76,6 +76,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     barcode: null,
     genre: 'Jazz',
     canonicalGenres: ['Jazz'],
+    styles: [],
+    canonicalStyles: [],
     coverArtUrl: null,
     youtubeVideoId: null,
     externalSource: null,
@@ -439,8 +441,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('<span class="browse-secondary-filter-status">4 active</span>');
       expect(res.text).toContain('<details class="browse-secondary-filters" open>');
       expect(res.text).toContain('aria-label="List view"');
-      expect(res.text).toContain('q=Coltrane&amp;genre=Jazz&amp;condition=VG%2B&amp;minPrice=10&amp;maxPrice=50&amp;sort=price_asc&amp;format=lp&amp;whiteLabel=1&amp;page=2&amp;view=grid');
-      expect(res.text).toContain('q=Coltrane&amp;genre=Jazz&amp;condition=VG%2B&amp;minPrice=10&amp;maxPrice=50&amp;sort=price_asc&amp;format=lp&amp;whiteLabel=1&amp;view=list&amp;page=3');
+      expect(res.text).toContain('q=Coltrane&amp;genre=Jazz&amp;style=&amp;condition=VG%2B&amp;minPrice=10&amp;maxPrice=50&amp;sort=price_asc&amp;format=lp&amp;whiteLabel=1&amp;view=list&amp;page=3');
       expect(listingService.searchBrowseListings).toHaveBeenCalledWith(
         expect.objectContaining({
           q: 'Coltrane',

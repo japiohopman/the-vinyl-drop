@@ -336,6 +336,7 @@ export async function verifyMigrations(): Promise<void> {
     'releases_label_idx',
     'releases_cat_num_idx',
     'releases_year_idx',
+    'releases_canonical_styles_idx',
     'releases_artist_trgm_idx',
     'releases_title_trgm_idx',
     'releases_label_trgm_idx',

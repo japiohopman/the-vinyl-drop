@@ -49,8 +49,12 @@ Columns:
 - `barcode`: `text` (Nullable).
 - `genre`: `text` (Nullable; original provider/manual value retained).
 - `country_code`: `text` (Nullable ISO 3166-1 alpha-2 code; `country` remains the readable label/source value).
-- `canonical_genres`: `text[]` (Recognized normalized genre tags; `genre` remains intact).
+- `canonical_genres`: `text[]` (Recognized normalized broad-genre tags; `genre` remains intact).
+- `styles`: `text[]` (Raw provider-supplied or manually submitted style labels; unknown and unmapped values are retained).
+- `canonical_styles`: `text[]` (Recognized normalized values from the controlled style vocabulary; styles remain separate from broad genres).
 - `format_characteristics`: `text[]` (Explicit LP / 12-inch / 7-inch characteristics; `format` remains intact).
+
+Genre and Style are separate Release metadata concepts. The controlled initial style vocabulary is Dancehall, Ska, Punk, House, Techno, Disco, Funk, Soul, Classic Rock, and R&B / Rhythm & Blues. Styles can be associated with more than one parent genre where catalogue evidence supports it (for example, Disco under Funk / Soul and Electronic). Parent relationships guide catalogue navigation; they do not fabricate a genre value on an individual release. Existing releases are not assigned guessed styles.
 - `coverArtUrl`: `text` (Nullable).
 - `youtubeVideoId`: `text` (Nullable, 11-character validated YouTube video ID shared by the release).
 - `externalSource`: `text` (Nullable).
@@ -65,6 +69,7 @@ Indexes:
 - `releases_label_idx` on `label`
 - `releases_cat_num_idx` on `catalogueNumber`
 - `releases_year_idx` on `releaseYear`
+- `releases_canonical_styles_idx` GIN index on `canonical_styles`
 
 ### `physical_copies` (`src/db/schema/physicalCopies.ts`)
 

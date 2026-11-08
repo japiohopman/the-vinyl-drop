@@ -7,13 +7,14 @@ import { releases, Release } from '../../db/schema/releases';
 import { profiles, Profile } from '../../db/schema/profiles';
 import { listingPhotos } from '../../db/schema/listingPhotos';
 import { getVinylFormatPostgresPattern, VinylFormatFilter, WHITE_LABEL_POSTGRES_PATTERN } from '../../domain/releaseFormat';
-import { getCanonicalGenreSearchTerms } from '../../domain/releaseMetadata';
+import { getCanonicalGenreSearchTerms, resolveCanonicalStyle } from '../../domain/releaseMetadata';
 
 type DbInstance = ReturnType<typeof getDb>;
 
 export interface SearchListingsParams {
   q?: string;
   genre?: string;
+  style?: string;
   condition?: ConditionGrade;
   minPrice?: number;
   maxPrice?: number;
@@ -39,7 +40,7 @@ export interface JoinedListingRecord {
 export interface PublicListingDetailRecord {
   listing: Pick<Listing, 'id' | 'sellerId' | 'price' | 'tradeAvailable' | 'description' | 'status'>;
   physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition' | 'notes'>;
-  release: Pick<Release, 'title' | 'artist' | 'label' | 'catalogueNumber' | 'releaseYear' | 'format' | 'genre' | 'coverArtUrl' | 'youtubeVideoId'>;
+  release: Pick<Release, 'title' | 'artist' | 'label' | 'catalogueNumber' | 'releaseYear' | 'format' | 'genre' | 'styles' | 'canonicalStyles' | 'coverArtUrl' | 'youtubeVideoId'>;
   seller: Pick<Profile, 'id' | 'username' | 'displayName'>;
 }
 
@@ -142,6 +143,8 @@ export async function findPublicListingDetailById(
         releaseYear: releases.releaseYear,
         format: releases.format,
         genre: releases.genre,
+        styles: releases.styles,
+        canonicalStyles: releases.canonicalStyles,
         coverArtUrl: releases.coverArtUrl,
         youtubeVideoId: releases.youtubeVideoId,
       },
@@ -421,6 +424,18 @@ export async function searchListings(
       arrayContains(releases.canonicalGenres, [genre]),
       ilike(releases.genre, `%${genre}%`),
       ...legacyGenreMatches
+    )!);
+  }
+
+  // Style filter
+  if (params.style && params.style.trim()) {
+    const style = params.style.trim();
+    const canonical = resolveCanonicalStyle(style) || style;
+    conditions.push(or(
+      arrayContains(releases.canonicalStyles, [canonical]),
+      arrayContains(releases.styles, [style]),
+      arrayContains(releases.styles, [canonical]),
+      sql`exists (select 1 from unnest(${releases.styles}) s where s ilike ${style})`
     )!);
   }
 

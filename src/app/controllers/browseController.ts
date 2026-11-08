@@ -3,7 +3,7 @@ import { hasExplicitWhiteLabelInventory, searchBrowseListings, searchDigListings
 import { parseVinylFormatFilters, resolveWhiteLabelFilter, toggleVinylFormatFilter, VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
 import { renderWithLayout } from '../utils/render';
 import { ConditionGrade, CONDITION_GRADES } from '../../db/schema/enums';
-import { RELEASE_GENRES, resolveCanonicalGenre } from '../../domain/releaseMetadata';
+import { RELEASE_GENRES, RELEASE_STYLES, STYLE_PARENT_GENRES, resolveCanonicalGenre, resolveCanonicalStyle } from '../../domain/releaseMetadata';
 
 function parseEuroQueryParamToCentsStrict(param?: unknown): number | undefined | null {
   if (param === undefined || param === null) return undefined;
@@ -41,6 +41,8 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const genreInput = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
     const genre = genreInput ? (resolveCanonicalGenre(genreInput) || genreInput) : '';
+    const styleInput = typeof req.query.style === 'string' ? req.query.style.trim() : '';
+    const style = styleInput ? (resolveCanonicalStyle(styleInput) || styleInput) : '';
     const submittedFormats = parseVinylFormatFilters(req.query.format);
     const formatToggle = typeof req.query.formatToggle === 'string'
       ? parseVinylFormatFilters(req.query.formatToggle)[0]
@@ -78,6 +80,7 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
           filters: {
             q,
             genre,
+            style,
             condition: conditionInput,
             minPrice: minPriceEurStr,
             maxPrice: maxPriceEurStr,
@@ -95,6 +98,8 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
           errorMessage: 'Invalid search filter or page parameters provided.',
           formatOptions: VINYL_FORMAT_FILTERS,
           genreOptions: RELEASE_GENRES,
+          styleOptions: RELEASE_STYLES,
+          styleParentGenres: STYLE_PARENT_GENRES,
           whiteLabelAvailable,
         },
         next
@@ -111,6 +116,7 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
     const results = await searchBrowseListings({
       q: q || undefined,
       genre: genre || undefined,
+      style: style || undefined,
       condition,
       minPrice,
       maxPrice,
@@ -128,11 +134,14 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
         title: q ? `Search: "${q}" — The Vinyl Drop` : 'Browse Vinyl Records — The Vinyl Drop',
         listings: results.items,
         formatOptions: VINYL_FORMAT_FILTERS,
-          genreOptions: RELEASE_GENRES,
+        genreOptions: RELEASE_GENRES,
+        styleOptions: RELEASE_STYLES,
+        styleParentGenres: STYLE_PARENT_GENRES,
         whiteLabelAvailable,
         filters: {
           q,
           genre,
+          style,
           condition: conditionInput,
           minPrice: minPriceEurStr,
           maxPrice: maxPriceEurStr,
@@ -216,6 +225,7 @@ export async function getDigBrowsePage(req: Request, res: Response, next: NextFu
       hasMore: result.hasMore,
       filters,
       genreOptions: RELEASE_GENRES,
+      styleOptions: RELEASE_STYLES,
     }, next);
   } catch (error) {
     next(error);
@@ -279,7 +289,7 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
         title: 'Invalid Search Filters — The Vinyl Drop',
         listings: [],
         formatOptions: VINYL_FORMAT_FILTERS,
-          genreOptions: RELEASE_GENRES,
+        genreOptions: RELEASE_GENRES,
         whiteLabelAvailable,
         filters,
         pagination: { totalCount: 0, page: 1, limit: 12, totalPages: 1 },
@@ -325,7 +335,8 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
       title: q ? `Search: "${q}" — Dig — The Vinyl Drop` : 'Dig — The Vinyl Drop',
       listings: gridResults.items,
       formatOptions: VINYL_FORMAT_FILTERS,
-          genreOptions: RELEASE_GENRES,
+      genreOptions: RELEASE_GENRES,
+      styleOptions: RELEASE_STYLES,
       whiteLabelAvailable,
       filters,
       pagination: {

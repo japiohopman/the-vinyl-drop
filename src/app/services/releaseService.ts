@@ -12,7 +12,7 @@ import {
 import { findListingById } from '../repositories/listingRepository';
 import { findPhysicalCopyById } from '../repositories/physicalCopyRepository';
 import { normalizeYouTubeVideoId } from '../../validators/youtubePreview';
-import { normalizeCanonicalGenres, resolveReleaseCountryMetadata } from '../../domain/releaseMetadata';
+import { normalizeCanonicalGenres, normalizeCanonicalStyles, resolveReleaseCountryMetadata } from '../../domain/releaseMetadata';
 import { normalizeVinylFormatCharacteristics } from '../../domain/releaseFormat';
 import { getDiscogsReleaseArtwork } from './discogsService';
 import { ProcessedImage } from '../utils/imageProcessor';
@@ -260,6 +260,11 @@ export async function createRelease(input: ReleaseInput, dbOverride?: DbInstance
 
   const data = parseResult.data;
   const countryMetadata = resolveReleaseCountryMetadata(data.country, data.countryCode);
+  const rawStyles = Array.isArray(data.styles)
+    ? data.styles
+    : typeof data.styles === 'string' && data.styles.trim()
+      ? data.styles.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
 
   return createReleaseInRepo(
     {
@@ -277,6 +282,8 @@ export async function createRelease(input: ReleaseInput, dbOverride?: DbInstance
       barcode: data.barcode || null,
       genre: data.genre || null,
       canonicalGenres: normalizeCanonicalGenres(data.genre),
+      styles: rawStyles,
+      canonicalStyles: normalizeCanonicalStyles(rawStyles),
       coverArtUrl: data.coverArtUrl || null,
       externalSource: data.externalSource || null,
       externalId: data.externalId || null,

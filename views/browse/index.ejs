@@ -16,7 +16,7 @@
   <% const selectedFormats = Array.isArray(filters.formats) ? filters.formats : []; %>
   <% const browseFormatIconPaths = { lp: '/assets/UI/LP.svg', '12-inch': '/assets/UI/12-ince.svg', '7-inch': '/assets/UI/7-ince.svg' }; %>
   <% const formatParams = selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }).join('&'); %>
-  <% const baseQueryParams = 'q=' + encodeURIComponent(filters.q || '') + '&genre=' + encodeURIComponent(filters.genre || '') + '&condition=' + encodeURIComponent(filters.condition || '') + '&minPrice=' + encodeURIComponent(filters.minPrice || '') + '&maxPrice=' + encodeURIComponent(filters.maxPrice || '') + '&sort=' + encodeURIComponent(filters.sort || 'newest'); %>
+  <% const baseQueryParams = 'q=' + encodeURIComponent(filters.q || '') + '&genre=' + encodeURIComponent(filters.genre || '') + '&style=' + encodeURIComponent(filters.style || '') + '&condition=' + encodeURIComponent(filters.condition || '') + '&minPrice=' + encodeURIComponent(filters.minPrice || '') + '&maxPrice=' + encodeURIComponent(filters.maxPrice || '') + '&sort=' + encodeURIComponent(filters.sort || 'newest'); %>
   <% const queryBaseParams = [baseQueryParams, formatParams, filters.whiteLabel ? 'whiteLabel=1' : ''].filter(Boolean).join('&'); %>
 
   <div class="browse-header">
@@ -48,6 +48,7 @@
     <% const activeMobileFilterCount = [
       filters.q,
       filters.genre,
+      filters.style,
       filters.condition,
       filters.minPrice,
       filters.maxPrice,
@@ -111,6 +112,16 @@
                 <% const genres = typeof genreOptions !== 'undefined' && Array.isArray(genreOptions) ? genreOptions : []; %>
                 <% genres.forEach(function(g) { %>
                   <option value="<%= g %>" <%= filters.genre === g ? 'selected' : '' %>><%= g %></option>
+                <% }); %>
+              </select>
+            </div>
+            <div class="browse-genre-control">
+              <label for="filter-style">Style</label>
+              <select id="filter-style" name="style" class="form-control">
+                <option value="">All Styles</option>
+                <% const stylesList = typeof styleOptions !== 'undefined' && Array.isArray(styleOptions) ? styleOptions : []; %>
+                <% stylesList.forEach(function(s) { %>
+                  <option value="<%= s %>" <%= filters.style === s ? 'selected' : '' %>><%= s %></option>
                 <% }); %>
               </select>
             </div>
@@ -189,9 +200,13 @@
         filters.whiteLabel ? 'whiteLabel=1' : '',
         'view=' + encodeURIComponent(currentView)
       ].filter(Boolean); %>
-      <% const browseExplorerHref = function(nextGenre, nextFormats) {
+      <% const styleParentMap = (typeof styleParentGenres !== 'undefined' && styleParentGenres)
+        ? styleParentGenres
+        : {}; %>
+      <% const browseExplorerHref = function(nextGenre, nextStyle, nextFormats) {
         const params = browseExplorerBaseParams.slice();
         if (nextGenre) params.push('genre=' + encodeURIComponent(nextGenre));
+        if (nextStyle) params.push('style=' + encodeURIComponent(nextStyle));
         (nextFormats || []).forEach(function(format) {
           params.push('format=' + encodeURIComponent(format));
         });
@@ -203,13 +218,16 @@
       <% const availableExplorerGenres = typeof genreOptions !== 'undefined' && Array.isArray(genreOptions)
         ? genreOptions
         : []; %>
+      <% const availableExplorerStyles = typeof styleOptions !== 'undefined' && Array.isArray(styleOptions)
+        ? styleOptions
+        : []; %>
       <% const selectedExplorerFormatLabels = selectedFormats.map(function(format) {
         const option = availableExplorerFormats.find(function(item) {
           return item.value === format;
         });
         return option ? option.label : '';
       }).filter(Boolean); %>
-      <% const currentExplorerSelection = [filters.genre, ...selectedExplorerFormatLabels]
+      <% const currentExplorerSelection = [filters.genre, filters.style, ...selectedExplorerFormatLabels]
         .filter(Boolean)
         .join(' · ') || 'All records'; %>
       <details class="browse-explorer-disclosure" open>
@@ -220,22 +238,41 @@
         <nav class="browse-explorer-navigation" aria-label="Browse catalogue">
           <a
             data-explorer-all
-            class="browse-explorer-link <%= !filters.genre && selectedFormats.length === 0 ? 'is-selected' : '' %>"
-            href="<%= browseExplorerHref('', []) %>"
-            <%- !filters.genre && selectedFormats.length === 0 ? 'aria-current="page"' : '' %>
+            class="browse-explorer-link <%= !filters.genre && !filters.style && selectedFormats.length === 0 ? 'is-selected' : '' %>"
+            href="<%= browseExplorerHref('', '', []) %>"
+            <%- !filters.genre && !filters.style && selectedFormats.length === 0 ? 'aria-current="page"' : '' %>
           >All records</a>
 
           <section class="browse-explorer-group" aria-labelledby="browse-explorer-genres">
-            <h2 id="browse-explorer-genres">Genres</h2>
+            <h2 id="browse-explorer-genres">Genres &amp; Styles</h2>
             <ul>
               <% availableExplorerGenres.forEach(function(genreOption) { %>
+                <% const associatedStyles = availableExplorerStyles.filter(function(st) {
+                  return styleParentMap[st] && styleParentMap[st].includes(genreOption);
+                }); %>
                 <li>
                   <a
                     data-explorer-genre="<%= genreOption %>"
-                    class="browse-explorer-link <%= filters.genre === genreOption ? 'is-selected' : '' %>"
-                    href="<%= browseExplorerHref(genreOption, selectedFormats) %>"
-                    <%- filters.genre === genreOption ? 'aria-current="page"' : '' %>
+                    class="browse-explorer-link <%= (filters.genre === genreOption && !filters.style) ? 'is-selected' : '' %>"
+                    href="<%= browseExplorerHref(genreOption, '', selectedFormats) %>"
+                    <%- (filters.genre === genreOption && !filters.style) ? 'aria-current="page"' : '' %>
                   ><%= genreOption %></a>
+                  <% if (associatedStyles.length > 0) { %>
+                    <ul class="browse-explorer-subgroup">
+                      <% associatedStyles.forEach(function(styleOption) { %>
+                        <% const isStyleSelected = (filters.style === styleOption && (!filters.genre || filters.genre === genreOption)); %>
+                        <li>
+                          <a
+                            data-explorer-style="<%= styleOption %>"
+                            data-parent-genre="<%= genreOption %>"
+                            class="browse-explorer-link browse-explorer-sublink <%= isStyleSelected ? 'is-selected' : '' %>"
+                            href="<%= browseExplorerHref(genreOption, styleOption, selectedFormats) %>"
+                            <%- isStyleSelected ? 'aria-current="page"' : '' %>
+                          ><%= styleOption %></a>
+                        </li>
+                      <% }); %>
+                    </ul>
+                  <% } %>
                 </li>
               <% }); %>
             </ul>
@@ -254,7 +291,7 @@
                   <a
                     data-explorer-format="<%= option.value %>"
                     class="browse-explorer-link <%= selected ? 'is-selected' : '' %>"
-                    href="<%= browseExplorerHref(filters.genre, nextFormats) %>"
+                    href="<%= browseExplorerHref(filters.genre, filters.style, nextFormats) %>"
                     aria-label="<%= option.label %><%= selected ? ', selected' : '' %>"
                   ><%= option.label %></a>
                 </li>

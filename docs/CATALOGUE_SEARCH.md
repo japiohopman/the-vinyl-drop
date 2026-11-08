@@ -2,6 +2,8 @@
 
 Browse and Dig retain their server-rendered, shareable GET result pages. The autocomplete is progressive enhancement: choosing an artist, release title or label fills the existing query and submits the current form, retaining genre, format, condition, price and sort filters.
 
+Browse treats broad Genres and specific Styles as separate Release filters. The initial controlled Style vocabulary is Dancehall, Ska, Punk, House, Techno, Disco, Funk, Soul, Classic Rock, and R&B / Rhythm & Blues. Browse sends the selected style as a shareable `style` query parameter and applies it server-side alongside the existing search, genre, format, condition, price, sort, white-label, and view filters. The Catalogue Explorer groups styles beneath their associated parent genres; cross-genre styles such as Disco can appear under more than one parent. Raw provider style labels (including currently unmapped values) remain stored separately, while only recognized canonical styles are selectable through the controlled filter.
+
 The same-origin endpoint is `GET /api/catalogue-suggestions?q=<query>`. It accepts one query string of at most 80 characters, waits for at least two normalized characters and returns at most eight ranked suggestions with `Cache-Control: no-store`. The browser debounces by 180 ms, aborts prior requests, ignores stale responses and supports Arrow Up/Down, Enter, Escape and touch. Suggestion strings are inserted as text, never HTML.
 
 Suggestions describe only artist, release-title and label fields from releases linked to a published listing. Draft-only inventory is excluded. Seller, profile, email and private account fields are never selected. Catalogue-number matching remains available through the existing full Browse/Dig search.

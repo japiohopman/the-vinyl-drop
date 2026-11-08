@@ -1,8 +1,9 @@
-import { searchDiscogs } from '../src/app/services/discogsService';
+import { importDiscogsRelease, searchDiscogs } from '../src/app/services/discogsService';
 import { DiscogsMetadataProvider } from '../src/app/services/metadata/discogsProvider';
 import supertest from 'supertest';
 import { createApp } from '../src/app';
 import { setSupabaseClient } from '../src/lib/supabase';
+import { setOverrideDb } from '../src/db';
 import * as profileRepo from '../src/app/repositories/profileRepository';
 
 jest.mock('../src/app/repositories/profileRepository');
@@ -572,6 +573,105 @@ describe('Discogs API & Catalog Import (Issue #39)', () => {
   });
 });
 
+
+describe('Discogs style metadata contracts (Issue #391)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    setOverrideDb(null);
+  });
+
+  function makeEmptyReleaseDb(insertedRelease?: Record<string, unknown>) {
+    const limit = jest.fn().mockResolvedValue([]);
+    const where = jest.fn().mockReturnValue({ limit });
+    const from = jest.fn().mockReturnValue({ where });
+    const select = jest.fn().mockReturnValue({ from });
+    const returning = jest.fn().mockResolvedValue(insertedRelease ? [insertedRelease] : []);
+    const values = jest.fn().mockReturnValue({ returning });
+    const insert = jest.fn().mockReturnValue({ values });
+    return { db: { select, insert }, select, insert, values, returning };
+  }
+
+  it('maps Discogs database-search style[] values separately from broad genres', async () => {
+    const database = makeEmptyReleaseDb();
+    setOverrideDb(database.db);
+
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        results: [{
+          id: 123456,
+          title: 'Daft Punk - Discovery',
+          genre: ['Electronic'],
+          style: ['House', 'French Touch', 'Disco'],
+        }],
+      }),
+    } as Response);
+
+    const results = await searchDiscogs('Daft Punk Discovery');
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      genre: ['Electronic'],
+      style: ['House', 'French Touch', 'Disco'],
+    });
+    expect(database.insert).not.toHaveBeenCalled();
+  });
+
+  it('imports full-release styles[] into raw and canonical style columns without mixing genres', async () => {
+    const insertedRelease = {
+      id: 'release-123456',
+      artist: 'Daft Punk',
+      title: 'Discovery',
+      genre: 'Electronic',
+      canonicalGenres: ['Electronic'],
+      styles: ['House', 'French Touch', 'Disco'],
+      canonicalStyles: ['House', 'Disco'],
+      externalSource: 'discogs',
+      externalId: '123456',
+    };
+    const database = makeEmptyReleaseDb(insertedRelease);
+    setOverrideDb(database.db);
+
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        id: 123456,
+        title: 'Discovery',
+        artists: [{ name: 'Daft Punk (123)' }],
+        labels: [{ name: 'Virgin', catno: 'V2940' }],
+        year: 2001,
+        country: 'France',
+        formats: [{ name: 'Vinyl', descriptions: ['LP', 'Album'] }],
+        genres: ['Electronic'],
+        styles: ['House', 'French Touch', 'Disco'],
+        identifiers: [{ type: 'Barcode', value: '724384960612' }],
+        images: [],
+      }),
+    } as Response);
+
+    const imported = await importDiscogsRelease(123456);
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(String(fetchSpy.mock.calls[0][0])).toBe('https://api.discogs.com/releases/123456');
+    expect(database.values).toHaveBeenCalledWith(expect.objectContaining({
+      artist: 'Daft Punk',
+      title: 'Discovery',
+      genre: 'Electronic',
+      canonicalGenres: ['Electronic'],
+      styles: ['House', 'French Touch', 'Disco'],
+      canonicalStyles: ['House', 'Disco'],
+      externalSource: 'discogs',
+      externalId: '123456',
+    }));
+    expect(imported).toMatchObject({
+      genre: 'Electronic',
+      canonicalGenres: ['Electronic'],
+      styles: ['House', 'French Touch', 'Disco'],
+      canonicalStyles: ['House', 'Disco'],
+    });
+  });
+});
 
 describe('Discogs metadata provider free-text lookup (Issue #190)', () => {
   afterEach(() => {

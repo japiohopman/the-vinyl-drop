@@ -7,7 +7,7 @@ import { FormViewModel } from '../view-models/formViewModel';
 import { processAndValidateImage } from '../utils/imageProcessor';
 import { DiscogsMetadataProvider } from '../services/metadata/discogsProvider';
 import { CandidateRelease } from '../services/metadata/types';
-import { COUNTRY_OPTIONS, RELEASE_GENRES, resolveCountry } from '../../domain/releaseMetadata';
+import { COUNTRY_OPTIONS, RELEASE_GENRES, RELEASE_STYLES, resolveCountry } from '../../domain/releaseMetadata';
 import { normalizeVinylFormatCharacteristics, VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
 
 function normalizeLookupText(value: string): string {
@@ -96,6 +96,9 @@ function toDiscogsCandidateMetadata(candidate: CandidateRelease): Record<string,
     country: candidate.country || '',
     countryCode: resolveCountry(candidate.country)?.code || '',
     genre: candidate.genre || '',
+    styles: candidate.styles || [],
+    style: candidate.styles && candidate.styles.length > 0 ? candidate.styles.join(', ') : '',
+    canonicalStyles: candidate.canonicalStyles || [],
     coverArtUrl: candidate.coverArtUrl || '',
     discogsExternalId: candidate.externalId,
   };
@@ -172,6 +175,8 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
       format?: string;
       barcode?: string;
       genre?: string;
+      styles?: string[];
+      style?: string;
       country?: string;
       coverArtUrl?: string;
       discogsExternalId?: string;
@@ -190,6 +195,7 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
       form: formVm,
       countryOptions: COUNTRY_OPTIONS,
       genreOptions: RELEASE_GENRES,
+      styleOptions: RELEASE_STYLES,
       formatCharacteristicOptions: VINYL_FORMAT_FILTERS,
     });
   } catch (error) {
@@ -200,7 +206,7 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
 export async function postCreateCustomRelease(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const {
-      artist, title, label, catalogueNumber, releaseYear, format, barcode, genre, country, countryCode, formatCharacteristics,
+      artist, title, label, catalogueNumber, releaseYear, format, barcode, genre, style, styles, country, countryCode, formatCharacteristics,
       coverArtUrl: submittedCoverArtUrl,
       discogsExternalId: submittedDiscogsExternalId,
     } = req.body;
@@ -242,6 +248,7 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
         genre: genre || undefined,
         country: country || undefined,
         countryCode: countryCode || undefined,
+        styles: styles || (typeof style === 'string' && style.trim() ? style.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined),
         formatCharacteristics: submittedFormatCharacteristics,
         coverArtUrl,
         externalSource: discogsExternalId ? 'discogs' : 'custom',
@@ -261,6 +268,7 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
         form: formVm,
         countryOptions: COUNTRY_OPTIONS,
         genreOptions: RELEASE_GENRES,
+        styleOptions: RELEASE_STYLES,
         formatCharacteristicOptions: VINYL_FORMAT_FILTERS,
       });
     }
