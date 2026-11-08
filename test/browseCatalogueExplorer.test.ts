@@ -2,7 +2,7 @@ import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
 import { VINYL_FORMAT_FILTERS } from '../src/domain/releaseFormat';
-import { RELEASE_STYLES } from '../src/domain/releaseMetadata';
+import { RELEASE_STYLES, STYLE_PARENT_GENRES } from '../src/domain/releaseMetadata';
 
 const BASE_URL = 'https://thevinyldrop.test';
 
@@ -41,6 +41,7 @@ async function renderBrowseExplorer(
     formatOptions: VINYL_FORMAT_FILTERS,
     genreOptions: ['Hip Hop', 'Funk / Soul', 'Jazz', 'Electronic', 'Rock', 'Reggae'],
     styleOptions,
+    styleParentGenres: STYLE_PARENT_GENRES,
     whiteLabelAvailable: false,
     errorMessage: null,
   });
@@ -143,6 +144,15 @@ describe('Desktop Browse Catalogue Explorer', () => {
     expect(html).toContain('aria-label="12-inch, selected"');
     expect(html).toContain('aria-label="Catalogue explorer"');
     expect(html).toContain('aria-label="Browse catalogue"');
+  });
+
+  it('allows a Style filter independently of a selected Genre', async () => {
+    const html = await renderBrowseExplorer({ style: 'House' });
+
+    expect(html).toContain('<option value="">All Genres</option>');
+    expect(html).toContain('<option value="House" selected>House</option>');
+    expect(html).toContain('data-explorer-style="House"');
+    expect(html).toContain('data-parent-genre="Electronic"');
   });
 
   it('renders hierarchical styles under their parent genres with multi-parent support (Issue #391)', async () => {
