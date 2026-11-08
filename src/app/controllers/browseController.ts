@@ -3,7 +3,7 @@ import { hasExplicitWhiteLabelInventory, searchBrowseListings, searchDigListings
 import { parseVinylFormatFilters, resolveWhiteLabelFilter, toggleVinylFormatFilter, VINYL_FORMAT_FILTERS } from '../../domain/releaseFormat';
 import { renderWithLayout } from '../utils/render';
 import { ConditionGrade, CONDITION_GRADES } from '../../db/schema/enums';
-import { RELEASE_GENRES, RELEASE_STYLES, resolveCanonicalGenre, resolveCanonicalStyle } from '../../domain/releaseMetadata';
+import { RELEASE_GENRES, RELEASE_STYLES, STYLE_PARENT_GENRES, resolveCanonicalGenre, resolveCanonicalStyle } from '../../domain/releaseMetadata';
 
 function parseEuroQueryParamToCentsStrict(param?: unknown): number | undefined | null {
   if (param === undefined || param === null) return undefined;
@@ -99,6 +99,7 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
           formatOptions: VINYL_FORMAT_FILTERS,
           genreOptions: RELEASE_GENRES,
           styleOptions: RELEASE_STYLES,
+          styleParentGenres: STYLE_PARENT_GENRES,
           whiteLabelAvailable,
         },
         next
@@ -135,6 +136,7 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
         formatOptions: VINYL_FORMAT_FILTERS,
         genreOptions: RELEASE_GENRES,
         styleOptions: RELEASE_STYLES,
+        styleParentGenres: STYLE_PARENT_GENRES,
         whiteLabelAvailable,
         filters: {
           q,
