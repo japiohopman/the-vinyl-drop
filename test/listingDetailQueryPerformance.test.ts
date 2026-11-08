@@ -26,7 +26,7 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
   const draftReleaseId = '82000000-0000-4000-8000-000000000002';
   const copyId = '83000000-0000-4000-8000-000000000001';
   const draftCopyId = '83000000-0000-4000-8000-000000000002';
-  const listingId = '84000000-0000-4000-8000-000000000001';
+  const listingId = '84000000-0000-4000-8000-00000000000a';
   const draftListingId = '84000000-0000-4000-8000-000000000002';
 
   beforeAll(async () => {
@@ -480,6 +480,15 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(result).toHaveLength(2);
     expect(result[0].content).toBe('Would you consider a local pickup?');
     expect(queries).toHaveLength(1);
+
+    const unhyphenated = listingId.replace(/-/g, '');
+    const unhyphenatedResult = await getListingCommentsForResolvedListing(
+      unhyphenated,
+      { id: listingId, status: 'published', sellerId },
+      undefined,
+      db
+    );
+    expect(unhyphenatedResult).toHaveLength(2);
   });
 
   it('blocks comments when the listing is unpublished after the detail snapshot was resolved', async () => {
@@ -494,7 +503,7 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
             visitorId,
             db
           )
-        ).rejects.toBeInstanceOf(AuthorizationError);
+        ).rejects.toBeInstanceOf(NotFoundError);
       });
 
       expect(queries).toHaveLength(1);
