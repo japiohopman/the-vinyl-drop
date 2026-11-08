@@ -126,25 +126,25 @@ describe('Desktop Browse Catalogue Explorer', () => {
 
   it('renders the disclosure open by default and marks selected entries accessibly', async () => {
     const html = await renderBrowseExplorer({
-      genre: 'Soul',
+      genre: 'Funk / Soul',
       formats: ['12-inch'],
     });
 
     expect(html).toMatch(/<details class="browse-explorer-disclosure" open>/);
     expect(html).toContain('<span class="browse-explorer-summary-selection">Funk / Soul · 12-inch</span>');
-    expect(html).toMatch(/data-explorer-genre="Soul"[\s\S]*?aria-current="page"/);
+    expect(html).toMatch(/data-explorer-genre="Funk / Soul"[\s\S]*?aria-current="page"/);
     expect(html).toMatch(/data-explorer-format="12-inch"[\s\S]*?aria-current="page"/);
     expect(html).toContain('aria-label="Catalogue explorer"');
     expect(html).toContain('aria-label="Browse catalogue"');
   });
 
   it('shows a permanent rail only at desktop widths and keeps result columns readable', () => {
-    const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style-after-activity.css'), 'utf8');
+    const css = fs.readFileSync(path.join(process.cwd(), 'public/css/browse-catalogue-explorer.css'), 'utf8');
     expect(css).toContain('@media (min-width: 1024px)');
     expect(css).toContain('grid-template-columns: minmax(190px, 216px) minmax(0, 1fr)');
     expect(css).toContain('@media (min-width: 1280px)');
-    expect(css).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
-    expect(css).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))');
+    expect(css).toContain('grid-template-columns: repeat(2, minmax(248px, 1fr))');
+    expect(css).toContain('grid-template-columns: repeat(3, minmax(248px, 1fr))');
     expect(css).toContain('@media (max-width: 1023px)');
     expect(css).toContain('.browse-catalogue-explorer {\n    display: none !important;');
   });
