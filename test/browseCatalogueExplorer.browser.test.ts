@@ -163,6 +163,9 @@ describe('Desktop Browse Catalogue Explorer — browser behavior', () => {
       const selectedState = disclosure.locator('.browse-explorer-summary-selection');
       expect(await disclosure.getAttribute('open')).not.toBeNull();
       expect(await selectedState.textContent()).toBe('Funk / Soul · 12-inch');
+      expect(await disclosure.locator('[data-explorer-format="12-inch"]').getAttribute('aria-label'))
+        .toBe('12-inch, selected');
+      expect(await disclosure.locator('[data-explorer-format="12-inch"]').getAttribute('aria-current')).toBeNull();
 
       await summary.click();
       expect(await disclosure.getAttribute('open')).toBeNull();
