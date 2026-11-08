@@ -31,6 +31,7 @@ import {
   deleteListingPhoto,
   findPhotoById,
   findPhotosByListingId,
+  findPublicListingPhotosByListingId,
   findDigPhotosByListingIds,
   updateListingPhotoEditor,
   updateListingPhotoStoragePath,
@@ -50,6 +51,8 @@ import {
   findHomeDiscoveryListingsByCursor as findHomeDiscoveryInRepo,
   JoinedListingRecord,
   ListingSearchRecord,
+  PublicListingDetailRecord,
+  findPublicListingDetailById,
   searchListings,
   hasExplicitWhiteLabelInventory as hasWhiteLabelInRepo,
   SearchListingsParams,
@@ -433,6 +436,44 @@ export async function getListingWithDetailsForView(
   }
 
   return detailed;
+}
+
+export type PublicListingPhotoViewModel = Omit<PublicListingPhotoRecord, 'storagePath'> & {
+  publicUrl: string;
+};
+
+export type PublicListingDetailViewModel = PublicListingDetailRecord & {
+  photos: PublicListingPhotoViewModel[];
+};
+
+/**
+ * Read the public listing detail graph with one joined core query and one
+ * bounded public-photo query. The view model contains no raw Storage paths
+ * or photo editor/source metadata.
+ */
+export async function getPublicListingDetailsForView(
+  listingId: string,
+  requestingUserId?: string,
+  dbOverride?: DbInstance
+): Promise<PublicListingDetailViewModel> {
+  const details = await findPublicListingDetailById(listingId, dbOverride);
+  if (!details) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  // Preserve the existing public visibility boundary:
+  // non-published listings are available only to their seller.
+  if (details.listing.status !== 'published' && details.listing.sellerId !== requestingUserId) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  const photoRecords = await findPublicListingPhotosByListingId(listingId, dbOverride);
+  const photos = photoRecords.map(({ storagePath, ...photo }) => ({
+    ...photo,
+    publicUrl: getPhotoPublicUrl(storagePath),
+  }));
+
+  return { ...details, photos };
 }
 
 export async function getHomeFeedListings(
