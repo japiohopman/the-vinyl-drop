@@ -200,18 +200,9 @@
         filters.whiteLabel ? 'whiteLabel=1' : '',
         'view=' + encodeURIComponent(currentView)
       ].filter(Boolean); %>
-      <% const styleParentMap = {
-        'Dancehall': ['Reggae'],
-        'Ska': ['Reggae'],
-        'Punk': ['Rock'],
-        'House': ['Electronic'],
-        'Techno': ['Electronic'],
-        'Disco': ['Funk / Soul', 'Electronic'],
-        'Funk': ['Funk / Soul'],
-        'Soul': ['Funk / Soul'],
-        'Classic Rock': ['Rock'],
-        'R&B / Rhythm & Blues': ['Funk / Soul']
-      }; %>
+      <% const styleParentMap = (typeof styleParentGenres !== 'undefined' && styleParentGenres)
+        ? styleParentGenres
+        : {}; %>
       <% const browseExplorerHref = function(nextGenre, nextStyle, nextFormats) {
         const params = browseExplorerBaseParams.slice();
         if (nextGenre) params.push('genre=' + encodeURIComponent(nextGenre));
