@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { drizzle } from 'drizzle-orm/pglite';
@@ -147,39 +148,6 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
 
     await db.insert(listingPhotos).values([
       {
-        id: '85000000-0000-4000-8000-000000000001',
-        listingId,
-        storagePath: `listings/${listingId}/front.webp`,
-        sourceStoragePath: `private-source/${listingId}/front-original.webp`,
-        sourceIsLegacy: false,
-        editorState: {
-          version: 1,
-          sourceWidth: 1200,
-          sourceHeight: 1200,
-          corners: [
-            { x: 0, y: 0 },
-            { x: 1000, y: 0 },
-            { x: 1000, y: 1000 },
-            { x: 0, y: 1000 },
-          ],
-          adjustments: {
-            exposure: 0,
-            blackPoint: 0,
-            shadows: 0,
-            contrast: 0,
-            highlights: 0,
-            whitePoint: 100,
-            gamma: 1,
-            temperature: 0,
-            tint: 0,
-            saturation: 0,
-          },
-        },
-        role: 'front_cover',
-        displayOrder: 0,
-        altText: 'Front cover of Blue Spirits',
-      },
-      {
         id: '85000000-0000-4000-8000-000000000002',
         listingId,
         storagePath: `listings/${listingId}/back.webp`,
@@ -211,6 +179,75 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
         role: 'back_cover',
         displayOrder: 1,
         altText: 'Back cover of Blue Spirits',
+        createdAt: new Date('2026-01-01T12:00:00.000Z'),
+      },
+      {
+        id: '85000000-0000-4000-8000-000000000003',
+        listingId,
+        storagePath: `listings/${listingId}/detail.webp`,
+        sourceStoragePath: `private-source/${listingId}/detail-original.webp`,
+        sourceIsLegacy: false,
+        editorState: {
+          version: 1,
+          sourceWidth: 1200,
+          sourceHeight: 1200,
+          corners: [
+            { x: 0, y: 0 },
+            { x: 1000, y: 0 },
+            { x: 1000, y: 1000 },
+            { x: 0, y: 1000 },
+          ],
+          adjustments: {
+            exposure: 0,
+            blackPoint: 0,
+            shadows: 0,
+            contrast: 0,
+            highlights: 0,
+            whitePoint: 100,
+            gamma: 1,
+            temperature: 0,
+            tint: 0,
+            saturation: 0,
+          },
+        },
+        role: 'detail',
+        displayOrder: 0,
+        altText: 'Detail close-up for Blue Spirits',
+        createdAt: new Date('2026-01-01T11:00:00.000Z'),
+      },
+      {
+        id: '85000000-0000-4000-8000-000000000001',
+        listingId,
+        storagePath: `listings/${listingId}/front.webp`,
+        sourceStoragePath: `private-source/${listingId}/front-original.webp`,
+        sourceIsLegacy: false,
+        editorState: {
+          version: 1,
+          sourceWidth: 1200,
+          sourceHeight: 1200,
+          corners: [
+            { x: 0, y: 0 },
+            { x: 1000, y: 0 },
+            { x: 1000, y: 1000 },
+            { x: 0, y: 1000 },
+          ],
+          adjustments: {
+            exposure: 0,
+            blackPoint: 0,
+            shadows: 0,
+            contrast: 0,
+            highlights: 0,
+            whitePoint: 100,
+            gamma: 1,
+            temperature: 0,
+            tint: 0,
+            saturation: 0,
+          },
+        },
+        role: 'front_cover',
+        displayOrder: 0,
+        altText: 'Front cover of Blue Spirits',
+        createdAt: new Date('2026-01-01T10:00:00.000Z'),
       },
     ]);
 
@@ -250,6 +287,7 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     if (pg) await pg.close();
   });
 
+  /** Record database statements issued while running an isolated test request or service call. */
   async function captureQueries<T>(run: () => Promise<T>): Promise<{ result: T; queries: string[] }> {
     const queries: string[] = [];
     const originalQuery = pg.query.bind(pg);
@@ -342,7 +380,7 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(detail.status).toBe(200);
     expect(detail.text).toContain('Private Draft Pressing');
     expect(detail.text).toContain('Seller-only draft notes.');
-    expect(detailQueries).toHaveLength(3);
+    expect(detailQueries).toHaveLength(4);
 
     const { result: commentsPage, queries: commentQueries } = await captureQueries(() =>
       request(createApp())
@@ -393,7 +431,12 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     const detail = await getPublicListingDetailsForView(listingId, undefined, db);
     expect(Object.keys(detail.seller).sort()).toEqual(['displayName', 'id', 'username']);
     expect(Object.keys(detail.photos[0]).sort()).toEqual(['altText', 'displayOrder', 'id', 'publicUrl', 'role']);
-    expect(detail.photos.map((photo) => photo.role)).toEqual(['front_cover', 'back_cover']);
+    expect(detail.photos.map((photo) => photo.id)).toEqual([
+      '85000000-0000-4000-8000-000000000001',
+      '85000000-0000-4000-8000-000000000003',
+      '85000000-0000-4000-8000-000000000002',
+    ]);
+    expect(detail.photos.map((photo) => photo.role)).toEqual(['front_cover', 'detail', 'back_cover']);
     expect(detail.photos[0].publicUrl).toContain(`listings/${listingId}/front.webp`);
     expect(JSON.stringify(detail)).not.toContain('private-source');
     expect(JSON.stringify(detail)).not.toContain('internalEditorSecret');
@@ -420,5 +463,44 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
         db
       )
     ).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('treats uppercase and lowercase forms of the same UUID as the same listing', async () => {
+    const { result, queries } = await captureQueries(() =>
+      getListingCommentsForResolvedListing(
+        listingId.toUpperCase(),
+        { id: listingId, status: 'published', sellerId },
+        undefined,
+        db
+      )
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[0].content).toBe('Would you consider a local pickup?');
+    expect(queries).toHaveLength(1);
+  });
+
+  it('blocks comments when the listing is unpublished after the detail snapshot was resolved', async () => {
+    await db.update(listings).set({ status: 'draft' }).where(eq(listings.id, listingId));
+
+    try {
+      const { queries } = await captureQueries(async () => {
+        await expect(
+          getListingCommentsForResolvedListing(
+            listingId,
+            { id: listingId, status: 'published', sellerId },
+            visitorId,
+            db
+          )
+        ).rejects.toBeInstanceOf(AuthorizationError);
+      });
+
+      expect(queries).toHaveLength(1);
+      expect(queries[0].toLowerCase()).toContain('left join "comments"');
+      expect(queries[0].toLowerCase()).toContain('"listings"."status"');
+      expect(queries[0].toLowerCase()).toContain('"listings"."seller_id"');
+    } finally {
+      await db.update(listings).set({ status: 'published' }).where(eq(listings.id, listingId));
+    }
   });
 });
