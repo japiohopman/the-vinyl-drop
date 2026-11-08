@@ -325,7 +325,9 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(queries[0].toLowerCase()).toContain('inner join "profiles"');
     expect(queries[0].toLowerCase()).toContain('from "listings"');
     expect(queries[1].toLowerCase()).toContain('from "listing_photos"');
-    expect(queries[2].toLowerCase()).toContain('from "comments"');
+    expect(queries[2].toLowerCase()).toContain('from "listings"');
+    expect(queries[2].toLowerCase()).toContain('left join "comments"');
+    expect(queries[2].toLowerCase()).toContain('left join "profiles"');
     for (const query of queries) {
       expect(query.toLowerCase()).not.toContain('source_storage_path');
       expect(query.toLowerCase()).not.toContain('source_is_legacy');
@@ -346,7 +348,9 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(queries).toHaveLength(4);
     expect(queries[0].toLowerCase()).toContain('from "listings"');
     expect(queries[1].toLowerCase()).toContain('from "listing_photos"');
-    expect(queries[2].toLowerCase()).toContain('from "comments"');
+    expect(queries[2].toLowerCase()).toContain('from "listings"');
+    expect(queries[2].toLowerCase()).toContain('left join "comments"');
+    expect(queries[2].toLowerCase()).toContain('left join "profiles"');
     expect(queries[3].toLowerCase()).toContain('from "favorites"');
   });
 
@@ -368,7 +372,9 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(queries).toHaveLength(3);
     expect(queries[0].toLowerCase()).toContain('from "listings"');
     expect(queries[1].toLowerCase()).toContain('from "listing_photos"');
-    expect(queries[2].toLowerCase()).toContain('from "comments"');
+    expect(queries[2].toLowerCase()).toContain('from "listings"');
+    expect(queries[2].toLowerCase()).toContain('left join "comments"');
+    expect(queries[2].toLowerCase()).toContain('left join "profiles"');
   });
 
   it('preserves seller access to their own unpublished listing and its comments', async () => {
