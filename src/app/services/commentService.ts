@@ -45,13 +45,9 @@ export async function getListingCommentsForResolvedListing(
   requestingUserId?: string,
   dbOverride?: DbInstance
 ): Promise<CommentWithAuthor[]> {
-  // PostgreSQL UUID values are case-insensitive; compare their canonical text
-  // representation rather than treating an uppercase URL as a different ID.
-  if (listing.id.toLowerCase() !== expectedListingId.toLowerCase()) {
-    throw new NotFoundError('Listing not found');
-  }
-
-  // Fetch the current listing status and comments in the same SQL statement.
+  // PostgreSQL accepts equivalent UUID text representations (including uppercase
+  // and unhyphenated input). Compare the canonical IDs returned by both reads.
+  // Fetch current listing status and comments in the same SQL statement.
   // This closes the race where a listing is unpublished after detail resolution
   // but before comments are read, without reintroducing a second listing SELECT.
   const result = await findCommentsWithCurrentListingVisibility(
@@ -64,8 +60,14 @@ export async function getListingCommentsForResolvedListing(
     throw new NotFoundError('Listing not found');
   }
 
+  if (result.listing.id !== listing.id) {
+    throw new NotFoundError('Listing not found');
+  }
+
   if (result.listing.status !== 'published' && result.listing.sellerId !== requestingUserId) {
-    throw new AuthorizationError('You do not have access to comments on this listing');
+    // This helper is used by public GET routes; unavailable listings must keep
+    // the same not-found response as the initial public detail lookup.
+    throw new NotFoundError('Listing not found');
   }
 
   return result.comments;
