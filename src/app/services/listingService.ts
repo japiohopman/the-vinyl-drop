@@ -32,6 +32,7 @@ import {
   findPhotoById,
   findPhotosByListingId,
   findPublicListingPhotosByListingId,
+  PublicListingPhotoRecord,
   findDigPhotosByListingIds,
   updateListingPhotoEditor,
   updateListingPhotoStoragePath,
