@@ -414,8 +414,21 @@ async function run(): Promise<void> {
         }
 
         const screenshotPath = path.resolve(evidencePath, 'browse-list-' + viewport.width + 'px.png');
-        await page.screenshot({ path: screenshotPath, fullPage: true, animations: 'disabled' });
-        console.log('[browse-evidence] PASS Browse list mode @ ' + viewport.width + 'px — location labels visible and unclipped');
+        let screenshotMode = 'full-page';
+        try {
+          await page.screenshot({ path: screenshotPath, fullPage: true, animations: 'disabled' });
+        } catch (screenshotError) {
+          // Chromium can reject a full-page capture for a single narrow viewport even
+          // after the layout assertions pass. Preserve the evidence with a viewport capture.
+          screenshotMode = 'viewport fallback';
+          const message = screenshotError instanceof Error ? screenshotError.message : String(screenshotError);
+          console.warn(
+            '[browse-evidence] Full-page list screenshot unavailable @ ' + viewport.width +
+              'px; retrying visible viewport only: ' + message
+          );
+          await page.screenshot({ path: screenshotPath, fullPage: false, animations: 'disabled' });
+        }
+        console.log('[browse-evidence] PASS Browse list mode @ ' + viewport.width + 'px — location labels visible and unclipped (' + screenshotMode + ')');
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         failures.push(message);
