@@ -19,8 +19,54 @@ describe('Desktop Browse Catalogue Explorer — browser behavior', () => {
   beforeAll(async () => {
     (listingService.hasExplicitWhiteLabelInventory as jest.Mock).mockResolvedValue(true);
     (listingService.searchBrowseListings as jest.Mock).mockResolvedValue({
-      items: [],
-      totalCount: 0,
+      items: [
+        {
+          id: 'browse-explorer-one',
+          title: '3 Feet High and Rising',
+          artist: 'De La Soul',
+          releaseYear: 1989,
+          format: 'LP',
+          priceFormatted: '€25.00',
+          isTrade: false,
+          mediaCondition: 'VG+',
+          sleeveCondition: 'VG',
+          sellerUsername: 'crate_digger',
+          sellerLocation: 'Amsterdam Oost',
+          imageUrl: '/assets/vinyl-placeholder.svg',
+          url: '/listings/browse-explorer-one',
+        },
+        {
+          id: 'browse-explorer-two',
+          title: 'The Low End Theory',
+          artist: 'A Tribe Called Quest',
+          releaseYear: 1991,
+          format: 'LP',
+          priceFormatted: '€30.00',
+          isTrade: false,
+          mediaCondition: 'VG',
+          sleeveCondition: 'VG+',
+          sellerUsername: 'crate_digger',
+          sellerLocation: 'Amsterdam Oost',
+          imageUrl: '/assets/vinyl-placeholder.svg',
+          url: '/listings/browse-explorer-two',
+        },
+        {
+          id: 'browse-explorer-three',
+          title: 'Black Sunday',
+          artist: 'Cypress Hill',
+          releaseYear: 1993,
+          format: 'LP',
+          priceFormatted: '€22.00',
+          isTrade: false,
+          mediaCondition: 'VG+',
+          sleeveCondition: 'VG',
+          sellerUsername: 'crate_digger',
+          sellerLocation: 'Amsterdam Oost',
+          imageUrl: '/assets/vinyl-placeholder.svg',
+          url: '/listings/browse-explorer-three',
+        },
+      ],
+      totalCount: 3,
       page: 1,
       limit: 12,
       totalPages: 1,
@@ -148,6 +194,21 @@ describe('Desktop Browse Catalogue Explorer — browser behavior', () => {
         expect(dimensions.document).toBeLessThanOrEqual(width);
         expect(dimensions.body).toBeLessThanOrEqual(width);
         expect(await page.locator('.browse-catalogue-explorer').isVisible()).toBe(width >= 1024);
+        expect(await page.locator('.listing-card').count()).toBe(3);
+
+        if (width >= 1024) {
+          const grid = await page.locator('.browse-results-content > .listing-grid').evaluate((element) => {
+            const tracks = getComputedStyle(element).gridTemplateColumns
+              .split(/\\s+/)
+              .map((track) => Number.parseFloat(track));
+            return {
+              columns: tracks.length,
+              minimumTrackWidth: Math.min(...tracks),
+            };
+          });
+          expect(grid.columns).toBe(width >= 1280 ? 3 : 2);
+          expect(grid.minimumTrackWidth).toBeGreaterThanOrEqual(248);
+        }
       }
     } finally {
       await context.close();
