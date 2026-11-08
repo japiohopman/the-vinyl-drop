@@ -8,9 +8,10 @@ import path from 'path';
 import { createApp } from '../src/app';
 import * as dbModule from '../src/db';
 import * as authService from '../src/app/services/authService';
+import * as commentServiceModule from '../src/app/services/commentService';
 import { getPublicListingDetailsForView } from '../src/app/services/listingService';
 import { getListingCommentsForResolvedListing } from '../src/app/services/commentService';
-import { AuthorizationError, NotFoundError } from '../src/app/services/errors';
+import { NotFoundError } from '../src/app/services/errors';
 import { comments, favorites, listings, listingPhotos, physicalCopies, profiles, releases } from '../src/db/schema';
 
 describe('Issue #384 — Public listing detail query fan-out and projections', () => {
@@ -433,6 +434,38 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(commentQueries).toHaveLength(1);
   });
 
+  it.each([
+    ['/listings/' + listingId, 'listing detail'],
+    ['/listings/' + listingId + '/comments', 'comments page'],
+  ])('renders the public 404 when %s becomes unavailable before comments are read (%s)', async (route) => {
+    const commentsSpy = jest.spyOn(commentServiceModule, 'getListingCommentsForResolvedListing')
+      .mockRejectedValue(new NotFoundError('Listing not found'));
+
+    try {
+      const response = await request(createApp()).get(route);
+      expect(response.status).toBe(404);
+      expect(response.text).toContain('The requested record listing was not found or is no longer available.');
+      expect(response.text).not.toContain('403 Forbidden');
+    } finally {
+      commentsSpy.mockRestore();
+    }
+  });
+
+  it.each([
+    ['/listings/' + listingId, 'listing detail'],
+    ['/listings/' + listingId + '/comments', 'comments page'],
+  ])('preserves unrelated authorization errors from %s (%s)', async (route) => {
+    const commentsSpy = jest.spyOn(commentServiceModule, 'getListingCommentsForResolvedListing')
+      .mockRejectedValue(new Error('Unrelated handler failure'));
+
+    try {
+      const response = await request(createApp()).get(route);
+      expect(response.status).toBe(500);
+    } finally {
+      commentsSpy.mockRestore();
+    }
+  });
+
   it('returns only public photo and seller projections from the service view model', async () => {
     const detail = await getPublicListingDetailsForView(listingId, undefined, db);
     expect(Object.keys(detail.seller).sort()).toEqual(['displayName', 'id', 'username']);
@@ -482,13 +515,16 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(queries).toHaveLength(1);
 
     const unhyphenated = listingId.replace(/-/g, '');
-    const unhyphenatedResult = await getListingCommentsForResolvedListing(
-      unhyphenated,
-      { id: listingId, status: 'published', sellerId },
-      undefined,
-      db
+    const { result: unhyphenatedResult, queries: unhyphenatedQueries } = await captureQueries(() =>
+      getListingCommentsForResolvedListing(
+        unhyphenated,
+        { id: listingId, status: 'published', sellerId },
+        undefined,
+        db
+      )
     );
     expect(unhyphenatedResult).toHaveLength(2);
+    expect(unhyphenatedQueries).toHaveLength(1);
   });
 
   it('blocks comments when the listing is unpublished after the detail snapshot was resolved', async () => {
