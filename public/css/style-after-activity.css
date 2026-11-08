@@ -740,9 +740,11 @@
 
 .browse-explorer-disclosure > summary {
   display: flex;
-  min-height: 48px;
-  align-items: center;
-  justify-content: space-between;
+  min-height: 56px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-1);
   padding: var(--space-3) var(--space-4);
   color: var(--color-ink);
   font-family: var(--font-display);
@@ -751,6 +753,17 @@
   letter-spacing: var(--letter-spacing-uppercase);
   cursor: pointer;
   list-style-position: inside;
+}
+
+.browse-explorer-summary-selection {
+  max-width: 100%;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xs);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: var(--line-height-base);
+  overflow-wrap: anywhere;
 }
 
 .browse-explorer-disclosure > summary:focus-visible,
