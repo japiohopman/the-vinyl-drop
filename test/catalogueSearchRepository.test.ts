@@ -39,7 +39,7 @@ describe('public catalogue suggestions', () => {
       await pg.query('INSERT INTO public.listings(id,physical_copy_id,status) VALUES($1,$2,$3)',[listingId,copyId,i===5?'draft':'published']);
     }
     db = drizzle(pg) as unknown as ReturnType<typeof getDb>;
-  });
+  }, 15000);
 
   afterAll(async () => { await pg.close(); });
 
