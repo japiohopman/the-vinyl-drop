@@ -255,7 +255,7 @@
                     data-explorer-format="<%= option.value %>"
                     class="browse-explorer-link <%= selected ? 'is-selected' : '' %>"
                     href="<%= browseExplorerHref(filters.genre, nextFormats) %>"
-                    <%- selected ? 'aria-current="page"' : '' %>
+                    aria-label="<%= option.label %><%= selected ? ', selected' : '' %>"
                   ><%= option.label %></a>
                 </li>
               <% }); %>
