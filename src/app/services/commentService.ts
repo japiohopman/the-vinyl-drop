@@ -5,6 +5,7 @@ import {
   CommentWithAuthor,
   createComment as createCommentInRepo,
   findCommentsByListingId,
+  findCommentsWithCurrentListingVisibility,
 } from '../repositories/commentRepository';
 import { findListingById } from '../repositories/listingRepository';
 import { AuthorizationError, NotFoundError, ValidationError } from './errors';
@@ -44,15 +45,30 @@ export async function getListingCommentsForResolvedListing(
   requestingUserId?: string,
   dbOverride?: DbInstance
 ): Promise<CommentWithAuthor[]> {
-  if (listing.id !== expectedListingId) {
+  // PostgreSQL UUID values are case-insensitive; compare their canonical text
+  // representation rather than treating an uppercase URL as a different ID.
+  if (listing.id.toLowerCase() !== expectedListingId.toLowerCase()) {
     throw new NotFoundError('Listing not found');
   }
 
-  if (listing.status !== 'published' && listing.sellerId !== requestingUserId) {
+  // Fetch the current listing status and comments in the same SQL statement.
+  // This closes the race where a listing is unpublished after detail resolution
+  // but before comments are read, without reintroducing a second listing SELECT.
+  const result = await findCommentsWithCurrentListingVisibility(
+    expectedListingId,
+    requestingUserId,
+    { limit: 50 },
+    dbOverride
+  );
+  if (!result) {
+    throw new NotFoundError('Listing not found');
+  }
+
+  if (result.listing.status !== 'published' && result.listing.sellerId !== requestingUserId) {
     throw new AuthorizationError('You do not have access to comments on this listing');
   }
 
-  return findCommentsByListingId(expectedListingId, { limit: 50 }, dbOverride);
+  return result.comments;
 }
 
 export async function addComment(
