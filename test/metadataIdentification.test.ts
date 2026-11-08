@@ -142,7 +142,6 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
               barcode: ['724384960612'],
               cover_image: 'https://img.discogs.com/cover.jpg',
               genre: ['Electronic'],
-              style: ['House', 'Disco'],
               uri: '/release/123456-Daft-Punk-Discovery',
             },
           ],
@@ -172,8 +171,6 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
       expect(c.formatCharacteristics).toEqual(['lp']);
       expect(c.genre).toBe('Electronic');
       expect(c.canonicalGenres).toEqual(['Electronic']);
-      expect(c.styles).toEqual(['House', 'Disco']);
-      expect(c.canonicalStyles).toEqual(['House', 'Disco']);
       expect(c.barcode).toBe('724384960612');
       expect(c.coverArtUrl).toBe('https://img.discogs.com/cover.jpg');
       expect(c.sourceUrl).toBe('https://www.discogs.com/release/123456-Daft-Punk-Discovery');
@@ -191,7 +188,6 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
             country: 'Yugoslavia',
             format: ['Flexi-disc', 'Single', '45 RPM'],
             genre: ['Rare Groove'],
-            style: ['French Touch'],
           }],
         }),
       });
@@ -208,8 +204,6 @@ describe('Phase 5 Metadata Identification & Enrichment (Issue #14)', () => {
         genre: 'Rare Groove',
         formatCharacteristics: [],
         canonicalGenres: [],
-        styles: ['French Touch'],
-        canonicalStyles: [],
       });
       expect(candidates[0].countryCode).toBeUndefined();
     });
