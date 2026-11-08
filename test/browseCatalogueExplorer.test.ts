@@ -131,6 +131,7 @@ describe('Desktop Browse Catalogue Explorer', () => {
     });
 
     expect(html).toMatch(/<details class="browse-explorer-disclosure" open>/);
+    expect(html).toContain('<span class="browse-explorer-summary-selection">Soul · 12-inch</span>');
     expect(html).toMatch(/data-explorer-genre="Soul"[\s\S]*?aria-current="page"/);
     expect(html).toMatch(/data-explorer-format="12-inch"[\s\S]*?aria-current="page"/);
     expect(html).toContain('aria-label="Catalogue explorer"');
