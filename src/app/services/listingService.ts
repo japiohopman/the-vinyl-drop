@@ -45,6 +45,7 @@ import {
   findMyListingsBySellerId,
   MyListingsRecord,
   findPublishedListingsBySellerId,
+  countPublishedListingsBySellerId,
   findRecentPublishedListings as findRecentInRepo,
   findHomeDiscoveryListingsByCursor as findHomeDiscoveryInRepo,
   JoinedListingRecord,
@@ -538,6 +539,16 @@ export async function searchBrowseListings(
     limit: result.limit,
     totalPages: result.totalPages,
   };
+}
+
+/**
+ * Count published listings for a seller directly without fetching listing card projections or photos.
+ */
+export async function countSellerPublishedListings(
+  sellerId: string,
+  dbOverride?: DbInstance
+): Promise<number> {
+  return countPublishedListingsBySellerId(sellerId, dbOverride);
 }
 
 export async function getSellerPublishedListings(

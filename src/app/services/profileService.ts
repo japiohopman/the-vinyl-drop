@@ -1,7 +1,13 @@
-import { findProfileById, findProfileByUsername, updateProfile as updateProfileInRepo } from '../repositories/profileRepository';
+import {
+  findProfileById,
+  findProfileByUsername,
+  findPublicProfileByUsername,
+  updateProfile as updateProfileInRepo,
+} from '../repositories/profileRepository';
 import { Profile } from '../../db/schema/profiles';
 import { ProfileUpdateInput } from '../../validators/profile';
 import { getDb } from '../../db';
+import { getProfileAvatarPublicUrl } from './profileAvatarStorageService';
 
 type DbInstance = ReturnType<typeof getDb>;
 
@@ -19,8 +25,56 @@ export class ValidationError extends Error {
   }
 }
 
+/**
+ * Public profile presentation shape passed to EJS view templates.
+ * Raw avatarStoragePath and unrelated internal columns are omitted.
+ */
+export interface PublicProfileViewModel {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  avatarPublicUrl: string | null;
+  websiteUrl: string | null;
+  soundcloudUrl: string | null;
+  mixcloudUrl: string | null;
+  bio: string | null;
+  location: string | null;
+  createdAt: Date;
+}
+
 export async function getProfileByUsername(username: string, dbOverride?: DbInstance): Promise<Profile | null> {
   return findProfileByUsername(username, dbOverride);
+}
+
+/**
+ * Dedicated public profile read operation for public profile and Crate landing pages.
+ * Resolves the public avatar URL server-side and excludes raw storage path from the view model.
+ */
+export async function getPublicProfileByUsername(
+  username: string,
+  dbOverride?: DbInstance
+): Promise<PublicProfileViewModel | null> {
+  const record = await findPublicProfileByUsername(username, dbOverride);
+  if (!record) return null;
+
+  const avatarPublicUrl = record.avatarStoragePath
+    ? getProfileAvatarPublicUrl(record.avatarStoragePath)
+    : (record.avatarUrl || null);
+
+  return {
+    id: record.id,
+    username: record.username,
+    displayName: record.displayName,
+    avatarUrl: record.avatarUrl,
+    avatarPublicUrl,
+    websiteUrl: record.websiteUrl,
+    soundcloudUrl: record.soundcloudUrl,
+    mixcloudUrl: record.mixcloudUrl,
+    bio: record.bio,
+    location: record.location,
+    createdAt: record.createdAt,
+  };
 }
 
 export async function getProfileById(id: string, dbOverride?: DbInstance): Promise<Profile | null> {

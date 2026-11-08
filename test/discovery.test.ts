@@ -723,14 +723,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
 
   describe('Public Profile Landing and Crate Routes', () => {
     it('renders a compact public profile with a truthful Crate count and no listing grid', async () => {
-      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
-      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
-        items: [mockListingCard],
-        totalCount: 1,
-        page: 1,
-        limit: 12,
-        totalPages: 1,
-      });
+      (profileRepository.findPublicProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.countSellerPublishedListings as jest.Mock).mockResolvedValue(1);
 
       const app = createApp();
       const res = await request(app).get('/profiles/alice_records');
@@ -743,18 +737,13 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('href="/profiles/alice_records/crate"');
       expect(res.text).not.toContain('Blue Train');
       expect(res.text).not.toContain('class="listing-grid');
-      expect(listingService.getSellerPublishedListings).toHaveBeenCalledWith('alice_records', { page: 1 });
+      expect(listingService.countSellerPublishedListings).toHaveBeenCalledWith(mockProfileAlice.id);
+      expect(listingService.getSellerPublishedListings).not.toHaveBeenCalled();
     });
 
     it('keeps the legacy profile alias as the compact landing page', async () => {
-      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
-      (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
-        items: [mockListingCard],
-        totalCount: 1,
-        page: 1,
-        limit: 12,
-        totalPages: 1,
-      });
+      (profileRepository.findPublicProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.countSellerPublishedListings as jest.Mock).mockResolvedValue(1);
 
       const app = createApp();
       const res = await request(app).get('/profile/alice_records');
@@ -764,11 +753,13 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.text).toContain('View Crate');
       expect(res.text).not.toContain('Blue Train');
       expect(res.text).not.toContain('class="listing-grid');
+      expect(listingService.countSellerPublishedListings).toHaveBeenCalledWith(mockProfileAlice.id);
+      expect(listingService.getSellerPublishedListings).not.toHaveBeenCalled();
     });
 
     it('shows the owner drop action for an empty Crate without exposing drafts', async () => {
       mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUserAlice }, error: null });
-      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (profileRepository.findPublicProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
       (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
         items: [],
         totalCount: 0,
@@ -790,7 +781,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     });
 
     it('renders published listing cards on the dedicated Crate route', async () => {
-      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (profileRepository.findPublicProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
       (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
         items: [mockListingCard],
         totalCount: 1,
@@ -810,7 +801,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     });
 
     it('shows the correct empty Crate state for a visitor', async () => {
-      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileBob);
+      (profileRepository.findPublicProfileByUsername as jest.Mock).mockResolvedValue(mockProfileBob);
       (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
         items: [],
         totalCount: 0,
@@ -830,7 +821,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     });
 
     it('redirects legacy paginated profile URLs to the canonical Crate route', async () => {
-      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (profileRepository.findPublicProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
 
       const app = createApp();
       const res = await request(app).get('/profiles/alice_records?page=2');
@@ -838,10 +829,11 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
       expect(res.status).toBe(302);
       expect(res.header.location).toBe('/profiles/alice_records/crate?page=2');
       expect(listingService.getSellerPublishedListings).not.toHaveBeenCalled();
+      expect(listingService.countSellerPublishedListings).not.toHaveBeenCalled();
     });
 
     it('keeps pagination on the dedicated Crate route (12 items per page)', async () => {
-      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (profileRepository.findPublicProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
       (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
         items: [mockListingCard],
         totalCount: 15,
@@ -860,7 +852,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     });
 
     it('redirects an out-of-range Crate page to the last page when published records exist', async () => {
-      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (profileRepository.findPublicProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
       (listingService.getSellerPublishedListings as jest.Mock).mockResolvedValue({
         items: [],
         totalCount: 15,
@@ -880,7 +872,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     });
 
     it('returns 400 for malformed page parameters on both legacy profile and Crate URLs', async () => {
-      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (profileRepository.findPublicProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
 
       const app = createApp();
       const legacy = await request(app).get('/profiles/alice_records?page=invalid123');
@@ -970,8 +962,8 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     });
 
     it('should propagate database failure on GET /profiles/:username to error handler (500 status)', async () => {
-      (profileRepository.findProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
-      (listingService.getSellerPublishedListings as jest.Mock).mockRejectedValue(
+      (profileRepository.findPublicProfileByUsername as jest.Mock).mockResolvedValue(mockProfileAlice);
+      (listingService.countSellerPublishedListings as jest.Mock).mockRejectedValue(
         new Error('Database query error')
       );
 

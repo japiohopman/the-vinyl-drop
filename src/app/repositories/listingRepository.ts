@@ -186,6 +186,22 @@ export async function findPublishedListingsBySellerId(
     .where(and(eq(listings.sellerId, sellerId), eq(listings.status, 'published')));
 }
 
+/**
+ * Count published listings for a seller directly using the resolved seller profile ID.
+ * Avoids joining physical copies, releases, profiles, or querying photos.
+ */
+export async function countPublishedListingsBySellerId(
+  sellerId: string,
+  dbOverride?: DbInstance
+): Promise<number> {
+  const db = dbOverride || getDb();
+  const result = await db
+    .select({ total: count() })
+    .from(listings)
+    .where(and(eq(listings.sellerId, sellerId), eq(listings.status, 'published')));
+  return Number(result[0]?.total || 0);
+}
+
 export async function findRecentPublishedListings(
   limit = 10,
   dbOverride?: DbInstance
