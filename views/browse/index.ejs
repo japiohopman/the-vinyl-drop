@@ -177,6 +177,79 @@
     </details>
   </form>
 
+
+  <div class="browse-explorer-layout">
+    <aside class="browse-catalogue-explorer" aria-label="Catalogue explorer">
+      <% const browseExplorerBaseParams = [
+        filters.q ? 'q=' + encodeURIComponent(filters.q) : '',
+        filters.condition ? 'condition=' + encodeURIComponent(filters.condition) : '',
+        filters.minPrice ? 'minPrice=' + encodeURIComponent(filters.minPrice) : '',
+        filters.maxPrice ? 'maxPrice=' + encodeURIComponent(filters.maxPrice) : '',
+        filters.sort ? 'sort=' + encodeURIComponent(filters.sort) : '',
+        filters.whiteLabel ? 'whiteLabel=1' : '',
+        'view=' + encodeURIComponent(currentView)
+      ].filter(Boolean); %>
+      <% const browseExplorerHref = function(nextGenre, nextFormats) {
+        const params = browseExplorerBaseParams.slice();
+        if (nextGenre) params.push('genre=' + encodeURIComponent(nextGenre));
+        (nextFormats || []).forEach(function(format) {
+          params.push('format=' + encodeURIComponent(format));
+        });
+        return '/browse?' + params.join('&');
+      }; %>
+      <details class="browse-explorer-disclosure" open>
+        <summary>CATALOGUE EXPLORER</summary>
+        <nav class="browse-explorer-navigation" aria-label="Browse catalogue">
+          <a
+            data-explorer-all
+            class="browse-explorer-link <%= !filters.genre && selectedFormats.length === 0 ? 'is-selected' : '' %>"
+            href="<%= browseExplorerHref('', []) %>"
+            <%- !filters.genre && selectedFormats.length === 0 ? 'aria-current="page"' : '' %>
+          >All records</a>
+
+          <section class="browse-explorer-group" aria-labelledby="browse-explorer-genres">
+            <h2 id="browse-explorer-genres">Genres</h2>
+            <ul>
+              <% (Array.isArray(genreOptions) ? genreOptions : []).forEach(function(genreOption) { %>
+                <li>
+                  <a
+                    data-explorer-genre="<%= genreOption %>"
+                    class="browse-explorer-link <%= filters.genre === genreOption ? 'is-selected' : '' %>"
+                    href="<%= browseExplorerHref(genreOption, selectedFormats) %>"
+                    <%- filters.genre === genreOption ? 'aria-current="page"' : '' %>
+                  ><%= genreOption %></a>
+                </li>
+              <% }); %>
+            </ul>
+          </section>
+
+          <section class="browse-explorer-group" aria-labelledby="browse-explorer-formats">
+            <h2 id="browse-explorer-formats">Formats</h2>
+            <ul>
+              <% (Array.isArray(formatOptions) ? formatOptions : []).forEach(function(option) {
+                const selected = selectedFormats.includes(option.value);
+                const nextFormats = selected
+                  ? selectedFormats.filter(function(format) { return format !== option.value; })
+                  : selectedFormats.concat(option.value);
+              %>
+                <li>
+                  <a
+                    data-explorer-format="<%= option.value %>"
+                    class="browse-explorer-link <%= selected ? 'is-selected' : '' %>"
+                    href="<%= browseExplorerHref(filters.genre, nextFormats) %>"
+                    <%- selected ? 'aria-current="page"' : '' %>
+                  ><%= option.label %></a>
+                </li>
+              <% }); %>
+            </ul>
+          </section>
+        </nav>
+      </details>
+    </aside>
+
+    <div class="browse-results-content">
+  
+
   <!-- Results Count & View Switcher -->
   <div class="browse-controls-bar">
     <p class="browse-results-summary">
@@ -270,4 +343,6 @@
       <a href="<%= routeBase %>?view=<%= currentView %>" class="btn btn-primary">Clear Filters</a>
     </div>
   <% } %>
+    </div>
+  </div>
 </div>
