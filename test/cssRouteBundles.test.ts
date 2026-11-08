@@ -102,6 +102,7 @@ describe('Route-specific CSS bundles (#252)', () => {
       '/css/style-after-activity.css', '/css/style-after-release-selection.css',
       '/css/style-after-listing-forms.css', '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css',
       '/css/people-search.css',
+      '/css/browse-catalogue-explorer.css',
     ]);
     expect(search).toContain('/css/people-search.css');
     expect(people).toContain('/css/people-search.css');
@@ -167,6 +168,10 @@ describe('Route-specific CSS bundles (#252)', () => {
       expect(nonHomeRoute).not.toContain('/css/home.css');
     }
     expect(home).not.toContain('/css/browse-dig-controls.css');
+    expect(home).not.toContain('/css/browse-catalogue-explorer.css');
+    for (const nonBrowseRoute of [dig, search, people, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
+      expect(nonBrowseRoute).not.toContain('/css/browse-catalogue-explorer.css');
+    }
     for (const unrelated of [home, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
       expect(unrelated).not.toContain('/css/people-search.css');
     }
@@ -233,7 +238,7 @@ describe('Route-specific CSS bundles (#252)', () => {
       general: routeMetrics(sharedBundles),
       home: routeMetrics([...sharedBundles, 'home.css']),
       dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'dig-mobile-session.css', 'people-search.css', 'dig-mobile-crate.css']),
-      browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'people-search.css']),
+      browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'people-search.css', 'browse-catalogue-explorer.css']),
       peopleSearch: routeMetrics([...sharedBundles, 'people-search.css']),
       myListings: routeMetrics(['style.css', 'my-listings.css', ...sharedBundles.slice(1)]),
       listingDetail: routeMetrics(['style.css', 'listing-detail.css', ...sharedBundles.slice(1), 'listing-interactions.css', 'listing-detail-polish.css']),
