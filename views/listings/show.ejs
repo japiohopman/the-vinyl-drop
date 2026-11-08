@@ -204,6 +204,8 @@
           <% if (release.label) { %><span>Label: <strong><%= release.label %></strong></span><% } %>
           <% if (release.catalogueNumber) { %><span>Cat#: <strong><%= release.catalogueNumber %></strong></span><% } %>
           <% if (release.genre) { %><span>Genre: <strong><%= release.genre %></strong></span><% } %>
+          <% const displayStyles = (release.styles && release.styles.length > 0) ? release.styles.join(', ') : (release.canonicalStyles && release.canonicalStyles.length > 0 ? release.canonicalStyles.join(', ') : ''); %>
+          <% if (displayStyles) { %><span>Style: <strong><%= displayStyles %></strong></span><% } %>
         </div>
       </div>
       <% if (physicalCopy.notes) { %>

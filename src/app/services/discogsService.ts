@@ -1,7 +1,7 @@
 import { getDb } from '../../db';
 import { releases, Release } from '../../db/schema/releases';
 import { eq, or, ilike } from 'drizzle-orm';
-import { normalizeCanonicalGenres, resolveCountry } from '../../domain/releaseMetadata';
+import { normalizeCanonicalGenres, normalizeCanonicalStyles, resolveCountry } from '../../domain/releaseMetadata';
 import { normalizeVinylFormatCharacteristics } from '../../domain/releaseFormat';
 
 export interface DiscogsSearchResult {
@@ -18,6 +18,7 @@ export interface DiscogsSearchResult {
   thumb?: string;
   country?: string;
   genre?: string[];
+  style?: string[];
 }
 
 /** Fetch the original catalogue cover for a previously matched Discogs release. */
@@ -104,6 +105,7 @@ export async function searchDiscogs(query: string): Promise<DiscogsSearchResult[
     thumb: r.coverArtUrl || undefined,
     country: r.country || undefined,
     genre: r.genre ? [r.genre] : undefined,
+    style: r.styles && r.styles.length > 0 ? r.styles : undefined,
   }));
 
   // 2. Fetch external releases from Discogs API
@@ -140,6 +142,7 @@ export async function searchDiscogs(query: string): Promise<DiscogsSearchResult[
       thumb?: string;
       country?: string;
       genre?: string[];
+      style?: string[];
     }> };
 
     const externalResults: DiscogsSearchResult[] = (data.results || []).map((item) => {
@@ -166,6 +169,7 @@ export async function searchDiscogs(query: string): Promise<DiscogsSearchResult[
         thumb: item.thumb,
         country: item.country,
         genre: item.genre,
+        style: item.style,
       };
     });
 
@@ -216,6 +220,7 @@ export async function importDiscogsRelease(discogsId: number): Promise<Release> 
     country?: string;
     formats?: Array<{ name: string; descriptions?: string[] }>;
     genres?: string[];
+    styles?: string[];
     identifiers?: Array<{ type: string; value: string }>;
     images?: Array<{ resource_url?: string; uri?: string }>;
     thumb?: string;
@@ -227,6 +232,7 @@ export async function importDiscogsRelease(discogsId: number): Promise<Release> 
   const formatName = data.formats?.map((format) => [format.name, ...(format.descriptions || [])].filter(Boolean).join(', ')).join(', ') || null;
   const barcode = data.identifiers?.find((i) => i.type === 'Barcode')?.value || null;
   const genreStr = data.genres?.join(', ') || null;
+  const rawStyles = data.styles || [];
   const coverArtUrl = data.images?.[0]?.resource_url || data.images?.[0]?.uri || data.thumb || null;
 
   const [inserted] = await db
@@ -244,6 +250,8 @@ export async function importDiscogsRelease(discogsId: number): Promise<Release> 
       barcode,
       genre: genreStr,
       canonicalGenres: normalizeCanonicalGenres(data.genres || []),
+      styles: rawStyles,
+      canonicalStyles: normalizeCanonicalStyles(rawStyles),
       coverArtUrl,
       externalSource: 'discogs',
       externalId: String(discogsId),

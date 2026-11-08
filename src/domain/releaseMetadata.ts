@@ -192,3 +192,91 @@ export function getCanonicalGenreSearchTerms(value: string | null | undefined): 
 
   return [...new Set([normalizeTaxonomyLabel(canonical), ...aliases])];
 }
+
+/**
+ * Controlled style vocabulary for vinyl discovery (Issue #391).
+ * Styles are specific sub-classifications associated with one or more parent genres.
+ */
+export const RELEASE_STYLES = [
+  'Dancehall',
+  'Ska',
+  'Punk',
+  'House',
+  'Techno',
+  'Disco',
+  'Funk',
+  'Soul',
+  'Classic Rock',
+  'R&B / Rhythm & Blues',
+] as const;
+
+export type ReleaseStyle = (typeof RELEASE_STYLES)[number];
+
+export const STYLE_PARENT_GENRES: Record<ReleaseStyle, readonly ReleaseGenre[]> = {
+  Dancehall: ['Reggae'],
+  Ska: ['Reggae'],
+  Punk: ['Rock'],
+  House: ['Electronic'],
+  Techno: ['Electronic'],
+  Disco: ['Funk / Soul', 'Electronic'],
+  Funk: ['Funk / Soul'],
+  Soul: ['Funk / Soul'],
+  'Classic Rock': ['Rock'],
+  'R&B / Rhythm & Blues': ['Funk / Soul'],
+};
+
+const STYLE_ALIASES: Record<string, ReleaseStyle> = {
+  dancehall: 'Dancehall',
+  ska: 'Ska',
+  punk: 'Punk',
+  house: 'House',
+  techno: 'Techno',
+  disco: 'Disco',
+  funk: 'Funk',
+  soul: 'Soul',
+  'classic rock': 'Classic Rock',
+  'r&b / rhythm & blues': 'R&B / Rhythm & Blues',
+  'rhythm and blues': 'R&B / Rhythm & Blues',
+  'rhythm & blues': 'R&B / Rhythm & Blues',
+  'r&b': 'R&B / Rhythm & Blues',
+  rnb: 'R&B / Rhythm & Blues',
+  'r and b': 'R&B / Rhythm & Blues',
+};
+
+const normalizedStyleAliases = Object.entries(STYLE_ALIASES)
+  .map(([alias, style]) => [normalizeTaxonomyLabel(alias), style] as const)
+  .sort((a, b) => b[0].length - a[0].length);
+
+/** Return recognized styles while preserving original provider text elsewhere. */
+export function normalizeCanonicalStyles(value: string | string[] | null | undefined): ReleaseStyle[] {
+  const source = Array.isArray(value) ? value.join(' ') : (value || '');
+  if (!source.trim()) return [];
+  const normalized = normalizeTaxonomyLabel(source);
+  const matched = new Set<ReleaseStyle>();
+  for (const [alias, style] of normalizedStyleAliases) {
+    if (containsPhrase(normalized, alias)) matched.add(style);
+  }
+  return RELEASE_STYLES.filter((style) => matched.has(style));
+}
+
+/** Validate manual style entry against known controlled vocabulary or aliases. */
+export function isKnownStyleInput(value: string | string[] | null | undefined): boolean {
+  const source = Array.isArray(value) ? value.join(' ') : (value || '');
+  if (!source.trim()) return true;
+  let remainder = ' ' + normalizeTaxonomyLabel(source) + ' ';
+  for (const [alias] of normalizedStyleAliases) {
+    remainder = remainder.split(' ' + alias + ' ').join(' ');
+  }
+  return remainder.trim().length === 0;
+}
+
+/** Resolve a single browse-filter value for styles. */
+export function resolveCanonicalStyle(value: string | null | undefined): ReleaseStyle | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  return STYLE_ALIASES[normalizeTaxonomyLabel(value)] || null;
+}
+
+/** Retrieve styles associated with a parent genre in our taxonomy. */
+export function getStylesForGenre(genre: ReleaseGenre): ReleaseStyle[] {
+  return RELEASE_STYLES.filter((style) => STYLE_PARENT_GENRES[style].includes(genre));
+}

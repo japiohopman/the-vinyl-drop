@@ -52,6 +52,8 @@ export const candidateReleaseSchema = z.object({
   barcode: z.string().trim().optional(),
   genre: z.string().trim().optional(),
   canonicalGenres: z.array(z.string()).max(RELEASE_GENRES.length).optional(),
+  styles: z.array(z.string()).optional(),
+  canonicalStyles: z.array(z.string()).optional(),
   coverArtUrl: z.string().trim().optional(),
   sourceUrl: z.string().trim().optional(),
   matchScore: z.number().min(0).max(100).default(0),

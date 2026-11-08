@@ -24,9 +24,13 @@ async function main() {
     '0002_add_release_cover_art.sql',
     '0003_brainy_scarlet_witch.sql',
     '0004_mighty_spacker_dave.sql',
+    '0014_add_listing_photo_roles.sql',
+    '0015_dismiss_completed_listings.sql',
+    '0018_add_release_youtube_preview.sql',
     '0021_release_metadata_vocabulary.sql',
-      '0022_listing_photo_source_versions.sql',
-      '0024_profile_avatars_and_music_links.sql',
+    '0022_listing_photo_source_versions.sql',
+    '0024_profile_avatars_and_music_links.sql',
+    '0025_add_release_styles.sql',
   ];
 
   for (const file of migrationFiles) {
@@ -52,6 +56,10 @@ async function main() {
     title: 'A Love Supreme',
     artist: 'John Coltrane',
     label: 'Impulse!',
+    genre: 'Jazz',
+    canonicalGenres: ['Jazz'],
+    styles: ['Soul'],
+    canonicalStyles: ['Soul'],
     releaseYear: 1965,
     format: 'LP, Album',
   }).returning();

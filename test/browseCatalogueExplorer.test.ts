@@ -2,6 +2,7 @@ import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
 import { VINYL_FORMAT_FILTERS } from '../src/domain/releaseFormat';
+import { RELEASE_STYLES } from '../src/domain/releaseMetadata';
 
 const BASE_URL = 'https://thevinyldrop.test';
 
@@ -9,6 +10,7 @@ async function renderBrowseExplorer(
   filters: Partial<{
     q: string;
     genre: string;
+    style: string;
     condition: string;
     minPrice: string;
     maxPrice: string;
@@ -16,7 +18,8 @@ async function renderBrowseExplorer(
     view: string;
     formats: string[];
     whiteLabel: boolean;
-  }> = {}
+  }> = {},
+  styleOptions: readonly string[] = RELEASE_STYLES
 ): Promise<string> {
   return ejs.renderFile(path.join(process.cwd(), 'views/browse/index.ejs'), {
     title: 'Browse',
@@ -24,6 +27,7 @@ async function renderBrowseExplorer(
     filters: {
       q: '',
       genre: '',
+      style: '',
       condition: '',
       minPrice: '',
       maxPrice: '',
@@ -35,7 +39,8 @@ async function renderBrowseExplorer(
     },
     pagination: { totalCount: 0, page: 1, limit: 12, totalPages: 1 },
     formatOptions: VINYL_FORMAT_FILTERS,
-    genreOptions: ['Hip Hop', 'Funk / Soul', 'Jazz'],
+    genreOptions: ['Hip Hop', 'Funk / Soul', 'Jazz', 'Electronic', 'Rock', 'Reggae'],
+    styleOptions,
     whiteLabelAvailable: false,
     errorMessage: null,
   });
@@ -138,6 +143,31 @@ describe('Desktop Browse Catalogue Explorer', () => {
     expect(html).toContain('aria-label="12-inch, selected"');
     expect(html).toContain('aria-label="Catalogue explorer"');
     expect(html).toContain('aria-label="Browse catalogue"');
+  });
+
+  it('renders hierarchical styles under their parent genres with multi-parent support (Issue #391)', async () => {
+    const html = await renderBrowseExplorer({
+      genre: 'Electronic',
+      style: 'Disco',
+      formats: ['12-inch'],
+    });
+
+    expect(html).toContain('data-explorer-style="House"');
+    expect(html).toContain('data-explorer-style="Techno"');
+    expect(html).toContain('data-explorer-style="Disco"');
+    expect(html).toContain('data-parent-genre="Electronic"');
+    expect(html).toContain('data-parent-genre="Funk / Soul"');
+
+    // Disco appears under both Electronic and Funk / Soul
+    const discoMatches = Array.from(html.matchAll(/data-explorer-style="Disco"/g));
+    expect(discoMatches.length).toBe(2);
+
+    const discoUrl = explorerHref(html, 'data-explorer-style="Disco"');
+    expect(discoUrl.pathname).toBe('/browse');
+    expect(discoUrl.searchParams.get('style')).toBe('Disco');
+    expect(discoUrl.searchParams.getAll('format')).toEqual(['12-inch']);
+
+    expect(html).toContain('<span class="browse-explorer-summary-selection">Electronic · Disco · 12-inch</span>');
   });
 
   it('shows a permanent rail only at desktop widths and keeps result columns readable', () => {

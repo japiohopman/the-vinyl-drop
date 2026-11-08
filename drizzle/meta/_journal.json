@@ -176,6 +176,13 @@
       "when": 1793988000000,
       "tag": "0024_profile_avatars_and_music_links",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794200000000,
+      "tag": "0025_add_release_styles",
+      "breakpoints": true
     }
   ]
 }

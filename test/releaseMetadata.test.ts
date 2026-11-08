@@ -2,8 +2,14 @@ import { releaseSchema } from '../src/validators/release';
 import {
   COUNTRY_OPTIONS,
   RELEASE_GENRES,
+  RELEASE_STYLES,
+  STYLE_PARENT_GENRES,
+  getStylesForGenre,
   isKnownGenreInput,
+  isKnownStyleInput,
   normalizeCanonicalGenres,
+  normalizeCanonicalStyles,
+  resolveCanonicalStyle,
   resolveCountry,
   resolveReleaseCountryMetadata,
 } from '../src/domain/releaseMetadata';
@@ -76,5 +82,87 @@ describe('controlled Release metadata', () => {
     expect(releaseSchema.safeParse({ ...base, countryCode: 'GB' }).success).toBe(true);
     expect(releaseSchema.safeParse({ ...base, formatCharacteristics: ['7-inch'] }).success).toBe(true);
     expect(releaseSchema.safeParse({ ...base, formatCharacteristics: ['10-inch'] }).success).toBe(false);
+  });
+
+  describe('controlled Release styles taxonomy (Issue #391)', () => {
+    it('supports the full 10-style taxonomy as canonical styles', () => {
+      expect(RELEASE_STYLES).toEqual([
+        'Dancehall',
+        'Ska',
+        'Punk',
+        'House',
+        'Techno',
+        'Disco',
+        'Funk',
+        'Soul',
+        'Classic Rock',
+        'R&B / Rhythm & Blues',
+      ]);
+      expect(RELEASE_STYLES).toHaveLength(10);
+    });
+
+    it('maps styles to parent genres correctly, including cross-genre Disco', () => {
+      expect(STYLE_PARENT_GENRES.Dancehall).toEqual(['Reggae']);
+      expect(STYLE_PARENT_GENRES.Ska).toEqual(['Reggae']);
+      expect(STYLE_PARENT_GENRES.Punk).toEqual(['Rock']);
+      expect(STYLE_PARENT_GENRES.House).toEqual(['Electronic']);
+      expect(STYLE_PARENT_GENRES.Techno).toEqual(['Electronic']);
+      expect(STYLE_PARENT_GENRES.Disco).toEqual(['Funk / Soul', 'Electronic']);
+      expect(STYLE_PARENT_GENRES.Funk).toEqual(['Funk / Soul']);
+      expect(STYLE_PARENT_GENRES.Soul).toEqual(['Funk / Soul']);
+      expect(STYLE_PARENT_GENRES['Classic Rock']).toEqual(['Rock']);
+      expect(STYLE_PARENT_GENRES['R&B / Rhythm & Blues']).toEqual(['Funk / Soul']);
+
+      expect(getStylesForGenre('Reggae')).toEqual(['Dancehall', 'Ska']);
+      expect(getStylesForGenre('Rock')).toEqual(['Punk', 'Classic Rock']);
+      expect(getStylesForGenre('Electronic')).toEqual(['House', 'Techno', 'Disco']);
+      expect(getStylesForGenre('Funk / Soul')).toEqual(['Disco', 'Funk', 'Soul', 'R&B / Rhythm & Blues']);
+    });
+
+    it('normalizes styles conservatively and resolves common aliases', () => {
+      expect(normalizeCanonicalStyles(['House', 'Techno', 'Gabber'])).toEqual(['House', 'Techno']);
+      expect(normalizeCanonicalStyles('disco, punk')).toEqual(['Punk', 'Disco']);
+      expect(normalizeCanonicalStyles(['Rhythm & Blues', 'rnb'])).toEqual(['R&B / Rhythm & Blues']);
+      expect(normalizeCanonicalStyles(null)).toEqual([]);
+      expect(normalizeCanonicalStyles('')).toEqual([]);
+
+      expect(resolveCanonicalStyle('disco')).toBe('Disco');
+      expect(resolveCanonicalStyle('rhythm and blues')).toBe('R&B / Rhythm & Blues');
+      expect(resolveCanonicalStyle('rnb')).toBe('R&B / Rhythm & Blues');
+      expect(resolveCanonicalStyle('classic rock')).toBe('Classic Rock');
+      expect(resolveCanonicalStyle('unknown style')).toBeNull();
+    });
+
+    it('validates manual style input against controlled vocabulary and allows unknown values on provider import', () => {
+      expect(isKnownStyleInput('House, Techno')).toBe(true);
+      expect(isKnownStyleInput(['House', 'Disco'])).toBe(true);
+      expect(isKnownStyleInput('Unknown Freeform Tag')).toBe(false);
+
+      const validManual = {
+        artist: 'Daft Punk',
+        title: 'Homework',
+        genre: 'Electronic',
+        styles: ['House', 'Techno'],
+      };
+      expect(releaseSchema.safeParse(validManual).success).toBe(true);
+
+      const invalidManual = {
+        artist: 'Daft Punk',
+        title: 'Homework',
+        genre: 'Electronic',
+        styles: 'Speedcore',
+      };
+      expect(releaseSchema.safeParse(invalidManual).success).toBe(false);
+
+      const providerWithUnknownStyle = {
+        artist: 'Daft Punk',
+        title: 'Homework',
+        genre: 'Electronic',
+        styles: ['French Touch', 'House'],
+        externalSource: 'discogs',
+        externalId: '123456',
+      };
+      expect(releaseSchema.safeParse(providerWithUnknownStyle).success).toBe(true);
+    });
   });
 });

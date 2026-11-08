@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isKnownGenreInput, resolveCountry } from '../domain/releaseMetadata';
+import { isKnownGenreInput, isKnownStyleInput, resolveCountry } from '../domain/releaseMetadata';
 import { VINYL_FORMAT_FILTERS } from '../domain/releaseFormat';
 
 export const releaseSchema = z.object({
@@ -20,6 +20,7 @@ export const releaseSchema = z.object({
   }).optional(),
   barcode: z.string().trim().optional(),
   genre: z.string().trim().optional(),
+  styles: z.union([z.string().trim(), z.array(z.string().trim())]).optional(),
   coverArtUrl: z.string().trim().optional(),
   externalSource: z.string().trim().optional(),
   countryCode: z.string().trim().optional(),
@@ -55,6 +56,13 @@ export const releaseSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['genre'],
       message: 'Choose genres from the supported genre vocabulary.',
+    });
+  }
+  if (data.styles && !isKnownStyleInput(data.styles) && !hasDiscogsSource) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['styles'],
+      message: 'Choose styles from the supported style vocabulary.',
     });
   }
 });
