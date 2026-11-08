@@ -323,7 +323,7 @@ async function run(): Promise<void> {
 
         const cardColumns = await page.locator('.listing-grid').evaluate((element) => {
           const template = getComputedStyle(element).gridTemplateColumns;
-          return template.trim().split(/\\s+/).filter(Boolean).length;
+          return template.trim().split(/\s+/).filter(Boolean).length;
         });
         assert.ok(
           cardColumns >= viewport.minimumColumns,
