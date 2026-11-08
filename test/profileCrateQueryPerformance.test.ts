@@ -23,6 +23,7 @@ describe('Issue #382 — Compact Public Profile Read Optimization & Crate Shape'
   const sellerUserId = '10000000-0000-4000-8000-000000000001';
   const visitorUserId = '20000000-0000-4000-8000-000000000002';
   const emptySellerUserId = '30000000-0000-4000-8000-000000000003';
+  const legacyAvatarSellerUserId = '40000000-0000-4000-8000-000000000004';
 
   beforeAll(async () => {
     pg = new PGlite({ extensions: { pg_trgm: pg_trgm as never } });
@@ -86,6 +87,14 @@ describe('Issue #382 — Compact Public Profile Read Optimization & Crate Shape'
         username: 'emptyseller',
         displayName: 'Empty Seller',
         location: 'Utrecht',
+      },
+      {
+        id: legacyAvatarSellerUserId,
+        username: 'legacyseller',
+        displayName: 'Legacy Seller',
+        avatarUrl: 'https://cdn.example.com/legacy-avatar.jpg',
+        avatarStoragePath: null,
+        location: 'The Hague',
       },
     ]);
 
@@ -180,11 +189,19 @@ describe('Issue #382 — Compact Public Profile Read Optimization & Crate Shape'
     });
 
     it('getPublicProfileByUsername falls back to avatarUrl when avatarStoragePath is null', async () => {
-      const profileVm = await getPublicProfileByUsername('recordbuyer', db);
-      expect(profileVm).not.toBeNull();
-      expect(profileVm!.avatarPublicUrl).toBeNull();
-      expect(profileVm!.avatarUrl).toBeNull();
-      expect((profileVm as unknown as Record<string, unknown>).avatarStoragePath).toBeUndefined();
+      // Test legacy avatarUrl fallback when avatarStoragePath is null
+      const legacyVm = await getPublicProfileByUsername('legacyseller', db);
+      expect(legacyVm).not.toBeNull();
+      expect(legacyVm!.avatarUrl).toBe('https://cdn.example.com/legacy-avatar.jpg');
+      expect(legacyVm!.avatarPublicUrl).toBe('https://cdn.example.com/legacy-avatar.jpg');
+      expect((legacyVm as unknown as Record<string, unknown>).avatarStoragePath).toBeUndefined();
+
+      // Test null case when both avatarUrl and avatarStoragePath are null
+      const nullVm = await getPublicProfileByUsername('recordbuyer', db);
+      expect(nullVm).not.toBeNull();
+      expect(nullVm!.avatarPublicUrl).toBeNull();
+      expect(nullVm!.avatarUrl).toBeNull();
+      expect((nullVm as unknown as Record<string, unknown>).avatarStoragePath).toBeUndefined();
     });
   });
 
@@ -286,18 +303,59 @@ describe('Issue #382 — Compact Public Profile Read Optimization & Crate Shape'
         expect(photoQuery).toContain('from "listing_photos"');
         expect(photoQuery).toContain('in (');
         expect(photoQuery).toContain('"role" =');
+
+        // Verify the 12 published items appear in newest-first order: Album #13 down to Album #2
+        // Excluded: Album #14 (draft) and Album #15 (archived)
+        expect(res.text).not.toContain('Album #15');
+        expect(res.text).not.toContain('Album #14');
+
+        const expectedOrder = [
+          'Album #13',
+          'Album #12',
+          'Album #11',
+          'Album #10',
+          'Album #9',
+          'Album #8',
+          'Album #7',
+          'Album #6',
+          'Album #5',
+          'Album #4',
+          'Album #3',
+          'Album #2',
+        ];
+
+        let lastIndex = -1;
+        for (const title of expectedOrder) {
+          const index = res.text.indexOf(title);
+          expect(index).toBeGreaterThan(-1);
+          if (lastIndex !== -1) {
+            expect(index).toBeGreaterThan(lastIndex);
+          }
+          lastIndex = index;
+        }
+
+        // Album #1 should not be on page 1
+        expect(res.text).not.toContain('Album #1<');
       } finally {
         querySpy.mockRestore();
       }
     });
 
-    it('navigates page 2 and shows the remaining 1 published listing', async () => {
+    it('navigates page 2 and shows only the remaining 1 published listing (Album #1)', async () => {
       const app = createApp();
       const res = await request(app).get('/profiles/diggerseller/crate?page=2');
       expect(res.status).toBe(200);
       expect(res.text).toContain('Page 2 of 2');
       expect(res.text).toContain('← Previous');
       expect(res.text).not.toContain('Next →');
+
+      // Page 2 must contain Album #1
+      expect(res.text).toContain('Album #1');
+
+      // Page 2 must NOT contain any of Album #2 through Album #15
+      for (let i = 2; i <= 15; i++) {
+        expect(res.text).not.toContain(`Album #${i}`);
+      }
     });
 
     it('redirects out-of-range Crate page to the last page when published records exist', async () => {
