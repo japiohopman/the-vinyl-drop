@@ -199,7 +199,7 @@ describe('Desktop Browse Catalogue Explorer — browser behavior', () => {
         if (width >= 1024) {
           const grid = await page.locator('.browse-results-content .listing-grid').evaluate((element) => {
             const tracks = getComputedStyle(element).gridTemplateColumns
-              .split(/\\s+/)
+              .split(/\s+/)
               .map((track) => Number.parseFloat(track));
             return {
               columns: tracks.length,
