@@ -126,10 +126,10 @@ describe('Desktop Browse Catalogue Explorer — browser behavior', () => {
       expect(current.searchParams.getAll('format')).toEqual(['lp', '7-inch']);
       expect(current.searchParams.get('page')).toBe('3');
 
-      await page.locator('[data-explorer-genre="Soul"]').click();
-      await page.waitForURL(/genre=Soul/);
+      await page.locator('[data-explorer-genre="Funk / Soul"]').click();
+      await page.waitForURL(/genre=Funk%20%2F%20Soul/);
       current = new URL(page.url());
-      expect(current.searchParams.get('genre')).toBe('Soul');
+      expect(current.searchParams.get('genre')).toBe('Funk / Soul');
       expect(current.searchParams.getAll('format')).toEqual(['lp', '7-inch']);
       expect(current.searchParams.get('page')).toBeNull();
       expect(current.searchParams.get('q')).toBe('De La Soul');
@@ -137,13 +137,13 @@ describe('Desktop Browse Catalogue Explorer — browser behavior', () => {
       await page.locator('[data-explorer-format="lp"]').click();
       await page.waitForURL(/format=7-inch/);
       current = new URL(page.url());
-      expect(current.searchParams.get('genre')).toBe('Soul');
+      expect(current.searchParams.get('genre')).toBe('Funk / Soul');
       expect(current.searchParams.getAll('format')).toEqual(['7-inch']);
 
       await page.locator('[data-explorer-format="12-inch"]').click();
       await page.waitForURL(/format=12-inch/);
       current = new URL(page.url());
-      expect(current.searchParams.get('genre')).toBe('Soul');
+      expect(current.searchParams.get('genre')).toBe('Funk / Soul');
       expect(current.searchParams.getAll('format')).toEqual(['7-inch', '12-inch']);
     } finally {
       await context.close();
@@ -156,22 +156,22 @@ describe('Desktop Browse Catalogue Explorer — browser behavior', () => {
 
     try {
       await page.setViewportSize({ width: 1280, height: 900 });
-      await page.goto(`${baseUrl}/browse?genre=Soul&format=12-inch`, { waitUntil: 'domcontentloaded' });
+      await page.goto(`${baseUrl}/browse?genre=Funk%20%2F%20Soul&format=12-inch`, { waitUntil: 'domcontentloaded' });
 
       const disclosure = page.locator('.browse-explorer-disclosure');
       const summary = disclosure.locator('summary');
       const selectedState = disclosure.locator('.browse-explorer-summary-selection');
       expect(await disclosure.getAttribute('open')).not.toBeNull();
-      expect(await selectedState.textContent()).toBe('Soul · 12-inch');
+      expect(await selectedState.textContent()).toBe('Funk / Soul · 12-inch');
 
       await summary.click();
       expect(await disclosure.getAttribute('open')).toBeNull();
       expect(await selectedState.isVisible()).toBe(true);
-      expect(await selectedState.textContent()).toBe('Soul · 12-inch');
+      expect(await selectedState.textContent()).toBe('Funk / Soul · 12-inch');
 
       await summary.click();
       expect(await disclosure.getAttribute('open')).not.toBeNull();
-      expect(await selectedState.textContent()).toBe('Soul · 12-inch');
+      expect(await selectedState.textContent()).toBe('Funk / Soul · 12-inch');
     } finally {
       await context.close();
     }
@@ -197,7 +197,7 @@ describe('Desktop Browse Catalogue Explorer — browser behavior', () => {
         expect(await page.locator('.listing-card').count()).toBe(3);
 
         if (width >= 1024) {
-          const grid = await page.locator('.browse-results-content > .listing-grid').evaluate((element) => {
+          const grid = await page.locator('.browse-results-content .listing-grid').evaluate((element) => {
             const tracks = getComputedStyle(element).gridTemplateColumns
               .split(/\\s+/)
               .map((track) => Number.parseFloat(track));
