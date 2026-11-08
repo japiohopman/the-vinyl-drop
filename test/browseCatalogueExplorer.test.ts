@@ -35,7 +35,7 @@ async function renderBrowseExplorer(
     },
     pagination: { totalCount: 0, page: 1, limit: 12, totalPages: 1 },
     formatOptions: VINYL_FORMAT_FILTERS,
-    genreOptions: ['Hip Hop', 'Soul', 'Jazz'],
+    genreOptions: ['Hip Hop', 'Funk / Soul', 'Jazz'],
     whiteLabelAvailable: false,
     errorMessage: null,
   });
@@ -91,9 +91,9 @@ describe('Desktop Browse Catalogue Explorer', () => {
       whiteLabel: true,
     });
 
-    const url = explorerHref(html, 'data-explorer-genre="Soul"');
+    const url = explorerHref(html, 'data-explorer-genre="Funk / Soul"');
     expect(url.pathname).toBe('/browse');
-    expect(url.searchParams.get('genre')).toBe('Soul');
+    expect(url.searchParams.get('genre')).toBe('Funk / Soul');
     expect(url.searchParams.getAll('format')).toEqual(['lp', '7-inch']);
     expect(url.searchParams.get('q')).toBe('De La Soul');
     expect(url.searchParams.get('condition')).toBe('VG+');
@@ -131,7 +131,7 @@ describe('Desktop Browse Catalogue Explorer', () => {
     });
 
     expect(html).toMatch(/<details class="browse-explorer-disclosure" open>/);
-    expect(html).toContain('<span class="browse-explorer-summary-selection">Soul · 12-inch</span>');
+    expect(html).toContain('<span class="browse-explorer-summary-selection">Funk / Soul · 12-inch</span>');
     expect(html).toMatch(/data-explorer-genre="Soul"[\s\S]*?aria-current="page"/);
     expect(html).toMatch(/data-explorer-format="12-inch"[\s\S]*?aria-current="page"/);
     expect(html).toContain('aria-label="Catalogue explorer"');
