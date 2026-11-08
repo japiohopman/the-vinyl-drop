@@ -1,4 +1,4 @@
-/* Issue #376 — restrained desktop Catalogue Explorer. */
+/* Issue #389 — restrained desktop Catalogue Explorer. */
 .browse-explorer-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
