@@ -11,7 +11,7 @@ import * as authService from '../src/app/services/authService';
 import * as commentServiceModule from '../src/app/services/commentService';
 import { getPublicListingDetailsForView } from '../src/app/services/listingService';
 import { getListingCommentsForResolvedListing } from '../src/app/services/commentService';
-import { NotFoundError } from '../src/app/services/errors';
+import { AuthorizationError, NotFoundError } from '../src/app/services/errors';
 import { comments, favorites, listings, listingPhotos, physicalCopies, profiles, releases } from '../src/db/schema';
 
 describe('Issue #384 — Public listing detail query fan-out and projections', () => {
@@ -456,11 +456,12 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     ['/listings/' + listingId + '/comments', 'comments page'],
   ])('preserves unrelated authorization errors from %s (%s)', async (route) => {
     const commentsSpy = jest.spyOn(commentServiceModule, 'getListingCommentsForResolvedListing')
-      .mockRejectedValue(new Error('Unrelated handler failure'));
+      .mockRejectedValue(new AuthorizationError('Unrelated authorization failure'));
 
     try {
       const response = await request(createApp()).get(route);
-      expect(response.status).toBe(500);
+      expect(response.status).toBe(403);
+      expect(response.text).toContain('Unrelated authorization failure');
     } finally {
       commentsSpy.mockRestore();
     }
