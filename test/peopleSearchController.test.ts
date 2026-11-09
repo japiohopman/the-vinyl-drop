@@ -147,14 +147,14 @@ describe('GET /api/people-search (Issue #393)', () => {
   });
 
   it('returns public fields only from matching users', async () => {
+    const personWithPrivateEmail = {
+      username: 'johndoe',
+      displayName: 'John Doe',
+      avatarUrl: 'https://example.com/avatar.jpg',
+      email: 'private@example.com',
+    };
     jest.spyOn(peopleSearchService, 'searchPeople').mockResolvedValueOnce({
-      items: [
-        {
-          username: 'johndoe',
-          displayName: 'John Doe',
-          avatarUrl: 'https://example.com/avatar.jpg',
-        },
-      ],
+      items: [personWithPrivateEmail],
       totalCount: 1,
       page: 1,
       pageSize: 12,

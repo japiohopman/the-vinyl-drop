@@ -173,6 +173,118 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
     }
   });
 
+  it('keeps the Records and People sidebar usable when its enhancement script is unavailable', async () => {
+    for (const width of [390, 768]) {
+      const page = await browser.newPage({ viewport: { width, height: 900 } });
+      await page.route('**/js/dig-sidebar.js', (route) => route.abort());
+      await page.goto(baseUrl + '/dig', { waitUntil: 'domcontentloaded' });
+
+      const sidebar = page.locator('[data-dig-sidebar]');
+      expect(await sidebar.isVisible()).toBe(true);
+      expect(await sidebar.getAttribute('aria-label')).toBe('Dig sidebar');
+      expect(await sidebar.getAttribute('role')).toBeNull();
+      expect(await sidebar.locator('.dig-filter-form').isVisible()).toBe(true);
+      expect(await sidebar.locator('#tab-people').getAttribute('href')).toBe('/people');
+      expect(await page.locator('html').evaluate((element) =>
+        element.classList.contains('dig-sidebar-enhanced')
+      )).toBe(false);
+      expect(await sidebar.locator('#dig-filter-query').isVisible()).toBe(width < 768);
+      await page.close();
+    }
+  });
+
+  it('normalizes People queries like the server and counts Unicode code points', async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    try {
+      await page.goto(baseUrl + '/dig', { waitUntil: 'domcontentloaded' });
+      await page.locator('#tab-people').click();
+
+      (peopleSearchService.searchPeople as jest.Mock).mockClear();
+      await page.locator('#dig-people-input').fill('ﬀ');
+      await page.waitForSelector('.dig-people-card');
+      expect(peopleSearchService.searchPeople).toHaveBeenCalledWith('ff', 1);
+      expect(await page.locator('#dig-people-status').textContent()).toContain('Found 1 matching collector.');
+
+      (peopleSearchService.searchPeople as jest.Mock).mockClear();
+      await page.locator('#dig-people-input').fill('𝄞');
+      await page.waitForFunction(() =>
+        document.querySelector('#dig-people-status')?.textContent?.includes('Enter at least 2 characters') === true
+      );
+      expect(peopleSearchService.searchPeople).not.toHaveBeenCalled();
+      expect(await page.locator('.dig-people-card').count()).toBe(0);
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('clears stale People results immediately and ignores an older response that arrives last', async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.addInitScript(() => {
+      type DeferredResponse = (response: { ok: boolean; json: () => Promise<unknown> }) => void;
+      const state = window as unknown as {
+        __pendingPeopleResponses?: Record<string, DeferredResponse>;
+        __resolvePeopleResponse?: (query: string, people: unknown[]) => void;
+      };
+      state.__pendingPeopleResponses = {};
+      state.__resolvePeopleResponse = (query, people) => {
+        const resolve = state.__pendingPeopleResponses?.[query];
+        if (resolve) {
+          resolve({ ok: true, json: async () => ({ people, pagination: { totalCount: people.length } }) });
+          delete state.__pendingPeopleResponses?.[query];
+        }
+      };
+      window.fetch = ((input: RequestInfo | URL) => {
+        const requestUrl = input instanceof Request
+          ? input.url
+          : input instanceof URL ? input.href : String(input);
+        const query = new URL(requestUrl, window.location.href).searchParams.get('q') || '';
+        return new Promise((resolve) => {
+          if (state.__pendingPeopleResponses) state.__pendingPeopleResponses[query] = resolve;
+        }) as Promise<Response>;
+      }) as typeof window.fetch;
+    });
+
+    try {
+      await page.goto(baseUrl + '/dig', { waitUntil: 'domcontentloaded' });
+      await page.locator('#tab-people').click();
+      await page.locator('#dig-people-input').fill('larry');
+      await page.waitForFunction(() => Boolean(
+        (window as unknown as { __pendingPeopleResponses?: Record<string, unknown> }).__pendingPeopleResponses?.larry
+      ));
+
+      await page.locator('#dig-people-input').fill('prince');
+      expect(await page.locator('.dig-people-card').count()).toBe(0);
+      expect(await page.locator('#dig-people-status').textContent()).toContain('Search will update shortly.');
+      await page.waitForFunction(() => Boolean(
+        (window as unknown as { __pendingPeopleResponses?: Record<string, unknown> }).__pendingPeopleResponses?.prince
+      ));
+
+      await page.evaluate(() => {
+        const state = window as unknown as { __resolvePeopleResponse?: (query: string, people: unknown[]) => void };
+        state.__resolvePeopleResponse?.('prince', [{
+          username: 'prince',
+          displayName: 'Prince',
+          avatarUrl: 'https://images.example/prince.jpg',
+        }]);
+      });
+      await page.waitForFunction(() => document.querySelector('.dig-people-name')?.textContent === 'Prince');
+
+      await page.evaluate(() => {
+        const state = window as unknown as { __resolvePeopleResponse?: (query: string, people: unknown[]) => void };
+        state.__resolvePeopleResponse?.('larry', [{
+          username: 'larry_older',
+          displayName: 'Larry Older',
+          avatarUrl: 'https://images.example/larry.jpg',
+        }]);
+      });
+      await page.waitForTimeout(50);
+      expect(await page.locator('.dig-people-name').allTextContents()).toEqual(['Prince']);
+      expect(await page.locator('#dig-people-status').textContent()).toContain('Found 1 matching collector.');
+    } finally {
+      await page.close();
+    }
+  });
+
   it('switches between Records and People tabs in-place without page reload', async () => {
     const context = await browser.newContext({ serviceWorkers: 'block' });
     const page = await context.newPage();
