@@ -56,14 +56,6 @@
 
 
 /* Issue #393 — Unified Records/People Dig sidebar and workspace layout */
-.dig-workspace-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-6);
-  min-width: 0;
-  width: 100%;
-}
-
 .dig-results-content {
   min-width: 0;
 }
@@ -388,15 +380,30 @@
 
 /* Desktop layout: >= 1024px */
 @media (min-width: 1024px) {
-  .dig-workspace-layout {
+  .dig-responsive-page {
+    display: grid;
     grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+    column-gap: var(--space-6);
+    row-gap: var(--space-4);
     align-items: start;
+  }
+
+  .dig-search-control-bar {
+    grid-column: 1 / -1;
   }
 
   .dig-sidebar {
     display: block;
+    grid-column: 1;
+    grid-row: 2;
     position: sticky;
     top: calc(var(--header-height, 60px) + var(--space-4));
+  }
+
+  .dig-responsive-desktop {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
   }
 
   .dig-results-content .listing-grid {
@@ -405,7 +412,7 @@
 }
 
 @media (min-width: 1280px) {
-  .dig-workspace-layout {
+  .dig-responsive-page {
     grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
   }
 
@@ -478,5 +485,13 @@
 @media (prefers-reduced-motion: reduce) {
   .dig-sidebar {
     transition: none !important;
+  }
+}
+
+
+/* Active mobile crate sessions use the crate toolbar for drawer access. */
+@media (max-width: 767px) {
+  .dig-search-control-bar .dig-drawer-trigger {
+    display: none !important;
   }
 }
