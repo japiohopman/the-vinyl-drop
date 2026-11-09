@@ -171,7 +171,7 @@ export async function getSearchPage(req: Request, res: Response, next: NextFunct
 
 /** Preserve the historical URL while using the canonical Records/People Dig workspace. */
 export function getDigBrowsePage(req: Request, res: Response, next: NextFunction): Promise<void> {
-  return getResponsiveDigPage(req, res, next);
+  return getResponsiveDigPage(req, res, next, false);
 }
 
 /**
@@ -179,7 +179,12 @@ export function getDigBrowsePage(req: Request, res: Response, next: NextFunction
  * paginated listing view; the page renders the grid on desktop and the existing
  * crate-dig interaction on narrow screens.
  */
-export async function getResponsiveDigPage(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function getResponsiveDigPage(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  includeWhiteLabelAvailability = true
+): Promise<void> {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const genreInput = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
@@ -206,7 +211,9 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
     const maxPrice = parseEuroQueryParamToCentsStrict(req.query.maxPrice);
     const parsedPage = parsePageQueryParamStrict(req.query.page);
     const page = formatToggle || whiteLabelToggle ? 1 : parsedPage;
-    const whiteLabelAvailable = await hasExplicitWhiteLabelInventory();
+    const whiteLabelAvailable = includeWhiteLabelAvailability
+      ? await hasExplicitWhiteLabelInventory()
+      : false;
 
     const viewInput = typeof req.query.view === 'string' ? req.query.view.trim().toLowerCase() : 'grid';
     const view = viewInput === 'list' ? 'list' : 'grid';
@@ -278,10 +285,17 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
       limit: 12,
       totalPages: Math.ceil(digResults.totalCount / 12) || 1,
     };
+    // Dig's grid and crate both use the physical front cover; avoid a Discogs
+    // fallback when a seller has supplied that physical face.
+    const digGridListings = gridResults.items.map((listing) =>
+      listing.frontArtwork?.sourceKind === 'seller_front'
+        ? { ...listing, fallbackImageUrl: undefined }
+        : listing
+    );
 
     renderWithLayout(res, 'browse/responsive-dig', {
       title: q ? `Search: "${q}" — Dig — The Vinyl Drop` : 'Dig — The Vinyl Drop',
-      listings: gridResults.items,
+      listings: digGridListings,
       formatOptions: VINYL_FORMAT_FILTERS,
       genreOptions: RELEASE_GENRES,
       styleOptions: RELEASE_STYLES,

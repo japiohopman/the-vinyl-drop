@@ -106,10 +106,8 @@ describe('Route-specific CSS bundles (#252)', () => {
     ]);
     expect(search).toContain('/css/people-search.css');
     expect(people).toContain('/css/people-search.css');
-    expect(browseDig).toContain('/css/dig-experience.css');
-    expect(browseDig).toContain('/css/browse-dig-controls.css');
-    expect(browseDig).toContain('/css/people-search.css');
-    expect(browseDig).not.toContain('/css/dig-mobile-session.css');
+    // The historical /browse/dig URL now renders the canonical responsive Dig workspace.
+    expect(browseDig).toEqual(dig);
     expect(myListings).toEqual([
       '/css/style.css', '/css/my-listings.css',
       '/css/style-after-features.css', '/css/style-after-activity.css',
