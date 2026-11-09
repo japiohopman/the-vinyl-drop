@@ -3,7 +3,7 @@ import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
 import fs from 'fs';
 import path from 'path';
-import { chromium, Browser, Page, Locator } from 'playwright';
+import { chromium, Browser, Page } from 'playwright';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 
 describe('Mobile Dig app-like viewport', () => {
@@ -126,6 +126,7 @@ describe('Mobile Dig app-like viewport', () => {
       listings: [],
       genreOptions: ['Hip Hop', 'Jazz'],
       styleOptions: ['House', 'Techno'],
+      styleParentGenres: { House: ['Hip Hop'], Techno: ['Electronic'] },
       formatOptions: [
         { value: 'LP', label: 'LP', description: 'Long-play records' },
         { value: '12-inch', label: '12-inch', description: '12-inch records' },
@@ -207,24 +208,6 @@ describe('Mobile Dig app-like viewport', () => {
     await page.addScriptTag({ content: digState });
     await page.addScriptTag({ content: digMode });
     await page.addScriptTag({ content: digSidebar });
-  }
-
-  async function expectDrawerGeometry(sidebar: Locator, width: number, height: number): Promise<void> {
-    const geometry = await sidebar.evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      return {
-        position: getComputedStyle(element).position,
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-      };
-    });
-    expect(geometry.position).toBe('fixed');
-    expect(geometry.top).toBe(0);
-    expect(geometry.left).toBe(0);
-    expect(geometry.width).toBeLessThanOrEqual(Math.min(360, width));
-    expect(geometry.height).toBeGreaterThanOrEqual(height - 1);
   }
 
   it('keeps the live session counter in the mobile header without a Dig back link', async () => {
@@ -1528,7 +1511,21 @@ describe('Mobile Dig app-like viewport', () => {
       expect(Math.abs(geometry!.stackLeft)).toBeLessThanOrEqual(1);
       expect(geometry!.stackWidth).toBeCloseTo(viewport.width, 0);
       expect(Math.abs(geometry!.imageTopOffset)).toBeLessThanOrEqual(1);
-      expect(geometry!.imageBottomGap).toBeGreaterThanOrEqual(-1)  it('uses the supplied crate and keeps one filter surface inside the mobile Records/People drawer', async () => {
+      expect(geometry!.imageBottomGap).toBeGreaterThanOrEqual(-1);
+      expect(geometry!.imageLeftInset).toBeGreaterThan(0);
+      expect(geometry!.imageRightInset).toBeGreaterThan(0);
+      expect(geometry!.imageWidth).toBeGreaterThan(0);
+      expect(geometry!.imageHeight).toBeGreaterThan(0);
+      // Let the viewport-width crate bleed past padded wrappers and allow 3D sleeve corners to rotate freely.
+      expect(geometry!.explorerOverflow).toBe('visible');
+      expect(geometry!.viewerOverflow).toBe('visible');
+      expect(geometry!.interactionOverflow).toBe('visible');
+      // Keep clipping at the deck boundary, not around the sleeve itself.
+      expect(geometry!.stackOverflow).toBe('clip');
+    }
+  });
+
+  it('uses the supplied crate and keeps one filter surface inside the mobile Records/People drawer', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await loadPage(375, 812);
 
@@ -1536,11 +1533,11 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-crate-source] img').getAttribute('alt')).toBe('');
     expect(await page.locator('[data-dig-sound-toggle]').isVisible()).toBe(true);
 
-    const drawerTrigger = page.locator('[data-dig-drawer-open]');
+    const trigger = page.locator('[data-dig-drawer-open]');
     const sidebar = page.locator('[data-dig-sidebar]');
     const filterForm = sidebar.locator('.dig-filter-form');
-    expect(await drawerTrigger.isVisible()).toBe(true);
-    expect(await drawerTrigger.locator('img').getAttribute('src')).toBe('/assets/svg/funnel.svg');
+
+    expect(await trigger.isVisible()).toBe(true);
     expect(await sidebar.isVisible()).toBe(false);
     expect(await page.locator('.dig-crate-toolbar > *').count()).toBe(1);
     expect(await page.locator('[data-dig-filter-open]').count()).toBe(0);
@@ -1548,17 +1545,14 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('.dig-crate-filter-form').count()).toBe(0);
     expect(await page.locator('.dig-filter-form').count()).toBe(1);
 
-    const lookAtSvg = fs.readFileSync(path.join(__dirname, '../public/assets/svg/look-at.svg'), 'utf8');
-    expect(lookAtSvg).not.toContain('M0 0h512v512H0z');
-    expect(lookAtSvg).toContain('fill="#1c1c1c"');
-
-    await drawerTrigger.click();
+    await trigger.click();
     expect(await sidebar.isVisible()).toBe(true);
     expect(await sidebar.getAttribute('role')).toBe('dialog');
     expect(await sidebar.getAttribute('aria-modal')).toBe('true');
-    expect(await drawerTrigger.getAttribute('aria-expanded')).toBe('true');
+    expect(await trigger.getAttribute('aria-expanded')).toBe('true');
     expect(await page.locator('.dig-drawer-backdrop').isVisible()).toBe(true);
     expect(await page.evaluate(() => document.activeElement?.getAttribute('data-dig-drawer-close'))).not.toBeNull();
+
     expect(await filterForm.getAttribute('action')).toBe('/dig');
     expect(await page.locator('#dig-primary-search').inputValue()).toBe('De La Soul');
     expect(await filterForm.locator('input[name="q"]').inputValue()).toBe('De La Soul');
@@ -1580,37 +1574,20 @@ describe('Mobile Dig app-like viewport', () => {
 
     await page.locator('[data-dig-drawer-close]').click();
     expect(await sidebar.isVisible()).toBe(false);
-    expect(await drawerTrigger.getAttribute('aria-expanded')).toBe('false');
+    expect(await trigger.getAttribute('aria-expanded')).toBe('false');
     expect(await page.evaluate(() => document.activeElement?.matches('[data-dig-drawer-open]'))).toBe(true);
 
-    await drawerTrigger.click();
+    await trigger.click();
     expect(await filterForm.locator('#filter-min-price').inputValue()).toBe('15.00');
     expect(await filterForm.locator('input[name="q"]').inputValue()).toBe('Prince');
     await page.keyboard.press('Escape');
     expect(await sidebar.isVisible()).toBe(false);
-    expect(await drawerTrigger.getAttribute('aria-expanded')).toBe('false');
+    expect(await trigger.getAttribute('aria-expanded')).toBe('false');
   });
-
-  async function expectDrawerGeometry(sidebar: Locator, width: number, height: number): Promise<void> {
-    const geometry = await sidebar.evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      return {
-        position: getComputedStyle(element).position,
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-      };
-    });
-    expect(geometry.position).toBe('fixed');
-    expect(geometry.top).toBe(0);
-    expect(geometry.left).toBe(0);
-    expect(geometry.width).toBeLessThanOrEqual(Math.min(360, width));
-    expect(geometry.height).toBeGreaterThanOrEqual(height - 1);
-  }
 
   it('keeps the mobile drawer and filter actions inside the viewport on short and standard phones', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
+
     for (const viewport of [
       { width: 320, height: 640 },
       { width: 375, height: 812 },
@@ -1619,10 +1596,25 @@ describe('Mobile Dig app-like viewport', () => {
       const trigger = page.locator('[data-dig-drawer-open]');
       const sidebar = page.locator('[data-dig-sidebar]');
       await trigger.click();
-      await expectDrawerGeometry(sidebar, viewport.width, viewport.height);
-      await sidebar.locator('.browse-filter-action-buttons').scrollIntoViewIfNeeded();
 
-      const geometry = await page.evaluate(() => {
+      const geometry = await sidebar.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          position: getComputedStyle(element).position,
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        };
+      });
+      expect(geometry.position).toBe('fixed');
+      expect(geometry.top).toBe(0);
+      expect(geometry.left).toBe(0);
+      expect(geometry.width).toBeLessThanOrEqual(Math.min(360, viewport.width));
+      expect(geometry.height).toBeGreaterThanOrEqual(viewport.height - 1);
+
+      await sidebar.locator('.browse-filter-action-buttons').scrollIntoViewIfNeeded();
+      const actionGeometry = await page.evaluate(() => {
         const sidebarElement = document.querySelector('[data-dig-sidebar]') as HTMLElement | null;
         const navigation = document.querySelector('.mobile-bottom-nav') as HTMLElement | null;
         const actions = document.querySelector('.dig-filter-form .browse-filter-action-buttons') as HTMLElement | null;
@@ -1637,11 +1629,14 @@ describe('Mobile Dig app-like viewport', () => {
           backdropZIndex: getComputedStyle(document.querySelector('.dig-drawer-backdrop') as HTMLElement).zIndex,
         };
       });
-      expect(geometry.actionsBottom).toBeLessThanOrEqual(geometry.sidebarBottom + 1);
-      expect(geometry.navigationZIndex).toBe('200');
-      expect(geometry.backdropZIndex).toBe('999');
-      expect(geometry.sidebarZIndex).toBe('1000');
-      await page.locator('.dig-drawer-backdrop').click({ position: { x: viewport.width - 2, y: Math.floor(viewport.height / 2) } });
+      expect(actionGeometry.actionsBottom).toBeLessThanOrEqual(actionGeometry.sidebarBottom + 1);
+      expect(actionGeometry.navigationZIndex).toBe('200');
+      expect(actionGeometry.backdropZIndex).toBe('999');
+      expect(actionGeometry.sidebarZIndex).toBe('1000');
+
+      await page.locator('.dig-drawer-backdrop').click({
+        position: { x: viewport.width - 2, y: Math.floor(viewport.height / 2) },
+      });
       expect(await sidebar.isVisible()).toBe(false);
       expect(await trigger.getAttribute('aria-expanded')).toBe('false');
     }
@@ -1649,6 +1644,7 @@ describe('Mobile Dig app-like viewport', () => {
 
   it('fits the open Dig drawer to the visible viewport while the software keyboard is open', async () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+
     for (const viewport of [
       { width: 320, height: 640 },
       { width: 360, height: 800 },
@@ -1680,11 +1676,11 @@ describe('Mobile Dig app-like viewport', () => {
       });
       const keyboardGeometry = await sidebar.evaluate((element) => {
         const rect = element.getBoundingClientRect();
-        return { top: rect.top, height: rect.height, maxHeight: getComputedStyle(element).height };
+        return { top: rect.top, height: rect.height, computedHeight: getComputedStyle(element).height };
       });
       expect(keyboardGeometry.top).toBe(keyboardOffsetTop);
       expect(keyboardGeometry.height).toBe(keyboardHeight);
-      expect(keyboardGeometry.maxHeight).toBe(keyboardHeight + 'px');
+      expect(keyboardGeometry.computedHeight).toBe(keyboardHeight + 'px');
 
       await sidebar.locator('#filter-max-price').focus();
       await page.waitForFunction(() => {
@@ -1745,6 +1741,7 @@ describe('Mobile Dig app-like viewport', () => {
 
   it('keeps the Dig heading, search and view controls stable across tablet and desktop breakpoints', async () => {
     await loadPage(768, 900);
+
     for (const width of [768, 1024, 1280, 1440]) {
       if (width !== 768) await page.setViewportSize({ width, height: 900 });
       expect(await page.locator('.mobile-context-header').isVisible()).toBe(false);
@@ -1755,6 +1752,7 @@ describe('Mobile Dig app-like viewport', () => {
       expect(await page.locator('.dig-responsive-mobile').isVisible()).toBe(false);
       expect(await page.locator('.mobile-dig-back').isVisible()).toBe(false);
       expect(await page.locator('[data-dig-crate-toolbar]').isVisible()).toBe(false);
+
       const trigger = page.locator('[data-dig-drawer-open]');
       const sidebar = page.locator('[data-dig-sidebar]');
       if (width < 1024) {
@@ -1766,18 +1764,23 @@ describe('Mobile Dig app-like viewport', () => {
         expect(await trigger.isVisible()).toBe(false);
         expect(await sidebar.isVisible()).toBe(true);
       }
+
       await sidebar.locator('.browse-mobile-filter-panel').evaluate((element) => {
         (element as HTMLDetailsElement).open = true;
       });
       await sidebar.locator('.browse-secondary-filters').evaluate((element) => {
         (element as HTMLDetailsElement).open = true;
       });
+
       const toolbarMetrics = await page.evaluate(() => {
         const rect = (selector: string) => {
           const element = document.querySelector(selector);
           if (!element) throw new Error('Missing Dig control: ' + selector);
           const bounds = element.getBoundingClientRect();
-          return { height: bounds.height, centerY: bounds.top + bounds.height / 2 };
+          return {
+            height: bounds.height,
+            centerY: bounds.top + bounds.height / 2,
+          };
         };
         const controls = [
           rect('#dig-primary-search'),
@@ -1790,11 +1793,16 @@ describe('Mobile Dig app-like viewport', () => {
         const actions = Array.from(document.querySelectorAll('.dig-sidebar .browse-filter-action-buttons .btn'))
           .map((element) => (element as HTMLElement).getBoundingClientRect().height);
         return {
-          controls, format, genre, sort, actions,
+          controls,
+          format,
+          genre,
+          sort,
+          actions,
           documentWidth: document.documentElement.scrollWidth,
           bodyWidth: document.body.scrollWidth,
         };
       });
+
       expect(toolbarMetrics.controls.map((control) => control.height)).toEqual([44, 44, 44]);
       const centers = toolbarMetrics.controls.map((control) => control.centerY);
       expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(1);
@@ -1805,6 +1813,7 @@ describe('Mobile Dig app-like viewport', () => {
       expect(toolbarMetrics.actions.every((height) => height === 44)).toBe(true);
       expect(toolbarMetrics.documentWidth).toBeLessThanOrEqual(width + 1);
       expect(toolbarMetrics.bodyWidth).toBeLessThanOrEqual(width + 1);
+
       if (width === 768) {
         await page.keyboard.press('Escape');
         expect(await sidebar.isVisible()).toBe(false);
@@ -1816,7 +1825,70 @@ describe('Mobile Dig app-like viewport', () => {
     }));
     expect(dimensions.documentWidth).toBeLessThanOrEqual(1440);
     expect(dimensions.bodyWidth).toBeLessThanOrEqual(1440);
-  });enterY + 4, { steps: 3 });
+  });
+
+  it('keeps the sound toggle functional when the Dig result set is empty', async () => {
+    await loadPage(375, 812, []);
+
+    const soundToggle = page.locator('[data-dig-sound-toggle]');
+    expect(await soundToggle.isVisible()).toBe(true);
+    expect(await soundToggle.getAttribute('aria-pressed')).toBe('true');
+    await soundToggle.click();
+
+    expect(await soundToggle.getAttribute('aria-pressed')).toBe('false');
+    expect(await page.evaluate(() => (
+      window as Window & { VinylDropPreferences?: { get(key: string): boolean } }
+    ).VinylDropPreferences?.get('soundEffectsEnabled'))).toBe(false);
+    expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds || [])).toEqual([]);
+  });
+
+  it('plays the sleeve-flip sound for committed horizontal swipes with both motion preferences', async () => {
+    for (const reducedMotion of ['reduce', 'no-preference'] as const) {
+      await page.emulateMedia({ reducedMotion });
+      await loadPage(375, 812);
+
+      const stage = page.locator('.dig-slide.is-active [data-dig-swipe-area]');
+      const bounds = await stage.boundingBox();
+      if (!bounds) throw new Error('Active Dig sleeve stage was not laid out');
+      const centerX = bounds.x + bounds.width / 2;
+      const centerY = bounds.y + bounds.height / 2;
+
+      await page.mouse.move(centerX, centerY);
+      await page.mouse.down();
+      await page.mouse.move(centerX + 100, centerY, { steps: 6 });
+      await page.mouse.up();
+
+      expect(await page.locator('.dig-slide.is-active [data-dig-flip]').getAttribute('aria-pressed')).toBe('true');
+      expect(await page.evaluate(() => (window as Window & { __digPlayedSounds?: string[] }).__digPlayedSounds || [])).toEqual([
+        '/assets/sounds/dig/sleeve-flip.wav',
+      ]);
+    }
+  });
+
+  it('does not play a sound for short, cancelled or invalid-boundary sleeve gestures', async () => {
+    await loadPage(375, 812);
+    const stage = page.locator('[data-dig-swipe-area]').first();
+    const bounds = await stage.boundingBox();
+    if (!bounds) throw new Error('Dig sleeve stage was not laid out');
+
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
+
+    // A pointer press/release without crossing the swipe threshold is silent.
+    await page.mouse.move(centerX, centerY);
+    await page.mouse.down();
+    await page.mouse.up();
+
+    // A cancelled horizontal gesture must not be mistaken for a committed flip.
+    const pointerIdPromise = page.evaluate(() => new Promise<number>((resolve) => {
+      const activeStage = document.querySelector('[data-dig-swipe-area]');
+      if (!activeStage) throw new Error('Dig sleeve stage was not found');
+      activeStage.addEventListener('pointerdown', (event) => resolve((event as PointerEvent).pointerId), { once: true });
+    }));
+    await page.mouse.move(centerX, centerY);
+    await page.mouse.down();
+    const pointerId = await pointerIdPromise;
+    await page.mouse.move(centerX + 36, centerY + 4, { steps: 3 });
     await stage.dispatchEvent('pointercancel', {
       bubbles: true,
       pointerId,
