@@ -258,7 +258,7 @@ describe('Responsive disclosure browser behavior', () => {
     await desktopPage.close();
   });
 
-  it('keeps desktop Dig toolbar and adjacent filter controls on a consistent measured height', async () => {
+  it('keeps the desktop Dig toolbar and sidebar controls at consistent measured heights', async () => {
     const desktopPage = await browser.newPage({ viewport: { width: 1024, height: 900 } });
 
     for (const width of [1024, 1280, 1440]) {
@@ -290,11 +290,11 @@ describe('Responsive disclosure browser behavior', () => {
           submit: measure('.dig-primary-search-form > button'),
           viewGroup: measure('.dig-search-control-bar .view-mode-toggle'),
           gridToggle: measure('.dig-search-control-bar .view-toggle-btn'),
-          format: measure('.dig-responsive-desktop .browse-format-chip'),
-          genre: measure('.dig-responsive-desktop .browse-primary-filters select'),
-          condition: measure('.dig-responsive-desktop #filter-condition'),
-          advanced: measure('.dig-responsive-desktop .browse-secondary-grid input'),
-          apply: measure('.dig-responsive-desktop .browse-filter-action-buttons .btn'),
+          format: measure('.dig-sidebar .browse-format-chip'),
+          genre: measure('.dig-sidebar .browse-primary-filters select'),
+          condition: measure('.dig-sidebar #filter-condition'),
+          advanced: measure('.dig-sidebar .browse-secondary-grid input'),
+          apply: measure('.dig-sidebar .browse-filter-action-buttons .btn'),
         };
       });
 

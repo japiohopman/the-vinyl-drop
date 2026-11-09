@@ -90,11 +90,12 @@ describe('Dig unified sidebar and first-load layout integration (Issue #393)', (
 
     // Asserts stylesheet browse-dig-controls.css is loaded
     expect(res.text).toContain('/css/browse-dig-controls.css');
-    expect(res.text).toContain('class="dig-filter-form"');
+    expect(res.text).toMatch(/class="[^"]*\bdig-filter-form\b[^"]*"/);
     expect(res.text).not.toContain('dig-crate-filter-form');
     expect(res.text).not.toContain('data-dig-filter-dialog');
     expect(res.text).not.toContain('data-dig-filter-open');
-    expect((res.text.match(/class="dig-filter-form"/g) || []).length).toBe(1);
+    expect((res.text.match(/class="[^"]*\bdig-filter-form\b[^"]*"/g) || []).length).toBe(1);
+    expect(res.text).toContain('id="dig-filter-query" name="q"');
     expect(res.text).toContain('href="/people" role="tab" id="tab-people"');
     expect(res.text).toContain('id="tab-people" aria-selected="false" aria-controls="panel-people" class="dig-tab-btn" tabindex="0"');
   });

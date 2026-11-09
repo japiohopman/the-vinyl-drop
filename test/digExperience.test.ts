@@ -152,6 +152,7 @@ describe('Dig search-first responsive shell', () => {
 describe('Compact mobile back navigation', () => {
   it('uses explicit destinations and accessible labels on the affected record screens', () => {
     const digView = fs.readFileSync(path.join(process.cwd(), 'views/browse/dig.ejs'), 'utf8');
+    const responsiveDigView = fs.readFileSync(path.join(process.cwd(), 'views/browse/responsive-dig.ejs'), 'utf8');
     const listingDetailView = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
     const listingPreviewView = fs.readFileSync(path.join(process.cwd(), 'views/listings/preview.ejs'), 'utf8');
     const releaseSelectView = fs.readFileSync(path.join(process.cwd(), 'views/listings/select-release.ejs'), 'utf8');
@@ -161,8 +162,10 @@ describe('Compact mobile back navigation', () => {
     expect(digView).toContain('href="<%= browseReturnUrl %>"');
     expect(digView).toContain('src="/assets/UI/dig_crate.webp"');
     expect(digView).toContain('data-dig-crate-toolbar');
-    expect(digView).toContain('data-dig-filter-dialog');
-    expect(digView).toContain('form action="/dig" method="GET" class="dig-crate-filter-form"');
+    expect(digView).not.toContain('data-dig-filter-dialog');
+    expect(digView).not.toContain('dig-crate-filter-form');
+    expect(responsiveDigView).toContain('class="filter-form browse-filter-form dig-filter-form"');
+    expect(responsiveDigView).toContain('id="dig-filter-query" name="q"');
     expect(listingDetailView).toContain('href="/dig"');
     expect(listingDetailView).toContain('aria-label="Back to Dig results"');
     expect(listingDetailView).toContain('class="listing-condition-overlay"');

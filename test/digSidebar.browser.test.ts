@@ -122,9 +122,19 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
         expect(dimensions.bodyWidth).toBeLessThanOrEqual(width);
 
         const sidebar = page.locator('.dig-sidebar');
-        const drawerTrigger = page.locator('[data-dig-drawer-open]');
-        expect(await page.locator('#dig-primary-search').isVisible()).toBe(true);
-        expect(await page.locator('.view-mode-toggle').isVisible()).toBe(true);
+        const drawerTrigger = width < 768
+          ? page.locator('.dig-crate-toolbar [data-dig-drawer-open]')
+          : page.locator('.dig-search-control-bar [data-dig-drawer-open]');
+
+        if (width < 768) {
+          // Active mobile crate sessions keep search inside the shared filter drawer.
+          expect(await page.locator('#dig-primary-search').isVisible()).toBe(false);
+          expect(await page.locator('.view-mode-toggle').isVisible()).toBe(false);
+          expect(await page.locator('.dig-crate-toolbar').isVisible()).toBe(true);
+        } else {
+          expect(await page.locator('#dig-primary-search').isVisible()).toBe(true);
+          expect(await page.locator('.view-mode-toggle').isVisible()).toBe(true);
+        }
 
         if (width >= 1024) {
           // Desktop widths keep a permanent left-hand rail beside the records.
@@ -144,6 +154,7 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
           expect(await sidebar.getAttribute('role')).toBe('dialog');
           expect(await sidebar.getAttribute('aria-modal')).toBe('true');
           expect(await sidebar.locator('.dig-filter-form').isVisible()).toBe(true);
+          expect(await sidebar.locator('#dig-filter-query').isVisible()).toBe(width < 768);
           expect(await page.locator('[data-dig-filter-dialog]').count()).toBe(0);
           await page.keyboard.press('Escape');
           expect(await sidebar.isVisible()).toBe(false);
@@ -222,7 +233,7 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
       await page.setViewportSize({ width: 768, height: 900 });
       await page.goto(`${baseUrl}/dig`, { waitUntil: 'domcontentloaded' });
 
-      const trigger = page.locator('[data-dig-drawer-open]');
+      const trigger = page.locator('.dig-search-control-bar [data-dig-drawer-open]');
       expect(await trigger.isVisible()).toBe(true);
       expect(await page.locator('.dig-sidebar').isVisible()).toBe(false);
 

@@ -1533,13 +1533,15 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-crate-source] img').getAttribute('alt')).toBe('');
     expect(await page.locator('[data-dig-sound-toggle]').isVisible()).toBe(true);
 
-    const trigger = page.locator('[data-dig-drawer-open]');
+    const trigger = page.locator('[data-dig-crate-toolbar] [data-dig-drawer-open]');
     const sidebar = page.locator('[data-dig-sidebar]');
     const filterForm = sidebar.locator('.dig-filter-form');
 
     expect(await trigger.isVisible()).toBe(true);
     expect(await sidebar.isVisible()).toBe(false);
-    expect(await page.locator('.dig-crate-toolbar > *').count()).toBe(1);
+    expect(await page.locator('.dig-crate-toolbar > *').count()).toBe(2);
+    expect(await page.locator('.dig-crate-toolbar [data-dig-drawer-open]').isVisible()).toBe(true);
+    expect(await page.locator('.dig-crate-toolbar [data-dig-sound-toggle]').isVisible()).toBe(true);
     expect(await page.locator('[data-dig-filter-open]').count()).toBe(0);
     expect(await page.locator('[data-dig-filter-dialog]').count()).toBe(0);
     expect(await page.locator('.dig-crate-filter-form').count()).toBe(0);
@@ -1556,6 +1558,8 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await filterForm.getAttribute('action')).toBe('/dig');
     expect(await page.locator('#dig-primary-search').inputValue()).toBe('De La Soul');
     expect(await filterForm.locator('input[name="q"]').inputValue()).toBe('De La Soul');
+    expect(await filterForm.locator('#dig-filter-query').isVisible()).toBe(true);
+    expect(await filterForm.locator('#dig-filter-query').inputValue()).toBe('De La Soul');
     expect(await filterForm.locator('#filter-genre').inputValue()).toBe('Hip Hop');
     expect(await filterForm.locator('#filter-style').inputValue()).toBe('House');
     expect(await filterForm.locator('#filter-condition').inputValue()).toBe('VG+');
@@ -1569,7 +1573,8 @@ describe('Mobile Dig app-like viewport', () => {
     )).toEqual(['LP', '7-inch']);
 
     await filterForm.locator('#filter-min-price').fill('15.00');
-    await page.locator('#dig-primary-search').fill('Prince');
+    await filterForm.locator('#dig-filter-query').fill('Prince');
+    expect(await page.locator('#dig-primary-search').inputValue()).toBe('Prince');
     expect(await filterForm.locator('input[name="q"]').inputValue()).toBe('Prince');
 
     await page.locator('[data-dig-drawer-close]').click();
@@ -1593,7 +1598,7 @@ describe('Mobile Dig app-like viewport', () => {
       { width: 375, height: 812 },
     ]) {
       await loadPage(viewport.width, viewport.height);
-      const trigger = page.locator('[data-dig-drawer-open]');
+      const trigger = page.locator('[data-dig-crate-toolbar] [data-dig-drawer-open]');
       const sidebar = page.locator('[data-dig-sidebar]');
       await trigger.click();
 
@@ -1652,7 +1657,7 @@ describe('Mobile Dig app-like viewport', () => {
       { width: 430, height: 932 },
     ]) {
       await loadPage(viewport.width, viewport.height, items, true);
-      const trigger = page.locator('[data-dig-drawer-open]');
+      const trigger = page.locator('[data-dig-crate-toolbar] [data-dig-drawer-open]');
       const sidebar = page.locator('[data-dig-sidebar]');
       await trigger.click();
 
@@ -1715,7 +1720,7 @@ describe('Mobile Dig app-like viewport', () => {
   it('closes the mobile drawer immediately when reduced motion is requested', async () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await loadPage(375, 812);
-    const trigger = page.locator('[data-dig-drawer-open]');
+    const trigger = page.locator('[data-dig-crate-toolbar] [data-dig-drawer-open]');
     const sidebar = page.locator('[data-dig-sidebar]');
     await trigger.click();
     expect(await sidebar.isVisible()).toBe(true);
@@ -1733,8 +1738,8 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await page.locator('[data-dig-filter-dialog]').count()).toBe(0);
     expect(await page.locator('.dig-crate-filter-form').count()).toBe(0);
     expect(await page.locator('.dig-filter-form').count()).toBe(1);
-    expect(await page.locator('[data-dig-drawer-open]').isVisible()).toBe(true);
-    await page.locator('[data-dig-drawer-open]').click();
+    expect(await page.locator('[data-dig-crate-toolbar] [data-dig-drawer-open]').isVisible()).toBe(true);
+    await page.locator('[data-dig-crate-toolbar] [data-dig-drawer-open]').click();
     expect(await page.locator('[data-dig-sidebar]').isVisible()).toBe(true);
     expect(await page.locator('.dig-filter-form').isVisible()).toBe(true);
   });
@@ -1753,7 +1758,7 @@ describe('Mobile Dig app-like viewport', () => {
       expect(await page.locator('.mobile-dig-back').isVisible()).toBe(false);
       expect(await page.locator('[data-dig-crate-toolbar]').isVisible()).toBe(false);
 
-      const trigger = page.locator('[data-dig-drawer-open]');
+      const trigger = page.locator('.dig-search-control-bar [data-dig-drawer-open]');
       const sidebar = page.locator('[data-dig-sidebar]');
       if (width < 1024) {
         expect(await trigger.isVisible()).toBe(true);

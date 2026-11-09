@@ -30,7 +30,6 @@ describe('Shared UI controls (#292)', () => {
     const templates = [
       'views/browse/index.ejs',
       'views/browse/responsive-dig.ejs',
-      'views/browse/dig.ejs',
       'views/listings/select-release.ejs',
     ];
 

@@ -221,7 +221,7 @@ describe('Route-specific CSS bundles (#252)', () => {
       .digest('hex');
     // The Browse Genre/Style controls now use a compact two-column desktop grid.
     // Keep this exact hash assertion so unrelated shared-CSS changes remain visible.
-    expect(gitBlobSha).toBe('53e99ba9d394c52a66d391bcfe2fd2cfe618fb07');
+    expect(gitBlobSha).toBe('3eab0f7b89bffa58157d14862588b7663149d9ef');
   });
 
   it('reports reproducible raw/gzip sizes and validates savings per route', () => {
