@@ -285,13 +285,13 @@ export async function getResponsiveDigPage(
       limit: 12,
       totalPages: Math.ceil(digResults.totalCount / 12) || 1,
     };
-    // Dig's grid and crate both use the physical front cover; avoid a Discogs
-    // fallback when a seller has supplied that physical face.
-    const digGridListings = gridResults.items.map((listing) =>
-      listing.frontArtwork?.sourceKind === 'seller_front'
-        ? { ...listing, fallbackImageUrl: undefined }
-        : listing
-    );
+    // Dig's primary image already resolves to the seller's physical front when
+    // available, or catalogue artwork otherwise. Do not append a second catalogue
+    // fallback to the card: that can surface stale release art beside a real copy.
+    const digGridListings = gridResults.items.map((listing) => ({
+      ...listing,
+      fallbackImageUrl: undefined,
+    }));
 
     renderWithLayout(res, 'browse/responsive-dig', {
       title: q ? `Search: "${q}" — Dig — The Vinyl Drop` : 'Dig — The Vinyl Drop',
