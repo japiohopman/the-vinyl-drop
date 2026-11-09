@@ -464,8 +464,14 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(digResponse.status).toBe(200);
     expect(digResponse.text).toContain(`/mock-storage/${updatedFront?.storagePath}`);
     expect(digResponse.text).toContain(`/mock-storage/${updatedBack?.storagePath}`);
-    expect(digResponse.text).not.toContain('https://catalog.example/miles.jpg');
-    expect(digResponse.text).not.toContain('https://i.discogs.com/original-kind-of-blue.jpg');
+    const listingCardImages = digResponse.text.match(/<img(?=[^>]*data-artwork-image)[^>]*>/g) || [];
+    const physicalFrontCardImage = listingCardImages.find((tag) =>
+      tag.includes(`src="/mock-storage/${updatedFront?.storagePath}"`)
+    );
+    expect(physicalFrontCardImage).toBeDefined();
+    // Catalogue artwork is a failure-only fallback, not the primary displayed image.
+    expect(physicalFrontCardImage).toContain('data-artwork-fallback="https://i.discogs.com/original-kind-of-blue.jpg"');
+    expect(physicalFrontCardImage).not.toContain('src="https://i.discogs.com/original-kind-of-blue.jpg"');
     expect(digResponse.text).not.toContain('Front cover not photographed');
     expect(digResponse.text).not.toContain('Back cover not photographed');
 

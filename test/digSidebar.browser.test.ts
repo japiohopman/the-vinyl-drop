@@ -221,7 +221,7 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
     }
   });
 
-  it('normalizes People queries like the server and counts Unicode code points', async () => {
+  it('checks normalized People query length while sending the original Unicode input', async () => {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     try {
       await page.goto(baseUrl + '/dig', { waitUntil: 'domcontentloaded' });
@@ -230,7 +230,7 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
       (peopleSearchService.searchPeople as jest.Mock).mockClear();
       await page.locator('#dig-people-input').fill('ﬀ');
       await page.waitForSelector('.dig-people-card');
-      expect(peopleSearchService.searchPeople).toHaveBeenCalledWith('ff', 1);
+      expect(peopleSearchService.searchPeople).toHaveBeenCalledWith('ﬀ', 1);
       expect(await page.locator('#dig-people-status').textContent()).toContain('Found 1 matching collector.');
 
       (peopleSearchService.searchPeople as jest.Mock).mockClear();

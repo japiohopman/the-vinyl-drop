@@ -796,6 +796,15 @@ describe('searchDigListings PGlite database integration', () => {
 });
 
 describe('GET /browse/dig HTTP route integration', () => {
+  beforeEach(() => {
+    jest.spyOn(listingService, 'hasExplicitWhiteLabelInventory').mockResolvedValue(false);
+  });
+
+  afterEach(() => {
+    // Restore route and inventory spies even when a request assertion fails.
+    jest.restoreAllMocks();
+  });
+
   it('renders explicit seller front and back cover images in Dig view when present', async () => {
     const spy = jest.spyOn(listingService, 'searchDigListings').mockResolvedValueOnce({
       items: [{
