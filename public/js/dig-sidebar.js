@@ -1,171 +1,226 @@
 (() => {
-  // Dig sidebar drawer handling (narrow viewports) and tab switching between Records and People
   const sidebar = document.querySelector('[data-dig-sidebar]');
-  const drawerOpenTrigger = document.querySelector('[data-dig-drawer-open]');
-  const drawerCloseTrigger = document.querySelector('[data-dig-drawer-close]');
+  if (!(sidebar instanceof HTMLElement)) return;
 
-  // Tab buttons
+  const drawerTriggers = Array.from(document.querySelectorAll('[data-dig-drawer-open]'))
+    .filter((element) => element instanceof HTMLButtonElement);
+  const drawerCloseTrigger = sidebar.querySelector('[data-dig-drawer-close]');
   const tabRecords = document.getElementById('tab-records');
   const tabPeople = document.getElementById('tab-people');
   const panelRecords = document.getElementById('panel-records');
   const panelPeople = document.getElementById('panel-people');
 
-  // People search form elements
-  const peopleForm = document.querySelector('[data-dig-people-form]');
-  const peopleInput = document.querySelector('[data-dig-people-input]');
-  const peopleSuggestions = document.getElementById('dig-people-suggestions');
-  const peopleStatus = document.getElementById('dig-people-status');
-  const peopleResultsContainer = document.querySelector('[data-dig-people-results]');
+  const peopleForm = sidebar.querySelector('[data-dig-people-form]');
+  const peopleInput = sidebar.querySelector('[data-dig-people-input]');
+  const peopleStatus = sidebar.querySelector('#dig-people-status');
+  const peopleResultsContainer = sidebar.querySelector('[data-dig-people-results]');
+
+  const drawerMedia = window.matchMedia('(max-width: 1023px)');
+  const focusableSelector = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled]):not([type="hidden"])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])',
+  ].join(',');
 
   let backdrop = null;
+  let activeTrigger = null;
+  let previousFocus = null;
+  let previousBodyOverflow = '';
+  let debounceTimer = null;
+  let activeSearchController = null;
 
-  // 1. Drawer open/close
-  function openDrawer() {
-    if (!sidebar) return;
+  function getFocusableElements() {
+    return Array.from(sidebar.querySelectorAll(focusableSelector)).filter((element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      if (element.hidden || element.getAttribute('aria-hidden') === 'true' || element.tabIndex < 0) return false;
+      const style = window.getComputedStyle(element);
+      return style.visibility !== 'hidden' && element.getClientRects().length > 0;
+    });
+  }
+
+  function syncDrawerViewport() {
+    if (!sidebar.classList.contains('is-drawer-open') || !drawerMedia.matches || !window.visualViewport) {
+      sidebar.style.removeProperty('--dig-sidebar-viewport-top');
+      sidebar.style.removeProperty('--dig-sidebar-viewport-height');
+      return;
+    }
+    const viewport = window.visualViewport;
+    sidebar.style.setProperty('--dig-sidebar-viewport-top', Math.max(0, viewport.offsetTop) + 'px');
+    sidebar.style.setProperty('--dig-sidebar-viewport-height', Math.max(0, viewport.height) + 'px');
+  }
+
+  function closeDrawer(options = {}) {
+    if (!sidebar.classList.contains('is-drawer-open')) return;
+    const restoreFocus = options.restoreFocus !== false;
+
+    sidebar.classList.remove('is-drawer-open');
+    sidebar.removeAttribute('role');
+    sidebar.removeAttribute('aria-modal');
+    sidebar.removeAttribute('aria-label');
+    sidebar.removeAttribute('tabindex');
+    sidebar.style.removeProperty('--dig-sidebar-viewport-top');
+    sidebar.style.removeProperty('--dig-sidebar-viewport-height');
+    drawerTriggers.forEach((trigger) => trigger.setAttribute('aria-expanded', 'false'));
+    if (backdrop) backdrop.hidden = true;
+    document.body.style.overflow = previousBodyOverflow;
+
+    if (restoreFocus) {
+      const target = activeTrigger?.isConnected && activeTrigger.getClientRects().length > 0
+        ? activeTrigger
+        : previousFocus;
+      if (target instanceof HTMLElement && target.isConnected) target.focus();
+    }
+    activeTrigger = null;
+    previousFocus = null;
+  }
+
+  function openDrawer(trigger) {
+    if (!drawerMedia.matches || sidebar.classList.contains('is-drawer-open')) return;
+    activeTrigger = trigger instanceof HTMLElement ? trigger : drawerTriggers[0] || null;
+    previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    previousBodyOverflow = document.body.style.overflow;
+
     sidebar.classList.add('is-drawer-open');
-    if (drawerOpenTrigger) drawerOpenTrigger.setAttribute('aria-expanded', 'true');
+    sidebar.setAttribute('role', 'dialog');
+    sidebar.setAttribute('aria-modal', 'true');
+    sidebar.setAttribute('aria-label', 'Dig navigation, people and filters');
+    sidebar.setAttribute('tabindex', '-1');
+    drawerTriggers.forEach((item) => item.setAttribute('aria-expanded', 'true'));
 
     if (!backdrop) {
       backdrop = document.createElement('div');
       backdrop.className = 'dig-drawer-backdrop';
       backdrop.setAttribute('aria-hidden', 'true');
-      backdrop.addEventListener('click', closeDrawer);
+      backdrop.addEventListener('click', () => closeDrawer());
       document.body.appendChild(backdrop);
     }
     backdrop.hidden = false;
     document.body.style.overflow = 'hidden';
-
-    // Focus on close button or active tab
-    if (drawerCloseTrigger) drawerCloseTrigger.focus();
+    syncDrawerViewport();
+    if (drawerCloseTrigger instanceof HTMLElement) drawerCloseTrigger.focus();
+    else sidebar.focus();
   }
 
-  function closeDrawer() {
-    if (!sidebar) return;
-    sidebar.classList.remove('is-drawer-open');
-    if (drawerOpenTrigger) {
-      drawerOpenTrigger.setAttribute('aria-expanded', 'false');
-      drawerOpenTrigger.focus();
-    }
-    if (backdrop) {
-      backdrop.hidden = true;
-    }
-    document.body.style.overflow = '';
+  drawerTriggers.forEach((trigger) => {
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.addEventListener('click', () => openDrawer(trigger));
+  });
+  if (drawerCloseTrigger instanceof HTMLElement) {
+    drawerCloseTrigger.addEventListener('click', () => closeDrawer());
   }
 
-  if (drawerOpenTrigger) {
-    drawerOpenTrigger.addEventListener('click', openDrawer);
-  }
-  if (drawerCloseTrigger) {
-    drawerCloseTrigger.addEventListener('click', closeDrawer);
-  }
-
-  // Close drawer on Escape
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && sidebar && sidebar.classList.contains('is-drawer-open')) {
+    if (!sidebar.classList.contains('is-drawer-open')) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
       closeDrawer();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+
+    const focusable = getFocusableElements();
+    if (focusable.length === 0) {
+      event.preventDefault();
+      sidebar.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const current = document.activeElement;
+    if (event.shiftKey && (current === first || !sidebar.contains(current))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (current === last || !sidebar.contains(current))) {
+      event.preventDefault();
+      first.focus();
     }
   });
 
-  // 2. Tab switching
-  function switchTab(target) {
-    if (!tabRecords || !tabPeople || !panelRecords || !panelPeople) return;
+  window.addEventListener('resize', syncDrawerViewport);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncDrawerViewport);
+    window.visualViewport.addEventListener('scroll', syncDrawerViewport);
+  }
+  if (typeof drawerMedia.addEventListener === 'function') {
+    drawerMedia.addEventListener('change', (event) => {
+      if (!event.matches) closeDrawer({ restoreFocus: false });
+    });
+  }
 
-    if (target === 'records') {
-      tabRecords.setAttribute('aria-selected', 'true');
-      tabRecords.classList.add('is-active');
-      tabRecords.setAttribute('tabindex', '0');
+  function switchTab(target, focusPeopleSearch = true) {
+    if (!(tabRecords instanceof HTMLButtonElement) ||
+        !(tabPeople instanceof HTMLAnchorElement) ||
+        !(panelRecords instanceof HTMLElement) ||
+        !(panelPeople instanceof HTMLElement)) return;
 
-      tabPeople.setAttribute('aria-selected', 'false');
-      tabPeople.classList.remove('is-active');
-      tabPeople.setAttribute('tabindex', '-1');
+    const recordsActive = target === 'records';
+    tabRecords.setAttribute('aria-selected', String(recordsActive));
+    tabRecords.classList.toggle('is-active', recordsActive);
+    tabRecords.tabIndex = recordsActive ? 0 : -1;
+    tabPeople.setAttribute('aria-selected', String(!recordsActive));
+    tabPeople.classList.toggle('is-active', !recordsActive);
+    tabPeople.tabIndex = recordsActive ? -1 : 0;
+    panelRecords.hidden = !recordsActive;
+    panelRecords.classList.toggle('is-active', recordsActive);
+    panelPeople.hidden = recordsActive;
+    panelPeople.classList.toggle('is-active', !recordsActive);
 
-      panelRecords.hidden = false;
-      panelRecords.classList.add('is-active');
-      panelPeople.hidden = true;
-      panelPeople.classList.remove('is-active');
-    } else if (target === 'people') {
-      tabPeople.setAttribute('aria-selected', 'true');
-      tabPeople.classList.add('is-active');
-      tabPeople.setAttribute('tabindex', '0');
-
-      tabRecords.setAttribute('aria-selected', 'false');
-      tabRecords.classList.remove('is-active');
-      tabRecords.setAttribute('tabindex', '-1');
-
-      panelPeople.hidden = false;
-      panelPeople.classList.add('is-active');
-      panelRecords.hidden = true;
-      panelRecords.classList.remove('is-active');
-
-      if (peopleInput) {
-        peopleInput.focus();
-      }
+    if (!recordsActive && focusPeopleSearch && peopleInput instanceof HTMLInputElement) {
+      peopleInput.focus();
     }
   }
 
-  if (tabRecords && tabPeople) {
-    tabRecords.addEventListener('click', (e) => {
-      e.preventDefault();
+  if (tabRecords instanceof HTMLButtonElement && tabPeople instanceof HTMLAnchorElement) {
+    tabRecords.addEventListener('click', (event) => {
+      event.preventDefault();
       switchTab('records');
+      tabRecords.focus();
     });
-    tabPeople.addEventListener('click', (e) => {
-      e.preventDefault();
+    tabPeople.addEventListener('click', (event) => {
+      event.preventDefault();
       switchTab('people');
     });
 
-    // Arrow navigation across tabs
-    const tabs = [tabRecords, tabPeople];
-    tabs.forEach((tab, index) => {
-      tab.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-          e.preventDefault();
-          const nextIndex = (index + 1) % tabs.length;
-          tabs[nextIndex].focus();
-          switchTab(nextIndex === 0 ? 'records' : 'people');
-        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-          e.preventDefault();
-          const prevIndex = (index - 1 + tabs.length) % tabs.length;
-          tabs[prevIndex].focus();
-          switchTab(prevIndex === 0 ? 'records' : 'people');
-        }
+    [tabRecords, tabPeople].forEach((tab, index, tabs) => {
+      tab.addEventListener('keydown', (event) => {
+        if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const nextIndex = event.key === 'Home' ? 0
+          : event.key === 'End' ? tabs.length - 1
+            : (index + (event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1) + tabs.length) % tabs.length;
+        switchTab(nextIndex === 0 ? 'records' : 'people', false);
+        tabs[nextIndex].focus();
       });
     });
   }
 
-  // 3. People in-place search
-  if (!peopleForm || !peopleInput || !peopleResultsContainer || !peopleStatus) {
-    return;
-  }
-
-  let debounceTimer = null;
-  let activeSearchController = null;
-
   function renderPeopleResults(people, totalCount) {
+    if (!(peopleResultsContainer instanceof HTMLElement) || !(peopleStatus instanceof HTMLElement)) return;
     peopleResultsContainer.replaceChildren();
 
-    if (!people || people.length === 0) {
-      const emptyMsg = document.createElement('p');
-      emptyMsg.className = 'dig-people-prompt';
-      emptyMsg.textContent = 'No collectors matched this search.';
-      peopleResultsContainer.appendChild(emptyMsg);
+    if (!Array.isArray(people) || people.length === 0) {
+      const emptyMessage = document.createElement('p');
+      emptyMessage.className = 'dig-people-prompt';
+      emptyMessage.textContent = 'No collectors matched this search.';
+      peopleResultsContainer.appendChild(emptyMessage);
       peopleStatus.textContent = 'No matching collectors found.';
       return;
     }
 
     const list = document.createElement('div');
     list.className = 'dig-people-list';
-    list.style.display = 'flex';
-    list.style.flexDirection = 'column';
-    list.style.gap = 'var(--space-2)';
-
     people.forEach((person) => {
+      if (!person || typeof person.username !== 'string' || !person.username) return;
       const card = document.createElement('a');
       card.className = 'dig-people-card';
       card.href = '/profiles/' + encodeURIComponent(person.username);
 
       const avatar = document.createElement('div');
       avatar.className = 'dig-people-avatar';
-      if (person.avatarUrl && /^https:\/\//i.test(person.avatarUrl)) {
+      if (typeof person.avatarUrl === 'string' && /^https:\/\//i.test(person.avatarUrl)) {
         const img = document.createElement('img');
         img.src = person.avatarUrl;
         img.alt = '';
@@ -173,36 +228,38 @@
         img.referrerPolicy = 'no-referrer';
         avatar.appendChild(img);
       } else {
-        avatar.textContent = (person.displayName || person.username).charAt(0).toUpperCase();
+        const label = typeof person.displayName === 'string' && person.displayName
+          ? person.displayName : person.username;
+        avatar.textContent = label.charAt(0).toUpperCase();
       }
 
       const info = document.createElement('div');
       info.className = 'dig-people-info';
-
       const name = document.createElement('span');
       name.className = 'dig-people-name';
-      name.textContent = person.displayName || person.username;
-
+      name.textContent = typeof person.displayName === 'string' && person.displayName
+        ? person.displayName : person.username;
       const username = document.createElement('span');
       username.className = 'dig-people-username';
       username.textContent = '@' + person.username;
 
       info.appendChild(name);
       info.appendChild(username);
-
       card.appendChild(avatar);
       card.appendChild(info);
       list.appendChild(card);
     });
 
     peopleResultsContainer.appendChild(list);
-    peopleStatus.textContent = `Found ${totalCount} matching ${totalCount === 1 ? 'collector' : 'collectors'}.`;
+    const safeTotal = Number.isFinite(totalCount) && totalCount > 0 ? totalCount : people.length;
+    peopleStatus.textContent = 'Found ' + safeTotal + ' matching ' +
+      (safeTotal === 1 ? 'collector.' : 'collectors.');
   }
 
   async function performPeopleSearch(query) {
-    if (activeSearchController) {
-      activeSearchController.abort();
-    }
+    if (!(peopleStatus instanceof HTMLElement) ||
+        !(peopleResultsContainer instanceof HTMLElement)) return;
+    if (activeSearchController) activeSearchController.abort();
     activeSearchController = new AbortController();
 
     const trimmed = query.trim();
@@ -217,32 +274,33 @@
     }
 
     peopleStatus.textContent = 'Searching collectors…';
-
     try {
-      const res = await fetch('/api/people-search?q=' + encodeURIComponent(trimmed), {
+      const response = await fetch('/api/people-search?q=' + encodeURIComponent(trimmed), {
         signal: activeSearchController.signal,
         headers: { Accept: 'application/json' },
       });
-
-      if (!res.ok) throw new Error('Search failed');
-      const data = await res.json();
-      renderPeopleResults(data.people || [], data.pagination?.totalCount || 0);
-    } catch (err) {
-      if (err.name === 'AbortError') return;
+      if (!response.ok) throw new Error('Search failed');
+      const data = await response.json();
+      renderPeopleResults(data.people || [], data.pagination?.totalCount ?? data.people?.length ?? 0);
+    } catch (error) {
+      if (error && error.name === 'AbortError') return;
+      peopleResultsContainer.replaceChildren();
       peopleStatus.textContent = 'Unable to search people at this time.';
     }
   }
 
-  peopleInput.addEventListener('input', () => {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
+  if (peopleForm instanceof HTMLFormElement &&
+      peopleInput instanceof HTMLInputElement &&
+      peopleStatus instanceof HTMLElement &&
+      peopleResultsContainer instanceof HTMLElement) {
+    peopleInput.addEventListener('input', () => {
+      if (debounceTimer) window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => performPeopleSearch(peopleInput.value), 250);
+    });
+    peopleForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (debounceTimer) window.clearTimeout(debounceTimer);
       performPeopleSearch(peopleInput.value);
-    }, 250);
-  });
-
-  peopleForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    if (debounceTimer) clearTimeout(debounceTimer);
-    performPeopleSearch(peopleInput.value);
-  });
+    });
+  }
 })();
