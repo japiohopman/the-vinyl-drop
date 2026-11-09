@@ -122,6 +122,11 @@
   padding: var(--space-1) var(--space-2);
 }
 
+.dig-sidebar-close:focus-visible {
+  outline: 3px solid var(--color-focus, #3b82f6);
+  outline-offset: 2px;
+}
+
 /* Records / People Tab Switcher */
 .dig-sidebar-tabs {
   display: flex;
@@ -414,13 +419,18 @@
   .dig-sidebar {
     display: none;
     position: fixed;
-    top: 0;
+    top: var(--dig-sidebar-viewport-top, 0px);
     left: 0;
     width: min(85vw, 360px);
-    height: 100vh;
-    height: 100dvh;
+    max-width: 100vw;
+    height: var(--dig-sidebar-viewport-height, 100dvh);
     z-index: 1000;
+    overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     background: var(--color-paper-muted, #f7f5f0);
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
     transform: translateX(-100%);
@@ -449,6 +459,10 @@
     z-index: 999;
     background: rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(2px);
+  }
+
+  .dig-drawer-backdrop[hidden] {
+    display: none !important;
   }
 }
 
