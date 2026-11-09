@@ -13,17 +13,6 @@
   ].filter(Boolean).join('&');
   const browseReturnUrl = '/browse?' + baseQueryParams + '&view=grid';
   const visibleItems = Array.isArray(items) ? items : [];
-  const digActiveFilterCount = [
-    filters.q,
-    filters.genre,
-    filters.style,
-    filters.condition,
-    filters.minPrice,
-    filters.maxPrice,
-    filters.sort && filters.sort !== 'newest',
-    selectedFormats.length > 0,
-    filters.whiteLabel
-  ].filter(Boolean).length;
 %>
 
 <div class="dig-page" data-dig-experience data-reduced-motion="false">
@@ -60,7 +49,7 @@
       <% } %>
     </div>
 
-    <% if (filters.q || filters.genre || filters.condition || filters.minPrice || filters.maxPrice || selectedFormats.length || filters.whiteLabel) { %>
+    <% if (filters.q || filters.genre || filters.style || filters.condition || filters.minPrice || filters.maxPrice || selectedFormats.length || filters.whiteLabel) { %>
       <p class="dig-filter-summary">
         Active filters:
         <% if (filters.q) { %><span>Search: <strong><%= filters.q %></strong></span><% } %>
