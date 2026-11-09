@@ -310,8 +310,10 @@ describe('Responsive disclosure browser behavior', () => {
         ['filter action', metrics.apply],
       ] as const;
       for (const [name, control] of measuredControls) {
-        expect(control, name + ' should be present').not.toBeNull();
-        expect(control!.height, name + ' should be 44px high').toBeCloseTo(44, 0);
+        if (!control) throw new Error(name + ' should be present');
+        if (Math.abs(control.height - 44) >= 0.5) {
+          throw new Error(name + ' should be 44px high, received ' + control.height + 'px');
+        }
       }
 
       expect(metrics.gridToggle).not.toBeNull();
