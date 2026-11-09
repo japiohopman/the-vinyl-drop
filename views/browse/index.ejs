@@ -189,6 +189,9 @@
   </form>
 
 
+  <% if (typeof responsiveDig !== 'undefined' && responsiveDig) { %>
+    <div class="browse-results-content">
+  <% } else { %>
   <div class="browse-explorer-layout">
     <aside class="browse-catalogue-explorer" aria-label="Catalogue explorer">
       <% const browseExplorerBaseParams = [
@@ -303,6 +306,7 @@
     </aside>
 
     <div class="browse-results-content">
+  <% } %>
   
 
   <!-- Results Count & View Switcher -->
@@ -399,5 +403,7 @@
     </div>
   <% } %>
     </div>
+  <% if (typeof responsiveDig === 'undefined' || !responsiveDig) { %>
   </div>
+  <% } %>
 </div>

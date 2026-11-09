@@ -97,6 +97,9 @@
   <% if (typeof currentPath !== 'undefined' && currentPath === '/people') { %>
     <script src="/js/people-search.js" defer></script>
   <% } %>
+  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
+    <script src="/js/dig-sidebar.js" defer></script>
+  <% } %>
   <% if (typeof currentPath !== 'undefined' && ['/dig', '/browse', '/search', '/browse/dig'].includes(currentPath)) { %>
     <script src="/js/catalogue-search-suggestions.js" defer></script>
     <style>

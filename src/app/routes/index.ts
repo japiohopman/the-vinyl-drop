@@ -14,7 +14,7 @@ import listingRoutes from './listingRoutes';
 import releaseRoutes from './releaseRoutes';
 import messagingRoutes from './messagingRoutes';
 import { getCatalogueSuggestions } from '../controllers/catalogueSearchController';
-import { getPeopleSearchPage, getPeopleSuggestions } from '../controllers/peopleSearchController';
+import { getPeopleSearchPage, getPeopleSuggestions, getPeopleSearchApi } from '../controllers/peopleSearchController';
 
 const router = Router();
 
@@ -25,6 +25,7 @@ router.get('/browse', getBrowsePage);
 router.get('/search', getSearchPage);
 router.get('/api/catalogue-suggestions', rateLimits.catalogueSuggestion, getCatalogueSuggestions);
 router.get('/api/people-suggestions', rateLimits.peopleSuggestion, getPeopleSuggestions);
+router.get('/api/people-search', rateLimits.peopleSuggestion, getPeopleSearchApi);
 router.get('/people', rateLimits.peoplePage, getPeopleSearchPage);
 router.get('/activity', getActivityPage);
 router.get('/contact', getContactPage);

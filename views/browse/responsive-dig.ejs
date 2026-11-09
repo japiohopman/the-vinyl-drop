@@ -2,32 +2,87 @@
   const selectedFormats = Array.isArray(filters.formats) ? filters.formats : [];
   const currentView = filters && filters.view === 'list' ? 'list' : 'grid';
   const currentPage = pagination && pagination.page ? pagination.page : 1;
-  const buildDigViewUrl = function(view) {
-    const params = [
-      'q=' + encodeURIComponent(filters.q || ''),
-      'genre=' + encodeURIComponent(filters.genre || ''),
-      'condition=' + encodeURIComponent(filters.condition || ''),
-      'minPrice=' + encodeURIComponent(filters.minPrice || ''),
-      'maxPrice=' + encodeURIComponent(filters.maxPrice || ''),
-      'sort=' + encodeURIComponent(filters.sort || 'newest'),
-      ...selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }),
-      filters.whiteLabel ? 'whiteLabel=1' : '',
-      'page=' + encodeURIComponent(currentPage),
-      'view=' + encodeURIComponent(view)
-    ].filter(Boolean);
-    return '/dig?' + params.join('&');
+  const browseFormatIconPaths = { lp: '/assets/UI/LP.svg', '12-inch': '/assets/UI/12-ince.svg', '7-inch': '/assets/UI/7-ince.svg' };
+  const availableExplorerFormats = typeof formatOptions !== 'undefined' && Array.isArray(formatOptions)
+    ? formatOptions
+    : [];
+  const availableExplorerGenres = typeof genreOptions !== 'undefined' && Array.isArray(genreOptions)
+    ? genreOptions
+    : [];
+  const availableExplorerStyles = typeof styleOptions !== 'undefined' && Array.isArray(styleOptions)
+    ? styleOptions
+    : [];
+  const styleParentMap = typeof styleParentGenres !== 'undefined' && styleParentGenres ? styleParentGenres : {};
+
+  const buildDigUrl = function(overrides) {
+    const next = Object.assign({
+      q: filters.q || '',
+      genre: filters.genre || '',
+      style: filters.style || '',
+      condition: filters.condition || '',
+      minPrice: filters.minPrice || '',
+      maxPrice: filters.maxPrice || '',
+      sort: filters.sort || 'newest',
+      formats: selectedFormats,
+      whiteLabel: filters.whiteLabel,
+      page: currentPage,
+      view: currentView
+    }, overrides || {});
+
+    const params = [];
+    if (next.q) params.push('q=' + encodeURIComponent(next.q));
+    if (next.genre) params.push('genre=' + encodeURIComponent(next.genre));
+    if (next.style) params.push('style=' + encodeURIComponent(next.style));
+    if (next.condition) params.push('condition=' + encodeURIComponent(next.condition));
+    if (next.minPrice) params.push('minPrice=' + encodeURIComponent(next.minPrice));
+    if (next.maxPrice) params.push('maxPrice=' + encodeURIComponent(next.maxPrice));
+    if (next.sort && next.sort !== 'newest') params.push('sort=' + encodeURIComponent(next.sort));
+    (next.formats || []).forEach(function(f) { params.push('format=' + encodeURIComponent(f)); });
+    if (next.whiteLabel) params.push('whiteLabel=1');
+    if (next.page && next.page > 1) params.push('page=' + encodeURIComponent(next.page));
+    if (next.view) params.push('view=' + encodeURIComponent(next.view));
+
+    return '/dig' + (params.length ? '?' + params.join('&') : '');
   };
+
+  const buildDigViewUrl = function(view) {
+    return buildDigUrl({ view: view });
+  };
+
+  const digExplorerHref = function(nextGenre, nextStyle, nextFormats) {
+    return buildDigUrl({
+      genre: nextGenre,
+      style: nextStyle,
+      formats: nextFormats,
+      page: 1
+    });
+  };
+
+  const activeFilterCount = [
+    filters.q,
+    filters.genre,
+    filters.style,
+    filters.condition,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.sort && filters.sort !== 'newest',
+    selectedFormats.length > 0,
+    filters.whiteLabel
+  ].filter(Boolean).length;
 %>
-<div class="dig-responsive-page">
+<div class="dig-responsive-page" data-dig-page>
 
-  <nav class="people-search-mode dig-search-mode" aria-label="Search mode">
-    <a href="/dig" aria-current="page">Records</a>
-    <a href="/people">People</a>
-  </nav>
-
+  <!-- Dig Desktop & Tablet Primary Header Controls -->
   <div class="dig-search-control-bar" role="group" aria-label="Dig search and display controls">
+    <button type="button" class="btn btn-outline dig-drawer-trigger" data-dig-drawer-open aria-controls="dig-sidebar-drawer" aria-haspopup="dialog" aria-expanded="false" aria-label="Open sidebar and filters<%= activeFilterCount ? ', ' + activeFilterCount + ' active' : '' %>">
+      <%- include('../partials/icon', { name: 'funnel', size: '1rem', ariaHidden: true }) %>
+      <span>Filters</span>
+      <% if (activeFilterCount) { %><span class="dig-active-filter-badge"><%= activeFilterCount %></span><% } %>
+    </button>
+
     <form action="/dig" method="GET" class="dig-primary-search-form">
       <input type="hidden" name="genre" value="<%= filters.genre || '' %>">
+      <input type="hidden" name="style" value="<%= filters.style || '' %>">
       <input type="hidden" name="condition" value="<%= filters.condition || '' %>">
       <input type="hidden" name="minPrice" value="<%= filters.minPrice || '' %>">
       <input type="hidden" name="maxPrice" value="<%= filters.maxPrice || '' %>">
@@ -73,20 +128,262 @@
     </div>
   </div>
 
-  <section class="dig-responsive-desktop" aria-label="Dig grid and list results">
-    <%- include('./index', {
-      title,
-      listings,
-      formatOptions: typeof formatOptions !== 'undefined' ? formatOptions : [],
-      genreOptions: typeof genreOptions !== 'undefined' ? genreOptions : [],
-      whiteLabelAvailable,
-      filters,
-      pagination,
-      errorMessage,
-      responsiveDig: true
-    }) %>
+  <section class="dig-responsive-desktop" aria-label="Dig records and community workspace">
+    <div class="dig-workspace-layout">
+      <!-- Dig Left-Hand Unified Sidebar (Drawer on mobile) -->
+      <aside class="dig-sidebar" id="dig-sidebar-drawer" aria-label="Dig sidebar" data-dig-sidebar>
+        <div class="dig-sidebar-inner">
+          <div class="dig-sidebar-header">
+            <h2 class="dig-sidebar-title">Explore &amp; Filter</h2>
+            <button type="button" class="dig-sidebar-close" data-dig-drawer-close aria-label="Close sidebar">×</button>
+          </div>
+
+          <!-- Records / People Tab Switcher -->
+          <div class="dig-sidebar-tabs" role="tablist" aria-label="Dig sidebar view">
+            <button type="button" role="tab" id="tab-records" aria-selected="true" aria-controls="panel-records" class="dig-tab-btn is-active" tabindex="0">
+              Records
+            </button>
+            <button type="button" role="tab" id="tab-people" aria-selected="false" aria-controls="panel-people" class="dig-tab-btn" tabindex="-1">
+              People
+            </button>
+          </div>
+
+          <!-- Tab Panel: Records -->
+          <div id="panel-records" role="tabpanel" aria-labelledby="tab-records" class="dig-tab-panel is-active">
+            <details class="browse-mobile-filter-panel" open>
+              <summary class="visually-hidden">Filters</summary>
+            <!-- Consolidated Filter Form -->
+            <form action="/dig" method="GET" class="filter-form browse-filter-form dig-filter-form" data-dig-filter-form>
+              <input type="hidden" name="view" value="<%= currentView %>">
+              <input type="hidden" name="q" value="<%= filters.q || '' %>">
+              <% selectedFormats.forEach(function(format) { %>
+                <input type="hidden" name="format" value="<%= format %>">
+              <% }); %>
+              <input type="hidden" name="whiteLabel" value="<%= filters.whiteLabel ? '1' : '' %>">
+
+              <!-- Quick Formats -->
+              <fieldset class="browse-format-quick-filters">
+                <legend>Format</legend>
+                <div class="browse-format-chip-row">
+                  <% availableExplorerFormats.forEach(function(option) { const selected = selectedFormats.includes(option.value); const iconPath = browseFormatIconPaths[String(option.value).toLowerCase()]; %>
+                    <button type="submit" name="formatToggle" value="<%= option.value %>" class="browse-format-chip <%= selected ? 'is-selected' : '' %>" aria-pressed="<%= selected ? 'true' : 'false' %>" title="<%= option.description %>">
+                      <% if (iconPath) { %><img class="browse-format-icon" src="<%= iconPath %>" width="26" height="26" alt="" aria-hidden="true" loading="lazy"><% } %>
+                      <span><%= option.label %></span>
+                    </button>
+                  <% }); %>
+                  <% if (whiteLabelAvailable) { %>
+                    <button type="submit" name="whiteLabelToggle" value="1" class="browse-format-chip browse-white-label-chip <%= filters.whiteLabel ? 'is-selected' : '' %>" aria-pressed="<%= filters.whiteLabel ? 'true' : 'false' %>">White label</button>
+                  <% } %>
+                </div>
+              </fieldset>
+
+              <!-- Genre & Style Selection -->
+              <div class="dig-sidebar-group">
+                <h3 class="dig-sidebar-group-title">Genres &amp; Styles</h3>
+                <div class="browse-primary-filters">
+                  <div class="browse-genre-control">
+                    <label for="filter-genre">Genre</label>
+                    <select id="filter-genre" name="genre" class="form-control">
+                      <option value="">All Genres</option>
+                      <% availableExplorerGenres.forEach(function(g) { %>
+                        <option value="<%= g %>" <%= filters.genre === g ? 'selected' : '' %>><%= g %></option>
+                      <% }); %>
+                    </select>
+                  </div>
+                  <div class="browse-genre-control">
+                    <label for="filter-style">Style</label>
+                    <select id="filter-style" name="style" class="form-control">
+                      <option value="">All Styles</option>
+                      <% availableExplorerStyles.forEach(function(s) { %>
+                        <option value="<%= s %>" <%= filters.style === s ? 'selected' : '' %>><%= s %></option>
+                      <% }); %>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Fast Links for Parent Genres and Associated Styles -->
+                <nav class="dig-taxonomy-nav" aria-label="Catalogue navigation">
+                  <a class="dig-taxonomy-link <%= !filters.genre && !filters.style && selectedFormats.length === 0 ? 'is-selected' : '' %>" href="<%= digExplorerHref('', '', []) %>" <%- !filters.genre && !filters.style && selectedFormats.length === 0 ? 'aria-current="page"' : '' %>>All records</a>
+                  <ul class="dig-taxonomy-list">
+                    <% availableExplorerGenres.forEach(function(genreOption) { %>
+                      <% const associatedStyles = availableExplorerStyles.filter(function(st) {
+                        return styleParentMap[st] && styleParentMap[st].includes(genreOption);
+                      }); %>
+                      <li>
+                        <a class="dig-taxonomy-link <%= (filters.genre === genreOption && !filters.style) ? 'is-selected' : '' %>" href="<%= digExplorerHref(genreOption, '', selectedFormats) %>" <%- (filters.genre === genreOption && !filters.style) ? 'aria-current="page"' : '' %>>
+                          <%= genreOption %>
+                        </a>
+                        <% if (associatedStyles.length > 0) { %>
+                          <ul class="dig-taxonomy-sublist">
+                            <% associatedStyles.forEach(function(styleOption) { %>
+                              <% const isStyleSelected = (filters.style === styleOption && (!filters.genre || filters.genre === genreOption)); %>
+                              <li>
+                                <a class="dig-taxonomy-link dig-taxonomy-sublink <%= isStyleSelected ? 'is-selected' : '' %>" href="<%= digExplorerHref(genreOption, styleOption, selectedFormats) %>" <%- isStyleSelected ? 'aria-current="page"' : '' %>>
+                                  <%= styleOption %>
+                                </a>
+                              </li>
+                            <% }); %>
+                          </ul>
+                        <% } %>
+                      </li>
+                    <% }); %>
+                  </ul>
+                </nav>
+              </div>
+
+              <!-- Condition, Price & Sort -->
+              <details class="browse-secondary-filters" open>
+                <summary>
+                  <span>More filters</span>
+                  <span class="browse-secondary-filter-status"><%= activeFilterCount ? activeFilterCount + ' active' : 'Condition, price & sort' %></span>
+                </summary>
+                <div class="browse-secondary-grid">
+                  <div>
+                    <label for="filter-condition">Condition</label>
+                    <select id="filter-condition" name="condition" class="form-control">
+                      <option value="">Any condition</option>
+                      <% const conditions = ['M', 'NM', 'VG+', 'VG', 'VG-', 'G+', 'G', 'F', 'P']; %>
+                      <% conditions.forEach(function(condition) { %>
+                        <option value="<%= condition %>" <%= filters.condition === condition ? 'selected' : '' %>><%= condition %></option>
+                      <% }); %>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="filter-min-price">Min price (€)</label>
+                    <input type="number" id="filter-min-price" name="minPrice" step="0.01" min="0" value="<%= filters.minPrice || '' %>" placeholder="0.00">
+                  </div>
+                  <div>
+                    <label for="filter-max-price">Max price (€)</label>
+                    <input type="number" id="filter-max-price" name="maxPrice" step="0.01" min="0" value="<%= filters.maxPrice || '' %>" placeholder="500">
+                  </div>
+                  <div>
+                    <label for="filter-sort">Sort by</label>
+                    <select id="filter-sort" name="sort" class="form-control">
+                      <option value="newest" <%= filters.sort === 'newest' ? 'selected' : '' %>>Newest additions</option>
+                      <option value="price_asc" <%= filters.sort === 'price_asc' ? 'selected' : '' %>>Price: low to high</option>
+                      <option value="price_desc" <%= filters.sort === 'price_desc' ? 'selected' : '' %>>Price: high to low</option>
+                      <option value="artist_asc" <%= filters.sort === 'artist_asc' ? 'selected' : '' %>>Artist: A–Z</option>
+                      <option value="title_asc" <%= filters.sort === 'title_asc' ? 'selected' : '' %>>Title: A–Z</option>
+                    </select>
+                  </div>
+                </div>
+              </details>
+
+              <div class="browse-filter-actions">
+                <div class="browse-filter-action-buttons">
+                  <button type="submit" class="btn btn-primary browse-apply-submit">Apply filters</button>
+                  <% if (activeFilterCount) { %>
+                    <a href="/dig?view=<%= currentView %>" class="btn btn-outline btn-sm">Clear all</a>
+                  <% } %>
+                </div>
+              </div>
+            </form>
+            </details>
+          </div>
+
+          <!-- Tab Panel: People -->
+          <div id="panel-people" role="tabpanel" aria-labelledby="tab-people" class="dig-tab-panel" hidden>
+            <div class="dig-people-search" data-dig-people-search>
+              <form class="dig-people-form" action="/people" method="GET" role="search" data-dig-people-form>
+                <label for="dig-people-input" class="dig-people-label">Find collectors &amp; sellers</label>
+                <div class="form-search-control">
+                  <%- include('../partials/icon', { name: 'search', size: '1rem', ariaHidden: true }) %>
+                  <input type="search" id="dig-people-input" name="q" class="form-control" placeholder="Username or display name" maxlength="50" autocomplete="off" aria-describedby="dig-people-status" aria-controls="dig-people-suggestions" data-dig-people-input>
+                </div>
+                <ul id="dig-people-suggestions" class="dig-people-suggestions" aria-label="People suggestions" hidden></ul>
+                <p id="dig-people-status" class="dig-people-status" role="status" aria-live="polite" aria-atomic="true">Enter at least 2 characters to search.</p>
+                <button type="submit" class="btn btn-primary btn-sm dig-people-submit">Search People</button>
+              </form>
+
+              <div class="dig-people-results" data-dig-people-results aria-live="polite">
+                <!-- People results injected here via progressive enhancement -->
+                <p class="dig-people-prompt">Find community members without leaving Dig.</p>
+              </div>
+
+              <div class="dig-people-fallback">
+                <a href="/people" class="dig-people-fallback-link">Open full People directory &rarr;</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Desktop Results Content Area -->
+      <main class="dig-results-content" aria-label="Dig records">
+        <header class="browse-header dig-desktop-header">
+          <div class="browse-header-copy">
+            <h1>
+              <%= filters.q ? `Search: "${filters.q}"` : 'Dig Vinyl Records' %>
+            </h1>
+            <p class="browse-header-description">
+              Dig through physical vinyl records available in our local community marketplace.
+            </p>
+          </div>
+        </header>
+
+        <% if (errorMessage) { %>
+          <div class="alert alert-error" style="padding: var(--space-4); margin-bottom: var(--space-6); background: var(--color-error-bg); border: var(--border-thick) var(--color-error-border); border-radius: var(--radius-sm); color: var(--color-error-border); font-family: var(--font-body);">
+            <%= errorMessage %>
+          </div>
+        <% } %>
+
+        <div class="browse-controls-bar">
+          <p class="browse-results-summary">
+            <span class="browse-results-label">Results</span>
+            <span>Showing <strong><%= listings.length %></strong> of <strong><%= pagination.totalCount %></strong> drops</span>
+          </p>
+        </div>
+
+        <% if (listings && listings.length > 0) { %>
+          <% if (currentView === 'list') { %>
+            <div class="listing-list">
+              <% listings.forEach(function(item) { %>
+                <%- include('../partials/listing-card', { listing: item, mode: 'list' }) %>
+              <% }); %>
+            </div>
+          <% } else { %>
+            <div class="listing-grid">
+              <% listings.forEach(function(item) { %>
+                <%- include('../partials/listing-card', { listing: item, mode: 'grid' }) %>
+              <% }); %>
+            </div>
+          <% } %>
+
+          <% if (pagination.totalPages > 1) { %>
+            <nav class="pagination-nav browse-pagination" aria-label="Dig pagination">
+              <% if (pagination.page > 1) { %>
+                <a href="<%= buildDigUrl({ page: pagination.page - 1 }) %>" class="btn btn-outline btn-sm">
+                  ← Previous
+                </a>
+              <% } %>
+
+              <span style="font-family: var(--font-mono); font-size: var(--font-size-sm);">
+                Page <%= pagination.page %> of <%= pagination.totalPages %>
+              </span>
+
+              <% if (pagination.page < pagination.totalPages) { %>
+                <a href="<%= buildDigUrl({ page: pagination.page + 1 }) %>" class="btn btn-outline btn-sm">
+                  Next →
+                </a>
+              <% } %>
+            </nav>
+          <% } %>
+        <% } else { %>
+          <div class="empty-state browse-empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: var(--space-4); color: var(--color-ink-muted);" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <h3 style="font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-2);">No records match your search</h3>
+            <p style="color: var(--color-ink-muted); margin-bottom: var(--space-6);">Try adjusting your search terms, changing filters, or clearing your search.</p>
+            <a href="/dig?view=<%= currentView %>" class="btn btn-primary">Clear Filters</a>
+          </div>
+        <% } %>
+      </main>
+    </div>
   </section>
 
+  <!-- Dig Mobile Crate Section -->
   <section class="dig-responsive-mobile" aria-label="Dig crate exploration">
     <%- include('./dig', {
       title,
@@ -103,19 +400,20 @@
 </div>
 
 <script>
-  // Keep the separate top search form and filter disclosure in sync so that
-  // typing a query and then applying a quick filter cannot drop either value.
+  // Synchronize search and filter parameters
   (() => {
     const searchForm = document.querySelector('.dig-primary-search-form');
     const searchInput = document.getElementById('dig-primary-search');
-    const filterForm = document.querySelector('.browse-filter-form');
+    const filterForm = document.querySelector('.dig-filter-form');
 
     if (!searchForm || !searchInput || !filterForm) return;
 
     const filterQuery = filterForm.querySelector('input[type="hidden"][name="q"]');
     const crateFilterQuery = document.querySelector('.dig-crate-filter-form input[name="q"]');
+
     const filterMappings = [
       { name: 'genre', selector: '#filter-genre' },
+      { name: 'style', selector: '#filter-style' },
       { name: 'condition', selector: '#filter-condition' },
       { name: 'minPrice', selector: '#filter-min-price' },
       { name: 'maxPrice', selector: '#filter-max-price' },

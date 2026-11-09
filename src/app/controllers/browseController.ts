@@ -242,6 +242,8 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const genreInput = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
     const genre = genreInput ? (resolveCanonicalGenre(genreInput) || genreInput) : '';
+    const styleInput = typeof req.query.style === 'string' ? req.query.style.trim() : '';
+    const style = styleInput ? (resolveCanonicalStyle(styleInput) || styleInput) : '';
     const submittedFormats = parseVinylFormatFilters(req.query.format);
     const formatToggle = typeof req.query.formatToggle === 'string'
       ? parseVinylFormatFilters(req.query.formatToggle)[0]
@@ -274,6 +276,7 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
     const filters = {
       q,
       genre,
+      style,
       condition: conditionInput,
       minPrice: minPriceEurStr,
       maxPrice: maxPriceEurStr,
@@ -305,6 +308,7 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
     const searchParams = {
       q: q || undefined,
       genre: genre || undefined,
+      style: style || undefined,
       condition,
       minPrice,
       maxPrice,
@@ -337,6 +341,7 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
       formatOptions: VINYL_FORMAT_FILTERS,
       genreOptions: RELEASE_GENRES,
       styleOptions: RELEASE_STYLES,
+      styleParentGenres: STYLE_PARENT_GENRES,
       whiteLabelAvailable,
       filters,
       pagination: {

@@ -106,3 +106,37 @@ export async function getPeopleSuggestions(
     next(error);
   }
 }
+
+/** Search people API returning JSON for sidebar embedded search. */
+export async function getPeopleSearchApi(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const query = req.query.q;
+    res.set('Cache-Control', 'no-store');
+
+    if (typeof query !== 'string' || isMalformedPeopleQuery(query)) {
+      res.status(400).json({ error: 'Provide a search query of at most 50 characters.' });
+      return;
+    }
+
+    const trimmedQuery = query.trim();
+    if (!isPeopleSearchQueryLongEnough(trimmedQuery)) {
+      res.status(200).json({ people: [] });
+      return;
+    }
+
+    const results = await searchPeople(trimmedQuery, 1);
+    // Bounded to public profile fields
+    const people = results.items.map((person) => ({
+      username: person.username,
+      displayName: person.displayName,
+      avatarUrl: person.avatarUrl,
+    }));
+    res.status(200).json({ people });
+  } catch (error) {
+    next(error);
+  }
+}
