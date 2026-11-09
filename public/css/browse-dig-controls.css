@@ -393,6 +393,20 @@
   line-height: 1;
 }
 
+/* Sidebar controls keep the same compact, accessible hit area across Dig widths. */
+.dig-sidebar .form-control,
+.dig-sidebar .browse-secondary-grid input,
+.dig-sidebar .browse-secondary-grid select,
+.dig-sidebar .browse-filter-action-buttons .btn {
+  box-sizing: border-box;
+  height: 44px;
+  min-height: 44px;
+}
+
+.dig-sidebar .browse-secondary-grid input {
+  padding-block: var(--space-2);
+}
+
 /* Desktop layout: >= 1024px */
 @media (min-width: 1024px) {
   .dig-responsive-page {

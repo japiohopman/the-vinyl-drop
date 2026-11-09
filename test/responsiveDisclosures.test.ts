@@ -299,18 +299,19 @@ describe('Responsive disclosure browser behavior', () => {
       expect(metrics.documentWidth).toBeLessThanOrEqual(width + 1);
       expect(metrics.bodyWidth).toBeLessThanOrEqual(width + 1);
 
-      for (const control of [
-        metrics.search,
-        metrics.submit,
-        metrics.viewGroup,
-        metrics.format,
-        metrics.genre,
-        metrics.condition,
-        metrics.advanced,
-        metrics.apply,
-      ]) {
-        expect(control).not.toBeNull();
-        expect(control!.height).toBeCloseTo(44, 0);
+      const measuredControls = [
+        ['search input', metrics.search],
+        ['search submit', metrics.submit],
+        ['Grid/List group', metrics.viewGroup],
+        ['format chip', metrics.format],
+        ['genre select', metrics.genre],
+        ['condition select', metrics.condition],
+        ['price input', metrics.advanced],
+        ['filter action', metrics.apply],
+      ] as const;
+      for (const [name, control] of measuredControls) {
+        expect(control, name + ' should be present').not.toBeNull();
+        expect(control!.height, name + ' should be 44px high').toBeCloseTo(44, 0);
       }
 
       expect(metrics.gridToggle).not.toBeNull();

@@ -1687,6 +1687,10 @@ describe('Mobile Dig app-like viewport', () => {
       expect(keyboardGeometry.height).toBe(keyboardHeight);
       expect(keyboardGeometry.computedHeight).toBe(keyboardHeight + 'px');
 
+      await sidebar.locator('.browse-secondary-filters').evaluate((element) => {
+        (element as HTMLDetailsElement).open = true;
+      });
+      expect(await sidebar.locator('#filter-max-price').isVisible()).toBe(true);
       await sidebar.locator('#filter-max-price').focus();
       await page.waitForFunction(() => {
         const element = document.querySelector('[data-dig-sidebar]') as HTMLElement | null;
@@ -1706,10 +1710,12 @@ describe('Mobile Dig app-like viewport', () => {
         visualViewport.offsetTop = 0;
         visualViewport.dispatchEvent(new Event('resize'));
       }, viewport.height);
-      await page.waitForFunction(() => {
+      await page.waitForFunction((expectedHeight) => {
         const element = document.querySelector('[data-dig-sidebar]') as HTMLElement | null;
-        return Boolean(element && !element.style.getPropertyValue('--dig-sidebar-viewport-height'));
-      });
+        return Boolean(element &&
+          element.style.getPropertyValue('--dig-sidebar-viewport-height') === expectedHeight + 'px' &&
+          element.style.getPropertyValue('--dig-sidebar-viewport-top') === '0px');
+      }, viewport.height);
       expect(await sidebar.evaluate((element) => element.getBoundingClientRect().height))
         .toBeGreaterThanOrEqual(viewport.height - 1);
       await page.keyboard.press('Escape');
@@ -1770,9 +1776,6 @@ describe('Mobile Dig app-like viewport', () => {
         expect(await sidebar.isVisible()).toBe(true);
       }
 
-      await sidebar.locator('.browse-mobile-filter-panel').evaluate((element) => {
-        (element as HTMLDetailsElement).open = true;
-      });
       await sidebar.locator('.browse-secondary-filters').evaluate((element) => {
         (element as HTMLDetailsElement).open = true;
       });
