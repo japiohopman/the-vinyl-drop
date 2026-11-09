@@ -96,6 +96,7 @@ describe('Dig unified sidebar and first-load layout integration (Issue #393)', (
     expect(res.text).not.toContain('data-dig-filter-open');
     expect((res.text.match(/class="dig-filter-form"/g) || []).length).toBe(1);
     expect(res.text).toContain('href="/people" role="tab" id="tab-people"');
+    expect(res.text).toContain('id="tab-people" aria-selected="false" aria-controls="panel-people" class="dig-tab-btn" tabindex="0"');
   });
 
   it('preserves query and filter parameters in the shareable URL and links', async () => {
