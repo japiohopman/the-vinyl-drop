@@ -124,7 +124,7 @@ export async function getPeopleSearchApi(
 
     const trimmedQuery = query.trim();
     if (!isPeopleSearchQueryLongEnough(trimmedQuery)) {
-      res.status(200).json({ people: [] });
+      res.status(200).json({ people: [], pagination: { totalCount: 0 } });
       return;
     }
 
@@ -135,7 +135,7 @@ export async function getPeopleSearchApi(
       displayName: person.displayName,
       avatarUrl: person.avatarUrl,
     }));
-    res.status(200).json({ people });
+    res.status(200).json({ people, pagination: { totalCount: results.totalCount } });
   } catch (error) {
     next(error);
   }
