@@ -137,7 +137,7 @@ describe('GET /api/people-search (Issue #393)', () => {
   it('returns empty array when query is too short', async () => {
     const res = await request(app).get('/api/people-search?q=a');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ people: [] });
+    expect(res.body).toEqual({ people: [], pagination: { totalCount: 0 } });
   });
 
   it('returns 400 when query is malformed or too long', async () => {
@@ -172,6 +172,8 @@ describe('GET /api/people-search (Issue #393)', () => {
           avatarUrl: 'https://example.com/avatar.jpg',
         },
       ],
+      pagination: { totalCount: 1 },
     });
+    expect(res.headers['cache-control']).toBe('no-store');
   });
 });
