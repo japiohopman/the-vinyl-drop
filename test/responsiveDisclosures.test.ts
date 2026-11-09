@@ -258,15 +258,12 @@ describe('Responsive disclosure browser behavior', () => {
     await desktopPage.close();
   });
 
-  it('keeps desktop Dig toolbar and adjacent filter controls on a consistent measured height', async () => {
+  it('keeps the desktop Dig toolbar and sidebar controls at consistent measured heights', async () => {
     const desktopPage = await browser.newPage({ viewport: { width: 1024, height: 900 } });
 
     for (const width of [1024, 1280, 1440]) {
       await desktopPage.setViewportSize({ width, height: 900 });
       await desktopPage.goto(`${baseUrl}/test/responsive-dig`, { waitUntil: 'networkidle' });
-      await desktopPage.locator('.browse-mobile-filter-panel').evaluate((element) => {
-        (element as HTMLDetailsElement).open = true;
-      });
       await desktopPage.locator('.browse-secondary-filters').evaluate((element) => {
         (element as HTMLDetailsElement).open = true;
       });
@@ -290,11 +287,11 @@ describe('Responsive disclosure browser behavior', () => {
           submit: measure('.dig-primary-search-form > button'),
           viewGroup: measure('.dig-search-control-bar .view-mode-toggle'),
           gridToggle: measure('.dig-search-control-bar .view-toggle-btn'),
-          format: measure('.dig-responsive-desktop .browse-format-chip'),
-          genre: measure('.dig-responsive-desktop .browse-primary-filters select'),
-          condition: measure('.dig-responsive-desktop #filter-condition'),
-          advanced: measure('.dig-responsive-desktop .browse-secondary-grid input'),
-          apply: measure('.dig-responsive-desktop .browse-filter-action-buttons .btn'),
+          format: measure('.dig-sidebar .browse-format-chip'),
+          genre: measure('.dig-sidebar .browse-primary-filters select'),
+          condition: measure('.dig-sidebar #filter-condition'),
+          advanced: measure('.dig-sidebar .browse-secondary-grid input'),
+          apply: measure('.dig-sidebar .browse-filter-action-buttons .btn'),
         };
       });
 
@@ -302,18 +299,21 @@ describe('Responsive disclosure browser behavior', () => {
       expect(metrics.documentWidth).toBeLessThanOrEqual(width + 1);
       expect(metrics.bodyWidth).toBeLessThanOrEqual(width + 1);
 
-      for (const control of [
-        metrics.search,
-        metrics.submit,
-        metrics.viewGroup,
-        metrics.format,
-        metrics.genre,
-        metrics.condition,
-        metrics.advanced,
-        metrics.apply,
-      ]) {
-        expect(control).not.toBeNull();
-        expect(control!.height).toBeCloseTo(44, 0);
+      const measuredControls = [
+        ['search input', metrics.search],
+        ['search submit', metrics.submit],
+        ['Grid/List group', metrics.viewGroup],
+        ['format chip', metrics.format],
+        ['genre select', metrics.genre],
+        ['condition select', metrics.condition],
+        ['price input', metrics.advanced],
+        ['filter action', metrics.apply],
+      ] as const;
+      for (const [name, control] of measuredControls) {
+        if (!control) throw new Error(name + ' should be present');
+        if (Math.abs(control.height - 44) >= 0.5) {
+          throw new Error(name + ' should be 44px high, received ' + control.height + 'px');
+        }
       }
 
       expect(metrics.gridToggle).not.toBeNull();
@@ -326,9 +326,8 @@ describe('Responsive disclosure browser behavior', () => {
   });
 
   it('syncs pending search terms and filter controls between the separate Dig forms', async () => {
-    const filterPage = await browser.newPage({ viewport: { width: 375, height: 812 } });
+    const filterPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await filterPage.goto(`${baseUrl}/test/responsive-dig`, { waitUntil: 'networkidle' });
-    await filterPage.locator('.browse-mobile-filter-summary').click();
     await filterPage.locator('#dig-primary-search').fill('Fresh needle');
     await filterPage.locator('.browse-format-chip').first().click();
     await filterPage.waitForURL((url) => url.pathname === '/dig');
@@ -338,9 +337,8 @@ describe('Responsive disclosure browser behavior', () => {
     expect(filterUrl.searchParams.get('formatToggle')).toBe('12-inch');
     await filterPage.close();
 
-    const searchPage = await browser.newPage({ viewport: { width: 375, height: 812 } });
+    const searchPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await searchPage.goto(`${baseUrl}/test/responsive-dig`, { waitUntil: 'networkidle' });
-    await searchPage.locator('.browse-mobile-filter-summary').click();
     await searchPage.locator('#filter-genre').selectOption('Jazz');
     await searchPage.locator('#dig-primary-search').fill('New genre query');
     await searchPage.locator('.dig-primary-search-form button').click();

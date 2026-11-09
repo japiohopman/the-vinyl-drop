@@ -106,10 +106,8 @@ describe('Route-specific CSS bundles (#252)', () => {
     ]);
     expect(search).toContain('/css/people-search.css');
     expect(people).toContain('/css/people-search.css');
-    expect(browseDig).toContain('/css/dig-experience.css');
-    expect(browseDig).toContain('/css/browse-dig-controls.css');
-    expect(browseDig).toContain('/css/people-search.css');
-    expect(browseDig).not.toContain('/css/dig-mobile-session.css');
+    // The historical /browse/dig URL now renders the canonical responsive Dig workspace.
+    expect(browseDig).toEqual(dig);
     expect(myListings).toEqual([
       '/css/style.css', '/css/my-listings.css',
       '/css/style-after-features.css', '/css/style-after-activity.css',
@@ -219,9 +217,8 @@ describe('Route-specific CSS bundles (#252)', () => {
       .update(`blob ${Buffer.byteLength(reconstructed)}\0`)
       .update(reconstructed)
       .digest('hex');
-    // The Browse Genre/Style controls now use a compact two-column desktop grid.
-    // Keep this exact hash assertion so unrelated shared-CSS changes remain visible.
-    expect(gitBlobSha).toBe('1687939702607ea186ebbaa616c4a097cbf9220a');
+    // Keep the reconstructed stylesheet fingerprint exact so shared cascade changes remain visible.
+    expect(gitBlobSha).toBe('ed28c94e4e333104442f7c5b3fe70c542f4bcb22');
   });
 
   it('reports reproducible raw/gzip sizes and validates savings per route', () => {

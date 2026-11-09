@@ -8,6 +8,7 @@ import ejs from 'ejs';
 import { chromium, type Browser, type Page } from '@playwright/test';
 import { getIconSvg } from '../src/app/utils/iconRegistry';
 import { VINYL_FORMAT_FILTERS } from '../src/domain/releaseFormat';
+import { RELEASE_GENRES, RELEASE_STYLES, STYLE_PARENT_GENRES } from '../src/domain/releaseMetadata';
 import { readFullStylesheetSource } from '../test/stylesheetTestHelper';
 
 const root = process.cwd();
@@ -158,6 +159,46 @@ async function assertDesktopFilterPanelIsCompact(page: Page, viewportWidth: numb
     panelHeight + 'px');
 }
 
+/** Keep the permanent desktop Dig rail inside the viewport while allowing its contents to scroll. */
+async function assertDesktopDigSidebarFitsViewport(page: Page, viewportWidth: number): Promise<void> {
+  if (viewportWidth < 1024) return;
+
+  const metrics = await page.locator('[data-dig-sidebar]').evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const styles = window.getComputedStyle(element);
+    return {
+      top: bounds.top,
+      bottom: bounds.bottom,
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      viewportHeight: window.innerHeight,
+      maxHeight: styles.maxHeight,
+      overflowY: styles.overflowY,
+    };
+  });
+
+  assert.equal(
+    metrics.overflowY,
+    'auto',
+    'Desktop Dig sidebar must provide its own vertical scroll area at ' + viewportWidth + 'px'
+  );
+  assert.notEqual(
+    metrics.maxHeight,
+    'none',
+    'Desktop Dig sidebar must be bounded by the viewport at ' + viewportWidth + 'px'
+  );
+  assert.ok(
+    metrics.bottom <= metrics.viewportHeight + 1 &&
+      metrics.clientHeight <= metrics.viewportHeight - metrics.top + 1,
+    'Desktop Dig sidebar extends beyond the visible viewport at ' + viewportWidth + 'px (' +
+      Math.round(metrics.top) + '–' + Math.round(metrics.bottom) + 'px in a ' +
+      metrics.viewportHeight + 'px viewport)'
+  );
+  assert.ok(metrics.scrollHeight >= metrics.clientHeight, 'Desktop Dig sidebar scroll geometry is invalid');
+  console.log('[browse-evidence] PASS desktop Dig sidebar fits viewport @ ' + viewportWidth + 'px — ' +
+    metrics.clientHeight + '/' + metrics.scrollHeight + 'px');
+}
+
 /** Renders the combined Dig surface so desktop toolbar geometry is checked in its real EJS context. */
 async function renderDig(baseUrl: string): Promise<string> {
   const listings = [
@@ -216,6 +257,7 @@ async function renderDig(baseUrl: string): Promise<string> {
     filters: {
       q: 'De La Soul',
       genre: 'Hip Hop',
+      style: 'House',
       condition: 'VG+',
       minPrice: '10',
       maxPrice: '50',
@@ -226,7 +268,9 @@ async function renderDig(baseUrl: string): Promise<string> {
     },
     pagination: { totalCount: 25, page: 2, limit: 12, totalPages: 3 },
     formatOptions: VINYL_FORMAT_FILTERS,
-    genreOptions: ['Hip Hop', 'Jazz'],
+    genreOptions: RELEASE_GENRES,
+    styleOptions: RELEASE_STYLES,
+    styleParentGenres: STYLE_PARENT_GENRES,
     whiteLabelAvailable: true,
     errorMessage: null,
   }, { filename: path.join(views, 'browse/responsive-dig.ejs') });
@@ -234,7 +278,8 @@ async function renderDig(baseUrl: string): Promise<string> {
   return '<!doctype html><html lang="en"><head>' +
     '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<base href="' + baseUrl + '/"><link rel="stylesheet" href="' + baseUrl + '/fonts/fonts.css">' +
-    '<style>' + stylesheet + '</style></head><body>' +
+    '<style>' + stylesheet + '</style>' +
+    '<script src="' + baseUrl + '/js/dig-sidebar.js" defer></script></head><body class="mobile-dig-session">' +
     '<main class="main-content container">' + body + '</main></body></html>';
 }
 
@@ -257,6 +302,7 @@ async function run(): Promise<void> {
   const failures: string[] = [];
   const viewports = [
     { width: 360, height: 800, minimumColumns: 1 },
+    { width: 390, height: 844, minimumColumns: 1 },
     { width: 430, height: 932, minimumColumns: 1 },
     { width: 768, height: 1024, minimumColumns: 2 },
     // The desktop Explorer rail intentionally leaves room for two readable cards at 1024px.
@@ -464,13 +510,19 @@ async function run(): Promise<void> {
           );
         }
 
-        await page.locator('.browse-mobile-filter-panel').evaluate((element) => {
+        const sidebar = page.locator('[data-dig-sidebar]');
+        if (viewport.width < 1024) {
+          const drawerTrigger = viewport.width < 768
+            ? page.locator('.dig-crate-toolbar [data-dig-drawer-open]')
+            : page.locator('.dig-search-control-bar [data-dig-drawer-open]');
+          await drawerTrigger.waitFor({ state: 'visible' });
+          await drawerTrigger.click();
+          await sidebar.waitFor({ state: 'visible' });
+        }
+        await sidebar.locator('.browse-secondary-filters').evaluate((element) => {
           (element as HTMLDetailsElement).open = true;
         });
-        await page.locator('.browse-secondary-filters').evaluate((element) => {
-          (element as HTMLDetailsElement).open = true;
-        });
-        await assertDesktopFilterPanelIsCompact(page, viewport.width);
+        await assertDesktopDigSidebarFitsViewport(page, viewport.width);
 
         const dimensions = await page.evaluate(() => ({
           viewport: window.innerWidth,
@@ -490,10 +542,10 @@ async function run(): Promise<void> {
             const searchElement = document.querySelector('#dig-primary-search');
             const submitElement = document.querySelector('.dig-primary-search-form > button[type="submit"]');
             const viewElement = document.querySelector('.dig-search-control-bar > .view-mode-toggle');
-            const formatElement = document.querySelector('.dig-responsive-desktop .browse-format-chip');
-            const genreElement = document.querySelector('.dig-responsive-desktop #filter-genre');
-            const conditionElement = document.querySelector('.dig-responsive-desktop #filter-condition');
-            const sortElement = document.querySelector('.dig-responsive-desktop #filter-sort');
+            const formatElement = document.querySelector('.dig-sidebar .browse-format-chip');
+            const genreElement = document.querySelector('.dig-sidebar #filter-genre');
+            const conditionElement = document.querySelector('.dig-sidebar #filter-condition');
+            const sortElement = document.querySelector('.dig-sidebar #filter-sort');
             if (
               !searchElement || !submitElement || !viewElement || !formatElement ||
               !genreElement || !conditionElement || !sortElement
@@ -506,7 +558,7 @@ async function run(): Promise<void> {
             const viewBounds = viewElement.getBoundingClientRect();
             const actions: number[] = [];
             const actionElements = document.querySelectorAll(
-              '.dig-responsive-desktop .browse-filter-action-buttons .btn'
+              '.dig-sidebar .browse-filter-action-buttons .btn'
             );
             for (let index = 0; index < actionElements.length; index += 1) {
               actions.push(actionElements[index].getBoundingClientRect().height);
@@ -542,6 +594,11 @@ async function run(): Promise<void> {
             metrics.actions.length > 0 && metrics.actions.every((height) => height === 44),
             'Filter action heights are not consistently 44px at ' + viewport.width + 'px'
           );
+        }
+
+        if (viewport.width < 1024) {
+          await page.keyboard.press('Escape');
+          await page.locator('[data-dig-sidebar]').waitFor({ state: 'hidden' });
         }
 
         const screenshotPath = path.resolve(evidencePath, 'dig-' + viewport.width + 'px.png');

@@ -5,6 +5,7 @@ import { renderWithLayout } from '../utils/render';
 import { ConditionGrade, CONDITION_GRADES } from '../../db/schema/enums';
 import { RELEASE_GENRES, RELEASE_STYLES, STYLE_PARENT_GENRES, resolveCanonicalGenre, resolveCanonicalStyle } from '../../domain/releaseMetadata';
 
+/** Parse a non-negative euro amount with at most two decimals into integer cents. */
 function parseEuroQueryParamToCentsStrict(param?: unknown): number | undefined | null {
   if (param === undefined || param === null) return undefined;
   if (typeof param !== 'string') return null; // malformed non-string
@@ -21,6 +22,7 @@ function parseEuroQueryParamToCentsStrict(param?: unknown): number | undefined |
   return Math.round(num * 100);
 }
 
+/** Parse a positive, strictly formatted pagination value; return null for malformed input. */
 function parsePageQueryParamStrict(param?: unknown): number | null {
   if (param === undefined || param === null) return 1;
   if (typeof param !== 'string') return null;
@@ -36,6 +38,7 @@ function parsePageQueryParamStrict(param?: unknown): number | null {
   return num > 0 ? num : null;
 }
 
+/** Render the regular paginated Browse results with validated, shareable filter parameters. */
 export async function getBrowsePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
@@ -164,72 +167,15 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
   }
 }
 
+/** Preserve the historical Search URL by delegating to the canonical Browse handler. */
 export async function getSearchPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   return getBrowsePage(req, res, next);
 }
 
 
-export async function getDigBrowsePage(req: Request, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    const genreInput = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
-    const genre = genreInput ? (resolveCanonicalGenre(genreInput) || genreInput) : '';
-    const formats = parseVinylFormatFilters(req.query.format);
-    const whiteLabel = resolveWhiteLabelFilter(req.query.whiteLabel, false);
-    const conditionInput = typeof req.query.condition === 'string' ? req.query.condition.trim() : '';
-    const condition = (CONDITION_GRADES as readonly string[]).includes(conditionInput)
-      ? (conditionInput as ConditionGrade)
-      : undefined;
-    const minPriceEurStr = typeof req.query.minPrice === 'string' ? req.query.minPrice.trim() : '';
-    const maxPriceEurStr = typeof req.query.maxPrice === 'string' ? req.query.maxPrice.trim() : '';
-    const minPrice = parseEuroQueryParamToCentsStrict(req.query.minPrice);
-    const maxPrice = parseEuroQueryParamToCentsStrict(req.query.maxPrice);
-    const sortInput = typeof req.query.sort === 'string' ? req.query.sort.trim() : 'newest';
-    const validSorts = ['newest', 'price_asc', 'price_desc', 'title_asc', 'artist_asc'];
-    const sort = validSorts.includes(sortInput)
-      ? (sortInput as 'newest' | 'price_asc' | 'price_desc' | 'title_asc' | 'artist_asc')
-      : 'newest';
-    const filters = { q, genre, condition: conditionInput, minPrice: minPriceEurStr, maxPrice: maxPriceEurStr, sort, formats, whiteLabel, view: 'dig' };
-
-    if (minPrice === null || maxPrice === null) {
-      res.status(400);
-      renderWithLayout(res, 'browse/dig', {
-        title: 'Invalid Filters — The Vinyl Drop Dig',
-        items: [],
-        totalCount: 0,
-        hasMore: false,
-        filters,
-        genreOptions: RELEASE_GENRES,
-        errorMessage: 'Invalid price filter. Use a non-negative amount such as 10 or 10.50.',
-      }, next);
-      return;
-    }
-
-    const result = await searchDigListings({
-      q: q || undefined,
-      genre: genre || undefined,
-      condition,
-      minPrice,
-      maxPrice,
-      formats,
-      whiteLabel,
-      sort,
-      page: 1,
-      limit: 100,
-    });
-
-    renderWithLayout(res, 'browse/dig', {
-      title: 'Crate Dig — The Vinyl Drop',
-      items: result.items,
-      totalCount: result.totalCount,
-      hasMore: result.hasMore,
-      filters,
-      genreOptions: RELEASE_GENRES,
-      styleOptions: RELEASE_STYLES,
-    }, next);
-  } catch (error) {
-    next(error);
-  }
+/** Preserve the historical URL while using the canonical Records/People Dig workspace. */
+export function getDigBrowsePage(req: Request, res: Response, next: NextFunction): Promise<void> {
+  return getResponsiveDigPage(req, res, next);
 }
 
 /**
@@ -237,11 +183,18 @@ export async function getDigBrowsePage(req: Request, res: Response, next: NextFu
  * paginated listing view; the page renders the grid on desktop and the existing
  * crate-dig interaction on narrow screens.
  */
-export async function getResponsiveDigPage(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function getResponsiveDigPage(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  includeWhiteLabelAvailability = true
+): Promise<void> {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
     const genreInput = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
     const genre = genreInput ? (resolveCanonicalGenre(genreInput) || genreInput) : '';
+    const styleInput = typeof req.query.style === 'string' ? req.query.style.trim() : '';
+    const style = styleInput ? (resolveCanonicalStyle(styleInput) || styleInput) : '';
     const submittedFormats = parseVinylFormatFilters(req.query.format);
     const formatToggle = typeof req.query.formatToggle === 'string'
       ? parseVinylFormatFilters(req.query.formatToggle)[0]
@@ -262,7 +215,9 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
     const maxPrice = parseEuroQueryParamToCentsStrict(req.query.maxPrice);
     const parsedPage = parsePageQueryParamStrict(req.query.page);
     const page = formatToggle || whiteLabelToggle ? 1 : parsedPage;
-    const whiteLabelAvailable = await hasExplicitWhiteLabelInventory();
+    const whiteLabelAvailable = includeWhiteLabelAvailability
+      ? await hasExplicitWhiteLabelInventory()
+      : false;
 
     const viewInput = typeof req.query.view === 'string' ? req.query.view.trim().toLowerCase() : 'grid';
     const view = viewInput === 'list' ? 'list' : 'grid';
@@ -274,6 +229,7 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
     const filters = {
       q,
       genre,
+      style,
       condition: conditionInput,
       minPrice: minPriceEurStr,
       maxPrice: maxPriceEurStr,
@@ -290,6 +246,8 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
         listings: [],
         formatOptions: VINYL_FORMAT_FILTERS,
         genreOptions: RELEASE_GENRES,
+        styleOptions: RELEASE_STYLES,
+        styleParentGenres: STYLE_PARENT_GENRES,
         whiteLabelAvailable,
         filters,
         pagination: { totalCount: 0, page: 1, limit: 12, totalPages: 1 },
@@ -305,6 +263,7 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
     const searchParams = {
       q: q || undefined,
       genre: genre || undefined,
+      style: style || undefined,
       condition,
       minPrice,
       maxPrice,
@@ -330,13 +289,17 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
       limit: 12,
       totalPages: Math.ceil(digResults.totalCount / 12) || 1,
     };
+    // The shared listing-card image handler swaps to catalogue artwork only if
+    // the seller's physical-front photo fails; it never renders a second image.
+    const digGridListings = gridResults.items;
 
     renderWithLayout(res, 'browse/responsive-dig', {
       title: q ? `Search: "${q}" — Dig — The Vinyl Drop` : 'Dig — The Vinyl Drop',
-      listings: gridResults.items,
+      listings: digGridListings,
       formatOptions: VINYL_FORMAT_FILTERS,
       genreOptions: RELEASE_GENRES,
       styleOptions: RELEASE_STYLES,
+      styleParentGenres: STYLE_PARENT_GENRES,
       whiteLabelAvailable,
       filters,
       pagination: {

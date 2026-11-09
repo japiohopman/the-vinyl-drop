@@ -1,4 +1,7 @@
 /* Mobile Dig only: top-down crate source and the contextual filter dialog. */
+.dig-filter-query-control {
+  display: none;
+}
 .dig-crate-toolbar,
 .dig-crate-source {
   display: none;
@@ -22,6 +25,10 @@
 }
 
 @media (max-width: 767px) {
+  .dig-filter-query-control {
+    display: block;
+  }
+
   .dig-responsive-mobile .dig-crate-toolbar {
     position: relative;
     z-index: 20;

@@ -152,6 +152,7 @@ describe('Dig search-first responsive shell', () => {
 describe('Compact mobile back navigation', () => {
   it('uses explicit destinations and accessible labels on the affected record screens', () => {
     const digView = fs.readFileSync(path.join(process.cwd(), 'views/browse/dig.ejs'), 'utf8');
+    const responsiveDigView = fs.readFileSync(path.join(process.cwd(), 'views/browse/responsive-dig.ejs'), 'utf8');
     const listingDetailView = fs.readFileSync(path.join(process.cwd(), 'views/listings/show.ejs'), 'utf8');
     const listingPreviewView = fs.readFileSync(path.join(process.cwd(), 'views/listings/preview.ejs'), 'utf8');
     const releaseSelectView = fs.readFileSync(path.join(process.cwd(), 'views/listings/select-release.ejs'), 'utf8');
@@ -161,8 +162,10 @@ describe('Compact mobile back navigation', () => {
     expect(digView).toContain('href="<%= browseReturnUrl %>"');
     expect(digView).toContain('src="/assets/UI/dig_crate.webp"');
     expect(digView).toContain('data-dig-crate-toolbar');
-    expect(digView).toContain('data-dig-filter-dialog');
-    expect(digView).toContain('form action="/dig" method="GET" class="dig-crate-filter-form"');
+    expect(digView).not.toContain('data-dig-filter-dialog');
+    expect(digView).not.toContain('dig-crate-filter-form');
+    expect(responsiveDigView).toContain('class="filter-form browse-filter-form dig-filter-form"');
+    expect(responsiveDigView).toContain('id="dig-filter-query" name="q"');
     expect(listingDetailView).toContain('href="/dig"');
     expect(listingDetailView).toContain('aria-label="Back to Dig results"');
     expect(listingDetailView).toContain('class="listing-condition-overlay"');
@@ -435,7 +438,7 @@ describe('Dig photo-role contract', () => {
     expect(html).not.toContain('Omhoog swipen');
     expect(html).not.toContain('data-dig-progress-label');
     expect(html).toContain('class="dig-keyboard-note"');
-    expect(html).toContain('href="/browse?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
+    expect(html).toContain('href="/browse?q=De%20La%20Soul&amp;genre=Hip%20Hop&amp;style=&amp;condition=VG%2B&amp;minPrice=10.00&amp;maxPrice=50.00&amp;sort=price_asc&amp;format=lp&amp;format=7-inch&amp;whiteLabel=1&amp;view=grid"');
     expect(html).toContain('/js/dig-state.js');
     expect(html).toContain('/js/dig-mode.js');
     expect(html).not.toContain('src="/seller/record.webp"');
@@ -793,6 +796,15 @@ describe('searchDigListings PGlite database integration', () => {
 });
 
 describe('GET /browse/dig HTTP route integration', () => {
+  beforeEach(() => {
+    jest.spyOn(listingService, 'hasExplicitWhiteLabelInventory').mockResolvedValue(false);
+  });
+
+  afterEach(() => {
+    // Restore route and inventory spies even when a request assertion fails.
+    jest.restoreAllMocks();
+  });
+
   it('renders explicit seller front and back cover images in Dig view when present', async () => {
     const spy = jest.spyOn(listingService, 'searchDigListings').mockResolvedValueOnce({
       items: [{

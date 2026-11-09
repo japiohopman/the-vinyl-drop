@@ -130,3 +130,50 @@ describe('People search page and public suggestions API — Issue #297', () => {
     });
   });
 });
+
+describe('GET /api/people-search (Issue #393)', () => {
+  const app = createApp();
+
+  it('returns empty array when query is too short', async () => {
+    const res = await request(app).get('/api/people-search?q=a');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ people: [], pagination: { totalCount: 0 } });
+  });
+
+  it('returns 400 when query is malformed or too long', async () => {
+    const res = await request(app).get(`/api/people-search?q=${'a'.repeat(60)}`);
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: expect.any(String) });
+  });
+
+  it('returns public fields only from matching users', async () => {
+    const personWithPrivateEmail = {
+      username: 'johndoe',
+      displayName: 'John Doe',
+      avatarUrl: 'https://example.com/avatar.jpg',
+      email: 'private@example.com',
+    };
+    jest.spyOn(peopleSearchService, 'searchPeople').mockResolvedValueOnce({
+      items: [personWithPrivateEmail],
+      totalCount: 1,
+      page: 1,
+      pageSize: 12,
+      totalPages: 1,
+      hasMore: false,
+    });
+
+    const res = await request(app).get('/api/people-search?q=john');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      people: [
+        {
+          username: 'johndoe',
+          displayName: 'John Doe',
+          avatarUrl: 'https://example.com/avatar.jpg',
+        },
+      ],
+      pagination: { totalCount: 1 },
+    });
+    expect(res.headers['cache-control']).toBe('no-store');
+  });
+});
