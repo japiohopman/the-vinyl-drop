@@ -266,8 +266,9 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
     }
   });
 
-  it('clears stale People results immediately and ignores an older response that arrives last', async () => {
+  it('invalidates an old People response during the debounce window before the next request starts', async () => {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await page.clock.install();
     await page.addInitScript(() => {
       type DeferredResponse = (response: Response) => void;
       const state = window as unknown as {
@@ -300,36 +301,51 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
       await page.goto(baseUrl + '/dig', { waitUntil: 'domcontentloaded' });
       await page.locator('#tab-people').click();
       await page.locator('#dig-people-input').fill('larry');
-      await page.waitForFunction(() => Boolean(
+      await page.clock.runFor(250);
+
+      const hasPendingLarry = await page.evaluate(() => Boolean(
         (window as unknown as { __pendingPeopleResponses?: Record<string, unknown> }).__pendingPeopleResponses?.larry
       ));
+      expect(hasPendingLarry).toBe(true);
 
       await page.locator('#dig-people-input').fill('prince');
       expect(await page.locator('.dig-people-card').count()).toBe(0);
       expect(await page.locator('#dig-people-status').textContent()).toContain('Search will update shortly.');
-      await page.waitForFunction(() => Boolean(
-        (window as unknown as { __pendingPeopleResponses?: Record<string, unknown> }).__pendingPeopleResponses?.prince
-      ));
 
-      await page.evaluate(() => {
-        const state = window as unknown as { __resolvePeopleResponse?: (query: string, people: unknown[]) => void };
-        state.__resolvePeopleResponse?.('prince', [{
-          username: 'prince',
-          displayName: 'Prince',
-          avatarUrl: 'https://images.example/prince.jpg',
-        }]);
-      });
-      await page.waitForFunction(() => document.querySelector('.dig-people-name')?.textContent === 'Prince');
-
-      await page.evaluate(() => {
+      // Resolve the previous request before the new 250ms debounce expires.
+      await page.clock.runFor(100);
+      await page.evaluate(async () => {
         const state = window as unknown as { __resolvePeopleResponse?: (query: string, people: unknown[]) => void };
         state.__resolvePeopleResponse?.('larry', [{
           username: 'larry_older',
           displayName: 'Larry Older',
           avatarUrl: 'https://images.example/larry.jpg',
         }]);
+        await Promise.resolve();
+        await Promise.resolve();
       });
-      await page.waitForTimeout(50);
+      await page.clock.runFor(1);
+      expect(await page.locator('.dig-people-card').count()).toBe(0);
+      expect(await page.locator('#dig-people-status').textContent()).toContain('Search will update shortly.');
+
+      // The replacement request starts only after the remaining debounce time.
+      await page.clock.runFor(149);
+      const hasPendingPrince = await page.evaluate(() => Boolean(
+        (window as unknown as { __pendingPeopleResponses?: Record<string, unknown> }).__pendingPeopleResponses?.prince
+      ));
+      expect(hasPendingPrince).toBe(true);
+
+      await page.evaluate(async () => {
+        const state = window as unknown as { __resolvePeopleResponse?: (query: string, people: unknown[]) => void };
+        state.__resolvePeopleResponse?.('prince', [{
+          username: 'prince',
+          displayName: 'Prince',
+          avatarUrl: 'https://images.example/prince.jpg',
+        }]);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      await page.clock.runFor(1);
       expect(await page.locator('.dig-people-name').allTextContents()).toEqual(['Prince']);
       expect(await page.locator('#dig-people-status').textContent()).toContain('Found 1 matching collector.');
     } finally {
