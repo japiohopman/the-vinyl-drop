@@ -169,67 +169,9 @@ export async function getSearchPage(req: Request, res: Response, next: NextFunct
 }
 
 
-export async function getDigBrowsePage(req: Request, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    const genreInput = typeof req.query.genre === 'string' ? req.query.genre.trim() : '';
-    const genre = genreInput ? (resolveCanonicalGenre(genreInput) || genreInput) : '';
-    const formats = parseVinylFormatFilters(req.query.format);
-    const whiteLabel = resolveWhiteLabelFilter(req.query.whiteLabel, false);
-    const conditionInput = typeof req.query.condition === 'string' ? req.query.condition.trim() : '';
-    const condition = (CONDITION_GRADES as readonly string[]).includes(conditionInput)
-      ? (conditionInput as ConditionGrade)
-      : undefined;
-    const minPriceEurStr = typeof req.query.minPrice === 'string' ? req.query.minPrice.trim() : '';
-    const maxPriceEurStr = typeof req.query.maxPrice === 'string' ? req.query.maxPrice.trim() : '';
-    const minPrice = parseEuroQueryParamToCentsStrict(req.query.minPrice);
-    const maxPrice = parseEuroQueryParamToCentsStrict(req.query.maxPrice);
-    const sortInput = typeof req.query.sort === 'string' ? req.query.sort.trim() : 'newest';
-    const validSorts = ['newest', 'price_asc', 'price_desc', 'title_asc', 'artist_asc'];
-    const sort = validSorts.includes(sortInput)
-      ? (sortInput as 'newest' | 'price_asc' | 'price_desc' | 'title_asc' | 'artist_asc')
-      : 'newest';
-    const filters = { q, genre, condition: conditionInput, minPrice: minPriceEurStr, maxPrice: maxPriceEurStr, sort, formats, whiteLabel, view: 'dig' };
-
-    if (minPrice === null || maxPrice === null) {
-      res.status(400);
-      renderWithLayout(res, 'browse/dig', {
-        title: 'Invalid Filters — The Vinyl Drop Dig',
-        items: [],
-        totalCount: 0,
-        hasMore: false,
-        filters,
-        genreOptions: RELEASE_GENRES,
-        errorMessage: 'Invalid price filter. Use a non-negative amount such as 10 or 10.50.',
-      }, next);
-      return;
-    }
-
-    const result = await searchDigListings({
-      q: q || undefined,
-      genre: genre || undefined,
-      condition,
-      minPrice,
-      maxPrice,
-      formats,
-      whiteLabel,
-      sort,
-      page: 1,
-      limit: 100,
-    });
-
-    renderWithLayout(res, 'browse/dig', {
-      title: 'Crate Dig — The Vinyl Drop',
-      items: result.items,
-      totalCount: result.totalCount,
-      hasMore: result.hasMore,
-      filters,
-      genreOptions: RELEASE_GENRES,
-      styleOptions: RELEASE_STYLES,
-    }, next);
-  } catch (error) {
-    next(error);
-  }
+/** Preserve the historical URL while using the canonical Records/People Dig workspace. */
+export function getDigBrowsePage(req: Request, res: Response, next: NextFunction): Promise<void> {
+  return getResponsiveDigPage(req, res, next);
 }
 
 /**
@@ -293,6 +235,8 @@ export async function getResponsiveDigPage(req: Request, res: Response, next: Ne
         listings: [],
         formatOptions: VINYL_FORMAT_FILTERS,
         genreOptions: RELEASE_GENRES,
+        styleOptions: RELEASE_STYLES,
+        styleParentGenres: STYLE_PARENT_GENRES,
         whiteLabelAvailable,
         filters,
         pagination: { totalCount: 0, page: 1, limit: 12, totalPages: 1 },

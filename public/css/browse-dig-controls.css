@@ -450,9 +450,22 @@
   }
 }
 
-/* Tablet & Mobile Drawer (< 1024px) */
+/* Tablet & Mobile Drawer (< 1024px). Without JS, keep the sidebar usable in flow. */
 @media (max-width: 1023px) {
-  .dig-drawer-trigger {
+  .dig-sidebar {
+    display: block;
+    position: static;
+    width: auto;
+    max-width: none;
+    height: auto;
+    overflow: visible;
+    padding-bottom: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+
+  html.dig-sidebar-enhanced .dig-drawer-trigger {
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
@@ -460,7 +473,7 @@
     padding: 0 var(--space-3);
   }
 
-  .dig-sidebar {
+  html.dig-sidebar-enhanced .dig-sidebar {
     display: none;
     position: fixed;
     top: var(--dig-sidebar-viewport-top, 0px);
@@ -482,19 +495,19 @@
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .dig-sidebar.is-drawer-open {
+  html.dig-sidebar-enhanced .dig-sidebar.is-drawer-open {
     display: block;
     transform: translateX(0);
   }
 
-  .dig-sidebar-inner {
+  html.dig-sidebar-enhanced .dig-sidebar-inner {
     border: none;
     box-shadow: none;
     min-height: 100%;
     box-sizing: border-box;
   }
 
-  .dig-sidebar-header {
+  html.dig-sidebar-enhanced .dig-sidebar-header {
     display: flex;
   }
 

@@ -44,7 +44,7 @@
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/release-selection-overrides.css') : '/css/release-selection-overrides.css' %>">
   <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-release-selection.css') : '/css/style-after-release-selection.css' %>">
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
+  <% if (typeof currentPath !== 'undefined' && (currentPath === '/dig' || currentPath === '/browse/dig')) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-session.css') : '/css/dig-mobile-session.css' %>">
   <% } %>
   <% if (typeof currentPath !== 'undefined' && (currentPath === '/drop/new' || currentPath === '/listings/create' || new RegExp('^/listings/[^/]+/edit$').test(currentPath))) { %>
@@ -77,7 +77,7 @@
   <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/new' && currentPath !== '/listings/create' && new RegExp('^/listings/[^/]+$').test(currentPath)) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-detail-polish.css') : '/css/listing-detail-polish.css' %>">
   <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
+  <% if (typeof currentPath !== 'undefined' && (currentPath === '/dig' || currentPath === '/browse/dig')) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-crate.css') : '/css/dig-mobile-crate.css' %>">
   <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/themes.css') : '/css/themes.css' %>">
@@ -97,7 +97,7 @@
   <% if (typeof currentPath !== 'undefined' && currentPath === '/people') { %>
     <script src="/js/people-search.js" defer></script>
   <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig') { %>
+  <% if (typeof currentPath !== 'undefined' && (currentPath === '/dig' || currentPath === '/browse/dig')) { %>
     <script src="/js/dig-sidebar.js" defer></script>
   <% } %>
   <% if (typeof currentPath !== 'undefined' && ['/dig', '/browse', '/search', '/browse/dig'].includes(currentPath)) { %>
@@ -121,7 +121,7 @@
   <% if (typeof currentPath !== 'undefined' && currentPath !== '/listings/create' && currentPath !== '/listings/new' && /^\/listings\/[^/]+$/.test(currentPath)) { %>
     <script>document.body.classList.add('listing-detail-page');</script>
   <% } %>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/dig' && typeof items !== 'undefined' && Array.isArray(items) && items.length > 0) { %>
+  <% if (typeof currentPath !== 'undefined' && (currentPath === '/dig' || currentPath === '/browse/dig') && typeof items !== 'undefined' && Array.isArray(items) && items.length > 0) { %>
     <script>document.body.classList.add('mobile-dig-session');</script>
   <% } %>
   <%- include('../partials/header') %>

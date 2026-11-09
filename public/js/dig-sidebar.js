@@ -15,6 +15,18 @@
   const peopleStatus = sidebar.querySelector('#dig-people-status');
   const peopleResultsContainer = sidebar.querySelector('[data-dig-people-results]');
 
+  // Apply the enhanced drawer only after all required controls have been found.
+  if (drawerTriggers.length === 0 ||
+      !(drawerCloseTrigger instanceof HTMLButtonElement) ||
+      !(tabRecords instanceof HTMLButtonElement) ||
+      !(tabPeople instanceof HTMLAnchorElement) ||
+      !(panelRecords instanceof HTMLElement) ||
+      !(panelPeople instanceof HTMLElement) ||
+      !(peopleForm instanceof HTMLFormElement) ||
+      !(peopleInput instanceof HTMLInputElement) ||
+      !(peopleStatus instanceof HTMLElement) ||
+      !(peopleResultsContainer instanceof HTMLElement)) return;
+
   const drawerMedia = window.matchMedia('(max-width: 1023px)');
   const focusableSelector = [
     'a[href]',
@@ -31,7 +43,9 @@
   let previousBodyOverflow = '';
   let debounceTimer = null;
   let activeSearchController = null;
+  let peopleSearchVersion = 0;
 
+  /** Return visible sidebar controls in their DOM keyboard-focus order. */
   function getFocusableElements() {
     return Array.from(sidebar.querySelectorAll(focusableSelector)).filter((element) => {
       if (!(element instanceof HTMLElement)) return false;
@@ -41,6 +55,7 @@
     });
   }
 
+  /** Keep the open drawer inside the visual viewport as the mobile keyboard changes its size. */
   function syncDrawerViewport() {
     if (!sidebar.classList.contains('is-drawer-open') || !drawerMedia.matches || !window.visualViewport) {
       sidebar.style.removeProperty('--dig-sidebar-viewport-top');
@@ -52,6 +67,7 @@
     sidebar.style.setProperty('--dig-sidebar-viewport-height', Math.max(0, viewport.height) + 'px');
   }
 
+  /** Close the drawer, restore the named sidebar landmark, and return focus to its opener. */
   function closeDrawer(options = {}) {
     if (!sidebar.classList.contains('is-drawer-open')) return;
     const restoreFocus = options.restoreFocus !== false;
@@ -59,7 +75,7 @@
     sidebar.classList.remove('is-drawer-open');
     sidebar.removeAttribute('role');
     sidebar.removeAttribute('aria-modal');
-    sidebar.removeAttribute('aria-label');
+    sidebar.setAttribute('aria-label', 'Dig sidebar');
     sidebar.removeAttribute('tabindex');
     sidebar.style.removeProperty('--dig-sidebar-viewport-top');
     sidebar.style.removeProperty('--dig-sidebar-viewport-height');
@@ -77,6 +93,7 @@
     previousFocus = null;
   }
 
+  /** Open the enhanced drawer and move keyboard focus into its modal surface. */
   function openDrawer(trigger) {
     if (!drawerMedia.matches || sidebar.classList.contains('is-drawer-open')) return;
     activeTrigger = trigger instanceof HTMLElement ? trigger : drawerTriggers[0] || null;
@@ -150,6 +167,7 @@
     });
   }
 
+  /** Switch between Records and People without navigating away from Dig. */
   function switchTab(target, focusPeopleSearch = true) {
     if (!(tabRecords instanceof HTMLButtonElement) ||
         !(tabPeople instanceof HTMLAnchorElement) ||
@@ -199,6 +217,7 @@
     switchTab('records', false);
   }
 
+  /** Render only bounded public profile fields returned by the same-origin People API. */
   function renderPeopleResults(people, totalCount) {
     if (!(peopleResultsContainer instanceof HTMLElement) || !(peopleStatus instanceof HTMLElement)) return;
     peopleResultsContainer.replaceChildren();
@@ -258,51 +277,97 @@
       (safeTotal === 1 ? 'collector.' : 'collectors.');
   }
 
-  async function performPeopleSearch(query) {
-    if (!(peopleStatus instanceof HTMLElement) ||
-        !(peopleResultsContainer instanceof HTMLElement)) return;
-    if (activeSearchController) activeSearchController.abort();
-    activeSearchController = new AbortController();
+  /** Normalize People queries exactly like the shared server search service. */
+  function normalizePeopleSearchQuery(query) {
+    return query.normalize('NFKC').trim().toLowerCase();
+  }
 
-    const trimmed = query.trim();
-    if (trimmed.length < 2) {
-      peopleStatus.textContent = 'Enter at least 2 characters to search.';
-      peopleResultsContainer.replaceChildren();
-      const prompt = document.createElement('p');
-      prompt.className = 'dig-people-prompt';
-      prompt.textContent = 'Find community members without leaving Dig.';
-      peopleResultsContainer.appendChild(prompt);
-      return;
+  /** Count Unicode code points, matching the service's two-character minimum. */
+  function peopleSearchQueryIsLongEnough(normalizedQuery) {
+    return Array.from(normalizedQuery).length >= 2;
+  }
+
+  /** Invalidate pending work and immediately clear stale People cards and result counts. */
+  function invalidatePeopleSearch() {
+    peopleSearchVersion += 1;
+    if (debounceTimer !== null) {
+      window.clearTimeout(debounceTimer);
+      debounceTimer = null;
     }
+    if (activeSearchController) {
+      activeSearchController.abort();
+      activeSearchController = null;
+    }
+    peopleResultsContainer.replaceChildren();
+    return peopleSearchVersion;
+  }
 
+  /** Restore the neutral prompt for an empty or too-short normalized query. */
+  function showPeopleSearchPrompt() {
+    peopleResultsContainer.replaceChildren();
+    const prompt = document.createElement('p');
+    prompt.className = 'dig-people-prompt';
+    prompt.textContent = 'Find community members without leaving Dig.';
+    peopleResultsContainer.appendChild(prompt);
+    peopleStatus.textContent = 'Enter at least 2 characters to search.';
+  }
+
+  /** Fetch and render results only if the response still belongs to the latest input. */
+  async function performPeopleSearch(normalizedQuery, requestVersion) {
+    if (requestVersion !== peopleSearchVersion || !peopleSearchQueryIsLongEnough(normalizedQuery)) return;
+
+    const controller = new AbortController();
+    activeSearchController = controller;
     peopleStatus.textContent = 'Searching collectors…';
     try {
-      const response = await fetch('/api/people-search?q=' + encodeURIComponent(trimmed), {
-        signal: activeSearchController.signal,
+      const response = await fetch('/api/people-search?q=' + encodeURIComponent(normalizedQuery), {
+        signal: controller.signal,
         headers: { Accept: 'application/json' },
       });
       if (!response.ok) throw new Error('Search failed');
       const data = await response.json();
+      if (requestVersion !== peopleSearchVersion || controller.signal.aborted) return;
       renderPeopleResults(data.people || [], data.pagination?.totalCount ?? data.people?.length ?? 0);
     } catch (error) {
-      if (error && error.name === 'AbortError') return;
+      if ((error && error.name === 'AbortError') || requestVersion !== peopleSearchVersion) return;
       peopleResultsContainer.replaceChildren();
       peopleStatus.textContent = 'Unable to search people at this time.';
+    } finally {
+      if (activeSearchController === controller) activeSearchController = null;
     }
   }
 
-  if (peopleForm instanceof HTMLFormElement &&
-      peopleInput instanceof HTMLInputElement &&
-      peopleStatus instanceof HTMLElement &&
-      peopleResultsContainer instanceof HTMLElement) {
-    peopleInput.addEventListener('input', () => {
-      if (debounceTimer) window.clearTimeout(debounceTimer);
-      debounceTimer = window.setTimeout(() => performPeopleSearch(peopleInput.value), 250);
-    });
-    peopleForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      if (debounceTimer) window.clearTimeout(debounceTimer);
-      performPeopleSearch(peopleInput.value);
-    });
+  /** Debounce search after clearing prior results and invalidating all older requests. */
+  function schedulePeopleSearch() {
+    const requestVersion = invalidatePeopleSearch();
+    const normalizedQuery = normalizePeopleSearchQuery(peopleInput.value);
+    if (!peopleSearchQueryIsLongEnough(normalizedQuery)) {
+      showPeopleSearchPrompt();
+      return;
+    }
+
+    peopleStatus.textContent = 'Search will update shortly.';
+    debounceTimer = window.setTimeout(() => {
+      debounceTimer = null;
+      void performPeopleSearch(normalizedQuery, requestVersion);
+    }, 250);
   }
+
+  /** Submit the current normalized query immediately, without waiting for the debounce. */
+  function submitPeopleSearch(event) {
+    event.preventDefault();
+    const requestVersion = invalidatePeopleSearch();
+    const normalizedQuery = normalizePeopleSearchQuery(peopleInput.value);
+    if (!peopleSearchQueryIsLongEnough(normalizedQuery)) {
+      showPeopleSearchPrompt();
+      return;
+    }
+    void performPeopleSearch(normalizedQuery, requestVersion);
+  }
+
+  peopleInput.addEventListener('input', schedulePeopleSearch);
+  peopleForm.addEventListener('submit', submitPeopleSearch);
+
+  // Mark the document enhanced only after every required drawer, tab, and search handler is ready.
+  document.documentElement.classList.add('dig-sidebar-enhanced');
 })();

@@ -25,7 +25,7 @@
 }
 
 @media (max-width: 767px) {
-  body.mobile-dig-session .dig-filter-query-control {
+  .dig-filter-query-control {
     display: block;
   }
 
