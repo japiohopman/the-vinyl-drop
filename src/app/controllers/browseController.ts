@@ -5,6 +5,7 @@ import { renderWithLayout } from '../utils/render';
 import { ConditionGrade, CONDITION_GRADES } from '../../db/schema/enums';
 import { RELEASE_GENRES, RELEASE_STYLES, STYLE_PARENT_GENRES, resolveCanonicalGenre, resolveCanonicalStyle } from '../../domain/releaseMetadata';
 
+/** Parse a non-negative euro amount with at most two decimals into integer cents. */
 function parseEuroQueryParamToCentsStrict(param?: unknown): number | undefined | null {
   if (param === undefined || param === null) return undefined;
   if (typeof param !== 'string') return null; // malformed non-string
@@ -21,6 +22,7 @@ function parseEuroQueryParamToCentsStrict(param?: unknown): number | undefined |
   return Math.round(num * 100);
 }
 
+/** Parse a positive, strictly formatted pagination value; return null for malformed input. */
 function parsePageQueryParamStrict(param?: unknown): number | null {
   if (param === undefined || param === null) return 1;
   if (typeof param !== 'string') return null;
@@ -36,6 +38,7 @@ function parsePageQueryParamStrict(param?: unknown): number | null {
   return num > 0 ? num : null;
 }
 
+/** Render the regular paginated Browse results with validated, shareable filter parameters. */
 export async function getBrowsePage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
@@ -164,6 +167,7 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
   }
 }
 
+/** Preserve the historical Search URL by delegating to the canonical Browse handler. */
 export async function getSearchPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   return getBrowsePage(req, res, next);
 }

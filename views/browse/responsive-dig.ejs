@@ -14,6 +14,7 @@
     : [];
   const styleParentMap = typeof styleParentGenres !== 'undefined' && styleParentGenres ? styleParentGenres : {};
 
+  /** Build a shareable Dig GET URL while retaining every active filter and display mode. */
   const buildDigUrl = function(overrides) {
     const next = Object.assign({
       q: filters.q || '',
@@ -45,10 +46,12 @@
     return '/dig' + (params.length ? '?' + params.join('&') : '');
   };
 
+  /** Switch Grid/List presentation without discarding the current Dig filter state. */
   const buildDigViewUrl = function(view) {
     return buildDigUrl({ view: view });
   };
 
+  /** Build a taxonomy shortcut URL and reset pagination for the selected filters. */
   const digExplorerHref = function(nextGenre, nextStyle, nextFormats) {
     return buildDigUrl({
       genre: nextGenre,
