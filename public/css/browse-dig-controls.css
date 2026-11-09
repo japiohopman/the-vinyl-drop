@@ -236,6 +236,21 @@
   min-height: 28px;
 }
 
+/* The sidebar is itself the filter disclosure; keep its one Records form expanded. */
+.dig-sidebar-filter-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Format chips use a strict 44px control box in Dig without changing Browse. */
+.dig-sidebar .browse-format-chip {
+  box-sizing: border-box;
+  height: 44px;
+  min-height: 44px;
+  padding-block: 0;
+}
+
 /* People Panel In Sidebar */
 .dig-people-search {
   display: flex;

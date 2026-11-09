@@ -148,8 +148,7 @@
 
       <!-- Tab Panel: Records -->
       <div id="panel-records" role="tabpanel" aria-labelledby="tab-records" class="dig-tab-panel is-active">
-        <details class="browse-mobile-filter-panel" open>
-          <summary class="visually-hidden">Filters</summary>
+        <div class="dig-sidebar-filter-panel">
         <!-- Consolidated Filter Form -->
         <form action="/dig" method="GET" class="filter-form browse-filter-form dig-filter-form" data-dig-filter-form>
           <input type="hidden" name="view" value="<%= currentView %>">
@@ -287,7 +286,7 @@
             </div>
           </div>
         </form>
-        </details>
+        </div>
       </div>
 
       <!-- Tab Panel: People -->

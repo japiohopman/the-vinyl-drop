@@ -264,9 +264,6 @@ describe('Responsive disclosure browser behavior', () => {
     for (const width of [1024, 1280, 1440]) {
       await desktopPage.setViewportSize({ width, height: 900 });
       await desktopPage.goto(`${baseUrl}/test/responsive-dig`, { waitUntil: 'networkidle' });
-      await desktopPage.locator('.browse-mobile-filter-panel').evaluate((element) => {
-        (element as HTMLDetailsElement).open = true;
-      });
       await desktopPage.locator('.browse-secondary-filters').evaluate((element) => {
         (element as HTMLDetailsElement).open = true;
       });
