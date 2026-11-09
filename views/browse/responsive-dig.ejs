@@ -39,7 +39,7 @@
     if (next.sort && next.sort !== 'newest') params.push('sort=' + encodeURIComponent(next.sort));
     (next.formats || []).forEach(function(f) { params.push('format=' + encodeURIComponent(f)); });
     if (next.whiteLabel) params.push('whiteLabel=1');
-    if (next.page && next.page > 1) params.push('page=' + encodeURIComponent(next.page));
+    if (next.page !== undefined && next.page !== null) params.push('page=' + encodeURIComponent(next.page));
     if (next.view) params.push('view=' + encodeURIComponent(next.view));
 
     return '/dig' + (params.length ? '?' + params.join('&') : '');
@@ -270,6 +270,14 @@
               </details>
 
               <div class="browse-filter-actions">
+                <p class="browse-active-filter-summary">
+                  <% if (activeFilterCount) { %>
+                    <strong class="browse-active-filter-count"><%= activeFilterCount %></strong>
+                    <span>active <%= activeFilterCount === 1 ? 'filter' : 'filters' %></span>
+                  <% } else { %>
+                    <span>Showing the full crate</span>
+                  <% } %>
+                </p>
                 <div class="browse-filter-action-buttons">
                   <button type="submit" class="btn btn-primary browse-apply-submit">Apply filters</button>
                   <% if (activeFilterCount) { %>
