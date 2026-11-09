@@ -312,15 +312,16 @@
     peopleStatus.textContent = 'Enter at least 2 characters to search.';
   }
 
-  /** Fetch and render results only if the response still belongs to the latest input. */
-  async function performPeopleSearch(normalizedQuery, requestVersion) {
+  /** Fetch the original input; the shared server service owns NFKC normalization. */
+  async function performPeopleSearch(originalQuery, requestVersion) {
+    const normalizedQuery = normalizePeopleSearchQuery(originalQuery);
     if (requestVersion !== peopleSearchVersion || !peopleSearchQueryIsLongEnough(normalizedQuery)) return;
 
     const controller = new AbortController();
     activeSearchController = controller;
     peopleStatus.textContent = 'Searching collectors…';
     try {
-      const response = await fetch('/api/people-search?q=' + encodeURIComponent(normalizedQuery), {
+      const response = await fetch('/api/people-search?q=' + encodeURIComponent(originalQuery), {
         signal: controller.signal,
         headers: { Accept: 'application/json' },
       });
@@ -337,10 +338,11 @@
     }
   }
 
-  /** Debounce search after clearing prior results and invalidating all older requests. */
+  /** Debounce the original input after clearing prior results and invalidating older requests. */
   function schedulePeopleSearch() {
     const requestVersion = invalidatePeopleSearch();
-    const normalizedQuery = normalizePeopleSearchQuery(peopleInput.value);
+    const originalQuery = peopleInput.value;
+    const normalizedQuery = normalizePeopleSearchQuery(originalQuery);
     if (!peopleSearchQueryIsLongEnough(normalizedQuery)) {
       showPeopleSearchPrompt();
       return;
@@ -349,20 +351,21 @@
     peopleStatus.textContent = 'Search will update shortly.';
     debounceTimer = window.setTimeout(() => {
       debounceTimer = null;
-      void performPeopleSearch(normalizedQuery, requestVersion);
+      void performPeopleSearch(originalQuery, requestVersion);
     }, 250);
   }
 
-  /** Submit the current normalized query immediately, without waiting for the debounce. */
+  /** Submit the original query immediately; the server applies canonical normalization. */
   function submitPeopleSearch(event) {
     event.preventDefault();
     const requestVersion = invalidatePeopleSearch();
-    const normalizedQuery = normalizePeopleSearchQuery(peopleInput.value);
+    const originalQuery = peopleInput.value;
+    const normalizedQuery = normalizePeopleSearchQuery(originalQuery);
     if (!peopleSearchQueryIsLongEnough(normalizedQuery)) {
       showPeopleSearchPrompt();
       return;
     }
-    void performPeopleSearch(normalizedQuery, requestVersion);
+    void performPeopleSearch(originalQuery, requestVersion);
   }
 
   peopleInput.addEventListener('input', schedulePeopleSearch);

@@ -107,9 +107,49 @@ describe('Dig unified sidebar and first-load layout integration (Issue #393)', (
     expect(res.text).toContain('class="dig-sidebar"');
     expect(res.text).toContain('/js/dig-sidebar.js');
     expect(res.text).toContain('value="House" selected');
+    expect(res.text).toContain('>White label</button>');
+    expect(listingService.hasExplicitWhiteLabelInventory).toHaveBeenCalledTimes(1);
     expect(listingService.searchDigListings).toHaveBeenCalledWith(
       expect.objectContaining({ genre: 'Electronic', style: 'House' })
     );
+  });
+
+  it('preserves catalogue artwork as the image fallback when a seller photo fails', async () => {
+    const catalogueFallback = 'https://images.example/catalogue-cover.webp';
+    (listingService.searchDigListings as jest.Mock).mockResolvedValueOnce({
+      items: [{
+        id: 'physical-copy-with-fallback',
+        title: 'Physical Copy',
+        artist: 'Test Artist',
+        releaseYear: 1992,
+        format: '12-inch',
+        priceFormatted: '€20.00',
+        isTrade: false,
+        mediaCondition: 'VG+',
+        sleeveCondition: 'VG',
+        sellerUsername: 'crate_digger',
+        sellerLocation: 'Amsterdam',
+        url: '/listings/physical-copy-with-fallback',
+        imageUrl: '/uploads/physical-front.webp',
+        fallbackImageUrl: catalogueFallback,
+        imageAlt: 'Front-cover photo of the physical copy',
+        frontArtwork: {
+          src: '/uploads/physical-front.webp',
+          altText: 'Seller photo of the physical front',
+          sourceLabel: 'Seller photo',
+          sourceKind: 'listing',
+        },
+        backArtwork: null,
+        conditionSummary: 'Media VG+ · hoes VG',
+      }],
+      totalCount: 1,
+      hasMore: false,
+    });
+
+    const res = await request(app).get('/dig');
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain(`data-artwork-fallback="${catalogueFallback}"`);
   });
 
   it('renders style options on invalid filter submissions so the selected House filter can be corrected', async () => {

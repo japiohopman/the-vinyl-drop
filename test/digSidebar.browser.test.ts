@@ -245,6 +245,27 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
     }
   });
 
+  it('sends original People input when NFKC normalization would expand beyond the API query limit', async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const originalQuery = 'ﬀ'.repeat(26);
+
+    try {
+      await page.goto(baseUrl + '/dig', { waitUntil: 'domcontentloaded' });
+      await page.locator('#tab-people').click();
+      (peopleSearchService.searchPeople as jest.Mock).mockClear();
+
+      await page.locator('#dig-people-input').fill(originalQuery);
+      await page.waitForFunction(() =>
+        document.querySelector('#dig-people-status')?.textContent?.includes('Found 1 matching collector.') === true
+      );
+
+      expect(peopleSearchService.searchPeople).toHaveBeenCalledWith(originalQuery, 1);
+      expect(await page.locator('.dig-people-name').textContent()).toBe('Larry Heard');
+    } finally {
+      await page.close();
+    }
+  });
+
   it('clears stale People results immediately and ignores an older response that arrives last', async () => {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await page.addInitScript(() => {

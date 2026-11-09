@@ -175,7 +175,7 @@ export async function getSearchPage(req: Request, res: Response, next: NextFunct
 
 /** Preserve the historical URL while using the canonical Records/People Dig workspace. */
 export function getDigBrowsePage(req: Request, res: Response, next: NextFunction): Promise<void> {
-  return getResponsiveDigPage(req, res, next, false);
+  return getResponsiveDigPage(req, res, next);
 }
 
 /**
@@ -289,13 +289,9 @@ export async function getResponsiveDigPage(
       limit: 12,
       totalPages: Math.ceil(digResults.totalCount / 12) || 1,
     };
-    // Dig's primary image already resolves to the seller's physical front when
-    // available, or catalogue artwork otherwise. Do not append a second catalogue
-    // fallback to the card: that can surface stale release art beside a real copy.
-    const digGridListings = gridResults.items.map((listing) => ({
-      ...listing,
-      fallbackImageUrl: undefined,
-    }));
+    // The shared listing-card image handler swaps to catalogue artwork only if
+    // the seller's physical-front photo fails; it never renders a second image.
+    const digGridListings = gridResults.items;
 
     renderWithLayout(res, 'browse/responsive-dig', {
       title: q ? `Search: "${q}" — Dig — The Vinyl Drop` : 'Dig — The Vinyl Drop',
