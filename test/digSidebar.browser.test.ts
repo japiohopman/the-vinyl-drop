@@ -158,6 +158,21 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
           expect(sidebarMetrics.overflowY).toBe('auto');
           expect(sidebarMetrics.bottom).toBeLessThanOrEqual(sidebarMetrics.viewportHeight + 1);
           expect(sidebarMetrics.clientHeight).toBeLessThanOrEqual(sidebarMetrics.viewportHeight);
+
+          // A long desktop rail must scroll its own contents rather than extend below the viewport.
+          const sidebarScroll = await sidebar.evaluate((element) => ({
+            before: element.scrollTop,
+            contentHeight: element.scrollHeight,
+            viewportHeight: element.clientHeight,
+          }));
+          expect(sidebarScroll.contentHeight).toBeGreaterThan(sidebarScroll.viewportHeight);
+          await sidebar.evaluate((element) => {
+            element.scrollTop = element.scrollHeight;
+          });
+          expect(await sidebar.evaluate((element) => element.scrollTop)).toBeGreaterThan(sidebarScroll.before);
+          await sidebar.evaluate((element) => {
+            element.scrollTop = 0;
+          });
         } else {
           // Phones and tablet use the same accessible Records/People/filter drawer.
           expect(await sidebar.isVisible()).toBe(false);
