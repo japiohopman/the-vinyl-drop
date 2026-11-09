@@ -90,11 +90,6 @@ describe('Dig unified sidebar and first-load layout integration (Issue #393)', (
 
     // Asserts stylesheet browse-dig-controls.css is loaded
     expect(res.text).toContain('/css/browse-dig-controls.css');
-    expect(res.text).toContain('class="dig-filter-form"');
-    expect(res.text).not.toContain('dig-crate-filter-form');
-    expect(res.text).not.toContain('data-dig-filter-dialog');
-    expect(res.text).not.toContain('data-dig-filter-open');
-    expect((res.text.match(/class="dig-filter-form"/g) || []).length).toBe(1);
   });
 
   it('preserves query and filter parameters in the shareable URL and links', async () => {
