@@ -195,6 +195,8 @@
         tabs[nextIndex].focus();
       });
     });
+    // Once enhancement is active, use roving tabindex for the tablist.
+    switchTab('records', false);
   }
 
   function renderPeopleResults(people, totalCount) {
