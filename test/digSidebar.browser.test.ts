@@ -121,27 +121,38 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
         expect(dimensions.docWidth).toBeLessThanOrEqual(width);
         expect(dimensions.bodyWidth).toBeLessThanOrEqual(width);
 
+        const sidebar = page.locator('.dig-sidebar');
+        const drawerTrigger = page.locator('[data-dig-drawer-open]');
+        expect(await page.locator('#dig-primary-search').isVisible()).toBe(true);
+        expect(await page.locator('.view-mode-toggle').isVisible()).toBe(true);
+
         if (width >= 1024) {
-          // At desktop widths (1024, 1280, 1440px): permanent left-hand rail beside results
-          expect(await page.locator('.dig-sidebar').isVisible()).toBe(true);
-          const sidebarBox = await page.locator('.dig-sidebar').boundingBox();
+          // Desktop widths keep a permanent left-hand rail beside the records.
+          expect(await sidebar.isVisible()).toBe(true);
+          expect(await drawerTrigger.isVisible()).toBe(false);
+          const sidebarBox = await sidebar.boundingBox();
           const resultsBox = await page.locator('.dig-results-content').boundingBox();
           expect(sidebarBox).not.toBeNull();
           expect(resultsBox).not.toBeNull();
-          if (sidebarBox && resultsBox) {
-            expect(sidebarBox.x).toBeLessThan(resultsBox.x);
-          }
-          expect(await page.locator('#dig-primary-search').isVisible()).toBe(true);
-          expect(await page.locator('.view-mode-toggle').isVisible()).toBe(true);
-          expect(await page.locator('.dig-drawer-trigger').isVisible()).toBe(false);
-        } else if (width === 768) {
-          // At 768px tablet width: drawer trigger is visible, sidebar is in drawer
-          expect(await page.locator('.dig-sidebar').isVisible()).toBe(false);
-          expect(await page.locator('.dig-drawer-trigger').isVisible()).toBe(true);
+          if (sidebarBox && resultsBox) expect(sidebarBox.x).toBeLessThan(resultsBox.x);
         } else {
-          // At mobile widths (360, 390, 430px): mobile crate view is presented
-          expect(await page.locator('.dig-sidebar').isVisible()).toBe(false);
+          // Phones and tablet use the same accessible Records/People/filter drawer.
+          expect(await sidebar.isVisible()).toBe(false);
+          expect(await drawerTrigger.isVisible()).toBe(true);
+          await drawerTrigger.click();
+          expect(await sidebar.isVisible()).toBe(true);
+          expect(await sidebar.getAttribute('role')).toBe('dialog');
+          expect(await sidebar.getAttribute('aria-modal')).toBe('true');
+          expect(await sidebar.locator('.dig-filter-form').isVisible()).toBe(true);
+          expect(await page.locator('[data-dig-filter-dialog]').count()).toBe(0);
+          await page.keyboard.press('Escape');
+          expect(await sidebar.isVisible()).toBe(false);
+        }
+
+        if (width < 768) {
           expect(await page.locator('.dig-responsive-mobile').isVisible()).toBe(true);
+        } else {
+          expect(await page.locator('.dig-responsive-mobile').isVisible()).toBe(false);
         }
 
         await page.close();
@@ -186,6 +197,7 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
       await page.waitForSelector('.dig-people-card');
       expect(await page.locator('.dig-people-name').textContent()).toContain('Larry Heard');
       expect(await page.locator('.dig-people-username').textContent()).toContain('@larry_heard');
+      expect(await page.locator('#dig-people-status').textContent()).toContain('Found 1 matching collector.');
 
       // Click Records tab to switch back
       await page.locator('#tab-records').click();
