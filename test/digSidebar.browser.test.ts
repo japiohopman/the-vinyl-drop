@@ -220,7 +220,7 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
   it('clears stale People results immediately and ignores an older response that arrives last', async () => {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await page.addInitScript(() => {
-      type DeferredResponse = (response: { ok: boolean; json: () => Promise<unknown> }) => void;
+      type DeferredResponse = (response: Response) => void;
       const state = window as unknown as {
         __pendingPeopleResponses?: Record<string, DeferredResponse>;
         __resolvePeopleResponse?: (query: string, people: unknown[]) => void;
@@ -229,7 +229,10 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
       state.__resolvePeopleResponse = (query, people) => {
         const resolve = state.__pendingPeopleResponses?.[query];
         if (resolve) {
-          resolve({ ok: true, json: async () => ({ people, pagination: { totalCount: people.length } }) });
+          resolve(new Response(JSON.stringify({
+            people,
+            pagination: { totalCount: people.length },
+          }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
           delete state.__pendingPeopleResponses?.[query];
         }
       };
@@ -238,9 +241,9 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
           ? input.url
           : input instanceof URL ? input.href : String(input);
         const query = new URL(requestUrl, window.location.href).searchParams.get('q') || '';
-        return new Promise((resolve) => {
+        return new Promise<Response>((resolve) => {
           if (state.__pendingPeopleResponses) state.__pendingPeopleResponses[query] = resolve;
-        }) as Promise<Response>;
+        });
       }) as typeof window.fetch;
     });
 

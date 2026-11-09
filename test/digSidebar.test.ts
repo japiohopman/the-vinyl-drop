@@ -194,8 +194,13 @@ describe('Dig unified sidebar and first-load layout integration (Issue #393)', (
     );
 
     const hrefFor = (ariaLabel: string): string => {
-      const match = res.text.match(new RegExp('<a\\b[^>]*aria-label="' + ariaLabel + '"[^>]*>'));
-      const href = match?.[0].match(/href="([^"]+)"/)?.[1];
+      const labelPosition = res.text.indexOf('aria-label="' + ariaLabel + '"');
+      const anchorStart = res.text.lastIndexOf('<a ', labelPosition);
+      const anchorEnd = res.text.indexOf('>', labelPosition);
+      const anchor = anchorStart >= 0 && anchorEnd >= 0
+        ? res.text.slice(anchorStart, anchorEnd + 1)
+        : '';
+      const href = anchor.match(/href="([^"]+)"/)?.[1];
       if (!href) throw new Error('Missing ' + ariaLabel + ' link');
       return href.replace(/&amp;/g, '&');
     };
@@ -217,9 +222,22 @@ describe('Dig unified sidebar and first-load layout integration (Issue #393)', (
     assertPreserved(hrefFor('Grid view'), 'grid', '2');
     assertPreserved(hrefFor('List view'), 'list', '2');
 
-    const pagination = res.text.match(/<nav class="pagination-nav browse-pagination"[\\s\\S]*?<\\/nav>/)?.[0] || '';
-    const previousHref = pagination.match(/<a href="([^"]+)"[^>]*>\\s*← Previous/)?.[1]?.replace(/&amp;/g, '&');
-    const nextHref = pagination.match(/<a href="([^"]+)"[^>]*>\\s*Next →/)?.[1]?.replace(/&amp;/g, '&');
+    const paginationStart = res.text.indexOf('<nav class="pagination-nav browse-pagination"');
+    const paginationEnd = res.text.indexOf('</nav>', paginationStart);
+    const pagination = paginationStart >= 0 && paginationEnd >= 0
+      ? res.text.slice(paginationStart, paginationEnd)
+      : '';
+    const paginationHref = (label: string): string | undefined => {
+      const labelPosition = pagination.indexOf(label);
+      const anchorStart = pagination.lastIndexOf('<a ', labelPosition);
+      const anchorEnd = pagination.indexOf('>', labelPosition);
+      const anchor = anchorStart >= 0 && anchorEnd >= 0
+        ? pagination.slice(anchorStart, anchorEnd + 1)
+        : '';
+      return anchor.match(/href="([^"]+)"/)?.[1]?.replace(/&amp;/g, '&');
+    };
+    const previousHref = paginationHref('← Previous');
+    const nextHref = paginationHref('Next →');
     expect(previousHref).toBeTruthy();
     expect(nextHref).toBeTruthy();
     assertPreserved(previousHref!, 'grid', '1');
