@@ -159,6 +159,46 @@ async function assertDesktopFilterPanelIsCompact(page: Page, viewportWidth: numb
     panelHeight + 'px');
 }
 
+/** Keep the permanent desktop Dig rail inside the viewport while allowing its contents to scroll. */
+async function assertDesktopDigSidebarFitsViewport(page: Page, viewportWidth: number): Promise<void> {
+  if (viewportWidth < 1024) return;
+
+  const metrics = await page.locator('[data-dig-sidebar]').evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const styles = window.getComputedStyle(element);
+    return {
+      top: bounds.top,
+      bottom: bounds.bottom,
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      viewportHeight: window.innerHeight,
+      maxHeight: styles.maxHeight,
+      overflowY: styles.overflowY,
+    };
+  });
+
+  assert.equal(
+    metrics.overflowY,
+    'auto',
+    'Desktop Dig sidebar must provide its own vertical scroll area at ' + viewportWidth + 'px'
+  );
+  assert.notEqual(
+    metrics.maxHeight,
+    'none',
+    'Desktop Dig sidebar must be bounded by the viewport at ' + viewportWidth + 'px'
+  );
+  assert.ok(
+    metrics.bottom <= metrics.viewportHeight + 1 &&
+      metrics.clientHeight <= metrics.viewportHeight - metrics.top + 1,
+    'Desktop Dig sidebar extends beyond the visible viewport at ' + viewportWidth + 'px (' +
+      Math.round(metrics.top) + '–' + Math.round(metrics.bottom) + 'px in a ' +
+      metrics.viewportHeight + 'px viewport)'
+  );
+  assert.ok(metrics.scrollHeight >= metrics.clientHeight, 'Desktop Dig sidebar scroll geometry is invalid');
+  console.log('[browse-evidence] PASS desktop Dig sidebar fits viewport @ ' + viewportWidth + 'px — ' +
+    metrics.clientHeight + '/' + metrics.scrollHeight + 'px');
+}
+
 /** Renders the combined Dig surface so desktop toolbar geometry is checked in its real EJS context. */
 async function renderDig(baseUrl: string): Promise<string> {
   const listings = [
@@ -482,7 +522,7 @@ async function run(): Promise<void> {
         await sidebar.locator('.browse-secondary-filters').evaluate((element) => {
           (element as HTMLDetailsElement).open = true;
         });
-        await assertDesktopFilterPanelIsCompact(page, viewport.width);
+        await assertDesktopDigSidebarFitsViewport(page, viewport.width);
 
         const dimensions = await page.evaluate(() => ({
           viewport: window.innerWidth,

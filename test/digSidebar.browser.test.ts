@@ -142,9 +142,22 @@ describe('Dig unified sidebar & first-load browser behavior (Issue #393)', () =>
           expect(await drawerTrigger.isVisible()).toBe(false);
           const sidebarBox = await sidebar.boundingBox();
           const resultsBox = await page.locator('.dig-results-content').boundingBox();
+          const sidebarMetrics = await sidebar.evaluate((element) => {
+            const bounds = element.getBoundingClientRect();
+            const styles = window.getComputedStyle(element);
+            return {
+              bottom: bounds.bottom,
+              overflowY: styles.overflowY,
+              clientHeight: element.clientHeight,
+              viewportHeight: window.innerHeight,
+            };
+          });
           expect(sidebarBox).not.toBeNull();
           expect(resultsBox).not.toBeNull();
           if (sidebarBox && resultsBox) expect(sidebarBox.x).toBeLessThan(resultsBox.x);
+          expect(sidebarMetrics.overflowY).toBe('auto');
+          expect(sidebarMetrics.bottom).toBeLessThanOrEqual(sidebarMetrics.viewportHeight + 1);
+          expect(sidebarMetrics.clientHeight).toBeLessThanOrEqual(sidebarMetrics.viewportHeight);
         } else {
           // Phones and tablet use the same accessible Records/People/filter drawer.
           expect(await sidebar.isVisible()).toBe(false);

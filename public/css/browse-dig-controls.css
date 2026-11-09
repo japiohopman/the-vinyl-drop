@@ -427,6 +427,9 @@
     grid-row: 2;
     position: sticky;
     top: calc(var(--header-height, 60px) + var(--space-4));
+    max-height: min(80vh, calc(100vh - 160px));
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
   }
 
   .dig-responsive-desktop {
