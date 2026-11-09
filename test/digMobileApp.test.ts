@@ -1605,24 +1605,6 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await drawerTrigger.getAttribute('aria-expanded')).toBe('false');
   });
 
-  async function expectDrawerGeometry(sidebar: Locator, width: number, height: number): Promise<void> {
-    const geometry = await sidebar.evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      return {
-        position: getComputedStyle(element).position,
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-      };
-    });
-    expect(geometry.position).toBe('fixed');
-    expect(geometry.top).toBe(0);
-    expect(geometry.left).toBe(0);
-    expect(geometry.width).toBeLessThanOrEqual(Math.min(360, width));
-    expect(geometry.height).toBeGreaterThanOrEqual(height - 1);
-  }
-
   it('keeps the mobile drawer and filter actions inside the viewport on short and standard phones', async () => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
 
