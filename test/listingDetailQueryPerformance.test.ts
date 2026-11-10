@@ -650,7 +650,8 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     );
     expect(draftOwnerResponse.status).toBe(200);
     expect(draftOwnerResponse.text).toContain('Private Draft Pressing');
-    expect(draftOwnerResponse.text).toContain('Seller-only draft notes.');
+    expect(draftOwnerResponse.text).toContain('Not public until the seller publishes it.');
+    expect(draftOwnerResponse.text).not.toContain('Seller-only draft notes.');
     expect(draftOwnerQueries).toHaveLength(2);
 
     const { result: visitorResponse, queries: visitorQueries } = await captureQueries(() =>
