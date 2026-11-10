@@ -4,7 +4,8 @@ import { setFlashCookie } from '../middleware/flash';
 import { listReleases, findReleaseById } from '../repositories/releaseRepository';
 import {
   getMyListings,
-  getListingWithDetails,
+  getListingEditDetails,
+  getListingPreviewDetails,
   getListingWithDetailsForView,
   getPublicListingDetailsForView,
   createListingFromRelease,
@@ -146,6 +147,7 @@ export async function postCreateListing(req: Request, res: Response, next: NextF
   }
 }
 
+/** Render the listing edit form after loading its bounded view model and verifying seller ownership. */
 export async function getEditListingPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
@@ -153,7 +155,7 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
     }
 
     const listingId = req.params.id;
-    const details = await getListingWithDetails(listingId);
+    const details = await getListingEditDetails(listingId);
 
     if (!details) {
       res.status(404);
@@ -206,6 +208,7 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
   }
 }
 
+/** Validate seller edits, persist the listing changes, and return to the pre-publish Preview flow. */
 export async function postEditListing(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
@@ -238,7 +241,14 @@ export async function postEditListing(req: Request, res: Response, next: NextFun
   } catch (error) {
     if (error instanceof ValidationError) {
       const listingId = req.params.id;
-      const details = await getListingWithDetails(listingId);
+      const details = await getListingEditDetails(listingId);
+      if (details && req.user?.id !== details.listing.sellerId) {
+        res.status(403);
+        return renderWithLayout(res, 'errors/500', {
+          title: '403 Forbidden',
+          message: 'You are not authorized to edit this listing.',
+        });
+      }
       if (details) {
         const form: FormViewModel = {
           values: req.body,
@@ -414,7 +424,7 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
   } catch (error) {
     if (error instanceof ValidationError) {
       const listingId = req.params.id;
-      const details = await getListingWithDetails(listingId);
+      const details = await getListingEditDetails(listingId);
       if (details && req.user?.id === details.listing.sellerId) {
         const form: FormViewModel = {
           values: {},
@@ -559,10 +569,11 @@ export async function postReorderPhotos(req: Request, res: Response, next: NextF
   }
 }
 
+/** Render pre-publish listing details only for the authenticated seller who owns the listing. */
 export async function getPreviewListingPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const listingId = req.params.id;
-    const details = await getListingWithDetails(listingId);
+    const details = await getListingPreviewDetails(listingId);
 
     if (!details) {
       res.status(404);
@@ -570,6 +581,14 @@ export async function getPreviewListingPage(req: Request, res: Response, next: N
         title: '404 - Page Not Found',
         message: 'The requested listing could not be found.',
         isStatusPage: true,
+      });
+    }
+
+    if (!req.user || details.seller.id !== req.user.id) {
+      res.status(403);
+      return renderWithLayout(res, 'errors/500', {
+        title: '403 Forbidden',
+        message: 'You are not authorized to preview this listing.',
       });
     }
 
@@ -607,7 +626,14 @@ export async function postPublishListing(req: Request, res: Response, next: Next
   } catch (error) {
     if (error instanceof ValidationError || (error as Error).name === 'InvalidLifecycleTransitionError') {
       const listingId = req.params.id;
-      const details = await getListingWithDetails(listingId);
+      const details = await getListingPreviewDetails(listingId);
+      if (details && req.user?.id !== details.seller.id) {
+        res.status(403);
+        return renderWithLayout(res, 'errors/500', {
+          title: '403 Forbidden',
+          message: 'You are not authorized to preview this listing.',
+        });
+      }
       if (details) {
         const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
         res.status(400);

@@ -59,6 +59,21 @@ export interface MyListingsRecord {
   release: Pick<Release, 'title' | 'artist' | 'releaseYear' | 'coverArtUrl'>;
 }
 
+/** Minimal joined read model for the seller's listing-edit page. */
+export interface ListingEditDetailsRecord {
+  listing: Pick<Listing, 'id' | 'sellerId' | 'price' | 'tradeAvailable' | 'description'>;
+  physicalCopy: Pick<PhysicalCopy, 'id' | 'mediaCondition' | 'sleeveCondition' | 'notes'> | null;
+  release: Pick<Release, 'id' | 'title' | 'artist' | 'releaseYear' | 'coverArtUrl' | 'externalSource' | 'externalId' | 'youtubeVideoId'> | null;
+}
+
+/** Minimal joined read model for the authenticated seller's pre-publish Preview page. */
+export interface ListingPreviewDetailsRecord {
+  listing: Pick<Listing, 'id' | 'status' | 'price' | 'tradeAvailable' | 'description'>;
+  physicalCopy: Pick<PhysicalCopy, 'id' | 'mediaCondition' | 'sleeveCondition'> | null;
+  release: Pick<Release, 'id' | 'title' | 'artist' | 'label' | 'catalogueNumber' | 'releaseYear' | 'format' | 'coverArtUrl'> | null;
+  seller: Pick<Profile, 'id' | 'username' | 'location'> | null;
+}
+
 export interface SearchListingsResult {
   records: ListingSearchRecord[];
   totalCount: number;
@@ -160,6 +175,93 @@ export async function findPublicListingDetailById(
     .innerJoin(profiles, eq(listings.sellerId, profiles.id))
     .where(eq(listings.id, id))
     .limit(1);
+  return results[0] || null;
+}
+
+/** Read the seller-edit core graph in one joined query without loading the seller profile. */
+export async function findListingEditDetailsById(
+  id: string,
+  dbOverride?: DbInstance
+): Promise<ListingEditDetailsRecord | null> {
+  const db = dbOverride || getDb();
+  const results = await db
+    .select({
+      listing: {
+        id: listings.id,
+        sellerId: listings.sellerId,
+        price: listings.price,
+        tradeAvailable: listings.tradeAvailable,
+        description: listings.description,
+      },
+      physicalCopy: {
+        id: physicalCopies.id,
+        mediaCondition: physicalCopies.mediaCondition,
+        sleeveCondition: physicalCopies.sleeveCondition,
+        notes: physicalCopies.notes,
+      },
+      release: {
+        id: releases.id,
+        title: releases.title,
+        artist: releases.artist,
+        releaseYear: releases.releaseYear,
+        coverArtUrl: releases.coverArtUrl,
+        externalSource: releases.externalSource,
+        externalId: releases.externalId,
+        youtubeVideoId: releases.youtubeVideoId,
+      },
+    })
+    .from(listings)
+    .leftJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
+    .leftJoin(releases, eq(physicalCopies.releaseId, releases.id))
+    .where(eq(listings.id, id))
+    .limit(1);
+
+  return results[0] || null;
+}
+
+/** Read Preview's listing, copy, release and seller fields in one joined query. */
+export async function findListingPreviewDetailsById(
+  id: string,
+  dbOverride?: DbInstance
+): Promise<ListingPreviewDetailsRecord | null> {
+  const db = dbOverride || getDb();
+  const results = await db
+    .select({
+      listing: {
+        id: listings.id,
+        status: listings.status,
+        price: listings.price,
+        tradeAvailable: listings.tradeAvailable,
+        description: listings.description,
+      },
+      physicalCopy: {
+        id: physicalCopies.id,
+        mediaCondition: physicalCopies.mediaCondition,
+        sleeveCondition: physicalCopies.sleeveCondition,
+      },
+      release: {
+        id: releases.id,
+        title: releases.title,
+        artist: releases.artist,
+        label: releases.label,
+        catalogueNumber: releases.catalogueNumber,
+        releaseYear: releases.releaseYear,
+        format: releases.format,
+        coverArtUrl: releases.coverArtUrl,
+      },
+      seller: {
+        id: profiles.id,
+        username: profiles.username,
+        location: profiles.location,
+      },
+    })
+    .from(listings)
+    .leftJoin(physicalCopies, eq(listings.physicalCopyId, physicalCopies.id))
+    .leftJoin(releases, eq(physicalCopies.releaseId, releases.id))
+    .leftJoin(profiles, eq(listings.sellerId, profiles.id))
+    .where(eq(listings.id, id))
+    .limit(1);
+
   return results[0] || null;
 }
 
