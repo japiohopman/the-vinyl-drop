@@ -627,6 +627,13 @@ export async function postPublishListing(req: Request, res: Response, next: Next
     if (error instanceof ValidationError || (error as Error).name === 'InvalidLifecycleTransitionError') {
       const listingId = req.params.id;
       const details = await getListingPreviewDetails(listingId);
+      if (details && req.user?.id !== details.seller.id) {
+        res.status(403);
+        return renderWithLayout(res, 'errors/500', {
+          title: '403 Forbidden',
+          message: 'You are not authorized to preview this listing.',
+        });
+      }
       if (details) {
         const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
         res.status(400);
