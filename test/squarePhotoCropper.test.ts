@@ -608,7 +608,8 @@ describe('Square cover photo cropper', () => {
         return Math.hypot(next[0] - point[0], next[1] - point[1]);
       });
       const markers = Array.from(document.querySelectorAll('[data-detected-corner]'));
-      const detectionBox = document.querySelector('#square-cover-detect-stage').getBoundingClientRect();
+      const detectionStage = document.querySelector('#square-cover-detect-stage') as HTMLElement;
+      const detectionBox = detectionStage.getBoundingClientRect();
       const manualPolygon = document.querySelector('#square-cover-polygon')?.getAttribute('points');
       return {
         corners,
@@ -687,8 +688,8 @@ describe('Square cover photo cropper', () => {
     for (const width of [360, 390, 430, 768, 1280]) {
       await page.setViewportSize({ width, height: 850 });
       const dimensions = await page.evaluate(() => {
-        const dialog = document.querySelector('#photoUploadDialog');
-        const workflow = document.querySelector('.square-cover-workflow');
+        const dialog = document.querySelector('#photoUploadDialog') as HTMLDialogElement;
+        const workflow = document.querySelector('.square-cover-workflow') as HTMLElement;
         const panels = Array.from(workflow.children);
         const rects = panels.map((panel) => panel.getBoundingClientRect());
         return {
