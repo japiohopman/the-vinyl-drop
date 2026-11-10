@@ -28,7 +28,6 @@ export type ListingEditPhotoRecord = Pick<
   'id' | 'storagePath' | 'role' | 'displayOrder' | 'altText' | 'editorState'
 >;
 
-/** Fetch only the ordered fields required to render public listing photography. */
 /** Fetch minimal editor metadata without selecting the private original-source Storage path. */
 export async function findListingEditPhotosByListingId(
   listingId: string,
@@ -49,6 +48,7 @@ export async function findListingEditPhotosByListingId(
     .orderBy(asc(listingPhotos.displayOrder), asc(listingPhotos.createdAt));
 }
 
+/** Fetch only the ordered fields required to render public listing photography. */
 export async function findPublicListingPhotosByListingId(
   listingId: string,
   dbOverride?: DbInstance
