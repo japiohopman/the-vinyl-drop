@@ -31,6 +31,8 @@ import {
   deleteListingPhoto,
   findPhotoById,
   findPhotosByListingId,
+  findListingEditPhotosByListingId,
+  ListingEditPhotoRecord,
   findPublicListingPhotosByListingId,
   PublicListingPhotoRecord,
   findDigPhotosByListingIds,
@@ -53,6 +55,8 @@ import {
   JoinedListingRecord,
   ListingSearchRecord,
   PublicListingDetailRecord,
+  ListingEditDetailsRecord,
+  findListingEditDetailsById,
   findPublicListingDetailById,
   searchListings,
   hasExplicitWhiteLabelInventory as hasWhiteLabelInRepo,
@@ -211,6 +215,16 @@ export interface DetailedListing {
   seller: Profile;
   photos: ListingPhotoWithUrl[];
 }
+
+export interface ListingEditPhotoViewModel extends Omit<ListingEditPhotoRecord, 'storagePath'> {
+  publicUrl: string;
+}
+
+export type ListingEditDetails = Omit<ListingEditDetailsRecord, 'physicalCopy' | 'release'> & {
+  physicalCopy: NonNullable<ListingEditDetailsRecord['physicalCopy']>;
+  release: NonNullable<ListingEditDetailsRecord['release']>;
+  photos: ListingEditPhotoViewModel[];
+};
 
 /** Public photo fields required by the My Listings page; no private source or editor metadata. */
 export interface MyListingsPhotoViewModel {
@@ -382,6 +396,39 @@ export async function getRecentPublishedListings(
     }
   }
   return results;
+}
+
+/**
+ * Build the seller edit-page view model in two bounded reads:
+ * one joined listing/copy/release query and one narrow batch of photo metadata.
+ * The private original-source path and unrelated seller profile fields are not loaded.
+ */
+export async function getListingEditDetails(
+  listingId: string,
+  dbOverride?: DbInstance
+): Promise<ListingEditDetails | null> {
+  const details = await findListingEditDetailsById(listingId, dbOverride);
+  if (!details) return null;
+
+  if (!details.physicalCopy) {
+    throw new NotFoundError('Associated physical copy not found');
+  }
+  if (!details.release) {
+    throw new NotFoundError('Associated release not found');
+  }
+
+  const photoRecords = await findListingEditPhotosByListingId(listingId, dbOverride);
+  const photos: ListingEditPhotoViewModel[] = photoRecords.map(({ storagePath, ...photo }) => ({
+    ...photo,
+    publicUrl: getPhotoPublicUrl(storagePath),
+  }));
+
+  return {
+    listing: details.listing,
+    physicalCopy: details.physicalCopy,
+    release: details.release,
+    photos,
+  };
 }
 
 export async function getListingWithDetails(

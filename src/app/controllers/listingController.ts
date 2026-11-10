@@ -5,6 +5,7 @@ import { listReleases, findReleaseById } from '../repositories/releaseRepository
 import {
   getMyListings,
   getListingWithDetails,
+  getListingEditDetails,
   getListingWithDetailsForView,
   getPublicListingDetailsForView,
   createListingFromRelease,
@@ -153,7 +154,7 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
     }
 
     const listingId = req.params.id;
-    const details = await getListingWithDetails(listingId);
+    const details = await getListingEditDetails(listingId);
 
     if (!details) {
       res.status(404);
@@ -238,7 +239,7 @@ export async function postEditListing(req: Request, res: Response, next: NextFun
   } catch (error) {
     if (error instanceof ValidationError) {
       const listingId = req.params.id;
-      const details = await getListingWithDetails(listingId);
+      const details = await getListingEditDetails(listingId);
       if (details) {
         const form: FormViewModel = {
           values: req.body,
@@ -414,7 +415,7 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
   } catch (error) {
     if (error instanceof ValidationError) {
       const listingId = req.params.id;
-      const details = await getListingWithDetails(listingId);
+      const details = await getListingEditDetails(listingId);
       if (details && req.user?.id === details.listing.sellerId) {
         const form: FormViewModel = {
           values: {},

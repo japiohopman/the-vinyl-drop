@@ -9,7 +9,7 @@ import { createApp } from '../src/app';
 import * as dbModule from '../src/db';
 import * as authService from '../src/app/services/authService';
 import * as commentServiceModule from '../src/app/services/commentService';
-import { getPublicListingDetailsForView } from '../src/app/services/listingService';
+import { getListingEditDetails, getPublicListingDetailsForView } from '../src/app/services/listingService';
 import { getListingCommentsForResolvedListing } from '../src/app/services/commentService';
 import { AuthorizationError, NotFoundError } from '../src/app/services/errors';
 import { comments, favorites, listings, listingPhotos, physicalCopies, profiles, releases } from '../src/db/schema';
@@ -467,6 +467,82 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     } finally {
       commentsSpy.mockRestore();
     }
+  });
+
+  it('loads the seller edit page with exactly 2 SELECTs and keeps only editor-required photo metadata', async () => {
+    const { result, queries } = await captureQueries(() => getListingEditDetails(listingId, db));
+
+    expect(result).not.toBeNull();
+    if (!result) throw new Error('Expected listing edit details.');
+
+    expect(result.listing).toMatchObject({
+      id: listingId,
+      sellerId,
+      price: 3250,
+      tradeAvailable: true,
+      description: 'A well-kept original pressing.',
+    });
+    expect(result.physicalCopy).toMatchObject({
+      id: copyId,
+      mediaCondition: 'VG+',
+      sleeveCondition: 'VG',
+      notes: 'Clean sleeve, light hairlines.',
+    });
+    expect(result.release).toMatchObject({
+      id: releaseId,
+      title: 'Blue Spirits',
+      artist: 'Blue Note All-Stars',
+      releaseYear: 1967,
+      coverArtUrl: 'https://cdn.example.com/catalogue-blue-spirits.webp',
+      externalSource: 'private-import-source',
+      externalId: 'private-external-id',
+      youtubeVideoId: 'abcdefghijk',
+    });
+    expect(result.photos.map((photo) => photo.role)).toEqual(['front_cover', 'detail', 'back_cover']);
+    expect(result.photos[0].publicUrl).toContain(`listings/${listingId}/front.webp`);
+    expect(result.photos[0].editorState).toMatchObject({ version: 1 });
+    expect(result.photos[0]).not.toHaveProperty('sourceStoragePath');
+    expect(result.photos[0]).not.toHaveProperty('sourceIsLegacy');
+
+    expect(queries).toHaveLength(2);
+    const coreQuery = queries[0].toLowerCase();
+    expect(coreQuery).toContain('from "listings"');
+    expect(coreQuery).toContain('left join "physical_copies"');
+    expect(coreQuery).toContain('left join "releases"');
+    expect(coreQuery).not.toContain('"profiles"');
+
+    const photosQuery = queries[1].toLowerCase();
+    expect(photosQuery).toContain('from "listing_photos"');
+    expect(photosQuery).toContain('"editor_state"');
+    expect(photosQuery).not.toContain('"source_storage_path"');
+    expect(photosQuery).not.toContain('"source_is_legacy"');
+    expect(photosQuery).not.toContain('"updated_at"');
+  });
+
+  it('renders the authenticated seller edit page from the 2-query view model and denies another user', async () => {
+    const { result: ownerResponse, queries: ownerQueries } = await captureQueries(() =>
+      request(createApp())
+        .get(`/listings/${listingId}/edit`)
+        .set('Cookie', ['sb-access-token=seller-token'])
+    );
+
+    expect(ownerResponse.status).toBe(200);
+    expect(ownerResponse.text).toContain('Edit listing');
+    expect(ownerResponse.text).toContain('Blue Spirits');
+    expect(ownerResponse.text).toContain('Edit photo');
+    expect(ownerResponse.text).toContain('data-editor-state');
+    expect(ownerResponse.text).not.toContain('private-source');
+    expect(ownerQueries).toHaveLength(2);
+
+    const { result: visitorResponse, queries: visitorQueries } = await captureQueries(() =>
+      request(createApp())
+        .get(`/listings/${listingId}/edit`)
+        .set('Cookie', ['sb-access-token=buyer-token'])
+    );
+
+    expect(visitorResponse.status).toBe(403);
+    expect(visitorResponse.text).not.toContain('Blue Spirits');
+    expect(visitorQueries).toHaveLength(2);
   });
 
   it('returns only public photo and seller projections from the service view model', async () => {
