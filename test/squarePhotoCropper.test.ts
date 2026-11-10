@@ -558,6 +558,7 @@ describe('Square cover photo cropper', () => {
     }));
     expect(resultDimensions.width).toBeLessThan(resultDimensions.height);
     const topLeftHandle = page.locator('[data-corner-handle="0"]');
+    await topLeftHandle.scrollIntoViewIfNeeded();
     const polygonBeforeDrag = await page.locator('#square-cover-polygon').getAttribute('points');
     const handleBox = await topLeftHandle.boundingBox();
     if (!handleBox) throw new Error('The additional-photo corner handle is not visible.');
