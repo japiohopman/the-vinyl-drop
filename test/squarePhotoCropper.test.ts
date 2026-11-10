@@ -637,14 +637,26 @@ describe('Square cover photo cropper', () => {
       { timeout: 5000 }
     );
     if (issue333EvidenceDirectory) {
-      await page.setViewportSize({ width: 390, height: 844 });
-      await page.locator('.square-cover-workflow').screenshot({
-        path: path.join(issue333EvidenceDirectory, 'editor-mobile-workflow.png'),
-      });
-      await page.setViewportSize({ width: 1280, height: 900 });
-      await page.locator('.square-cover-workflow').screenshot({
-        path: path.join(issue333EvidenceDirectory, 'editor-desktop-workflow.png'),
-      });
+      const evidencePanels = [
+        { name: 'edge-detect', selector: '.square-cover-detect-panel' },
+        { name: 'preview-window', selector: '.square-cover-result-panel' },
+        { name: 'point-editor', selector: '.square-cover-source-panel' },
+      ];
+      const evidenceViewports = [
+        { name: 'mobile', width: 390, height: 844 },
+        { name: 'desktop', width: 1280, height: 900 },
+      ];
+
+      for (const viewport of evidenceViewports) {
+        await page.setViewportSize({ width: viewport.width, height: viewport.height });
+        for (const panel of evidencePanels) {
+          const panelLocator = page.locator(panel.selector);
+          await panelLocator.scrollIntoViewIfNeeded();
+          await panelLocator.screenshot({
+            path: path.join(issue333EvidenceDirectory, 'editor-' + viewport.name + '-' + panel.name + '.png'),
+          });
+        }
+      }
     }
 
     const detectionOutline = await page.locator('#square-cover-detect-polygon').getAttribute('points');
