@@ -771,7 +771,7 @@ describe('Square cover photo cropper', () => {
           '    }',
           '  };',
           '}',
-        ].join('\\n'),
+        ].join('\n'),
       });
     });
 
