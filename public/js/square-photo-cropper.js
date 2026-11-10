@@ -224,6 +224,10 @@
     };
   }
 
+  /**
+   * Applies a framing adjustment while keeping the four-point selection valid.
+   * @param {HTMLInputElement} control - The framing control whose value changed.
+   */
   function applyFrameControl(control) {
     if (!image) return;
     if (!controlStartState) controlStartState = cloneState();
@@ -292,6 +296,10 @@
     updateHistoryButtons();
   }
 
+  /**
+   * Restores saved corner positions and tonal adjustments without losing edit history.
+   * @param {Object} state - The editor state to restore.
+   */
   function restoreState(state) {
     manualEditingStarted = true;
     points = state.points.map((point) => ({ x: point.x, y: point.y }));
@@ -332,6 +340,9 @@
     context.clearRect(0, 0, canvas.width, canvas.height);
   }
 
+  /**
+   * Clears the active photo and resets its visual/editor state before another selection.
+   */
   function clearPreview() {
     previewSequence += 1;
     delete form.dataset.photoEditorReady;
@@ -440,6 +451,10 @@
     });
   }
 
+  /**
+   * Draws or clears the closed four-edge suggestion and its four corner markers.
+   * @param {Array<{x: number, y: number}> | null} candidate - Validated source-canvas corners.
+   */
   function updateDetectionOverlay(candidate) {
     if (!candidate || candidate.length !== 4) {
       detectionPolygon.setAttribute('points', '');
@@ -457,6 +472,9 @@
     });
   }
 
+  /**
+   * Copies the scaled source photo into the Edge Detect panel with matching coordinates.
+   */
   function drawDetectionSource() {
     detectionCanvas.width = sourceCanvas.width;
     detectionCanvas.height = sourceCanvas.height;
@@ -467,6 +485,10 @@
     updateDetectionOverlay(null);
   }
 
+  /**
+   * Loads the self-hosted classical detector once, allowing a later retry after failure.
+   * @returns {Promise<Function>} The browser-local Scanic detection function.
+   */
   function loadScanicDetector() {
     if (!scanicPromise) {
       scanicPromise = import('/js/vendor/scanic/scanic.js').then((module) => {
@@ -474,11 +496,20 @@
           throw new Error('The local edge detector could not be loaded.');
         }
         return module.scanDocument;
+      }).catch((error) => {
+        // Do not poison future photo selections after a transient import/validation failure.
+        scanicPromise = null;
+        throw error;
       });
     }
     return scanicPromise;
   }
 
+  /**
+   * Maps natural-image detector coordinates into the scaled editor canvas.
+   * @param {Object} corners - Scanic's top-left, top-right, bottom-right and bottom-left points.
+   * @returns {Array<{x: number, y: number}>} Corners clamped safely inside the canvas.
+   */
   function mapDetectedCorners(corners) {
     const scaleX = sourceCanvas.width / image.naturalWidth;
     const scaleY = sourceCanvas.height / image.naturalHeight;
@@ -494,6 +525,11 @@
     }));
   }
 
+  /**
+   * Suggests a validated four-corner outline for cover photos without replacing manual edits.
+   * @param {HTMLImageElement} previewImage - The selected image being analysed locally.
+   * @param {number} currentSequence - The preview sequence that guards against stale results.
+   */
   async function suggestAutomaticCorners(previewImage, currentSequence) {
     if (!isCoverRole()) {
       detectionStatus.textContent =
@@ -806,6 +842,9 @@
     });
   }
 
+  /**
+   * Validates a selected upload and prepares the source, detection and corrected previews.
+   */
   function preparePreview() {
     clearPreview();
     delete form.dataset.photoEditorReady;
@@ -895,6 +934,13 @@
     previewImage.src = currentUrl;
   }
 
+  /**
+   * Moves one manual corner only when the resulting quadrilateral remains geometrically valid.
+   * @param {number} index - The corner index in clockwise order.
+   * @param {number} x - The requested horizontal source-canvas coordinate.
+   * @param {number} y - The requested vertical source-canvas coordinate.
+   * @returns {boolean} Whether the corner move was accepted.
+   */
   function moveCorner(index, x, y) {
     const candidate = points.map((point) => ({ x: point.x, y: point.y }));
     candidate[index] = {
