@@ -654,8 +654,8 @@
 }
 .photo-dialog {
   box-sizing: border-box;
-  width: min(92vw, 560px);
-  max-width: 560px;
+  width: min(94vw, 760px);
+  max-width: 760px;
   max-height: calc(100dvh - 32px);
   margin: auto;
   padding: var(--space-4);
@@ -847,14 +847,92 @@
   border: 1px solid var(--color-border-subtle);
   background: var(--color-paper);
 }
-.square-cover-preview-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+.square-cover-workflow {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-3);
-  align-items: start;
-}
-.square-cover-preview-grid > div {
   min-width: 0;
+}
+.square-cover-stage-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-paper);
+}
+.square-cover-stage-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.square-cover-stage-header h3 {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-md);
+}
+.square-cover-stage-tag {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-white);
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+.square-cover-detect-stage {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--color-paper-muted);
+}
+.square-cover-detect-stage > canvas,
+.square-cover-source-stage > canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+.square-cover-detect-overlay {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+.square-cover-detect-polygon {
+  fill: rgba(246, 15, 75, .05);
+  stroke: #f60f4b;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+.square-cover-detection-corner {
+  fill: #f60f4b;
+  stroke: #fffdf8;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.square-cover-detection-status {
+  min-height: 1.5em;
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+.square-cover-detection-legend {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .04em;
 }
 .square-cover-panel-label {
   min-height: 1.4em;
@@ -1098,11 +1176,13 @@
   color: var(--color-rust-accessible);
 }
 @media (max-width: 430px) {
-  .square-cover-preview-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, .82fr);
-    gap: var(--space-2);
+  .square-cover-workflow {
+    gap: var(--space-3);
   }
-  .square-cover-preview-grid .square-cover-panel-label {
+  .square-cover-stage-panel {
+    padding: var(--space-2);
+  }
+  .square-cover-workflow .square-cover-panel-label {
     font-size: 8px;
   }
   .square-cover-tone-header {
@@ -1480,5 +1560,53 @@
     flex-basis: 48px;
     width: 48px;
     height: 48px;
+  }
+}
+
+
+/* Focused full-screen workspace on small devices: no competing side-by-side panes. */
+@media (max-width: 640px) {
+  .photo-dialog {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: var(--space-3);
+    border: 0;
+    border-radius: 0;
+  }
+
+  .photo-dialog-header {
+    position: sticky;
+    top: calc(-1 * var(--space-3));
+    z-index: 5;
+    padding-block: var(--space-1);
+    background: var(--color-surface-card);
+  }
+
+  .photo-upload-form > .photo-dialog-actions {
+    position: sticky;
+    bottom: calc(-1 * var(--space-3));
+    z-index: 5;
+    margin-inline: calc(-1 * var(--space-3));
+    margin-bottom: calc(-1 * var(--space-3));
+    padding: var(--space-3);
+    border-top: 1px solid var(--color-border-subtle);
+    background: var(--color-surface-card);
+  }
+
+  .square-cover-cropper {
+    padding: var(--space-2);
+  }
+
+  .square-cover-workflow {
+    gap: var(--space-3);
+  }
+
+  .square-cover-stage-panel {
+    padding: var(--space-2);
   }
 }

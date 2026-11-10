@@ -1,6 +1,7 @@
 import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
 import path from 'path';
+import { readFileSync } from 'fs';
 import sharp from 'sharp';
 import { chromium, Browser, Page } from 'playwright';
 import {
@@ -91,6 +92,11 @@ describe('Square cover photo cropper', () => {
       '<body><main class="main-content">' + body + '</main></body></html>',
       { waitUntil: 'domcontentloaded', timeout: 5000 }
     );
+    await page.route('**/js/vendor/scanic/scanic.js', (route) => route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'text/javascript; charset=utf-8' },
+      body: readFileSync(path.join(__dirname, '../public/js/vendor/scanic/scanic.js'), 'utf8'),
+    }));
     if (standaloneMode === 'display-mode') {
       await page.addScriptTag({
         content: "Object.defineProperty(window, 'matchMedia', { configurable: true, value: query => ({ matches: query === '(display-mode: standalone)' }) });",
@@ -564,6 +570,93 @@ describe('Square cover photo cropper', () => {
     );
     expect(await page.locator('#selected-photo-info').textContent()).toContain('300 × 500 px');
     expect(JSON.parse(await page.locator('#photoEditorState').inputValue()).sourceWidth).toBe(300);
+    expect(browserErrors).toEqual([]);
+  });
+
+  it('detects all four skewed sleeve edges and never overwrites a manual point edit', async () => {
+    const sleeveSvg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000">' +
+      '<rect width="800" height="1000" fill="#55585b"/>' +
+      '<polygon points="115,150 690,105 720,855 145,910" fill="#f0eadc" stroke="#111111" stroke-width="10"/>' +
+      '<path d="M230 330 L570 295 M220 370 L570 340 M225 700 L580 670" stroke="#454545" stroke-width="5" opacity=".65"/>' +
+      '</svg>'
+    );
+    const perspectiveSleeve = await sharp(sleeveSvg).jpeg({ quality: 95 }).toBuffer();
+
+    await renderEditPage();
+    await page.evaluate("document.querySelector('form[action$=\\\"/photos\\\"]').addEventListener('submit', event => event.preventDefault(), true)");
+    await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
+    await page.locator('#altText').fill('Perspective photo of the front sleeve');
+    await page.locator('#photoFile').setInputFiles({
+      name: 'perspective-front-sleeve.jpg',
+      mimeType: 'image/jpeg',
+      buffer: perspectiveSleeve,
+    });
+
+    await page.waitForFunction(
+      "document.querySelector('#square-cover-detection-status')?.textContent.includes('All four sleeve edges were detected')",
+      undefined,
+      { timeout: 30000 }
+    );
+
+    const geometry = await page.evaluate(() => {
+      const polygon = document.querySelector('#square-cover-detect-polygon');
+      const text = polygon?.getAttribute('points') || '';
+      const corners = text.trim().split(/\\s+/).map((pair) => pair.split(',').map(Number));
+      const edgeLengths = corners.map((point, index) => {
+        const next = corners[(index + 1) % corners.length];
+        return Math.hypot(next[0] - point[0], next[1] - point[1]);
+      });
+      const markers = Array.from(document.querySelectorAll('[data-detected-corner]'));
+      const detectionBox = document.querySelector('#square-cover-detect-stage').getBoundingClientRect();
+      const manualPolygon = document.querySelector('#square-cover-polygon')?.getAttribute('points');
+      return {
+        corners,
+        edgeLengths,
+        markers: markers.filter((marker) => marker.getAttribute('display') !== 'none').length,
+        manualMatchesDetection: manualPolygon === text,
+        detectionHeight: detectionBox.height,
+        documentWidth: document.documentElement.scrollWidth,
+      };
+    });
+
+    expect(geometry.corners).toHaveLength(4);
+    expect(new Set(geometry.corners.map((point) => point.join(','))).size).toBe(4);
+    expect(geometry.edgeLengths.every((length) => length > 20)).toBe(true);
+    expect(geometry.markers).toBe(4);
+    expect(geometry.manualMatchesDetection).toBe(true);
+
+    const detectionOutline = await page.locator('#square-cover-detect-polygon').getAttribute('points');
+    const firstHandle = page.locator('[data-corner-handle="0"]');
+    await firstHandle.focus();
+    await firstHandle.press('ArrowRight');
+    expect(await page.locator('#square-cover-polygon').getAttribute('points')).not.toBe(detectionOutline);
+    expect(await page.locator('#square-cover-detect-polygon').getAttribute('points')).toBe(detectionOutline);
+
+    for (const width of [360, 390, 430, 768, 1280]) {
+      await page.setViewportSize({ width, height: 850 });
+      const dimensions = await page.evaluate(() => {
+        const dialog = document.querySelector('#photoUploadDialog');
+        const workflow = document.querySelector('.square-cover-workflow');
+        const panels = Array.from(workflow.children);
+        const rects = panels.map((panel) => panel.getBoundingClientRect());
+        return {
+          viewport: window.innerWidth,
+          scrollWidth: document.documentElement.scrollWidth,
+          direction: getComputedStyle(workflow).flexDirection,
+          order: panels.map((panel) => panel.classList.contains('square-cover-detect-panel')
+            ? 'detect'
+            : panel.classList.contains('square-cover-result-panel') ? 'preview' : 'points'),
+          panelWidths: rects.map((rect) => rect.width),
+          dialogWidth: dialog.getBoundingClientRect().width,
+        };
+      });
+      expect(dimensions.scrollWidth).toBeLessThanOrEqual(width + 1);
+      expect(dimensions.direction).toBe('column');
+      expect(dimensions.order).toEqual(['detect', 'preview', 'points']);
+      expect(dimensions.panelWidths.every((panelWidth) => panelWidth > 0)).toBe(true);
+      expect(dimensions.dialogWidth).toBeLessThanOrEqual(width + 1);
+    }
     expect(browserErrors).toEqual([]);
   });
 

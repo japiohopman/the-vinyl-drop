@@ -4,6 +4,7 @@
   "description": "A local community marketplace for buying, selling, and trading physical vinyl records.",
   "main": "dist/server.js",
   "scripts": {
+    "postinstall": "node scripts/copy-scanic-assets.mjs",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
@@ -39,6 +40,7 @@
     "ejs": "^3.1.10",
     "express": "^4.21.2",
     "postgres": "^3.4.9",
+    "scanic": "1.7.1",
     "sharp": "^0.35.5",
     "ws": "^8.22.0",
     "zod": "^4.6.7"

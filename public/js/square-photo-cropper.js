@@ -17,6 +17,12 @@
   const fileInfo = form.querySelector('#selected-photo-info');
   const originalPreview = form.querySelector('#photo-original-preview');
   const cropper = form.querySelector('#square-cover-cropper');
+  const detectionStage = form.querySelector('#square-cover-detect-stage');
+  const detectionCanvas = form.querySelector('#square-cover-detect-image');
+  const detectionOverlay = form.querySelector('#square-cover-detect-overlay');
+  const detectionPolygon = form.querySelector('#square-cover-detect-polygon');
+  const detectionMarkers = Array.from(form.querySelectorAll('[data-detected-corner]'));
+  const detectionStatus = form.querySelector('#square-cover-detection-status');
   const sourceStage = form.querySelector('#square-cover-source-stage');
   const sourceCanvas = form.querySelector('#square-cover-source');
   const overlay = form.querySelector('#square-cover-overlay');
@@ -51,6 +57,12 @@
       !(fileInfo instanceof HTMLElement) ||
       !(originalPreview instanceof HTMLImageElement) ||
       !(cropper instanceof HTMLElement) ||
+      !(detectionStage instanceof HTMLElement) ||
+      !(detectionCanvas instanceof HTMLCanvasElement) ||
+      !(detectionOverlay instanceof SVGElement) ||
+      !(detectionPolygon instanceof SVGPolygonElement) ||
+      !(detectionStatus instanceof HTMLElement) ||
+      detectionMarkers.length !== 4 ||
       !(sourceStage instanceof HTMLElement) ||
       !(sourceCanvas instanceof HTMLCanvasElement) ||
       !(overlay instanceof SVGElement) ||
@@ -71,11 +83,12 @@
   cameraTrigger.hidden = !isStandalonePwa;
   photoFileActions.classList.toggle('is-standalone', isStandalonePwa);
 
+  const detectionContext = detectionCanvas.getContext('2d');
   const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true });
   const resultContext = resultCanvas.getContext('2d');
   const magnifierContext = magnifierCanvas.getContext('2d');
   const histogramContext = histogramCanvas.getContext('2d');
-  if (!sourceContext || !resultContext || !magnifierContext || !histogramContext) return;
+  if (!detectionContext || !sourceContext || !resultContext || !magnifierContext || !histogramContext) return;
 
   const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
   const PREVIEW_MAX_DIMENSION = 320;
@@ -98,6 +111,9 @@
   let dragStartState = null;
   let controlStartState = null;
   let showBefore = false;
+  let manualEditingStarted = false;
+  let detectedCorners = null;
+  let scanicPromise = null;
   let undoStack = [];
   let redoStack = [];
 
@@ -233,6 +249,7 @@
     }
 
     points = candidate;
+    manualEditingStarted = true;
     updateOverlay();
     schedulePreview();
   }
@@ -276,6 +293,7 @@
   }
 
   function restoreState(state) {
+    manualEditingStarted = true;
     points = state.points.map((point) => ({ x: point.x, y: point.y }));
     adjustmentControls.forEach((control) => {
       const key = control.dataset.photoAdjustment;
@@ -335,6 +353,8 @@
     dragStartState = null;
     controlStartState = null;
     showBefore = false;
+    manualEditingStarted = false;
+    detectedCorners = null;
     undoStack = [];
     redoStack = [];
     frameControls.forEach((control) => {
@@ -349,8 +369,14 @@
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = null;
     sourceStage.style.aspectRatio = '';
+    clearCanvas(detectionCanvas, detectionContext);
     clearCanvas(sourceCanvas, sourceContext);
     clearCanvas(resultCanvas, resultContext);
+    detectionStage.style.aspectRatio = '';
+    detectionOverlay.setAttribute('viewBox', '0 0 1 1');
+    detectionPolygon.setAttribute('points', '');
+    detectionMarkers.forEach((marker) => marker.setAttribute('display', 'none'));
+    detectionStatus.textContent = 'Choose a front or back cover photo to suggest its four sleeve edges on this device.';
     clearCanvas(magnifierCanvas, magnifierContext);
     clearCanvas(histogramCanvas, histogramContext);
     magnifier.hidden = true;
@@ -412,6 +438,125 @@
       handle.setAttribute('aria-label',
         'Adjust ' + HANDLE_LABELS[index] + ' sleeve corner. Use arrow keys to move; hold Shift for larger steps.');
     });
+  }
+
+  function updateDetectionOverlay(candidate) {
+    if (!candidate || candidate.length !== 4) {
+      detectionPolygon.setAttribute('points', '');
+      detectionMarkers.forEach((marker) => marker.setAttribute('display', 'none'));
+      return;
+    }
+
+    detectionOverlay.setAttribute('viewBox', '0 0 ' + sourceCanvas.width + ' ' + sourceCanvas.height);
+    detectionPolygon.setAttribute('points', candidate.map((point) => point.x + ',' + point.y).join(' '));
+    detectionMarkers.forEach((marker, index) => {
+      const point = candidate[index];
+      marker.setAttribute('cx', String(point.x));
+      marker.setAttribute('cy', String(point.y));
+      marker.setAttribute('display', 'inline');
+    });
+  }
+
+  function drawDetectionSource() {
+    detectionCanvas.width = sourceCanvas.width;
+    detectionCanvas.height = sourceCanvas.height;
+    detectionContext.clearRect(0, 0, detectionCanvas.width, detectionCanvas.height);
+    detectionContext.drawImage(sourceCanvas, 0, 0);
+    detectionStage.style.aspectRatio = sourceCanvas.width + ' / ' + sourceCanvas.height;
+    detectionOverlay.setAttribute('viewBox', '0 0 ' + sourceCanvas.width + ' ' + sourceCanvas.height);
+    updateDetectionOverlay(null);
+  }
+
+  function loadScanicDetector() {
+    if (!scanicPromise) {
+      scanicPromise = import('/js/vendor/scanic/scanic.js').then((module) => {
+        if (typeof module.scanDocument !== 'function') {
+          throw new Error('The local edge detector could not be loaded.');
+        }
+        return module.scanDocument;
+      });
+    }
+    return scanicPromise;
+  }
+
+  function mapDetectedCorners(corners) {
+    const scaleX = sourceCanvas.width / image.naturalWidth;
+    const scaleY = sourceCanvas.height / image.naturalHeight;
+    const inset = Math.min(10, Math.max(2, Math.floor(Math.min(sourceCanvas.width, sourceCanvas.height) * 0.02)));
+    return [
+      corners.topLeft,
+      corners.topRight,
+      corners.bottomRight,
+      corners.bottomLeft,
+    ].map((point) => ({
+      x: clamp(Number(point.x) * scaleX, inset, sourceCanvas.width - inset),
+      y: clamp(Number(point.y) * scaleY, inset, sourceCanvas.height - inset),
+    }));
+  }
+
+  async function suggestAutomaticCorners(previewImage, currentSequence) {
+    if (!isCoverRole()) {
+      detectionStatus.textContent =
+        'Automatic sleeve-edge detection is for front and back covers. Use the four manual points below for this photo.';
+      return;
+    }
+
+    detectionStatus.textContent = 'Looking for the top, right, bottom and left sleeve edges on this device…';
+    updateDetectionOverlay(null);
+
+    try {
+      const scanDocument = await loadScanicDetector();
+      if (previewSequence !== currentSequence || image !== previewImage) return;
+
+      // The classical detector runs entirely in the browser; the optional ML
+      // mode and its remote model/runtime are deliberately never enabled.
+      const result = await scanDocument(previewImage, {
+        detector: 'classical',
+        mode: 'detect',
+        maxProcessingDimension: 800,
+      });
+      if (previewSequence !== currentSequence || image !== previewImage) return;
+
+      const confidence = Number(result.confidence);
+      if (!result.success || !result.corners || !Number.isFinite(confidence) || confidence < 0.58) {
+        detectionStatus.textContent =
+          'The four sleeve edges were not clear enough to trust. The manual four-point editor is ready below.';
+        setStatus('Automatic detection was uncertain. Place all four corners manually before saving.');
+        updateDetectionOverlay(null);
+        return;
+      }
+
+      const candidate = mapDetectedCorners(result.corners);
+      if (!core.isValidQuad(candidate, sourceCanvas.width, sourceCanvas.height)) {
+        detectionStatus.textContent =
+          'The outline was not a safe four-corner shape. Use the manual point editor below.';
+        setStatus('Automatic detection could not confirm a safe quadrilateral. Adjust the four points manually.');
+        updateDetectionOverlay(null);
+        return;
+      }
+
+      detectedCorners = candidate.map((point) => ({ x: point.x, y: point.y }));
+      updateDetectionOverlay(detectedCorners);
+
+      if (manualEditingStarted) {
+        detectionStatus.textContent =
+          'A four-edge suggestion is shown above. Your manual corner adjustments have been kept unchanged.';
+        return;
+      }
+
+      points = detectedCorners.map((point) => ({ x: point.x, y: point.y }));
+      updateOverlay();
+      schedulePreview();
+      detectionStatus.textContent =
+        'All four sleeve edges were detected. Check every side in the outline and corrected preview, then fine-tune any point below.';
+      setStatus('Four sleeve edges suggested. Review the result and adjust any of the four corners before saving.');
+    } catch {
+      if (previewSequence !== currentSequence || image !== previewImage) return;
+      detectionStatus.textContent =
+        'Automatic edge detection is unavailable right now. The manual four-point editor remains ready below.';
+      setStatus('Automatic detection could not run. You can still place all four corners manually.');
+      updateDetectionOverlay(null);
+    }
   }
 
   function drawMagnifier(index) {
@@ -720,13 +865,22 @@
         sourceContext.drawImage(previewImage, 0, 0, sourceCanvas.width, sourceCanvas.height);
         sourceStage.style.aspectRatio = sourceCanvas.width + ' / ' + sourceCanvas.height;
         points = core.createDefaultCorners(sourceCanvas.width, sourceCanvas.height);
-        if (form.dataset.editingPhotoId) applyStoredEditorState();
+        const storedEditorStateRestored = Boolean(form.dataset.editingPhotoId) && applyStoredEditorState();
         const previewDimensions = getOutputDimensions(512);
         resultCanvas.width = previewDimensions.width;
         resultCanvas.height = previewDimensions.height;
+        drawDetectionSource();
         updateOverlay();
         renderPreview();
         updateHistoryButtons();
+
+        if (storedEditorStateRestored) {
+          detectedCorners = points.map((point) => ({ x: point.x, y: point.y }));
+          updateDetectionOverlay(detectedCorners);
+          detectionStatus.textContent = 'Your saved four-corner framing has been restored. You can adjust each point below.';
+        } else {
+          void suggestAutomaticCorners(previewImage, currentSequence);
+        }
       }
     };
 
@@ -752,6 +906,7 @@
       return false;
     }
     points = candidate;
+    manualEditingStarted = true;
     updateOverlay();
     schedulePreview();
     return true;
@@ -829,6 +984,7 @@
       if (!controlStartState) controlStartState = cloneState();
     });
     control.addEventListener('input', () => {
+      manualEditingStarted = true;
       updateAdjustmentOutputs();
       schedulePreview();
     });
@@ -848,6 +1004,7 @@
       if (!controlStartState) controlStartState = cloneState();
     });
     control.addEventListener('input', () => {
+      manualEditingStarted = true;
       applyFrameControl(control);
       updateFrameOutputs();
     });
@@ -882,6 +1039,7 @@
       if (!image) return;
       pushUndo(cloneState());
       points = core.createDefaultCorners(sourceCanvas.width, sourceCanvas.height);
+      manualEditingStarted = true;
       frameControls.forEach((control) => {
         const key = control.dataset.photoFrame;
         if (key && Object.prototype.hasOwnProperty.call(FRAME_DEFAULTS, key)) {
