@@ -4,8 +4,8 @@ import { setFlashCookie } from '../middleware/flash';
 import { listReleases, findReleaseById } from '../repositories/releaseRepository';
 import {
   getMyListings,
-  getListingWithDetails,
   getListingEditDetails,
+  getListingPreviewDetails,
   getListingWithDetailsForView,
   getPublicListingDetailsForView,
   createListingFromRelease,
@@ -563,7 +563,7 @@ export async function postReorderPhotos(req: Request, res: Response, next: NextF
 export async function getPreviewListingPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const listingId = req.params.id;
-    const details = await getListingWithDetails(listingId);
+    const details = await getListingPreviewDetails(listingId);
 
     if (!details) {
       res.status(404);
@@ -608,7 +608,7 @@ export async function postPublishListing(req: Request, res: Response, next: Next
   } catch (error) {
     if (error instanceof ValidationError || (error as Error).name === 'InvalidLifecycleTransitionError') {
       const listingId = req.params.id;
-      const details = await getListingWithDetails(listingId);
+      const details = await getListingPreviewDetails(listingId);
       if (details) {
         const isTradeOnly = details.listing.tradeAvailable && details.listing.price === null;
         res.status(400);

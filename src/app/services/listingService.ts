@@ -33,6 +33,8 @@ import {
   findPhotosByListingId,
   findListingEditPhotosByListingId,
   ListingEditPhotoRecord,
+  ListingPreviewPhotoRecord,
+  findListingPreviewPhotosByListingId,
   findPublicListingPhotosByListingId,
   PublicListingPhotoRecord,
   findDigPhotosByListingIds,
@@ -57,6 +59,8 @@ import {
   PublicListingDetailRecord,
   ListingEditDetailsRecord,
   findListingEditDetailsById,
+  ListingPreviewDetailsRecord,
+  findListingPreviewDetailsById,
   findPublicListingDetailById,
   searchListings,
   hasExplicitWhiteLabelInventory as hasWhiteLabelInRepo,
@@ -224,6 +228,16 @@ export type ListingEditDetails = Omit<ListingEditDetailsRecord, 'physicalCopy' |
   physicalCopy: NonNullable<ListingEditDetailsRecord['physicalCopy']>;
   release: NonNullable<ListingEditDetailsRecord['release']>;
   photos: ListingEditPhotoViewModel[];
+};
+export interface ListingPreviewPhotoViewModel extends Omit<ListingPreviewPhotoRecord, 'storagePath'> {
+  publicUrl: string;
+}
+
+export type ListingPreviewDetails = Omit<ListingPreviewDetailsRecord, 'physicalCopy' | 'release' | 'seller'> & {
+  physicalCopy: NonNullable<ListingPreviewDetailsRecord['physicalCopy']>;
+  release: NonNullable<ListingPreviewDetailsRecord['release']>;
+  seller: NonNullable<ListingPreviewDetailsRecord['seller']>;
+  photos: ListingPreviewPhotoViewModel[];
 };
 
 /** Public photo fields required by the My Listings page; no private source or editor metadata. */
@@ -427,6 +441,43 @@ export async function getListingEditDetails(
     listing: details.listing,
     physicalCopy: details.physicalCopy,
     release: details.release,
+    photos,
+  };
+}
+
+/**
+ * Build the pre-publish Preview view model in two bounded reads:
+ * one joined listing/copy/release/seller query and one narrow public-photo query.
+ * Private original-source paths and editor recipes are not needed by Preview.
+ */
+export async function getListingPreviewDetails(
+  listingId: string,
+  dbOverride?: DbInstance
+): Promise<ListingPreviewDetails | null> {
+  const details = await findListingPreviewDetailsById(listingId, dbOverride);
+  if (!details) return null;
+
+  if (!details.physicalCopy) {
+    throw new NotFoundError('Associated physical copy not found');
+  }
+  if (!details.release) {
+    throw new NotFoundError('Associated release not found');
+  }
+  if (!details.seller) {
+    throw new NotFoundError('Seller profile not found');
+  }
+
+  const photoRecords = await findListingPreviewPhotosByListingId(listingId, dbOverride);
+  const photos: ListingPreviewPhotoViewModel[] = photoRecords.map(({ storagePath, ...photo }) => ({
+    ...photo,
+    publicUrl: getPhotoPublicUrl(storagePath),
+  }));
+
+  return {
+    listing: details.listing,
+    physicalCopy: details.physicalCopy,
+    release: details.release,
+    seller: details.seller,
     photos,
   };
 }

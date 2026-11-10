@@ -9,7 +9,7 @@ import { createApp } from '../src/app';
 import * as dbModule from '../src/db';
 import * as authService from '../src/app/services/authService';
 import * as commentServiceModule from '../src/app/services/commentService';
-import { getListingEditDetails, getPublicListingDetailsForView } from '../src/app/services/listingService';
+import { getListingEditDetails, getListingPreviewDetails, getPublicListingDetailsForView } from '../src/app/services/listingService';
 import { getListingCommentsForResolvedListing } from '../src/app/services/commentService';
 import { AuthorizationError, NotFoundError } from '../src/app/services/errors';
 import { comments, favorites, listings, listingPhotos, physicalCopies, profiles, releases } from '../src/db/schema';
@@ -543,6 +543,71 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(visitorResponse.status).toBe(403);
     expect(visitorResponse.text).not.toContain('Blue Spirits');
     expect(visitorQueries).toHaveLength(2);
+  });
+
+  it('loads the seller Preview with exactly 2 SELECTs and excludes editor-private photo metadata', async () => {
+    const { result, queries } = await captureQueries(() => getListingPreviewDetails(listingId, db));
+
+    expect(result).not.toBeNull();
+    if (!result) throw new Error('Expected listing Preview details.');
+
+    expect(result.listing).toMatchObject({
+      id: listingId,
+      status: 'published',
+      price: 3250,
+      tradeAvailable: true,
+      description: 'A well-kept original pressing.',
+    });
+    expect(result.physicalCopy).toMatchObject({
+      id: copyId,
+      mediaCondition: 'VG+',
+      sleeveCondition: 'VG',
+    });
+    expect(result.release).toMatchObject({
+      id: releaseId,
+      title: 'Blue Spirits',
+      artist: 'Blue Note All-Stars',
+      label: 'Blue Note',
+      catalogueNumber: 'BST-841',
+      releaseYear: 1967,
+      format: 'Vinyl, LP, Album',
+      coverArtUrl: 'https://cdn.example.com/catalogue-blue-spirits.webp',
+    });
+    expect(result.seller).toMatchObject({ id: sellerId, username: 'joined_seller', location: 'Amsterdam' });
+    expect(result.photos.map((photo) => photo.role)).toEqual(['front_cover', 'detail', 'back_cover']);
+    expect(result.photos[0].publicUrl).toContain(`listings/${listingId}/front.webp`);
+    expect(result.photos[0]).not.toHaveProperty('sourceStoragePath');
+    expect(result.photos[0]).not.toHaveProperty('editorState');
+
+    expect(queries).toHaveLength(2);
+    const coreQuery = queries[0].toLowerCase();
+    expect(coreQuery).toContain('from "listings"');
+    expect(coreQuery).toContain('left join "physical_copies"');
+    expect(coreQuery).toContain('left join "releases"');
+    expect(coreQuery).toContain('left join "profiles"');
+
+    const photosQuery = queries[1].toLowerCase();
+    expect(photosQuery).toContain('from "listing_photos"');
+    expect(photosQuery).not.toContain('"source_storage_path"');
+    expect(photosQuery).not.toContain('"source_is_legacy"');
+    expect(photosQuery).not.toContain('"editor_state"');
+    expect(photosQuery).not.toContain('"updated_at"');
+  });
+
+  it('renders the seller Preview from the 2-query view model', async () => {
+    const { result: response, queries } = await captureQueries(() =>
+      request(createApp())
+        .get(`/listings/${listingId}/preview`)
+        .set('Cookie', ['sb-access-token=seller-token'])
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Blue Spirits');
+    expect(response.text).toContain('Blue Note All-Stars');
+    expect(response.text).toContain('joined_seller');
+    expect(response.text).toContain('Front cover of Blue Spirits');
+    expect(response.text).not.toContain('private-source');
+    expect(queries).toHaveLength(2);
   });
 
   it('returns only public photo and seller projections from the service view model', async () => {

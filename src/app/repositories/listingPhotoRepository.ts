@@ -27,6 +27,10 @@ export type ListingEditPhotoRecord = Pick<
   ListingPhoto,
   'id' | 'storagePath' | 'role' | 'displayOrder' | 'altText' | 'editorState'
 >;
+export type ListingPreviewPhotoRecord = Pick<
+  ListingPhoto,
+  'id' | 'storagePath' | 'role' | 'displayOrder' | 'altText'
+>;
 
 /** Fetch minimal editor metadata without selecting the private original-source Storage path. */
 export async function findListingEditPhotosByListingId(
@@ -49,6 +53,25 @@ export async function findListingEditPhotosByListingId(
 }
 
 /** Fetch only the ordered fields required to render public listing photography. */
+/** Fetch only public metadata used by the seller's pre-publish Preview page. */
+export async function findListingPreviewPhotosByListingId(
+  listingId: string,
+  dbOverride?: DbInstance
+): Promise<ListingPreviewPhotoRecord[]> {
+  const db = dbOverride || getDb();
+  return db
+    .select({
+      id: listingPhotos.id,
+      storagePath: listingPhotos.storagePath,
+      role: listingPhotos.role,
+      displayOrder: listingPhotos.displayOrder,
+      altText: listingPhotos.altText,
+    })
+    .from(listingPhotos)
+    .where(eq(listingPhotos.listingId, listingId))
+    .orderBy(asc(listingPhotos.displayOrder), asc(listingPhotos.createdAt));
+}
+
 export async function findPublicListingPhotosByListingId(
   listingId: string,
   dbOverride?: DbInstance
