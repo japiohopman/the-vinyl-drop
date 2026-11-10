@@ -94,7 +94,7 @@ describe('Square cover photo cropper', () => {
       '<body><main class="main-content">' + body + '</main></body></html>',
       { waitUntil: 'domcontentloaded', timeout: 5000 }
     );
-    await page.route('**/js/vendor/scanic/scanic.js', (route) => route.fulfill({
+    await page.route('**/js/vendor/scanic/scanic.js**', (route) => route.fulfill({
       status: 200,
       headers: { 'content-type': 'text/javascript; charset=utf-8' },
       body: readFileSync(path.join(__dirname, '../public/js/vendor/scanic/scanic.js'), 'utf8'),
