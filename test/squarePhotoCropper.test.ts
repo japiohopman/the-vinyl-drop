@@ -615,6 +615,7 @@ describe('Square cover photo cropper', () => {
         edgeLengths,
         markers: markers.filter((marker) => marker.getAttribute('display') !== 'none').length,
         manualMatchesDetection: manualPolygon === text,
+        cornersInBounds: corners.every((point) => point[0] >= 2 && point[0] <= 254 && point[1] >= 2 && point[1] <= 318),
         detectionHeight: detectionBox.height,
         documentWidth: document.documentElement.scrollWidth,
       };
@@ -625,6 +626,7 @@ describe('Square cover photo cropper', () => {
     expect(geometry.edgeLengths.every((length) => length > 20)).toBe(true);
     expect(geometry.markers).toBe(4);
     expect(geometry.manualMatchesDetection).toBe(true);
+    expect(geometry.cornersInBounds).toBe(true);
 
     const detectionOutline = await page.locator('#square-cover-detect-polygon').getAttribute('points');
     const firstHandle = page.locator('[data-corner-handle="0"]');
@@ -632,6 +634,55 @@ describe('Square cover photo cropper', () => {
     await firstHandle.press('ArrowRight');
     expect(await page.locator('#square-cover-polygon').getAttribute('points')).not.toBe(detectionOutline);
     expect(await page.locator('#square-cover-detect-polygon').getAttribute('points')).toBe(detectionOutline);
+
+    // Repeat with a landscape photo. The source canvas is 320x256, so this
+    // also verifies that X/Y coordinates are scaled independently of portrait.
+    await page.locator('[data-close-photo-upload]').first().click({ timeout: 5000 });
+    await page.locator('[data-open-photo-upload][data-photo-role="back_cover"]').click({ timeout: 5000 });
+    const landscapeSvg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="800" viewBox="0 0 1000 800">' +
+      '<rect width="1000" height="800" fill="#53565a"/>' +
+      '<polygon points="105,100 900,145 855,705 130,680" fill="#f0eadc" stroke="#111111" stroke-width="11"/>' +
+      '<path d="M260 280 L735 310 M250 325 L725 355 M235 590 L700 620" stroke="#454545" stroke-width="5" opacity=".65"/>' +
+      '</svg>'
+    );
+    const landscapeSleeve = await sharp(landscapeSvg).jpeg({ quality: 95 }).toBuffer();
+    await page.locator('#altText').fill('Perspective photo of the back sleeve');
+    await page.locator('#photoFile').setInputFiles({
+      name: 'perspective-back-sleeve-landscape.jpg',
+      mimeType: 'image/jpeg',
+      buffer: landscapeSleeve,
+    });
+    await page.waitForFunction(
+      "document.querySelector('#square-cover-detection-status')?.textContent.includes('All four sleeve edges were detected')",
+      undefined,
+      { timeout: 30000 }
+    );
+    const landscapeGeometry = await page.evaluate(() => {
+      const source = document.querySelector('#square-cover-source');
+      const polygon = document.querySelector('#square-cover-detect-polygon');
+      const points = (polygon?.getAttribute('points') || '').trim().split(/\\s+/)
+        .map((pair) => pair.split(',').map(Number));
+      const markers = Array.from(document.querySelectorAll('[data-detected-corner]'));
+      const edgeLengths = points.map((point, index) => {
+        const next = points[(index + 1) % points.length];
+        return Math.hypot(next[0] - point[0], next[1] - point[1]);
+      });
+      return {
+        width: source.width,
+        height: source.height,
+        points,
+        edgeLengths,
+        markers: markers.filter((marker) => marker.getAttribute('display') !== 'none').length,
+        inBounds: points.every((point) => point[0] >= 2 && point[0] <= 318 && point[1] >= 2 && point[1] <= 254),
+      };
+    });
+    expect(landscapeGeometry.width).toBe(320);
+    expect(landscapeGeometry.height).toBe(256);
+    expect(landscapeGeometry.points).toHaveLength(4);
+    expect(landscapeGeometry.edgeLengths.every((length) => length > 20)).toBe(true);
+    expect(landscapeGeometry.markers).toBe(4);
+    expect(landscapeGeometry.inBounds).toBe(true);
 
     for (const width of [360, 390, 430, 768, 1280]) {
       await page.setViewportSize({ width, height: 850 });
@@ -728,6 +779,57 @@ describe('Square cover photo cropper', () => {
       { timeout: 20000 }
     );
     expect(await page.locator('#photoUploadForm').getAttribute('action')).toContain('/edit');
+    expect(browserErrors).toEqual([]);
+  });
+
+  it('supports four-point dragging with touch input on a phone-sized viewport', async () => {
+    await page.close();
+    page = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 1,
+      isMobile: true,
+      hasTouch: true,
+    });
+    browserErrors = [];
+    page.on('pageerror', (error) => browserErrors.push(error.message));
+    await renderEditPage();
+    await page.evaluate("document.querySelector('form[action$=\\\"/photos\\\"]').addEventListener('submit', event => event.preventDefault(), true)");
+    await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click();
+    await page.locator('#altText').fill('Touch-edited sleeve photo');
+    await page.locator('#photoFile').setInputFiles({
+      name: 'touch-front-cover.jpg',
+      mimeType: 'image/jpeg',
+      buffer: portraitImage,
+    });
+    await page.waitForFunction(
+      "document.querySelector('#square-cover-source')?.height === 320 && " +
+      "document.querySelector('[data-corner-handle=\\\"0\\\"]')?.disabled === false",
+      undefined,
+      { timeout: 5000 }
+    );
+
+    const handle = page.locator('[data-corner-handle="0"]');
+    const original = await page.locator('#square-cover-polygon').getAttribute('points');
+    const bounds = await handle.boundingBox();
+    if (!bounds) throw new Error('The first manual corner handle is not visible for touch input.');
+    const start = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+    await handle.evaluate((element, point) => {
+      const target = element as HTMLButtonElement;
+      target.setPointerCapture = () => undefined;
+      target.dispatchEvent(new PointerEvent('pointerdown', {
+        bubbles: true, cancelable: true, pointerId: 17, pointerType: 'touch',
+        isPrimary: true, clientX: point.x, clientY: point.y,
+      }));
+      window.dispatchEvent(new PointerEvent('pointermove', {
+        bubbles: true, cancelable: true, pointerId: 17, pointerType: 'touch',
+        isPrimary: true, clientX: point.x + 6, clientY: point.y + 6,
+      }));
+      window.dispatchEvent(new PointerEvent('pointerup', {
+        bubbles: true, cancelable: true, pointerId: 17, pointerType: 'touch',
+        isPrimary: true, clientX: point.x + 6, clientY: point.y + 6,
+      }));
+    }, start);
+    expect(await page.locator('#square-cover-polygon').getAttribute('points')).not.toBe(original);
     expect(browserErrors).toEqual([]);
   });
 

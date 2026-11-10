@@ -946,6 +946,7 @@
     handle.addEventListener('pointerdown', (event) => {
       if (!image) return;
       event.preventDefault();
+      manualEditingStarted = true;
       activeCorner = index;
       dragStartState = cloneState();
       handle.setPointerCapture?.(event.pointerId);
@@ -965,6 +966,7 @@
       const direction = directions[event.key];
       if (!direction || !image) return;
       event.preventDefault();
+      manualEditingStarted = true;
       const before = cloneState();
       const step = event.shiftKey ? 5 : 1;
       const moved = moveCorner(

@@ -1,11 +1,11 @@
-import fs from 'fs';
-import path from 'path';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 describe('self-hosted Scanic asset', () => {
   it('installs the pinned browser module and its MIT licence', () => {
     const vendorDirectory = path.join(__dirname, '../public/js/vendor/scanic');
-    const browserModule = fs.readFileSync(path.join(vendorDirectory, 'scanic.js'), 'utf8');
-    const license = fs.readFileSync(path.join(vendorDirectory, 'LICENSE'), 'utf8');
+    const browserModule = readFileSync(path.join(vendorDirectory, 'scanic.js'), 'utf8');
+    const license = readFileSync(path.join(vendorDirectory, 'LICENSE'), 'utf8');
 
     expect(browserModule).toContain('scanDocument');
     expect(license).toContain('MIT License');
