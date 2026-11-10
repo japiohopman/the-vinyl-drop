@@ -660,7 +660,7 @@ describe('Square cover photo cropper', () => {
       { timeout: 30000 }
     );
     const landscapeGeometry = await page.evaluate(() => {
-      const source = document.querySelector('#square-cover-source');
+      const source = document.querySelector('#square-cover-source') as HTMLCanvasElement;
       const polygon = document.querySelector('#square-cover-detect-polygon');
       const points = (polygon?.getAttribute('points') || '').trim().split(/\\s+/)
         .map((pair) => pair.split(',').map(Number));
