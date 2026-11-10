@@ -605,7 +605,7 @@ describe('Square cover photo cropper', () => {
     const geometry = await page.evaluate(() => {
       const polygon = document.querySelector('#square-cover-detect-polygon');
       const text = polygon?.getAttribute('points') || '';
-      const corners = text.trim().split(/\\s+/).map((pair) => pair.split(',').map(Number));
+      const corners = text.trim().split(/\s+/).map((pair) => pair.split(',').map(Number));
       const edgeLengths = corners.map((point, index) => {
         const next = corners[(index + 1) % corners.length];
         return Math.hypot(next[0] - point[0], next[1] - point[1]);
@@ -680,7 +680,7 @@ describe('Square cover photo cropper', () => {
     const landscapeGeometry = await page.evaluate(() => {
       const source = document.querySelector('#square-cover-source') as HTMLCanvasElement;
       const polygon = document.querySelector('#square-cover-detect-polygon');
-      const points = (polygon?.getAttribute('points') || '').trim().split(/\\s+/)
+      const points = (polygon?.getAttribute('points') || '').trim().split(/\s+/)
         .map((pair) => pair.split(',').map(Number));
       const markers = Array.from(document.querySelectorAll('[data-detected-corner]'));
       const edgeLengths = points.map((point, index) => {
