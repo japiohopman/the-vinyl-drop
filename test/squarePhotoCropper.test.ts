@@ -746,11 +746,10 @@ describe('Square cover photo cropper', () => {
   it('retries local edge detection after a transient Scanic import failure', async () => {
     await renderEditPage();
     let importAttempts = 0;
-    const scanicAsset = readFileSync(path.join(__dirname, '../public/js/vendor/scanic/scanic.js'), 'utf8');
 
-    // A failed first request simulates a transient mobile/network loading failure.
-    // The second selection must issue a fresh request instead of reusing a rejected promise.
-    await page.route('**/js/vendor/scanic/scanic.js', async (route) => {
+    // A rejected module fetch is cached by browsers against its full URL. The
+    // second request must therefore use the retry URL and be independently loadable.
+    await page.route('**/js/vendor/scanic/scanic.js**', async (route) => {
       importAttempts += 1;
       if (importAttempts === 1) {
         await route.abort();
@@ -759,7 +758,20 @@ describe('Square cover photo cropper', () => {
       await route.fulfill({
         status: 200,
         headers: { 'content-type': 'text/javascript; charset=utf-8' },
-        body: scanicAsset,
+        body: [
+          'export async function scanDocument() {',
+          '  return {',
+          '    success: true,',
+          '    confidence: 0.99,',
+          '    corners: {',
+          '      topLeft: { x: 20, y: 25 },',
+          '      topRight: { x: 280, y: 25 },',
+          '      bottomRight: { x: 280, y: 475 },',
+          '      bottomLeft: { x: 20, y: 475 }',
+          '    }',
+          '  };',
+          '}',
+        ].join('\\n'),
       });
     });
 
@@ -775,7 +787,7 @@ describe('Square cover photo cropper', () => {
     await page.waitForFunction(
       "document.querySelector('#square-cover-detection-status')?.textContent.includes('All four sleeve edges were detected')",
       undefined,
-      { timeout: 30000 }
+      { timeout: 5000 }
     );
     expect(importAttempts).toBe(2);
     expect(browserErrors).toEqual([]);

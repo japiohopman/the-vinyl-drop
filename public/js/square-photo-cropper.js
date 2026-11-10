@@ -114,6 +114,7 @@
   let manualEditingStarted = false;
   let detectedCorners = null;
   let scanicPromise = null;
+  let scanicImportAttempt = 0;
   let undoStack = [];
   let redoStack = [];
 
@@ -486,18 +487,22 @@
   }
 
   /**
-   * Loads the self-hosted classical detector once, allowing a later retry after failure.
+   * Loads the self-hosted classical detector once and permits a clean retry after failure.
+   * A distinct query string is used for each failed load because browsers may cache a
+   * rejected ES module fetch by its full URL for the lifetime of the document.
    * @returns {Promise<Function>} The browser-local Scanic detection function.
    */
   function loadScanicDetector() {
     if (!scanicPromise) {
-      scanicPromise = import('/js/vendor/scanic/scanic.js').then((module) => {
+      scanicImportAttempt += 1;
+      const moduleUrl = '/js/vendor/scanic/scanic.js?load-attempt=' + scanicImportAttempt;
+      scanicPromise = import(moduleUrl).then((module) => {
         if (typeof module.scanDocument !== 'function') {
           throw new Error('The local edge detector could not be loaded.');
         }
         return module.scanDocument;
       }).catch((error) => {
-        // Do not poison future photo selections after a transient import/validation failure.
+        // Do not retain the rejected promise; the next call will use a fresh module URL.
         scanicPromise = null;
         throw error;
       });
