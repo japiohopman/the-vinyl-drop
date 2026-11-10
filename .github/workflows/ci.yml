@@ -60,6 +60,7 @@ jobs:
         env:
           ERROR_PAGE_EVIDENCE_DIR: artifacts/issue-315
           PROFILE_EVIDENCE_DIR: artifacts/issue-351
+          ISSUE_333_EVIDENCE_DIR: artifacts/issue-333
         run: npm test
 
       - name: Upload Issue #315 error-page browser evidence
@@ -77,6 +78,15 @@ jobs:
         with:
           name: issue-351-profile-playwright-evidence
           path: artifacts/issue-351/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Issue #333 photo-editor browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-333-photo-editor-playwright-evidence
+          path: artifacts/issue-333/
           if-no-files-found: warn
           retention-days: 14
 

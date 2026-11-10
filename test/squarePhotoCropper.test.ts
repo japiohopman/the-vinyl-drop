@@ -1,7 +1,7 @@
 import { readFullStylesheetSource } from './stylesheetTestHelper';
 import ejs from 'ejs';
 import path from 'path';
-import { readFileSync } from 'fs';
+import { mkdirSync, readFileSync } from 'fs';
 import sharp from 'sharp';
 import { chromium, Browser, Page } from 'playwright';
 import {
@@ -18,12 +18,14 @@ describe('Square cover photo cropper', () => {
   const stylesheet = readFullStylesheetSource();
   const corePath = path.join(__dirname, '../public/js/listing-photo-editor-core.js');
   const cropperPath = path.join(__dirname, '../public/js/square-photo-cropper.js');
+  const issue333EvidenceDirectory = process.env.ISSUE_333_EVIDENCE_DIR;
   let browser: Browser;
   let page: Page;
   let portraitImage: Buffer;
   let browserErrors: string[];
 
   beforeAll(async () => {
+    if (issue333EvidenceDirectory) mkdirSync(issue333EvidenceDirectory, { recursive: true });
     browser = await chromium.launch({ headless: true });
     portraitImage = await sharp({
       create: { width: 300, height: 500, channels: 3, background: { r: 175, g: 60, b: 90 } },
@@ -628,6 +630,21 @@ describe('Square cover photo cropper', () => {
     expect(geometry.markers).toBe(4);
     expect(geometry.manualMatchesDetection).toBe(true);
     expect(geometry.cornersInBounds).toBe(true);
+    await page.waitForFunction(
+      "document.querySelector('#square-cover-status')?.textContent.includes('Preview updated')",
+      undefined,
+      { timeout: 5000 }
+    );
+    if (issue333EvidenceDirectory) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.locator('.square-cover-workflow').screenshot({
+        path: path.join(issue333EvidenceDirectory, 'editor-mobile-workflow.png'),
+      });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.locator('.square-cover-workflow').screenshot({
+        path: path.join(issue333EvidenceDirectory, 'editor-desktop-workflow.png'),
+      });
+    }
 
     const detectionOutline = await page.locator('#square-cover-detect-polygon').getAttribute('points');
     const firstHandle = page.locator('[data-corner-handle="0"]');
