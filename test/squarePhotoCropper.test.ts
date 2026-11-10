@@ -631,6 +631,11 @@ describe('Square cover photo cropper', () => {
     expect(geometry.markers).toBe(4);
     expect(geometry.manualMatchesDetection).toBe(true);
     expect(geometry.cornersInBounds).toBe(true);
+    const expectedPortrait = [[36.8, 48], [220.8, 33.6], [230.4, 273.6], [46.4, 291.2]];
+    geometry.corners.forEach((point, index) => {
+      expect(Math.abs(point[0] - expectedPortrait[index][0])).toBeLessThan(24);
+      expect(Math.abs(point[1] - expectedPortrait[index][1])).toBeLessThan(24);
+    });
     await page.waitForFunction(
       "document.querySelector('#square-cover-status')?.textContent.includes('Preview updated')",
       undefined,
@@ -714,6 +719,11 @@ describe('Square cover photo cropper', () => {
     expect(landscapeGeometry.edgeLengths.every((length) => length > 20)).toBe(true);
     expect(landscapeGeometry.markers).toBe(4);
     expect(landscapeGeometry.inBounds).toBe(true);
+    const expectedLandscape = [[33.6, 32], [288, 46.4], [273.6, 225.6], [41.6, 217.6]];
+    landscapeGeometry.points.forEach((point, index) => {
+      expect(Math.abs(point[0] - expectedLandscape[index][0])).toBeLessThan(24);
+      expect(Math.abs(point[1] - expectedLandscape[index][1])).toBeLessThan(24);
+    });
 
     for (const width of [360, 390, 430, 768, 1280]) {
       await page.setViewportSize({ width, height: 850 });
