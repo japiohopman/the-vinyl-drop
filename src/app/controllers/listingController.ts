@@ -147,6 +147,7 @@ export async function postCreateListing(req: Request, res: Response, next: NextF
   }
 }
 
+/** Render the listing edit form after loading its bounded view model and verifying seller ownership. */
 export async function getEditListingPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
@@ -207,6 +208,7 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
   }
 }
 
+/** Validate seller edits, persist the listing changes, and return to the pre-publish Preview flow. */
 export async function postEditListing(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
@@ -560,6 +562,7 @@ export async function postReorderPhotos(req: Request, res: Response, next: NextF
   }
 }
 
+/** Render pre-publish listing details only for the authenticated seller who owns the listing. */
 export async function getPreviewListingPage(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const listingId = req.params.id;
@@ -571,6 +574,14 @@ export async function getPreviewListingPage(req: Request, res: Response, next: N
         title: '404 - Page Not Found',
         message: 'The requested listing could not be found.',
         isStatusPage: true,
+      });
+    }
+
+    if (!req.user || details.seller.id !== req.user.id) {
+      res.status(403);
+      return renderWithLayout(res, 'errors/500', {
+        title: '403 Forbidden',
+        message: 'You are not authorized to preview this listing.',
       });
     }
 

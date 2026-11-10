@@ -594,7 +594,7 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(photosQuery).not.toContain('"updated_at"');
   });
 
-  it('renders the seller Preview from the 2-query view model', async () => {
+  it('renders the seller Preview and denies another user access to a private draft', async () => {
     const { result: response, queries } = await captureQueries(() =>
       request(createApp())
         .get(`/listings/${listingId}/preview`)
@@ -608,6 +608,27 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(response.text).toContain('Front cover of Blue Spirits');
     expect(response.text).not.toContain('private-source');
     expect(queries).toHaveLength(2);
+
+    const { result: draftOwnerResponse, queries: draftOwnerQueries } = await captureQueries(() =>
+      request(createApp())
+        .get(`/listings/${draftListingId}/preview`)
+        .set('Cookie', ['sb-access-token=seller-token'])
+    );
+    expect(draftOwnerResponse.status).toBe(200);
+    expect(draftOwnerResponse.text).toContain('Private Draft Pressing');
+    expect(draftOwnerResponse.text).toContain('Seller-only draft notes.');
+    expect(draftOwnerQueries).toHaveLength(2);
+
+    const { result: visitorResponse, queries: visitorQueries } = await captureQueries(() =>
+      request(createApp())
+        .get(`/listings/${draftListingId}/preview`)
+        .set('Cookie', ['sb-access-token=buyer-token'])
+    );
+    expect(visitorResponse.status).toBe(403);
+    expect(visitorResponse.text).not.toContain('Private Draft Pressing');
+    expect(visitorResponse.text).not.toContain('Not public until the seller publishes it.');
+    expect(visitorResponse.text).not.toContain('Seller-only draft notes.');
+    expect(visitorQueries).toHaveLength(2);
   });
 
   it('returns only public photo and seller projections from the service view model', async () => {
