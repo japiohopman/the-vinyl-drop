@@ -52,7 +52,6 @@ export async function findListingEditPhotosByListingId(
     .orderBy(asc(listingPhotos.displayOrder), asc(listingPhotos.createdAt));
 }
 
-/** Fetch only the ordered fields required to render public listing photography. */
 /** Fetch only public metadata used by the seller's pre-publish Preview page. */
 export async function findListingPreviewPhotosByListingId(
   listingId: string,
@@ -72,6 +71,7 @@ export async function findListingPreviewPhotosByListingId(
     .orderBy(asc(listingPhotos.displayOrder), asc(listingPhotos.createdAt));
 }
 
+/** Fetch the ordered public photo fields required by listing-detail rendering. */
 export async function findPublicListingPhotosByListingId(
   listingId: string,
   dbOverride?: DbInstance
