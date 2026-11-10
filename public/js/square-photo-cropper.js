@@ -17,6 +17,12 @@
   const fileInfo = form.querySelector('#selected-photo-info');
   const originalPreview = form.querySelector('#photo-original-preview');
   const cropper = form.querySelector('#square-cover-cropper');
+  const detectionStage = form.querySelector('#square-cover-detect-stage');
+  const detectionCanvas = form.querySelector('#square-cover-detect-image');
+  const detectionOverlay = form.querySelector('#square-cover-detect-overlay');
+  const detectionPolygon = form.querySelector('#square-cover-detect-polygon');
+  const detectionMarkers = Array.from(form.querySelectorAll('[data-detected-corner]'));
+  const detectionStatus = form.querySelector('#square-cover-detection-status');
   const sourceStage = form.querySelector('#square-cover-source-stage');
   const sourceCanvas = form.querySelector('#square-cover-source');
   const overlay = form.querySelector('#square-cover-overlay');
@@ -51,6 +57,12 @@
       !(fileInfo instanceof HTMLElement) ||
       !(originalPreview instanceof HTMLImageElement) ||
       !(cropper instanceof HTMLElement) ||
+      !(detectionStage instanceof HTMLElement) ||
+      !(detectionCanvas instanceof HTMLCanvasElement) ||
+      !(detectionOverlay instanceof SVGElement) ||
+      !(detectionPolygon instanceof SVGPolygonElement) ||
+      !(detectionStatus instanceof HTMLElement) ||
+      detectionMarkers.length !== 4 ||
       !(sourceStage instanceof HTMLElement) ||
       !(sourceCanvas instanceof HTMLCanvasElement) ||
       !(overlay instanceof SVGElement) ||
@@ -71,11 +83,12 @@
   cameraTrigger.hidden = !isStandalonePwa;
   photoFileActions.classList.toggle('is-standalone', isStandalonePwa);
 
+  const detectionContext = detectionCanvas.getContext('2d');
   const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true });
   const resultContext = resultCanvas.getContext('2d');
   const magnifierContext = magnifierCanvas.getContext('2d');
   const histogramContext = histogramCanvas.getContext('2d');
-  if (!sourceContext || !resultContext || !magnifierContext || !histogramContext) return;
+  if (!detectionContext || !sourceContext || !resultContext || !magnifierContext || !histogramContext) return;
 
   const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
   const PREVIEW_MAX_DIMENSION = 320;
@@ -98,6 +111,10 @@
   let dragStartState = null;
   let controlStartState = null;
   let showBefore = false;
+  let manualEditingStarted = false;
+  let detectedCorners = null;
+  let scanicPromise = null;
+  let scanicImportAttempt = 0;
   let undoStack = [];
   let redoStack = [];
 
@@ -208,6 +225,10 @@
     };
   }
 
+  /**
+   * Applies a framing adjustment while keeping the four-point selection valid.
+   * @param {HTMLInputElement} control - The framing control whose value changed.
+   */
   function applyFrameControl(control) {
     if (!image) return;
     if (!controlStartState) controlStartState = cloneState();
@@ -233,6 +254,7 @@
     }
 
     points = candidate;
+    manualEditingStarted = true;
     updateOverlay();
     schedulePreview();
   }
@@ -275,7 +297,12 @@
     updateHistoryButtons();
   }
 
+  /**
+   * Restores saved corner positions and tonal adjustments without losing edit history.
+   * @param {Object} state - The editor state to restore.
+   */
   function restoreState(state) {
+    manualEditingStarted = true;
     points = state.points.map((point) => ({ x: point.x, y: point.y }));
     adjustmentControls.forEach((control) => {
       const key = control.dataset.photoAdjustment;
@@ -314,6 +341,9 @@
     context.clearRect(0, 0, canvas.width, canvas.height);
   }
 
+  /**
+   * Clears the active photo and resets its visual/editor state before another selection.
+   */
   function clearPreview() {
     previewSequence += 1;
     delete form.dataset.photoEditorReady;
@@ -335,6 +365,8 @@
     dragStartState = null;
     controlStartState = null;
     showBefore = false;
+    manualEditingStarted = false;
+    detectedCorners = null;
     undoStack = [];
     redoStack = [];
     frameControls.forEach((control) => {
@@ -349,8 +381,14 @@
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = null;
     sourceStage.style.aspectRatio = '';
+    clearCanvas(detectionCanvas, detectionContext);
     clearCanvas(sourceCanvas, sourceContext);
     clearCanvas(resultCanvas, resultContext);
+    detectionStage.style.aspectRatio = '';
+    detectionOverlay.setAttribute('viewBox', '0 0 1 1');
+    detectionPolygon.setAttribute('points', '');
+    detectionMarkers.forEach((marker) => marker.setAttribute('display', 'none'));
+    detectionStatus.textContent = 'Choose a front or back cover photo to suggest its four sleeve edges on this device.';
     clearCanvas(magnifierCanvas, magnifierContext);
     clearCanvas(histogramCanvas, histogramContext);
     magnifier.hidden = true;
@@ -412,6 +450,154 @@
       handle.setAttribute('aria-label',
         'Adjust ' + HANDLE_LABELS[index] + ' sleeve corner. Use arrow keys to move; hold Shift for larger steps.');
     });
+  }
+
+  /**
+   * Draws or clears the closed four-edge suggestion and its four corner markers.
+   * @param {Array<{x: number, y: number}> | null} candidate - Validated source-canvas corners.
+   */
+  function updateDetectionOverlay(candidate) {
+    if (!candidate || candidate.length !== 4) {
+      detectionPolygon.setAttribute('points', '');
+      detectionMarkers.forEach((marker) => marker.setAttribute('display', 'none'));
+      return;
+    }
+
+    detectionOverlay.setAttribute('viewBox', '0 0 ' + sourceCanvas.width + ' ' + sourceCanvas.height);
+    detectionPolygon.setAttribute('points', candidate.map((point) => point.x + ',' + point.y).join(' '));
+    detectionMarkers.forEach((marker, index) => {
+      const point = candidate[index];
+      marker.setAttribute('cx', String(point.x));
+      marker.setAttribute('cy', String(point.y));
+      marker.setAttribute('display', 'inline');
+    });
+  }
+
+  /**
+   * Copies the scaled source photo into the Edge Detect panel with matching coordinates.
+   */
+  function drawDetectionSource() {
+    detectionCanvas.width = sourceCanvas.width;
+    detectionCanvas.height = sourceCanvas.height;
+    detectionContext.clearRect(0, 0, detectionCanvas.width, detectionCanvas.height);
+    detectionContext.drawImage(sourceCanvas, 0, 0);
+    detectionStage.style.aspectRatio = sourceCanvas.width + ' / ' + sourceCanvas.height;
+    detectionOverlay.setAttribute('viewBox', '0 0 ' + sourceCanvas.width + ' ' + sourceCanvas.height);
+    updateDetectionOverlay(null);
+  }
+
+  /**
+   * Loads the self-hosted classical detector once and permits a clean retry after failure.
+   * A distinct query string is used for each failed load because browsers may cache a
+   * rejected ES module fetch by its full URL for the lifetime of the document.
+   * @returns {Promise<Function>} The browser-local Scanic detection function.
+   */
+  function loadScanicDetector() {
+    if (!scanicPromise) {
+      scanicImportAttempt += 1;
+      const moduleUrl = '/js/vendor/scanic/scanic.js?load-attempt=' + scanicImportAttempt;
+      scanicPromise = import(moduleUrl).then((module) => {
+        if (typeof module.scanDocument !== 'function') {
+          throw new Error('The local edge detector could not be loaded.');
+        }
+        return module.scanDocument;
+      }).catch((error) => {
+        // Do not retain the rejected promise; the next call will use a fresh module URL.
+        scanicPromise = null;
+        throw error;
+      });
+    }
+    return scanicPromise;
+  }
+
+  /**
+   * Maps natural-image detector coordinates into the scaled editor canvas.
+   * @param {Object} corners - Scanic's top-left, top-right, bottom-right and bottom-left points.
+   * @returns {Array<{x: number, y: number}>} Corners clamped safely inside the canvas.
+   */
+  function mapDetectedCorners(corners) {
+    const scaleX = sourceCanvas.width / image.naturalWidth;
+    const scaleY = sourceCanvas.height / image.naturalHeight;
+    const inset = Math.min(10, Math.max(2, Math.floor(Math.min(sourceCanvas.width, sourceCanvas.height) * 0.02)));
+    return [
+      corners.topLeft,
+      corners.topRight,
+      corners.bottomRight,
+      corners.bottomLeft,
+    ].map((point) => ({
+      x: clamp(Number(point.x) * scaleX, inset, sourceCanvas.width - inset),
+      y: clamp(Number(point.y) * scaleY, inset, sourceCanvas.height - inset),
+    }));
+  }
+
+  /**
+   * Suggests a validated four-corner outline for cover photos without replacing manual edits.
+   * @param {HTMLImageElement} previewImage - The selected image being analysed locally.
+   * @param {number} currentSequence - The preview sequence that guards against stale results.
+   */
+  async function suggestAutomaticCorners(previewImage, currentSequence) {
+    if (!isCoverRole()) {
+      detectionStatus.textContent =
+        'Automatic sleeve-edge detection is for front and back covers. Use the four manual points below for this photo.';
+      return;
+    }
+
+    detectionStatus.textContent = 'Looking for the top, right, bottom and left sleeve edges on this device…';
+    updateDetectionOverlay(null);
+
+    try {
+      const scanDocument = await loadScanicDetector();
+      if (previewSequence !== currentSequence || image !== previewImage) return;
+
+      // The classical detector runs entirely in the browser; the optional ML
+      // mode and its remote model/runtime are deliberately never enabled.
+      const result = await scanDocument(previewImage, {
+        detector: 'classical',
+        mode: 'detect',
+        maxProcessingDimension: 800,
+      });
+      if (previewSequence !== currentSequence || image !== previewImage) return;
+
+      const confidence = Number(result.confidence);
+      if (!result.success || !result.corners || !Number.isFinite(confidence) || confidence < 0.58) {
+        detectionStatus.textContent =
+          'The four sleeve edges were not clear enough to trust. The manual four-point editor is ready below.';
+        setStatus('Automatic detection was uncertain. Place all four corners manually before saving.');
+        updateDetectionOverlay(null);
+        return;
+      }
+
+      const candidate = mapDetectedCorners(result.corners);
+      if (!core.isValidQuad(candidate, sourceCanvas.width, sourceCanvas.height)) {
+        detectionStatus.textContent =
+          'The outline was not a safe four-corner shape. Use the manual point editor below.';
+        setStatus('Automatic detection could not confirm a safe quadrilateral. Adjust the four points manually.');
+        updateDetectionOverlay(null);
+        return;
+      }
+
+      detectedCorners = candidate.map((point) => ({ x: point.x, y: point.y }));
+      updateDetectionOverlay(detectedCorners);
+
+      if (manualEditingStarted) {
+        detectionStatus.textContent =
+          'A four-edge suggestion is shown above. Your manual corner adjustments have been kept unchanged.';
+        return;
+      }
+
+      points = detectedCorners.map((point) => ({ x: point.x, y: point.y }));
+      updateOverlay();
+      schedulePreview();
+      detectionStatus.textContent =
+        'All four sleeve edges were detected. Check every side in the outline and corrected preview, then fine-tune any point below.';
+      setStatus('Four sleeve edges suggested. Review the result and adjust any of the four corners before saving.');
+    } catch {
+      if (previewSequence !== currentSequence || image !== previewImage) return;
+      detectionStatus.textContent =
+        'Automatic edge detection is unavailable right now. The manual four-point editor remains ready below.';
+      setStatus('Automatic detection could not run. You can still place all four corners manually.');
+      updateDetectionOverlay(null);
+    }
   }
 
   function drawMagnifier(index) {
@@ -661,6 +847,9 @@
     });
   }
 
+  /**
+   * Validates a selected upload and prepares the source, detection and corrected previews.
+   */
   function preparePreview() {
     clearPreview();
     delete form.dataset.photoEditorReady;
@@ -720,13 +909,22 @@
         sourceContext.drawImage(previewImage, 0, 0, sourceCanvas.width, sourceCanvas.height);
         sourceStage.style.aspectRatio = sourceCanvas.width + ' / ' + sourceCanvas.height;
         points = core.createDefaultCorners(sourceCanvas.width, sourceCanvas.height);
-        if (form.dataset.editingPhotoId) applyStoredEditorState();
+        const storedEditorStateRestored = Boolean(form.dataset.editingPhotoId) && applyStoredEditorState();
         const previewDimensions = getOutputDimensions(512);
         resultCanvas.width = previewDimensions.width;
         resultCanvas.height = previewDimensions.height;
+        drawDetectionSource();
         updateOverlay();
         renderPreview();
         updateHistoryButtons();
+
+        if (storedEditorStateRestored) {
+          detectedCorners = points.map((point) => ({ x: point.x, y: point.y }));
+          updateDetectionOverlay(detectedCorners);
+          detectionStatus.textContent = 'Your saved four-corner framing has been restored. You can adjust each point below.';
+        } else {
+          void suggestAutomaticCorners(previewImage, currentSequence);
+        }
       }
     };
 
@@ -741,6 +939,13 @@
     previewImage.src = currentUrl;
   }
 
+  /**
+   * Moves one manual corner only when the resulting quadrilateral remains geometrically valid.
+   * @param {number} index - The corner index in clockwise order.
+   * @param {number} x - The requested horizontal source-canvas coordinate.
+   * @param {number} y - The requested vertical source-canvas coordinate.
+   * @returns {boolean} Whether the corner move was accepted.
+   */
   function moveCorner(index, x, y) {
     const candidate = points.map((point) => ({ x: point.x, y: point.y }));
     candidate[index] = {
@@ -752,6 +957,7 @@
       return false;
     }
     points = candidate;
+    manualEditingStarted = true;
     updateOverlay();
     schedulePreview();
     return true;
@@ -791,6 +997,7 @@
     handle.addEventListener('pointerdown', (event) => {
       if (!image) return;
       event.preventDefault();
+      manualEditingStarted = true;
       activeCorner = index;
       dragStartState = cloneState();
       handle.setPointerCapture?.(event.pointerId);
@@ -810,6 +1017,7 @@
       const direction = directions[event.key];
       if (!direction || !image) return;
       event.preventDefault();
+      manualEditingStarted = true;
       const before = cloneState();
       const step = event.shiftKey ? 5 : 1;
       const moved = moveCorner(
@@ -829,6 +1037,7 @@
       if (!controlStartState) controlStartState = cloneState();
     });
     control.addEventListener('input', () => {
+      manualEditingStarted = true;
       updateAdjustmentOutputs();
       schedulePreview();
     });
@@ -848,6 +1057,7 @@
       if (!controlStartState) controlStartState = cloneState();
     });
     control.addEventListener('input', () => {
+      manualEditingStarted = true;
       applyFrameControl(control);
       updateFrameOutputs();
     });
@@ -882,6 +1092,7 @@
       if (!image) return;
       pushUndo(cloneState());
       points = core.createDefaultCorners(sourceCanvas.width, sourceCanvas.height);
+      manualEditingStarted = true;
       frameControls.forEach((control) => {
         const key = control.dataset.photoFrame;
         if (key && Object.prototype.hasOwnProperty.call(FRAME_DEFAULTS, key)) {
