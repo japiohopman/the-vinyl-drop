@@ -242,6 +242,13 @@ export async function postEditListing(req: Request, res: Response, next: NextFun
     if (error instanceof ValidationError) {
       const listingId = req.params.id;
       const details = await getListingEditDetails(listingId);
+      if (details && req.user?.id !== details.listing.sellerId) {
+        res.status(403);
+        return renderWithLayout(res, 'errors/500', {
+          title: '403 Forbidden',
+          message: 'You are not authorized to edit this listing.',
+        });
+      }
       if (details) {
         const form: FormViewModel = {
           values: req.body,

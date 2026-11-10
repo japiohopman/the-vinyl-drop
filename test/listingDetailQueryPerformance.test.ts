@@ -545,6 +545,23 @@ describe('Issue #384 — Public listing detail query fan-out and projections', (
     expect(visitorQueries).toHaveLength(2);
   });
 
+  it('does not reveal draft details when another user submits invalid edit data', async () => {
+    const { result: response, queries } = await captureQueries(() =>
+      request(createApp())
+        .post(`/listings/${draftListingId}/edit`)
+        .set('Cookie', ['sb-access-token=buyer-token'])
+        .set('Origin', 'http://localhost:3000')
+        .type('form')
+        .send({ priceEur: 'not-a-price' })
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.text).not.toContain('Private Draft Pressing');
+    expect(response.text).not.toContain('Not public until the seller publishes it.');
+    expect(response.text).not.toContain('Seller-only draft notes.');
+    expect(queries).toHaveLength(2);
+  });
+
   it('loads the seller Preview with exactly 2 SELECTs and excludes editor-private photo metadata', async () => {
     const { result, queries } = await captureQueries(() => getListingPreviewDetails(listingId, db));
 
