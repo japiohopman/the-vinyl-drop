@@ -927,6 +927,8 @@
         updateOverlay();
         renderPreview();
         updateHistoryButtons();
+        // Move the modal's scroll position to the focused editing workspace after file selection.
+        cropper.scrollIntoView({ block: 'start' });
 
         if (storedEditorStateRestored) {
           detectedCorners = points.map((point) => ({ x: point.x, y: point.y }));
