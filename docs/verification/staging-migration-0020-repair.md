@@ -58,7 +58,7 @@ That confirmation is not implied by merging this PR. The owner must separately a
 
 ## What apply does
 
-The script repeats all preconditions after taking a transaction-scoped advisory lock and an exclusive lock on the Drizzle ledger. It uses short lock and statement timeouts, then within one PostgreSQL transaction:
+The script validates each trigram index as a single-column, non-unique, non-partial GIN index with the expected opclass, then repeats all preconditions after taking a transaction-scoped advisory lock and an exclusive lock on the Drizzle ledger. It uses short lock and statement timeouts, then within one PostgreSQL transaction:
 
 1. Creates the `extensions` schema only if absent.
 2. Installs `pg_trgm` 1.6 into `extensions` only if absent.
