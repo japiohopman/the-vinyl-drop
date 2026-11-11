@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import postgres from 'postgres';
@@ -47,14 +48,48 @@ type MigrationJournal = {
 };
 
 type LedgerRow = {
+  hash: unknown;
   created_at: unknown;
 };
 
+export type ExpectedProductionMigration = {
+  idx: number;
+  tag: string;
+  timestamp: string;
+  acceptedHashes: string[];
+};
+
 export type ProductionMigrationBaseline = {
-  timestamps: string[];
+  migrations: ExpectedProductionMigration[];
   latestTag: string;
 };
 
+/**
+ * Calculates Drizzle's SHA-256 migration hash from the exact UTF-8 SQL text.
+ */
+function createMigrationHash(sql: string): string {
+  return createHash('sha256').update(sql, 'utf8').digest('hex');
+}
+
+/**
+ * Accepts only exact LF or CRLF representations of the same checked-in SQL.
+ * Drizzle hashes the checked-out file bytes, so both supported Git line-ending
+ * forms are calculated; SQL whitespace or statement content is never normalized.
+ */
+function getAcceptedMigrationHashes(sql: string): string[] {
+  const lfSql = sql.replace(/\r\n?/g, '\n');
+  const candidates = [
+    createMigrationHash(sql),
+    createMigrationHash(lfSql),
+    createMigrationHash(lfSql.replace(/\n/g, '\r\n')),
+  ];
+  return [...new Set(candidates)];
+}
+
+/**
+ * Validates the approved 0000–0023 journal prefix and hashes each corresponding
+ * migration SQL file. Entries after index 23 are deliberately outside this baseline.
+ */
 export function getExpectedProductionMigrationBaseline(
   journal: unknown,
 ): ProductionMigrationBaseline {
@@ -68,7 +103,7 @@ export function getExpectedProductionMigrationBaseline(
   }
 
   const entries = candidate.entries as MigrationJournalEntry[];
-  const timestamps: string[] = [];
+  const migrations: ExpectedProductionMigration[] = [];
   let previousTimestamp = 0;
 
   for (let index = 0; index <= BASELINE_LAST_INDEX; index += 1) {
@@ -88,44 +123,55 @@ export function getExpectedProductionMigrationBaseline(
       throw new Error(`Repository migration journal timestamp at index ${index} is invalid or out of order.`);
     }
 
-    timestamps.push(String(timestamp));
+    const migrationPath = resolve(process.cwd(), 'drizzle', `${expectedTag}.sql`);
+    const migrationSql = readFileSync(migrationPath, 'utf8');
+    migrations.push({
+      idx: index,
+      tag: expectedTag,
+      timestamp: String(timestamp),
+      acceptedHashes: getAcceptedMigrationHashes(migrationSql),
+    });
     previousTimestamp = timestamp;
   }
 
   return {
-    timestamps,
+    migrations,
     latestTag: EXPECTED_BASELINE_TAGS[BASELINE_LAST_INDEX],
   };
 }
 
+/**
+ * Fails closed unless every live Drizzle ledger row matches both the expected
+ * journal timestamp and the SHA-256 hash of its approved historical SQL file.
+ */
 export function validateProductionMigrationLedger(
-  expectedTimestamps: readonly string[],
+  expectedMigrations: readonly ExpectedProductionMigration[],
   rows: readonly LedgerRow[],
 ): string[] {
   const problems: string[] = [];
-  if (expectedTimestamps.length !== BASELINE_LAST_INDEX + 1) {
-    return ['The pinned production baseline does not contain exactly 24 migration timestamps.'];
+  if (expectedMigrations.length !== BASELINE_LAST_INDEX + 1) {
+    return ['The pinned production baseline does not contain exactly 24 migration entries.'];
+  }
+
+  if (rows.length !== expectedMigrations.length) {
+    problems.push(`Expected exactly 24 production Drizzle ledger rows; found ${rows.length}.`);
   }
 
   const actualTimestamps = rows.map((row) => String(row.created_at ?? ''));
-  if (actualTimestamps.some((timestamp) => !/^\d+$/.test(timestamp))) {
+  if (actualTimestamps.some((timestamp) => !/^\\d+$/.test(timestamp))) {
     problems.push('The production Drizzle ledger contains an invalid migration timestamp.');
     return problems;
-  }
-
-  if (actualTimestamps.length !== expectedTimestamps.length) {
-    problems.push(`Expected exactly 24 production Drizzle ledger rows; found ${actualTimestamps.length}.`);
   }
 
   const actualCounts = new Map<string, number>();
   for (const timestamp of actualTimestamps) {
     actualCounts.set(timestamp, (actualCounts.get(timestamp) ?? 0) + 1);
   }
-
   if ([...actualCounts.values()].some((count) => count > 1)) {
     problems.push('The production Drizzle ledger contains duplicate migration timestamps.');
   }
 
+  const expectedTimestamps = expectedMigrations.map((migration) => migration.timestamp);
   const expectedSet = new Set(expectedTimestamps);
   const actualSet = new Set(actualTimestamps);
   if (expectedTimestamps.some((timestamp) => !actualSet.has(timestamp))) {
@@ -135,17 +181,33 @@ export function validateProductionMigrationLedger(
     problems.push('The production Drizzle ledger contains an unexpected migration timestamp.');
   }
 
-  const sortedActual = [...actualTimestamps].sort((left, right) => Number(left) - Number(right));
   if (
-    sortedActual.length === expectedTimestamps.length &&
-    sortedActual.some((timestamp, index) => timestamp !== expectedTimestamps[index])
+    rows.length === expectedMigrations.length &&
+    actualTimestamps.some((timestamp, index) => timestamp !== expectedMigrations[index].timestamp)
   ) {
     problems.push('The production Drizzle ledger does not match the exact ordered 0000-0023 baseline.');
   }
 
-  return problems;
+  for (let index = 0; index < Math.min(rows.length, expectedMigrations.length); index += 1) {
+    const actualHash = String(rows[index].hash ?? '').toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(actualHash)) {
+      problems.push(`Production migration index ${index} has an invalid SHA-256 ledger hash.`);
+      continue;
+    }
+    if (!expectedMigrations[index].acceptedHashes.includes(actualHash)) {
+      problems.push(
+        `Production migration index ${index} (${expectedMigrations[index].tag}) hash does not match its approved SQL file.`,
+      );
+    }
+  }
+
+  return [...new Set(problems)];
 }
 
+/**
+ * Validates the process-only production identity and the exact approved TLS
+ * Shared Session Pooler URL without logging or returning credentials to output.
+ */
 function getApprovedProductionConnectionString(): string {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL is missing.');
@@ -192,6 +254,10 @@ function getApprovedProductionConnectionString(): string {
   return connectionString;
 }
 
+/**
+ * Runs the bounded read-only production baseline query. It reports only whether
+ * all 24 ledger timestamps and SQL hashes match; it never changes database state.
+ */
 async function main(): Promise<void> {
   const connectionString = getApprovedProductionConnectionString();
   const journalPath = resolve(process.cwd(), 'drizzle/meta/_journal.json');
@@ -212,11 +278,11 @@ async function main(): Promise<void> {
       await tx.unsafe("SET LOCAL statement_timeout = '8000ms'");
       await tx.unsafe("SET LOCAL lock_timeout = '2000ms'");
       return tx.unsafe<LedgerRow[]>(
-        'SELECT created_at::text AS created_at FROM drizzle.__drizzle_migrations ORDER BY created_at',
+        'SELECT hash, created_at::text AS created_at FROM drizzle.__drizzle_migrations ORDER BY created_at',
       );
     });
 
-    const problems = validateProductionMigrationLedger(baseline.timestamps, rows);
+    const problems = validateProductionMigrationLedger(baseline.migrations, rows);
     if (problems.length > 0) {
       throw new Error('Production migration baseline preflight failed: ' + problems.join(' '));
     }
@@ -226,6 +292,7 @@ async function main(): Promise<void> {
       target: 'approved production project',
       ledgerRows: rows.length,
       verifiedThrough: baseline.latestTag,
+      verifiedMigrationHashes: rows.length,
       readOnly: true,
     }, null, 2));
   } finally {
