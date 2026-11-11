@@ -78,6 +78,14 @@ function Invoke-PreflightCase {
     }
 }
 
+<#
+.SYNOPSIS
+Verifies the exact index range selected by each pinned production migration phase.
+
+.DESCRIPTION
+Checks the existing phase boundaries, the 0024-0025 phase, exclusion of
+future migrations, and fail-closed behavior for altered, missing, or duplicate journal entries.
+#>
 function Test-PinnedProductionMigrationPlans {
     . $migrationPlanPath
 
@@ -227,6 +235,14 @@ function Test-ReleaseCandidateStoragePreflightRunsBeforeDrizzle {
 }
 
 
+<#
+.SYNOPSIS
+Verifies that the production ledger baseline is checked before confirmation and before Drizzle.
+
+.DESCRIPTION
+Inspects the runner ordering and requires both read-only baseline checks to
+complete before the migration command can be invoked.
+#>
 function Test-ProfileAndStylesLedgerPreflightRunsBeforeDrizzle {
     $runnerSource = Get-Content -LiteralPath $migrationRunnerPath -Raw
     $preflightInvocation = '& $tsxPath (Join-Path (Get-Location) ''scripts/verifyProductionMigrationBaseline.ts'')'
@@ -248,6 +264,14 @@ function Test-ProfileAndStylesLedgerPreflightRunsBeforeDrizzle {
     Write-Host 'PASS: ProfileAndStyles validates the exact production ledger baseline twice before Drizzle'
 }
 
+<#
+.SYNOPSIS
+Verifies that the new phase stops safely when the local tsx binary is unavailable.
+
+.DESCRIPTION
+Runs the production runner in an isolated temporary directory and confirms it
+stops before asking for the production password or phase confirmation.
+#>
 function Test-ProfileAndStylesRunnerStopsWithoutLocalTsx {
     $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-runner-no-tsx-" + [guid]::NewGuid().ToString('N'))
     $locationPushed = $false
