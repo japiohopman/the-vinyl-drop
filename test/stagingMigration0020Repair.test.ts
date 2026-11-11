@@ -142,6 +142,8 @@ describe('staging migration 0020 repair planner', () => {
       { ...base, key_attribute_count: 2 },
       { ...base, has_predicate: true },
       { ...base, is_unique: true },
+      { ...base, is_valid: false },
+      { ...base, is_ready: false },
     ];
 
     for (const index of snapshots) {
@@ -247,6 +249,9 @@ describe('staging migration 0020 apply execution boundary', () => {
     expect(isContinuousIntegrationEnvironment({ CI: 'true' })).toBe(true);
     expect(isContinuousIntegrationEnvironment({ GITHUB_ACTIONS: 'true' })).toBe(true);
     expect(isContinuousIntegrationEnvironment({ CI: 'TRUE' })).toBe(true);
+    expect(isContinuousIntegrationEnvironment({ CI: '1' })).toBe(true);
+    expect(isContinuousIntegrationEnvironment({ GITHUB_RUN_ID: '12345' })).toBe(true);
+    expect(isContinuousIntegrationEnvironment({ GITLAB_CI: 'true' })).toBe(true);
   });
 
   it('allows local interactive environments without CI markers', () => {
