@@ -374,6 +374,7 @@
 
     stage.style.width = width + 'px';
     stage.style.height = height + 'px';
+    stage.style.marginInline = 'auto';
     stage.style.aspectRatio = canvas.width + ' / ' + canvas.height;
     canvas.style.width = '100%';
     canvas.style.height = '100%';
@@ -1047,6 +1048,11 @@
     return true;
   }
 
+  /**
+   * Converts a pointer location from the fitted stage rectangle into source-canvas coordinates.
+   * @param {PointerEvent} event - Active pointer event from a corner handle.
+   * @returns {{x: number, y: number}} Source-space coordinates for the homography editor.
+   */
   function pointerPosition(event) {
     const rect = sourceStage.getBoundingClientRect();
     return {
@@ -1055,12 +1061,19 @@
     };
   }
 
+  /**
+   * Applies the current pointer position to the selected corner during an active drag.
+   * @param {PointerEvent} event - Current pointer movement.
+   */
   function onPointerMove(event) {
     if (activeCorner < 0 || !image) return;
     const position = pointerPosition(event);
     moveCorner(activeCorner, position.x, position.y);
   }
 
+  /**
+   * Commits one undoable drag operation and releases the temporary pointer listeners.
+   */
   function onPointerUp() {
     if (activeCorner < 0) return;
     const changed = dragStartState && !statesEqual(dragStartState, cloneState());
