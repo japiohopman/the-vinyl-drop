@@ -47,7 +47,12 @@ export type IndexState = {
   table_schema: string;
   table_name: string;
   access_method: string;
-  column_name: string;
+  column_name: string | null;
+  attribute_count: number;
+  key_attribute_count: number;
+  has_predicate: boolean;
+  is_unique: boolean;
+  is_primary: boolean;
   opclass_name: string;
   opclass_schema: string;
   is_valid: boolean;
@@ -228,6 +233,11 @@ function isCorrectIndex(index: IndexState, expectedName: keyof typeof EXPECTED_I
     index.table_name === 'releases' &&
     index.access_method === 'gin' &&
     index.column_name === EXPECTED_INDEXES[expectedName].column &&
+    index.attribute_count === 1 &&
+    index.key_attribute_count === 1 &&
+    index.has_predicate === false &&
+    index.is_unique === false &&
+    index.is_primary === false &&
     index.opclass_name === 'gin_trgm_ops' &&
     index.opclass_schema === 'extensions' &&
     index.is_valid === true &&
@@ -416,17 +426,22 @@ async function readSnapshot(executor: QueryExecutor): Promise<RepairSnapshot> {
       '       table_class.relname AS table_name,',
       '       access_method.amname AS access_method,',
       '       attribute.attname AS column_name,',
+      '       index_state.indnatts AS attribute_count,',
+      '       index_state.indnkeyatts AS key_attribute_count,',
+      '       (index_state.indpred IS NOT NULL) AS has_predicate,',
+      '       index_state.indisunique AS is_unique,',
+      '       index_state.indisprimary AS is_primary,',
       '       operator_class.opcname AS opclass_name,',
       '       opclass_namespace.nspname AS opclass_schema,',
       '       index_state.indisvalid AS is_valid,',
-      '       index_state.indisready AS is_ready',
+      '       index_state.indisready AS is_ready'
       'FROM pg_index AS index_state',
       'JOIN pg_class AS index_class ON index_class.oid = index_state.indexrelid',
       'JOIN pg_namespace AS index_namespace ON index_namespace.oid = index_class.relnamespace',
       'JOIN pg_class AS table_class ON table_class.oid = index_state.indrelid',
       'JOIN pg_namespace AS table_namespace ON table_namespace.oid = table_class.relnamespace',
       'JOIN pg_am AS access_method ON access_method.oid = index_class.relam',
-      'JOIN pg_attribute AS attribute ON attribute.attrelid = table_class.oid AND attribute.attnum = index_state.indkey[0]',
+      'LEFT JOIN pg_attribute AS attribute ON attribute.attrelid = table_class.oid AND attribute.attnum = index_state.indkey[0]',
       'JOIN pg_opclass AS operator_class ON operator_class.oid = index_state.indclass[0]',
       'JOIN pg_namespace AS opclass_namespace ON opclass_namespace.oid = operator_class.opcnamespace',
       "WHERE index_class.relname IN ('releases_artist_trgm_idx', 'releases_title_trgm_idx', 'releases_label_trgm_idx');",
