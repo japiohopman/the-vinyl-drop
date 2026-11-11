@@ -796,6 +796,7 @@ describe('Square cover photo cropper', () => {
         dockTop: dockRect.top,
         dockBottom: dockRect.bottom,
         dockPosition: getComputedStyle(dock).position,
+        dockBackgroundColor: getComputedStyle(dock).backgroundColor,
         toneControlTop: toneRect.top,
         toneControlBottom: toneRect.bottom,
         footerTop: footerRect.top,
@@ -806,6 +807,7 @@ describe('Square cover photo cropper', () => {
     });
 
     expect(layout.dockPosition).toBe('sticky');
+    expect(layout.dockBackgroundColor).not.toBe('rgba(0, 0, 0, 0)');
     expect(layout.dockTop).toBeGreaterThanOrEqual(layout.dialogTop - 1);
     expect(layout.dockTop).toBeLessThan(layout.dialogTop + 80);
     expect(layout.dockBottom).toBeLessThan(300);
