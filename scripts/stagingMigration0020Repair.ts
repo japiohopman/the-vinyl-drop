@@ -100,7 +100,7 @@ function timestampOf(value: number | string): number {
   return Number.isSafeInteger(parsed) ? parsed : Number.NaN;
 }
 
-export /**
+/**
  * Detects CI environments where database mutation must always be disabled.
  */
 export function isContinuousIntegrationEnvironment(environment: NodeJS.ProcessEnv): boolean {
@@ -122,7 +122,7 @@ export function isContinuousIntegrationEnvironment(environment: NodeJS.ProcessEn
   });
 }
 
-export /**
+/**
  * Validates the project, endpoint, port, database and credentials before any connection is opened.
  */
 export function validateStagingConnectionTarget(input: StagingTargetInput): string[] {
