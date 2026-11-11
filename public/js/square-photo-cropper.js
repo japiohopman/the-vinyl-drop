@@ -31,6 +31,7 @@
   const resultCanvas = form.querySelector('#square-cover-result');
   const magnifier = form.querySelector('#square-cover-magnifier');
   const magnifierCanvas = form.querySelector('#square-cover-magnifier-canvas');
+  const activeCornerLabel = form.querySelector('#square-cover-active-corner');
   const histogramCanvas = form.querySelector('#square-cover-histogram');
   const cropTitle = form.querySelector('#square-cover-title');
   const cropDescription = form.querySelector('#square-cover-description');
@@ -71,6 +72,7 @@
       !(resultCanvas instanceof HTMLCanvasElement) ||
       !(magnifier instanceof HTMLElement) ||
       !(magnifierCanvas instanceof HTMLCanvasElement) ||
+      !(activeCornerLabel instanceof HTMLElement) ||
       !(histogramCanvas instanceof HTMLCanvasElement) ||
       !(cropTitle instanceof HTMLElement) ||
       !(cropDescription instanceof HTMLElement) ||
@@ -108,6 +110,7 @@
   let previewSequence = 0;
   let previewFrame = 0;
   let activeCorner = -1;
+  let selectedCorner = -1;
   let dragStartState = null;
   let controlStartState = null;
   let showBefore = false;
@@ -254,6 +257,7 @@
     }
 
     points = candidate;
+    selectedCorner = index;
     manualEditingStarted = true;
     updateOverlay();
     schedulePreview();
@@ -362,6 +366,7 @@
     sourceFile = null;
     points = [];
     activeCorner = -1;
+    selectedCorner = -1;
     dragStartState = null;
     controlStartState = null;
     showBefore = false;
@@ -392,6 +397,7 @@
     clearCanvas(magnifierCanvas, magnifierContext);
     clearCanvas(histogramCanvas, histogramContext);
     magnifier.hidden = true;
+    activeCornerLabel.textContent = 'Select a corner to inspect.';
     overlay.setAttribute('viewBox', '0 0 1 1');
     shade.setAttribute('d', '');
     polygon.setAttribute('points', '');
@@ -450,6 +456,7 @@
       handle.setAttribute('aria-label',
         'Adjust ' + HANDLE_LABELS[index] + ' sleeve corner. Use arrow keys to move; hold Shift for larger steps.');
     });
+    if (selectedCorner >= 0) drawMagnifier(selectedCorner);
   }
 
   /**
@@ -603,6 +610,7 @@
   function drawMagnifier(index) {
     if (index < 0 || !points[index]) {
       magnifier.hidden = true;
+      activeCornerLabel.textContent = 'Select a corner to inspect.';
       return;
     }
 
@@ -631,6 +639,7 @@
     magnifierContext.moveTo(0, magnifierCanvas.height / 2);
     magnifierContext.lineTo(magnifierCanvas.width, magnifierCanvas.height / 2);
     magnifierContext.stroke();
+    activeCornerLabel.textContent = 'Following ' + HANDLE_LABELS[index] + ' corner';
     magnifier.hidden = false;
   }
 
@@ -909,6 +918,7 @@
         sourceContext.drawImage(previewImage, 0, 0, sourceCanvas.width, sourceCanvas.height);
         sourceStage.style.aspectRatio = sourceCanvas.width + ' / ' + sourceCanvas.height;
         points = core.createDefaultCorners(sourceCanvas.width, sourceCanvas.height);
+        selectedCorner = 0;
         const storedEditorStateRestored = Boolean(form.dataset.editingPhotoId) && applyStoredEditorState();
         const previewDimensions = getOutputDimensions(512);
         resultCanvas.width = previewDimensions.width;
@@ -974,9 +984,7 @@
   function onPointerMove(event) {
     if (activeCorner < 0 || !image) return;
     const position = pointerPosition(event);
-    if (moveCorner(activeCorner, position.x, position.y)) {
-      drawMagnifier(activeCorner);
-    }
+    moveCorner(activeCorner, position.x, position.y);
   }
 
   function onPointerUp() {
@@ -985,7 +993,6 @@
     if (changed) pushUndo(dragStartState);
     activeCorner = -1;
     dragStartState = null;
-    magnifier.hidden = true;
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', onPointerUp);
     window.removeEventListener('pointercancel', onPointerUp);
@@ -998,6 +1005,7 @@
       if (!image) return;
       event.preventDefault();
       manualEditingStarted = true;
+      selectedCorner = index;
       activeCorner = index;
       dragStartState = cloneState();
       handle.setPointerCapture?.(event.pointerId);
@@ -1005,6 +1013,12 @@
       window.addEventListener('pointermove', onPointerMove);
       window.addEventListener('pointerup', onPointerUp);
       window.addEventListener('pointercancel', onPointerUp);
+    });
+
+    handle.addEventListener('focus', () => {
+      if (!image) return;
+      selectedCorner = index;
+      drawMagnifier(index);
     });
 
     handle.addEventListener('keydown', (event) => {
@@ -1018,6 +1032,8 @@
       if (!direction || !image) return;
       event.preventDefault();
       manualEditingStarted = true;
+      selectedCorner = index;
+      drawMagnifier(index);
       const before = cloneState();
       const step = event.shiftKey ? 5 : 1;
       const moved = moveCorner(
@@ -1092,6 +1108,7 @@
       if (!image) return;
       pushUndo(cloneState());
       points = core.createDefaultCorners(sourceCanvas.width, sourceCanvas.height);
+      selectedCorner = 0;
       manualEditingStarted = true;
       frameControls.forEach((control) => {
         const key = control.dataset.photoFrame;
@@ -1217,6 +1234,7 @@
     if (!(dialog instanceof HTMLDialogElement)) return;
     if (typeof dialog.showModal === 'function') {
       if (!dialog.open) dialog.showModal();
+      dialog.scrollTop = 0;
     } else {
       dialog.setAttribute('open', '');
     }
