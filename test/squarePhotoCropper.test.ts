@@ -653,7 +653,7 @@ describe('Square cover photo cropper', () => {
         { name: 'preview-dock', selector: '.square-cover-preview-dock' },
         { name: 'point-editor', selector: '.square-cover-source-panel' },
         { name: 'edge-detect', selector: '.square-cover-detect-panel' },
-        { name: 'tone-controls', selector: '.square-cover-tone-panel' },
+        { name: 'tone-controls', selector: '.square-cover-tone-panel[aria-labelledby="square-cover-tone-title"]' },
       ];
       const evidenceViewports = [
         { name: 'mobile', width: 390, height: 844 },
@@ -770,7 +770,7 @@ describe('Square cover photo cropper', () => {
 
     expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
     expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
-    await page.locator('.square-cover-tone-panel').scrollIntoViewIfNeeded();
+    await page.locator('.square-cover-tone-panel[aria-labelledby="square-cover-tone-title"]').scrollIntoViewIfNeeded();
 
     const layout = await page.evaluate(() => {
       const dialog = document.querySelector('#photoUploadDialog') as HTMLDialogElement;
