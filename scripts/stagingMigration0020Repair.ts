@@ -48,6 +48,7 @@ export type IndexState = {
   table_name: string;
   access_method: string;
   column_name: string | null;
+  collation_matches: boolean;
   attribute_count: number;
   key_attribute_count: number;
   has_predicate: boolean;
@@ -99,6 +100,9 @@ function timestampOf(value: number | string): number {
   return Number.isSafeInteger(parsed) ? parsed : Number.NaN;
 }
 
+export /**
+ * Detects CI environments where database mutation must always be disabled.
+ */
 export function isContinuousIntegrationEnvironment(environment: NodeJS.ProcessEnv): boolean {
   const indicators = [
     environment.CI,
@@ -118,6 +122,9 @@ export function isContinuousIntegrationEnvironment(environment: NodeJS.ProcessEn
   });
 }
 
+export /**
+ * Validates the project, endpoint, port, database and credentials before any connection is opened.
+ */
 export function validateStagingConnectionTarget(input: StagingTargetInput): string[] {
   const problems: string[] = [];
 
@@ -173,9 +180,10 @@ export function validateStagingConnectionTarget(input: StagingTargetInput): stri
     if (
       queryKeys.some((key) => key !== 'sslmode') ||
       url.searchParams.getAll('sslmode').length > 1 ||
-      (url.searchParams.has('sslmode') && url.searchParams.get('sslmode') !== 'require')
+      (url.searchParams.has('sslmode') &&
+        !['require', 'verify-full'].includes(url.searchParams.get('sslmode') ?? ''))
     ) {
-      problems.push('The connection URL may contain only one optional sslmode=require parameter.');
+      problems.push('The connection URL may contain only one optional sslmode=require or sslmode=verify-full parameter.');
     }
   } catch {
     problems.push('The selected database connection is not a valid PostgreSQL URL.');
@@ -184,9 +192,14 @@ export function validateStagingConnectionTarget(input: StagingTargetInput): stri
   return problems;
 }
 
+/**
+ * Checks the journal's physical array order, contiguous indexes and pinned migration 0020 identity.
+ */
 function validateJournal(entries: JournalEntry[]): string[] {
   const problems: string[] = [];
-  const prefix = entries.filter((entry) => Number.isInteger(entry.idx) && entry.idx <= 25).sort((a, b) => a.idx - b.idx);
+  const prefix = entries.filter(
+    (entry) => Number.isInteger(entry.idx) && entry.idx >= 0 && entry.idx <= 25,
+  );
 
   if (prefix.length !== 26) {
     problems.push('The migration journal must contain the complete known prefix through migration 0025.');
@@ -215,6 +228,9 @@ function validateJournal(entries: JournalEntry[]): string[] {
   return problems;
 }
 
+/**
+ * Confirms that the checked-in SQL contains only the five reviewed migration 0020 statements in order.
+ */
 function validateMigrationSql(migrationSql: string): string[] {
   const expected = [
     'CREATE SCHEMA IF NOT EXISTS extensions;',
@@ -237,6 +253,9 @@ function validateMigrationSql(migrationSql: string): string[] {
   return [];
 }
 
+/**
+ * Confirms an existing index exactly matches the expected single-column GIN trigram definition.
+ */
 function isCorrectIndex(index: IndexState, expectedName: keyof typeof EXPECTED_INDEXES): boolean {
   return (
     index.index_schema === 'public' &&
@@ -245,6 +264,7 @@ function isCorrectIndex(index: IndexState, expectedName: keyof typeof EXPECTED_I
     index.table_name === 'releases' &&
     index.access_method === 'gin' &&
     index.column_name === EXPECTED_INDEXES[expectedName].column &&
+    index.collation_matches === true &&
     index.attribute_count === 1 &&
     index.key_attribute_count === 1 &&
     index.has_predicate === false &&
@@ -257,6 +277,9 @@ function isCorrectIndex(index: IndexState, expectedName: keyof typeof EXPECTED_I
   );
 }
 
+/**
+ * Builds a fail-closed repair plan from the observed database snapshot and checked-in migration history.
+ */
 export function buildStagingMigration0020Plan(
   snapshot: RepairSnapshot,
   journalEntries: JournalEntry[],
@@ -281,9 +304,9 @@ export function buildStagingMigration0020Plan(
     reasons.push('The public.releases table is missing.');
   }
 
-  const prefix = journalEntries
-    .filter((entry) => Number.isInteger(entry.idx) && entry.idx <= 25)
-    .sort((a, b) => a.idx - b.idx);
+  const prefix = journalEntries.filter(
+    (entry) => Number.isInteger(entry.idx) && entry.idx >= 0 && entry.idx <= 25,
+  );
   const expectedEntries = prefix.filter((entry) => entry.idx !== MIGRATION_INDEX);
   const expectedTimestamps = new Set(expectedEntries.map((entry) => entry.when));
   const observedTimestamps = snapshot.ledgerRows.map((row) => timestampOf(row.created_at));
@@ -382,10 +405,16 @@ export function buildStagingMigration0020Plan(
   };
 }
 
+/**
+ * Executes a catalog query and returns its typed rows.
+ */
 async function queryRows<T>(executor: QueryExecutor, query: string, parameters?: unknown[]): Promise<T[]> {
   return (await executor.unsafe(query, parameters)) as T[];
 }
 
+/**
+ * Reads the database identity, Drizzle ledger, pg_trgm installation and expected index metadata.
+ */
 async function readSnapshot(executor: QueryExecutor): Promise<RepairSnapshot> {
   const identityRows = await queryRows<{ database_name: string }>(
     executor,
@@ -438,6 +467,7 @@ async function readSnapshot(executor: QueryExecutor): Promise<RepairSnapshot> {
       '       table_class.relname AS table_name,',
       '       access_method.amname AS access_method,',
       '       attribute.attname AS column_name,',
+      '       COALESCE(index_state.indcollation[0] = attribute.attcollation, false) AS collation_matches,',
       '       index_state.indnatts AS attribute_count,',
       '       index_state.indnkeyatts AS key_attribute_count,',
       '       (index_state.indpred IS NOT NULL) AS has_predicate,',
@@ -477,6 +507,9 @@ async function readSnapshot(executor: QueryExecutor): Promise<RepairSnapshot> {
   };
 }
 
+/**
+ * Loads the Drizzle journal and rejects unsupported journal formats.
+ */
 function loadJournalEntries(): JournalEntry[] {
   const journalPath = resolve(process.cwd(), 'drizzle/meta/_journal.json');
   const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as {
@@ -492,6 +525,9 @@ function loadJournalEntries(): JournalEntry[] {
   return journal.entries;
 }
 
+/**
+ * Loads the exact checked-in SQL file used to calculate Drizzle's migration hash.
+ */
 function loadMigrationSql(): string {
   return readFileSync(
     resolve(process.cwd(), 'drizzle', MIGRATION_TAG + '.sql'),
@@ -499,10 +535,34 @@ function loadMigrationSql(): string {
   );
 }
 
+/**
+ * Calculates the SHA-256 hash of the exact migration file contents.
+ */
 function createMigrationHash(migrationSql: string): string {
   return createHash('sha256').update(migrationSql, 'utf8').digest('hex');
 }
 
+/**
+ * Creates PostgreSQL TLS options that verify the supplied CA chain and the endpoint hostname.
+ * Postgres.js supplies the validated socket hostname as TLS servername, so Node performs hostname verification.
+ */
+export function createStagingTlsOptions(caCertificate: string): {
+  ca: string;
+  rejectUnauthorized: true;
+} {
+  if (
+    !caCertificate.includes('-----BEGIN CERTIFICATE-----') ||
+    !caCertificate.includes('-----END CERTIFICATE-----')
+  ) {
+    throw new Error('The Supabase root CA file must contain a PEM certificate.');
+  }
+
+  return { ca: caCertificate, rejectUnauthorized: true };
+}
+
+/**
+ * Prints the repair plan without exposing database credentials or the connection URL.
+ */
 function printPlan(plan: RepairPlan, snapshot: RepairSnapshot): void {
   console.log(
     JSON.stringify(
@@ -544,6 +604,9 @@ function printPlan(plan: RepairPlan, snapshot: RepairSnapshot): void {
   );
 }
 
+/**
+ * Requires an interactive terminal and the exact staging-specific confirmation phrase.
+ */
 async function requireTypedConfirmation(): Promise<boolean> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     console.error('Apply mode requires an interactive terminal; no database change was made.');
@@ -561,6 +624,9 @@ async function requireTypedConfirmation(): Promise<boolean> {
   }
 }
 
+/**
+ * Rechecks all preconditions under locks and applies only the reviewed migration statements atomically.
+ */
 async function executeRepair(
   client: ReturnType<typeof postgres>,
   plan: RepairPlan,
@@ -571,9 +637,7 @@ async function executeRepair(
     throw new Error('Apply mode requires a fresh ready-to-repair plan.');
   }
   const hash = createMigrationHash(migrationSql);
-  const entriesPrefix = journalEntries
-    .filter((entry) => entry.idx <= 25)
-    .sort((a, b) => a.idx - b.idx);
+  const entriesPrefix = journalEntries.filter((entry) => entry.idx >= 0 && entry.idx <= 25);
   const timestamp = entriesPrefix[MIGRATION_INDEX]?.when;
 
   await client.begin(async (transaction) => {
@@ -637,6 +701,9 @@ async function executeRepair(
   });
 }
 
+/**
+ * Runs a read-only audit by default and permits apply only after all independent safety gates pass.
+ */
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const applyMode = args.length === 1 && args[0] === '--apply';
@@ -674,11 +741,26 @@ async function main(): Promise<void> {
     }
   }
 
+  const rootCertificatePath = process.env.STAGING_DB_SSL_ROOT_CERT_PATH;
+  let tlsOptions: ReturnType<typeof createStagingTlsOptions>;
+  try {
+    if (!rootCertificatePath) {
+      throw new Error('STAGING_DB_SSL_ROOT_CERT_PATH is missing.');
+    }
+    tlsOptions = createStagingTlsOptions(readFileSync(resolve(rootCertificatePath), 'utf8'));
+  } catch {
+    console.error(
+      'STAGING_DB_SSL_ROOT_CERT_PATH must point to the staging Supabase root CA certificate in PEM format; no database connection was opened.',
+    );
+    process.exitCode = 2;
+    return;
+  }
+
   const journalEntries = loadJournalEntries();
   const migrationSql = loadMigrationSql();
   const migrationHash = createMigrationHash(migrationSql);
   const client = postgres(connectionUrl as string, {
-    ssl: 'require',
+    ssl: tlsOptions,
     max: 1,
     connect_timeout: 10,
     idle_timeout: 5,
