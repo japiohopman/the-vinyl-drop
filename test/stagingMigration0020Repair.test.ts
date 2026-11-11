@@ -1,5 +1,6 @@
 import {
   buildStagingMigration0020Plan,
+  isContinuousIntegrationEnvironment,
   EXPECTED_INDEXES,
   MIGRATION_TIMESTAMP,
   STAGING_POOLER_HOST,
@@ -210,6 +211,19 @@ describe('staging migration 0020 repair planner', () => {
 
     expect(plan.status).toBe('blocked');
     expect(plan.reasons.join(' ')).toContain('recorded but one or more expected indexes are missing');
+  });
+});
+
+describe('staging migration 0020 apply execution boundary', () => {
+  it('recognizes GitHub Actions and generic CI environments', () => {
+    expect(isContinuousIntegrationEnvironment({ CI: 'true' })).toBe(true);
+    expect(isContinuousIntegrationEnvironment({ GITHUB_ACTIONS: 'true' })).toBe(true);
+    expect(isContinuousIntegrationEnvironment({ CI: 'TRUE' })).toBe(true);
+  });
+
+  it('allows local interactive environments without CI markers', () => {
+    expect(isContinuousIntegrationEnvironment({})).toBe(false);
+    expect(isContinuousIntegrationEnvironment({ CI: 'false', GITHUB_ACTIONS: 'false' })).toBe(false);
   });
 });
 
