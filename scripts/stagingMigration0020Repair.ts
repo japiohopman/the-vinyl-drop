@@ -94,6 +94,13 @@ function timestampOf(value: number | string): number {
   return Number.isSafeInteger(parsed) ? parsed : Number.NaN;
 }
 
+export function isContinuousIntegrationEnvironment(environment: NodeJS.ProcessEnv): boolean {
+  return (
+    environment.CI?.toLowerCase() === 'true' ||
+    environment.GITHUB_ACTIONS?.toLowerCase() === 'true'
+  );
+}
+
 export function validateStagingConnectionTarget(input: StagingTargetInput): string[] {
   const problems: string[] = [];
 
@@ -608,6 +615,12 @@ async function main(): Promise<void> {
   const applyMode = args.length === 1 && args[0] === '--apply';
   if (args.length > 0 && !applyMode) {
     console.error('Usage: npm run db:repair:staging:0020 [-- --apply]');
+    process.exitCode = 2;
+    return;
+  }
+
+  if (applyMode && isContinuousIntegrationEnvironment(process.env)) {
+    console.error('Apply mode is disabled in CI; no database connection was opened and no change was made.');
     process.exitCode = 2;
     return;
   }
