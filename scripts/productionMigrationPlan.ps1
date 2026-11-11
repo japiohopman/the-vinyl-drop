@@ -48,6 +48,15 @@ $script:ProductionMigrationPhaseRanges = @{
     }
 }
 
+<#
+.SYNOPSIS
+Returns the exact pinned migration entries for one approved production phase.
+
+.DESCRIPTION
+Validates the complete journal prefix through the selected phase end index,
+including unique indexes, expected migration tags, and increasing timestamps.
+Later journal entries are never included in the returned phase selection.
+#>
 function Get-ProductionMigrationEntries {
     [CmdletBinding()]
     param(
