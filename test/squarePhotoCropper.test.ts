@@ -87,7 +87,7 @@ describe('Square cover photo cropper', () => {
       .replace('<script src="/js/listing-photo-editor-core.js" defer></script>', '')
       .replace('<script src="/js/square-photo-cropper.js" defer></script>', '');
     await page.setContent(
-      '<!doctype html><html lang="en"><head><meta charset="UTF-8">' +
+      '<!doctype html><html lang="en" data-theme="record-shop"><head><meta charset="UTF-8">' +
       '<base href="http://localhost/">' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<style>' + stylesheet + '</style></head>' +
@@ -314,6 +314,8 @@ describe('Square cover photo cropper', () => {
         role === 'front_cover' ? 'Square front cover correction' : 'Square back cover correction'
       );
 
+      expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
+      expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
       const topLeftHandle = page.locator('[data-corner-handle="0"]');
       const polygonBeforeNudge = await page.locator('#square-cover-polygon').getAttribute('points');
       await topLeftHandle.focus();
@@ -322,6 +324,8 @@ describe('Square cover photo cropper', () => {
       await topLeftHandle.press('ArrowRight');
       const polygonAfterNudge = await page.locator('#square-cover-polygon').getAttribute('points');
       expect(polygonAfterNudge).not.toBe(polygonBeforeNudge);
+      expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
+      expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
       expect(await page.locator('#square-cover-histogram').count()).toBe(1);
       expect(await page.locator('[data-photo-adjustment="shadows"]').inputValue()).toBe('0');
 
@@ -642,10 +646,14 @@ describe('Square cover photo cropper', () => {
       { timeout: 5000 }
     );
     if (issue333EvidenceDirectory) {
+      await page.locator('.square-cover-detection-details').evaluate((details) => {
+        (details as HTMLDetailsElement).open = true;
+      });
       const evidencePanels = [
-        { name: 'edge-detect', selector: '.square-cover-detect-panel' },
-        { name: 'preview-window', selector: '.square-cover-result-panel' },
+        { name: 'preview-dock', selector: '.square-cover-preview-dock' },
         { name: 'point-editor', selector: '.square-cover-source-panel' },
+        { name: 'edge-detect', selector: '.square-cover-detect-panel' },
+        { name: 'tone-controls', selector: '.square-cover-tone-panel[aria-labelledby="square-cover-tone-title"]' },
       ];
       const evidenceViewports = [
         { name: 'mobile', width: 390, height: 844 },
@@ -657,6 +665,11 @@ describe('Square cover photo cropper', () => {
         for (const panel of evidencePanels) {
           const panelLocator = page.locator(panel.selector);
           await panelLocator.scrollIntoViewIfNeeded();
+          if (viewport.width <= 640 && panel.name !== 'preview-dock') {
+            const sectionTop = await panelLocator.evaluate((element) => element.getBoundingClientRect().top);
+            const dockBottom = await page.locator('.square-cover-preview-dock').evaluate((element) => element.getBoundingClientRect().bottom);
+            expect(sectionTop).toBeGreaterThanOrEqual(dockBottom - 1);
+          }
           await panelLocator.screenshot({
             path: path.join(issue333EvidenceDirectory, 'editor-' + viewport.name + '-' + panel.name + '.png'),
           });
@@ -736,22 +749,144 @@ describe('Square cover photo cropper', () => {
           viewport: window.innerWidth,
           scrollWidth: document.documentElement.scrollWidth,
           direction: getComputedStyle(workflow).flexDirection,
-          order: panels.map((panel) => panel.classList.contains('square-cover-detect-panel')
-            ? 'detect'
-            : panel.classList.contains('square-cover-result-panel') ? 'preview' : 'points'),
+          order: panels.map((panel) => panel.classList.contains('square-cover-preview-dock')
+            ? 'preview-dock'
+            : panel.classList.contains('square-cover-source-panel') ? 'points' : 'detect'),
+          dockPosition: getComputedStyle(document.querySelector('.square-cover-preview-dock') as HTMLElement).position,
           panelWidths: rects.map((rect) => rect.width),
           dialogWidth: dialog.getBoundingClientRect().width,
         };
       });
       expect(dimensions.scrollWidth).toBeLessThanOrEqual(width + 1);
       expect(dimensions.direction).toBe('column');
-      expect(dimensions.order).toEqual(['detect', 'preview', 'points']);
+      expect(dimensions.order).toEqual(['preview-dock', 'points', 'detect']);
+      expect(dimensions.dockPosition).toBe(width <= 640 ? 'sticky' : 'static');
       expect(dimensions.panelWidths.every((panelWidth) => panelWidth > 0)).toBe(true);
       expect(dimensions.dialogWidth).toBeLessThanOrEqual(width + 1);
     }
     expect(browserErrors).toEqual([]);
   });
 
+
+  it('keeps the active-corner and corrected previews docked while scrolling to tonal controls on mobile', async () => {
+    await renderEditPage();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await selectPortrait('front_cover');
+
+    expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
+    await page.locator('#square-cover-magnifier').waitFor({ state: 'visible' });
+    expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
+    const tonePanel = page.locator('[aria-labelledby="square-cover-tone-title"]');
+    await tonePanel.locator('.square-cover-adjustments > summary').click();
+    await tonePanel.locator('[data-photo-adjustment="saturation"]').scrollIntoViewIfNeeded();
+
+    const layout = await page.evaluate(() => {
+      const dialog = document.querySelector('#photoUploadDialog') as HTMLDialogElement;
+      const dock = document.querySelector('.square-cover-preview-dock') as HTMLElement;
+      const tonePanel = document.querySelector('[aria-labelledby="square-cover-tone-title"]') as HTMLElement;
+      const toneControl = tonePanel.querySelector('[data-photo-adjustment="saturation"]') as HTMLElement;
+      const footer = dialog.querySelector('.photo-dialog-actions') as HTMLElement;
+      const dialogRect = dialog.getBoundingClientRect();
+      const dockRect = dock.getBoundingClientRect();
+      const toneRect = toneControl.getBoundingClientRect();
+      const footerRect = footer.getBoundingClientRect();
+      return {
+        dialogTop: dialogRect.top,
+        dialogBottom: dialogRect.bottom,
+        dockTop: dockRect.top,
+        dockBottom: dockRect.bottom,
+        dockPosition: getComputedStyle(dock).position,
+        dockBackgroundColor: getComputedStyle(dock).backgroundColor,
+        toneControlTop: toneRect.top,
+        toneControlBottom: toneRect.bottom,
+        footerTop: footerRect.top,
+        viewportHeight: window.innerHeight,
+        sourceStageRect: document.querySelector('#square-cover-source-stage')?.getBoundingClientRect().toJSON(),
+        sourceCanvasRect: document.querySelector('#square-cover-source')?.getBoundingClientRect().toJSON(),
+      };
+    });
+
+    expect(layout.dockPosition).toBe('sticky');
+    expect(layout.dockBackgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    expect(layout.dockTop).toBeGreaterThanOrEqual(layout.dialogTop - 1);
+    expect(layout.dockTop).toBeLessThan(layout.dialogTop + 80);
+    expect(layout.dockBottom).toBeLessThan(300);
+    expect(layout.toneControlTop).toBeGreaterThan(layout.dockBottom);
+    expect(layout.toneControlBottom).toBeLessThan(layout.footerTop);
+    expect(layout.toneControlBottom).toBeLessThan(layout.dialogBottom);
+    expect(Math.abs(layout.sourceStageRect.width - layout.sourceCanvasRect.width)).toBeLessThan(1);
+    expect(Math.abs(layout.sourceStageRect.height - layout.sourceCanvasRect.height)).toBeLessThan(1);
+    expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
+
+    for (const width of [320, 360, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.locator('.square-cover-source-panel').scrollIntoViewIfNeeded();
+      const bounds = await page.evaluate(() => ({
+        headingTop: document.querySelector('.square-cover-source-panel')?.getBoundingClientRect().top ?? -1,
+        dockBottom: document.querySelector('.square-cover-preview-dock')?.getBoundingClientRect().bottom ?? -1,
+      }));
+      expect(bounds.headingTop).toBeGreaterThanOrEqual(bounds.dockBottom - 1);
+    }
+    expect(browserErrors).toEqual([]);
+  });
+
+  it('keeps source and optional edge-detection overlays aligned to their fitted canvases on mobile', async () => {
+    await renderEditPage();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await selectPortrait('front_cover');
+    await page.locator('#square-cover-magnifier').waitFor({ state: 'visible' });
+
+    const sourceGeometry = await page.evaluate(() => {
+      const stage = document.querySelector('#square-cover-source-stage') as HTMLElement;
+      const canvas = document.querySelector('#square-cover-source') as HTMLCanvasElement;
+      const overlay = document.querySelector('#square-cover-overlay') as SVGElement;
+      const stageRect = stage.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const overlayRect = overlay.getBoundingClientRect();
+      return {
+        stage: { width: stageRect.width, height: stageRect.height },
+        canvas: { width: canvasRect.width, height: canvasRect.height },
+        overlay: { width: overlayRect.width, height: overlayRect.height },
+      };
+    });
+
+    expect(Math.abs(sourceGeometry.stage.width - sourceGeometry.canvas.width)).toBeLessThan(1);
+    expect(Math.abs(sourceGeometry.stage.height - sourceGeometry.canvas.height)).toBeLessThan(1);
+    expect(Math.abs(sourceGeometry.stage.width - sourceGeometry.overlay.width)).toBeLessThan(1);
+    expect(Math.abs(sourceGeometry.stage.height - sourceGeometry.overlay.height)).toBeLessThan(1);
+
+    await page.locator('.square-cover-detection-details > summary').click();
+    await page.waitForFunction(() => {
+      const stage = document.querySelector('#square-cover-detect-stage') as HTMLElement | null;
+      const canvas = document.querySelector('#square-cover-detect-image') as HTMLCanvasElement | null;
+      if (!stage || !canvas) return false;
+      const stageRect = stage.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      return stageRect.width > 0 && stageRect.height > 0 &&
+        Math.abs(stageRect.width - canvasRect.width) < 1 &&
+        Math.abs(stageRect.height - canvasRect.height) < 1;
+    });
+
+    const detectionGeometry = await page.evaluate(() => {
+      const stage = document.querySelector('#square-cover-detect-stage') as HTMLElement;
+      const canvas = document.querySelector('#square-cover-detect-image') as HTMLCanvasElement;
+      const overlay = document.querySelector('#square-cover-detect-overlay') as SVGElement;
+      const stageRect = stage.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const overlayRect = overlay.getBoundingClientRect();
+      return {
+        stage: { width: stageRect.width, height: stageRect.height },
+        canvas: { width: canvasRect.width, height: canvasRect.height },
+        overlay: { width: overlayRect.width, height: overlayRect.height },
+      };
+    });
+
+    expect(Math.abs(detectionGeometry.stage.width - detectionGeometry.canvas.width)).toBeLessThan(1);
+    expect(Math.abs(detectionGeometry.stage.height - detectionGeometry.canvas.height)).toBeLessThan(1);
+    expect(Math.abs(detectionGeometry.stage.width - detectionGeometry.overlay.width)).toBeLessThan(1);
+    expect(Math.abs(detectionGeometry.stage.height - detectionGeometry.overlay.height)).toBeLessThan(1);
+    expect(browserErrors).toEqual([]);
+  });
 
   it('retries local edge detection after a transient Scanic import failure', async () => {
     await renderEditPage();
@@ -922,6 +1057,8 @@ describe('Square cover photo cropper', () => {
       }));
     }, start);
     expect(await page.locator('#square-cover-polygon').getAttribute('points')).not.toBe(original);
+    expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
+    expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
     expect(browserErrors).toEqual([]);
   });
 

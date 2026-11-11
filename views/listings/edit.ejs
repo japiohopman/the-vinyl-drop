@@ -250,53 +250,42 @@
             </div>
 
             <div id="square-cover-cropper" class="square-cover-cropper" hidden>
-              <div class="square-cover-intro">
-                <div>
-                  <strong id="square-cover-title">Square cover correction</strong>
-                  <span id="square-cover-description">Place the four corners on the sleeve edges to flatten the photo into a clean square.</span>
-                </div>
-                <span class="square-cover-editor-tag">DARKROOM / 01</span>
-              </div>
-
               <div class="square-cover-workflow">
-                <section class="square-cover-stage-panel square-cover-detect-panel" aria-labelledby="square-cover-detect-title">
-                  <header class="square-cover-stage-header">
-                    <div>
-                      <p class="square-cover-panel-label">01 — EDGE DETECT</p>
-                      <h3 id="square-cover-detect-title">Find all four sleeve edges</h3>
+                <div class="square-cover-preview-dock" aria-label="Live photo previews">
+                  <section class="square-cover-preview-card square-cover-magnifier-card" aria-labelledby="square-cover-magnifier-title">
+                    <header class="square-cover-stage-header">
+                      <div>
+                        <p class="square-cover-panel-label">FOLLOW ACTIVE CORNER</p>
+                        <h3 id="square-cover-magnifier-title">Corner detail</h3>
+                      </div>
+                      <span class="square-cover-stage-tag">2× LIVE</span>
+                    </header>
+                    <div id="square-cover-magnifier" class="square-cover-magnifier" hidden>
+                      <canvas id="square-cover-magnifier-canvas" width="112" height="112" aria-hidden="true"></canvas>
+                      <span id="square-cover-active-corner" role="status" aria-live="polite">Select a corner to inspect.</span>
                     </div>
-                    <span class="square-cover-stage-tag">ON DEVICE</span>
-                  </header>
-                  <div id="square-cover-detect-stage" class="square-cover-detect-stage">
-                    <canvas id="square-cover-detect-image" aria-label="Original photo with the suggested four sleeve edges"></canvas>
-                    <svg id="square-cover-detect-overlay" class="square-cover-detect-overlay" viewBox="0 0 1 1" aria-hidden="true">
-                      <polygon id="square-cover-detect-polygon" class="square-cover-detect-polygon" points=""></polygon>
-                      <circle data-detected-corner="0" class="square-cover-detection-corner" r="7" display="none"></circle>
-                      <circle data-detected-corner="1" class="square-cover-detection-corner" r="7" display="none"></circle>
-                      <circle data-detected-corner="2" class="square-cover-detection-corner" r="7" display="none"></circle>
-                      <circle data-detected-corner="3" class="square-cover-detection-corner" r="7" display="none"></circle>
-                    </svg>
-                  </div>
-                  <p id="square-cover-detection-status" class="square-cover-detection-status" role="status" aria-live="polite">Choose a front or back cover photo to suggest its four sleeve edges on this device.</p>
-                  <p class="square-cover-detection-legend">TOP · RIGHT · BOTTOM · LEFT — check every side before saving</p>
-                </section>
+                  </section>
 
-                <section class="square-cover-stage-panel square-cover-result-panel" aria-labelledby="square-cover-preview-title">
+                  <section class="square-cover-preview-card square-cover-result-panel" aria-labelledby="square-cover-preview-title">
+                    <header class="square-cover-stage-header">
+                      <div>
+                        <p class="square-cover-panel-label">PREVIEW WINDOW</p>
+                        <h3 id="square-cover-preview-title">Corrected sleeve</h3>
+                      </div>
+                    </header>
+                    <canvas id="square-cover-result" aria-label="Pixel-corrected sleeve preview" width="512" height="512"></canvas>
+                    <button type="button" class="square-cover-before-after" data-toggle-photo-before-after aria-pressed="false">Show before</button>
+                  </section>
+
+                  <p id="square-cover-detection-status" class="square-cover-detection-status square-cover-detection-status-dock" role="status" aria-live="polite">Choose a front or back cover photo to suggest its four sleeve edges on this device.</p>
+                </div>
+
+                <section class="square-cover-stage-panel square-cover-source-panel" aria-labelledby="square-cover-title">
                   <header class="square-cover-stage-header">
                     <div>
-                      <p class="square-cover-panel-label">02 — PREVIEW WINDOW</p>
-                      <h3 id="square-cover-preview-title">See the corrected sleeve</h3>
-                    </div>
-                  </header>
-                  <canvas id="square-cover-result" aria-label="Pixel-corrected sleeve preview" width="512" height="512"></canvas>
-                  <button type="button" class="square-cover-before-after" data-toggle-photo-before-after aria-pressed="false">Show before</button>
-                </section>
-
-                <section class="square-cover-stage-panel square-cover-source-panel" aria-labelledby="square-cover-point-title">
-                  <header class="square-cover-stage-header">
-                    <div>
-                      <p class="square-cover-panel-label">03 — POINT EDITOR</p>
-                      <h3 id="square-cover-point-title">Fine-tune each corner</h3>
+                      <p class="square-cover-panel-label">POINT EDITOR</p>
+                      <h3 id="square-cover-title">Square cover correction</h3>
+                      <span id="square-cover-description" class="square-cover-description">Place the four corners on the sleeve edges to flatten the photo into a clean square.</span>
                     </div>
                     <span class="square-cover-stage-tag">4 POINTS</span>
                   </header>
@@ -311,11 +300,31 @@
                     <button type="button" class="square-cover-handle" data-corner-handle="2" aria-label="Adjust bottom-right sleeve corner" disabled></button>
                     <button type="button" class="square-cover-handle" data-corner-handle="3" aria-label="Adjust bottom-left sleeve corner" disabled></button>
                   </div>
-                  <div id="square-cover-magnifier" class="square-cover-magnifier" hidden>
-                    <canvas id="square-cover-magnifier-canvas" width="112" height="112" aria-hidden="true"></canvas>
-                    <span>2× detail follows the active corner</span>
-                  </div>
-                  <p class="square-cover-help">Move all four points independently. Drag a corner, or focus it and use the arrow keys; hold Shift for larger steps.</p>
+                  <p class="square-cover-help">Move each point independently. Drag a corner, or focus it and use the arrow keys; hold Shift for larger steps. The magnified detail above follows the selected corner.</p>
+                </section>
+
+                <section class="square-cover-stage-panel square-cover-detect-panel" aria-labelledby="square-cover-detect-title">
+                  <header class="square-cover-stage-header">
+                    <div>
+                      <p class="square-cover-panel-label">EDGE DETECT</p>
+                      <h3 id="square-cover-detect-title">Automatic edge suggestion</h3>
+                    </div>
+                    <span class="square-cover-stage-tag">ON DEVICE</span>
+                  </header>
+                  <details class="square-cover-detection-details">
+                    <summary>Inspect the detected four-edge outline</summary>
+                    <div id="square-cover-detect-stage" class="square-cover-detect-stage">
+                      <canvas id="square-cover-detect-image" aria-label="Original photo with the suggested four sleeve edges"></canvas>
+                      <svg id="square-cover-detect-overlay" class="square-cover-detect-overlay" viewBox="0 0 1 1" aria-hidden="true">
+                        <polygon id="square-cover-detect-polygon" class="square-cover-detect-polygon" points=""></polygon>
+                        <circle data-detected-corner="0" class="square-cover-detection-corner" r="7" display="none"></circle>
+                        <circle data-detected-corner="1" class="square-cover-detection-corner" r="7" display="none"></circle>
+                        <circle data-detected-corner="2" class="square-cover-detection-corner" r="7" display="none"></circle>
+                        <circle data-detected-corner="3" class="square-cover-detection-corner" r="7" display="none"></circle>
+                      </svg>
+                    </div>
+                    <p class="square-cover-detection-legend">TOP · RIGHT · BOTTOM · LEFT — all four sides and corners</p>
+                  </details>
                 </section>
               </div>
 

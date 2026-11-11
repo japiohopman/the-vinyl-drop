@@ -833,6 +833,13 @@
   font-size: var(--font-size-xs);
   line-height: 1.4;
 }
+.square-cover-description {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
 .square-cover-editor-tag,
 .square-cover-panel-label {
   color: var(--color-ink-muted);
@@ -852,6 +859,92 @@
   flex-direction: column;
   gap: var(--space-3);
   min-width: 0;
+}
+.square-cover-preview-dock {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-card);
+}
+.square-cover-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-paper);
+}
+.square-cover-preview-card .square-cover-stage-header {
+  align-items: center;
+}
+.square-cover-preview-card .square-cover-stage-header h3 {
+  font-size: var(--font-size-sm);
+}
+.square-cover-magnifier {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 0;
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xs);
+  line-height: 1.35;
+}
+.square-cover-magnifier[hidden] {
+  display: none !important;
+}
+.square-cover-magnifier canvas {
+  display: block;
+  flex: 0 0 88px;
+  width: 88px;
+  height: 88px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-paper);
+}
+.square-cover-result-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-content: start;
+}
+.square-cover-result-panel .square-cover-stage-header {
+  width: 100%;
+}
+.square-cover-result-panel > canvas {
+  display: block;
+  width: min(100%, 112px);
+  max-width: 112px;
+  height: auto;
+  aspect-ratio: 1;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-paper);
+}
+.square-cover-result-panel .square-cover-before-after {
+  width: 100%;
+  min-height: 36px;
+  margin: 0;
+  font-size: var(--font-size-3xs);
+}
+.square-cover-detection-status-dock {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.square-cover-detection-details {
+  border-top: 1px solid var(--color-border-subtle);
+}
+.square-cover-detection-details > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  cursor: pointer;
 }
 .square-cover-stage-panel {
   display: flex;
@@ -942,7 +1035,7 @@
   position: relative;
   width: 100%;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
   background: var(--color-paper);
   touch-action: none;
 }
@@ -1034,8 +1127,6 @@
 }
 .square-cover-result-panel > canvas {
   display: block;
-  width: 100%;
-  max-width: 100%;
   height: auto;
   aspect-ratio: 1;
   border: 1px solid var(--color-border-subtle);
@@ -1598,12 +1689,63 @@
     background: var(--color-surface-card);
   }
 
+  .square-cover-preview-dock {
+    position: sticky;
+    top: 52px;
+    z-index: 4;
+    gap: var(--space-1);
+    margin-inline: calc(-1 * var(--space-1));
+    padding: var(--space-1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .16);
+  }
+
+  .square-cover-preview-card {
+    gap: var(--space-1);
+    padding: var(--space-1);
+  }
+
+  .square-cover-preview-card .square-cover-panel-label {
+    font-size: 8px;
+    letter-spacing: .04em;
+  }
+
+  .square-cover-preview-card .square-cover-stage-header h3 {
+    font-size: var(--font-size-xs);
+  }
+
+  .square-cover-magnifier {
+    align-items: center;
+    font-size: 9px;
+  }
+
+  .square-cover-magnifier canvas {
+    flex-basis: 76px;
+    width: 76px;
+    height: 76px;
+  }
+
+  .square-cover-preview-dock .square-cover-result-panel > canvas {
+    width: min(100%, 84px);
+    max-width: 84px;
+  }
+
   .square-cover-cropper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
     padding: var(--space-2);
   }
 
+  /* Keep section headings below the persistent preview dock when navigated into view. */
+  .square-cover-source-panel,
+  .square-cover-detect-panel,
+  .square-cover-tone-panel {
+    scroll-margin-top: 360px;
+  }
+
+  /* The dock must remain sticky while scrolling through all editor sections. */
   .square-cover-workflow {
-    gap: var(--space-3);
+    display: contents;
   }
 
   .square-cover-stage-panel {
