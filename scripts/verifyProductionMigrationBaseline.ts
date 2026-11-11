@@ -158,7 +158,7 @@ export function validateProductionMigrationLedger(
   }
 
   const actualTimestamps = rows.map((row) => String(row.created_at ?? ''));
-  if (actualTimestamps.some((timestamp) => !/^\\d+$/.test(timestamp))) {
+  if (actualTimestamps.some((timestamp) => !/^\d+$/.test(timestamp))) {
     problems.push('The production Drizzle ledger contains an invalid migration timestamp.');
     return problems;
   }
