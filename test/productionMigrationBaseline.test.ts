@@ -64,6 +64,14 @@ describe('production migration baseline preflight', () => {
       'does not match the pinned migration tag',
     );
 
+    const missing = {
+      ...parsed,
+      entries: parsed.entries.filter((entry) => entry.idx !== 23),
+    };
+    expect(() => getExpectedProductionMigrationBaseline(missing)).toThrow(
+      'must occur exactly once',
+    );
+
     const duplicate = {
       ...parsed,
       entries: [...parsed.entries, { ...parsed.entries.find((entry) => entry.idx === 23)! }],
