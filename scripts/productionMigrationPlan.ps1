@@ -24,7 +24,9 @@ $script:ProductionMigrationExpectedTags = @(
     '0020_catalogue_search_trigram',
     '0021_release_metadata_vocabulary',
     '0022_listing_photo_source_versions',
-    '0023_block_new_google_oauth_identities'
+    '0023_block_new_google_oauth_identities',
+    '0024_profile_avatars_and_music_links',
+    '0025_add_release_styles'
 )
 
 $script:ProductionMigrationPhaseRanges = @{
@@ -39,6 +41,10 @@ $script:ProductionMigrationPhaseRanges = @{
     ReleaseCandidate = @{
         StartIndex = 20
         EndIndex = 23
+    }
+    ProfileAndStyles = @{
+        StartIndex = 24
+        EndIndex = 25
     }
 }
 
