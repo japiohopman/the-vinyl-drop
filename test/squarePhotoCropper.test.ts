@@ -782,7 +782,9 @@ describe('Square cover photo cropper', () => {
         dockTop: dockRect.top,
         dockBottom: dockRect.bottom,
         dockPosition: getComputedStyle(dock).position,
-        toneVisible: document.querySelector('.square-cover-tone-panel')?.getBoundingClientRect().top ?? -1,
+        toneTop: document.querySelector('[aria-labelledby="square-cover-tone-title"]')?.getBoundingClientRect().top ?? -1,
+        toneBottom: document.querySelector('[aria-labelledby="square-cover-tone-title"]')?.getBoundingClientRect().bottom ?? -1,
+        viewportHeight: window.innerHeight,
       };
     });
 
@@ -790,7 +792,9 @@ describe('Square cover photo cropper', () => {
     expect(layout.dockTop).toBeGreaterThanOrEqual(layout.dialogTop - 1);
     expect(layout.dockTop).toBeLessThan(layout.dialogTop + 80);
     expect(layout.dockBottom).toBeLessThan(300);
-    expect(layout.toneVisible).toBeGreaterThan(0);
+    expect(layout.toneTop).toBeGreaterThanOrEqual(0);
+    expect(layout.toneTop).toBeLessThan(layout.viewportHeight);
+    expect(layout.toneBottom).toBeGreaterThan(0);
     expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
     expect(browserErrors).toEqual([]);
   });
