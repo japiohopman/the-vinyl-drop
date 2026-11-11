@@ -100,10 +100,22 @@ function timestampOf(value: number | string): number {
 }
 
 export function isContinuousIntegrationEnvironment(environment: NodeJS.ProcessEnv): boolean {
-  return (
-    environment.CI?.toLowerCase() === 'true' ||
-    environment.GITHUB_ACTIONS?.toLowerCase() === 'true'
-  );
+  const indicators = [
+    environment.CI,
+    environment.CONTINUOUS_INTEGRATION,
+    environment.GITHUB_ACTIONS,
+    environment.GITHUB_RUN_ID,
+    environment.GITLAB_CI,
+    environment.BUILDKITE,
+    environment.TF_BUILD,
+    environment.JENKINS_URL,
+  ];
+
+  return indicators.some((value) => {
+    if (value === undefined) return false;
+    const normalized = value.trim().toLowerCase();
+    return !['', '0', 'false', 'no', 'off'].includes(normalized);
+  });
 }
 
 export function validateStagingConnectionTarget(input: StagingTargetInput): string[] {
