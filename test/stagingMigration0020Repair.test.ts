@@ -29,6 +29,11 @@ function makeIndex(name: keyof typeof EXPECTED_INDEXES): IndexState {
     table_name: 'releases',
     access_method: 'gin',
     column_name: EXPECTED_INDEXES[name].column,
+    attribute_count: 1,
+    key_attribute_count: 1,
+    has_predicate: false,
+    is_unique: false,
+    is_primary: false,
     opclass_name: 'gin_trgm_ops',
     opclass_schema: 'extensions',
     is_valid: true,
@@ -128,6 +133,29 @@ describe('staging migration 0020 repair planner', () => {
 
     expect(plan.status).toBe('blocked');
     expect(plan.reasons.join(' ')).toContain('does not match the reviewed GIN index definition');
+  });
+
+  it('blocks a trigram index with extra columns, a partial predicate, or uniqueness', () => {
+    const base = makeIndex('releases_artist_trgm_idx');
+    const snapshots = [
+      { ...base, attribute_count: 2 },
+      { ...base, key_attribute_count: 2 },
+      { ...base, has_predicate: true },
+      { ...base, is_unique: true },
+    ];
+
+    for (const index of snapshots) {
+      const plan = buildStagingMigration0020Plan(
+        makeSnapshot({
+          extensionsSchemaExists: true,
+          extension: { name: 'pg_trgm', schemaName: 'extensions', version: '1.6' },
+          indexes: [index],
+        }),
+        makeJournal(),
+        EXPECTED_HASH,
+      );
+      expect(plan.status).toBe('blocked');
+    }
   });
 
   it('blocks pg_trgm when it is installed outside the extensions schema', () => {
