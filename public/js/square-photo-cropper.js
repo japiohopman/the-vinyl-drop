@@ -257,7 +257,6 @@
     }
 
     points = candidate;
-    selectedCorner = index;
     manualEditingStarted = true;
     updateOverlay();
     schedulePreview();
@@ -969,6 +968,7 @@
       return false;
     }
     points = candidate;
+    selectedCorner = index;
     manualEditingStarted = true;
     updateOverlay();
     schedulePreview();
