@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   buildStagingMigration0020Plan,
+  createStagingTlsOptions,
   isContinuousIntegrationEnvironment,
   EXPECTED_INDEXES,
   MIGRATION_TIMESTAMP,
@@ -12,6 +15,10 @@ import {
 } from '../scripts/stagingMigration0020Repair';
 
 const EXPECTED_HASH = 'a'.repeat(64);
+const CHECKED_IN_MIGRATION_SQL = readFileSync(
+  resolve(process.cwd(), 'drizzle/0020_catalogue_search_trigram.sql'),
+  'utf8',
+);
 
 function makeJournal(): JournalEntry[] {
   return Array.from({ length: 26 }, (_, idx) => ({
@@ -29,6 +36,7 @@ function makeIndex(name: keyof typeof EXPECTED_INDEXES): IndexState {
     table_name: 'releases',
     access_method: 'gin',
     column_name: EXPECTED_INDEXES[name].column,
+    collation_matches: true,
     attribute_count: 1,
     key_attribute_count: 1,
     has_predicate: false,
@@ -62,6 +70,62 @@ function makeSnapshot(overrides: Partial<RepairSnapshot> = {}): RepairSnapshot {
 }
 
 describe('staging migration 0020 repair planner', () => {
+  it('accepts the checked-in migration SQL during preflight', () => {
+    const plan = buildStagingMigration0020Plan(
+      makeSnapshot(),
+      makeJournal(),
+      EXPECTED_HASH,
+      CHECKED_IN_MIGRATION_SQL,
+    );
+
+    expect(plan.status).toBe('ready-to-repair');
+    expect(plan.reasons).toEqual([]);
+  });
+
+  it('blocks migration SQL when a reviewed statement has been changed', () => {
+    const alteredSql = CHECKED_IN_MIGRATION_SQL.replace(
+      'ON public.releases USING GIN (title extensions.gin_trgm_ops);',
+      'ON public.releases USING GIN (title gin_trgm_ops);',
+    );
+    const plan = buildStagingMigration0020Plan(
+      makeSnapshot(),
+      makeJournal(),
+      EXPECTED_HASH,
+      alteredSql,
+    );
+
+    expect(plan.status).toBe('blocked');
+    expect(plan.reasons.join(' ')).toContain('does not match the reviewed schema/index statements');
+  });
+
+  it('blocks reordered journal entries instead of sorting them back into place', () => {
+    const reorderedJournal = makeJournal();
+    [reorderedJournal[20], reorderedJournal[21]] = [reorderedJournal[21], reorderedJournal[20]];
+
+    const plan = buildStagingMigration0020Plan(
+      makeSnapshot(),
+      reorderedJournal,
+      EXPECTED_HASH,
+      CHECKED_IN_MIGRATION_SQL,
+    );
+
+    expect(plan.status).toBe('blocked');
+    expect(plan.reasons.join(' ')).toContain('missing, duplicate or reordered entry');
+  });
+
+  it('blocks an otherwise matching index when its collation differs from the table column', () => {
+    const badIndex = { ...makeIndex('releases_artist_trgm_idx'), collation_matches: false };
+    const snapshot = makeSnapshot({
+      extensionsSchemaExists: true,
+      extension: { name: 'pg_trgm', schemaName: 'extensions', version: '1.6' },
+      indexes: [badIndex],
+    });
+    const plan = buildStagingMigration0020Plan(snapshot, makeJournal(), EXPECTED_HASH);
+
+    expect(plan.status).toBe('blocked');
+    expect(plan.reasons.join(' ')).toContain('does not match the reviewed GIN index definition');
+  });
+
   it('plans the missing extension, all three indexes, and one ledger row', () => {
     const plan = buildStagingMigration0020Plan(makeSnapshot(), makeJournal(), EXPECTED_HASH);
 
@@ -245,6 +309,17 @@ describe('staging migration 0020 repair planner', () => {
 });
 
 describe('staging migration 0020 apply execution boundary', () => {
+  it('requires a PEM CA and enables certificate and hostname verification', () => {
+    const caCertificate =
+      '-----BEGIN CERTIFICATE-----\\nMIIBtest\\n-----END CERTIFICATE-----';
+    const options = createStagingTlsOptions(caCertificate);
+
+    expect(options).toEqual({ ca: caCertificate, rejectUnauthorized: true });
+    expect(() => createStagingTlsOptions('not-a-certificate')).toThrow(
+      'must contain a PEM certificate',
+    );
+  });
+
   it('recognizes GitHub Actions and generic CI environments', () => {
     expect(isContinuousIntegrationEnvironment({ CI: 'true' })).toBe(true);
     expect(isContinuousIntegrationEnvironment({ GITHUB_ACTIONS: 'true' })).toBe(true);
