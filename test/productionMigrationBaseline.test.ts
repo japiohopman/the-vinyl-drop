@@ -10,46 +10,82 @@ const readJournal = (): unknown =>
 
 const journal = readJournal();
 const baseline = getExpectedProductionMigrationBaseline(journal);
-const validRows = baseline.timestamps.map((created_at) => ({ created_at }));
+const validRows = baseline.migrations.map((migration) => ({
+  created_at: migration.timestamp,
+  hash: migration.acceptedHashes[0],
+}));
 
 describe('production migration baseline preflight', () => {
-  test('pins the exact repository migration prefix through 0023', () => {
-    expect(baseline.timestamps).toHaveLength(24);
+  test('pins the exact repository migration prefix and SQL hashes through 0023', () => {
+    expect(baseline.migrations).toHaveLength(24);
     expect(baseline.latestTag).toBe('0023_block_new_google_oauth_identities');
+    expect(baseline.migrations.every((migration) => migration.acceptedHashes.length >= 1)).toBe(true);
   });
 
-  test('accepts exactly the expected 24 production ledger timestamps', () => {
-    expect(validateProductionMigrationLedger(baseline.timestamps, validRows)).toEqual([]);
+  test('accepts the exact 24-entry production baseline with approved migration hashes', () => {
+    expect(validateProductionMigrationLedger(baseline.migrations, validRows)).toEqual([]);
+  });
+
+  test('accepts Drizzle hashes produced from either LF or CRLF checked-out SQL files', () => {
+    const crlfRows = baseline.migrations.map((migration) => ({
+      created_at: migration.timestamp,
+      hash: migration.acceptedHashes[migration.acceptedHashes.length - 1],
+    }));
+    expect(validateProductionMigrationLedger(baseline.migrations, crlfRows)).toEqual([]);
+  });
+
+  test('rejects an altered historical SQL hash even when every timestamp is correct', () => {
+    const tamperedRows = validRows.map((row, index) => ({
+      ...row,
+      hash: index === 23 ? '0'.repeat(64) : row.hash,
+    }));
+    const problems = validateProductionMigrationLedger(baseline.migrations, tamperedRows);
+    expect(problems.join(' ')).toContain('index 23');
+    expect(problems.join(' ')).toContain('hash does not match');
   });
 
   test('rejects a missing production migration entry', () => {
-    const problems = validateProductionMigrationLedger(baseline.timestamps, validRows.slice(0, -1));
+    const problems = validateProductionMigrationLedger(baseline.migrations, validRows.slice(0, -1));
     expect(problems.join(' ')).toContain('Expected exactly 24');
     expect(problems.join(' ')).toContain('missing');
   });
 
   test('rejects duplicate production migration timestamps', () => {
     const rows = [...validRows, validRows[23]];
-    const problems = validateProductionMigrationLedger(baseline.timestamps, rows);
+    const problems = validateProductionMigrationLedger(baseline.migrations, rows);
     expect(problems.join(' ')).toContain('duplicate');
     expect(problems.join(' ')).toContain('Expected exactly 24');
   });
 
   test('rejects unexpected production migration timestamps', () => {
-    const rows = [...validRows.slice(0, 23), { created_at: '1799999999999' }];
-    const problems = validateProductionMigrationLedger(baseline.timestamps, rows);
+    const rows = [...validRows.slice(0, 23), {
+      ...validRows[23],
+      created_at: '1799999999999',
+    }];
+    const problems = validateProductionMigrationLedger(baseline.migrations, rows);
     expect(problems.join(' ')).toContain('unexpected');
     expect(problems.join(' ')).toContain('missing');
   });
 
-  test('rejects malformed ledger timestamps without exposing database details', () => {
-    const rows = [...validRows.slice(0, 23), { created_at: 'not-a-timestamp' }];
-    expect(validateProductionMigrationLedger(baseline.timestamps, rows)).toEqual([
+  test('rejects malformed ledger timestamps and malformed hashes', () => {
+    const invalidTimestampRows = [...validRows.slice(0, 23), {
+      ...validRows[23],
+      created_at: 'not-a-timestamp',
+    }];
+    expect(validateProductionMigrationLedger(baseline.migrations, invalidTimestampRows)).toContain(
       'The production Drizzle ledger contains an invalid migration timestamp.',
-    ]);
+    );
+
+    const invalidHashRows = [...validRows.slice(0, 23), {
+      ...validRows[23],
+      hash: 'not-a-sha256-hash',
+    }];
+    expect(validateProductionMigrationLedger(baseline.migrations, invalidHashRows).join(' ')).toContain(
+      'invalid SHA-256 ledger hash',
+    );
   });
 
-  test('rejects replaced or duplicate entries in the checked-in migration journal', () => {
+  test('rejects replaced, missing or duplicate entries in the checked-in migration journal', () => {
     const parsed = readJournal() as {
       entries: Array<{ idx: number; tag: string; when: number }>;
     };
