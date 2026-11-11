@@ -1736,6 +1736,13 @@
     padding: var(--space-2);
   }
 
+  /* Keep section headings below the persistent preview dock when navigated into view. */
+  .square-cover-source-panel,
+  .square-cover-detect-panel,
+  .square-cover-tone-panel {
+    scroll-margin-top: 260px;
+  }
+
   /* The dock must remain sticky while scrolling through all editor sections. */
   .square-cover-workflow {
     display: contents;
