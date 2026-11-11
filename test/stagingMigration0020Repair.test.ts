@@ -310,8 +310,11 @@ describe('staging migration 0020 repair planner', () => {
 
 describe('staging migration 0020 apply execution boundary', () => {
   it('requires a PEM CA and enables certificate and hostname verification', () => {
-    const caCertificate =
-      '-----BEGIN CERTIFICATE-----\\nMIIBtest\\n-----END CERTIFICATE-----';
+    const caCertificate = [
+      '-----BEGIN CERTIFICATE-----',
+      'MIIBtest',
+      '-----END CERTIFICATE-----',
+    ].join(String.fromCharCode(10));
     const options = createStagingTlsOptions(caCertificate);
 
     expect(options).toEqual({ ca: caCertificate, rejectUnauthorized: true });
