@@ -72,7 +72,7 @@ export function getExpectedProductionMigrationBaseline(
   let previousTimestamp = 0;
 
   for (let index = 0; index <= BASELINE_LAST_INDEX; index += 1) {
-    const matches = entries.filter((entry) => Number(entry?.idx) === index);
+    const matches = entries.filter((entry) => entry?.idx === index);
     if (matches.length !== 1) {
       throw new Error(`Repository migration journal index ${index} must occur exactly once.`);
     }
