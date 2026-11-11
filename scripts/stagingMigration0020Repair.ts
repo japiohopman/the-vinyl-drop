@@ -446,7 +446,7 @@ async function readSnapshot(executor: QueryExecutor): Promise<RepairSnapshot> {
       '       operator_class.opcname AS opclass_name,',
       '       opclass_namespace.nspname AS opclass_schema,',
       '       index_state.indisvalid AS is_valid,',
-      '       index_state.indisready AS is_ready'
+      '       index_state.indisready AS is_ready',
       'FROM pg_index AS index_state',
       'JOIN pg_class AS index_class ON index_class.oid = index_state.indexrelid',
       'JOIN pg_namespace AS index_namespace ON index_namespace.oid = index_class.relnamespace',
