@@ -811,6 +811,64 @@ describe('Square cover photo cropper', () => {
     expect(browserErrors).toEqual([]);
   });
 
+  it('keeps source and optional edge-detection overlays aligned to their fitted canvases on mobile', async () => {
+    await renderEditPage();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await selectPortrait('front_cover');
+    await page.locator('#square-cover-magnifier').waitFor({ state: 'visible' });
+
+    const sourceGeometry = await page.evaluate(() => {
+      const stage = document.querySelector('#square-cover-source-stage') as HTMLElement;
+      const canvas = document.querySelector('#square-cover-source') as HTMLCanvasElement;
+      const overlay = document.querySelector('#square-cover-overlay') as SVGElement;
+      const stageRect = stage.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const overlayRect = overlay.getBoundingClientRect();
+      return {
+        stage: { width: stageRect.width, height: stageRect.height },
+        canvas: { width: canvasRect.width, height: canvasRect.height },
+        overlay: { width: overlayRect.width, height: overlayRect.height },
+      };
+    });
+
+    expect(Math.abs(sourceGeometry.stage.width - sourceGeometry.canvas.width)).toBeLessThan(1);
+    expect(Math.abs(sourceGeometry.stage.height - sourceGeometry.canvas.height)).toBeLessThan(1);
+    expect(Math.abs(sourceGeometry.stage.width - sourceGeometry.overlay.width)).toBeLessThan(1);
+    expect(Math.abs(sourceGeometry.stage.height - sourceGeometry.overlay.height)).toBeLessThan(1);
+
+    await page.locator('.square-cover-detection-details > summary').click();
+    await page.waitForFunction(() => {
+      const stage = document.querySelector('#square-cover-detect-stage') as HTMLElement | null;
+      const canvas = document.querySelector('#square-cover-detect-image') as HTMLCanvasElement | null;
+      if (!stage || !canvas) return false;
+      const stageRect = stage.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      return stageRect.width > 0 && stageRect.height > 0 &&
+        Math.abs(stageRect.width - canvasRect.width) < 1 &&
+        Math.abs(stageRect.height - canvasRect.height) < 1;
+    });
+
+    const detectionGeometry = await page.evaluate(() => {
+      const stage = document.querySelector('#square-cover-detect-stage') as HTMLElement;
+      const canvas = document.querySelector('#square-cover-detect-image') as HTMLCanvasElement;
+      const overlay = document.querySelector('#square-cover-detect-overlay') as SVGElement;
+      const stageRect = stage.getBoundingClientRect();
+      const canvasRect = canvas.getBoundingClientRect();
+      const overlayRect = overlay.getBoundingClientRect();
+      return {
+        stage: { width: stageRect.width, height: stageRect.height },
+        canvas: { width: canvasRect.width, height: canvasRect.height },
+        overlay: { width: overlayRect.width, height: overlayRect.height },
+      };
+    });
+
+    expect(Math.abs(detectionGeometry.stage.width - detectionGeometry.canvas.width)).toBeLessThan(1);
+    expect(Math.abs(detectionGeometry.stage.height - detectionGeometry.canvas.height)).toBeLessThan(1);
+    expect(Math.abs(detectionGeometry.stage.width - detectionGeometry.overlay.width)).toBeLessThan(1);
+    expect(Math.abs(detectionGeometry.stage.height - detectionGeometry.overlay.height)).toBeLessThan(1);
+    expect(browserErrors).toEqual([]);
+  });
+
   it('retries local edge detection after a transient Scanic import failure', async () => {
     await renderEditPage();
     let importAttempts = 0;
