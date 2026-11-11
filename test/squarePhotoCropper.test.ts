@@ -769,22 +769,32 @@ describe('Square cover photo cropper', () => {
     await selectPortrait('front_cover');
 
     expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
+    await page.locator('#square-cover-magnifier').waitFor({ state: 'visible' });
     expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
-    await page.locator('.square-cover-tone-panel[aria-labelledby="square-cover-tone-title"]').scrollIntoViewIfNeeded();
+    await page.locator('[aria-labelledby="square-cover-tone-title"] [data-photo-adjustment="saturation"]').scrollIntoViewIfNeeded();
 
     const layout = await page.evaluate(() => {
       const dialog = document.querySelector('#photoUploadDialog') as HTMLDialogElement;
       const dock = document.querySelector('.square-cover-preview-dock') as HTMLElement;
+      const tonePanel = document.querySelector('[aria-labelledby="square-cover-tone-title"]') as HTMLElement;
+      const toneControl = tonePanel.querySelector('[data-photo-adjustment="saturation"]') as HTMLElement;
+      const footer = dialog.querySelector('.photo-dialog-actions') as HTMLElement;
       const dialogRect = dialog.getBoundingClientRect();
       const dockRect = dock.getBoundingClientRect();
+      const toneRect = toneControl.getBoundingClientRect();
+      const footerRect = footer.getBoundingClientRect();
       return {
         dialogTop: dialogRect.top,
+        dialogBottom: dialogRect.bottom,
         dockTop: dockRect.top,
         dockBottom: dockRect.bottom,
         dockPosition: getComputedStyle(dock).position,
-        toneTop: document.querySelector('[aria-labelledby="square-cover-tone-title"]')?.getBoundingClientRect().top ?? -1,
-        toneBottom: document.querySelector('[aria-labelledby="square-cover-tone-title"]')?.getBoundingClientRect().bottom ?? -1,
+        toneControlTop: toneRect.top,
+        toneControlBottom: toneRect.bottom,
+        footerTop: footerRect.top,
         viewportHeight: window.innerHeight,
+        sourceStageRect: document.querySelector('#square-cover-source-stage')?.getBoundingClientRect().toJSON(),
+        sourceCanvasRect: document.querySelector('#square-cover-source')?.getBoundingClientRect().toJSON(),
       };
     });
 
@@ -792,9 +802,11 @@ describe('Square cover photo cropper', () => {
     expect(layout.dockTop).toBeGreaterThanOrEqual(layout.dialogTop - 1);
     expect(layout.dockTop).toBeLessThan(layout.dialogTop + 80);
     expect(layout.dockBottom).toBeLessThan(300);
-    expect(layout.toneTop).toBeGreaterThanOrEqual(0);
-    expect(layout.toneTop).toBeLessThan(layout.viewportHeight);
-    expect(layout.toneBottom).toBeGreaterThan(0);
+    expect(layout.toneControlTop).toBeGreaterThan(layout.dockBottom);
+    expect(layout.toneControlBottom).toBeLessThan(layout.footerTop);
+    expect(layout.toneControlBottom).toBeLessThan(layout.dialogBottom);
+    expect(Math.abs(layout.sourceStageRect.width - layout.sourceCanvasRect.width)).toBeLessThan(1);
+    expect(Math.abs(layout.sourceStageRect.height - layout.sourceCanvasRect.height)).toBeLessThan(1);
     expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
     expect(browserErrors).toEqual([]);
   });
