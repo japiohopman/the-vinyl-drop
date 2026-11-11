@@ -771,7 +771,9 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
     await page.locator('#square-cover-magnifier').waitFor({ state: 'visible' });
     expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
-    await page.locator('[aria-labelledby="square-cover-tone-title"] [data-photo-adjustment="saturation"]').scrollIntoViewIfNeeded();
+    const tonePanel = page.locator('[aria-labelledby="square-cover-tone-title"]');
+    await tonePanel.locator('.square-cover-adjustments > summary').click();
+    await tonePanel.locator('[data-photo-adjustment="saturation"]').scrollIntoViewIfNeeded();
 
     const layout = await page.evaluate(() => {
       const dialog = document.querySelector('#photoUploadDialog') as HTMLDialogElement;
