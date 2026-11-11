@@ -52,7 +52,7 @@ function Get-ProductionMigrationEntries {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('Base', 'Complete', 'ReleaseCandidate')]
+        [ValidateSet('Base', 'Complete', 'ReleaseCandidate', 'ProfileAndStyles')]
         [string]$Phase,
 
         [Parameter(Mandatory = $true)]
