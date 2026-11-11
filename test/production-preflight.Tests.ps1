@@ -229,7 +229,7 @@ function Test-ReleaseCandidateStoragePreflightRunsBeforeDrizzle {
 
 function Test-ProfileAndStylesLedgerPreflightRunsBeforeDrizzle {
     $runnerSource = Get-Content -LiteralPath $migrationRunnerPath -Raw
-    $preflightInvocation = "& $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigrationBaseline.ts')"
+    $preflightInvocation = '& $tsxPath (Join-Path (Get-Location) ''scripts/verifyProductionMigrationBaseline.ts'')'
     $firstPreflight = $runnerSource.IndexOf($preflightInvocation)
     $confirmation = $runnerSource.IndexOf('$confirmation = Read-Host')
     $finalPreflight = $runnerSource.LastIndexOf($preflightInvocation)
