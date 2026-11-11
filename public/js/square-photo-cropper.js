@@ -23,6 +23,7 @@
   const detectionPolygon = form.querySelector('#square-cover-detect-polygon');
   const detectionMarkers = Array.from(form.querySelectorAll('[data-detected-corner]'));
   const detectionStatus = form.querySelector('#square-cover-detection-status');
+  const detectionDetails = form.querySelector('.square-cover-detection-details');
   const sourceStage = form.querySelector('#square-cover-source-stage');
   const sourceCanvas = form.querySelector('#square-cover-source');
   const overlay = form.querySelector('#square-cover-overlay');
@@ -63,6 +64,7 @@
       !(detectionOverlay instanceof SVGElement) ||
       !(detectionPolygon instanceof SVGPolygonElement) ||
       !(detectionStatus instanceof HTMLElement) ||
+      !(detectionDetails instanceof HTMLDetailsElement) ||
       detectionMarkers.length !== 4 ||
       !(sourceStage instanceof HTMLElement) ||
       !(sourceCanvas instanceof HTMLCanvasElement) ||
@@ -345,6 +347,40 @@
   }
 
   /**
+   * Fits a photo canvas and its overlay controls to the same visible rectangle.
+   * The canvas backing dimensions remain unchanged, so source-space corner coordinates stay valid.
+   * @param {HTMLElement} stage - Positioned container for the canvas and SVG/corner overlays.
+   * @param {HTMLCanvasElement} canvas - Canvas whose intrinsic dimensions define the image ratio.
+   * @param {number} mobileMaxHeight - Maximum stage height on narrow screens, in CSS pixels.
+   */
+  function fitEditorStage(stage, canvas, mobileMaxHeight) {
+    if (!image || canvas.width < 1 || canvas.height < 1) return;
+    const parent = stage.parentElement;
+    if (!(parent instanceof HTMLElement)) return;
+
+    const parentStyle = window.getComputedStyle(parent);
+    const availableWidth = Math.max(1,
+      parent.clientWidth -
+      (Number.parseFloat(parentStyle.paddingLeft) || 0) -
+      (Number.parseFloat(parentStyle.paddingRight) || 0)
+    );
+    const isMobile = window.matchMedia('(max-width: 640px)').matches;
+    const maxHeight = isMobile
+      ? Math.min(window.innerHeight * 0.42, mobileMaxHeight)
+      : Math.min(window.innerHeight * 0.65, 480);
+    const scale = Math.min(1.35, availableWidth / canvas.width, maxHeight / canvas.height);
+    const width = Math.max(1, Math.round(canvas.width * scale));
+    const height = Math.max(1, Math.round(canvas.height * scale));
+
+    stage.style.width = width + 'px';
+    stage.style.height = height + 'px';
+    stage.style.aspectRatio = canvas.width + ' / ' + canvas.height;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.maxWidth = '100%';
+  }
+
+  /**
    * Clears the active photo and resets its visual/editor state before another selection.
    */
   function clearPreview() {
@@ -385,10 +421,18 @@
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = null;
     sourceStage.style.aspectRatio = '';
+    sourceStage.style.width = '';
+    sourceStage.style.height = '';
+    sourceCanvas.style.width = '';
+    sourceCanvas.style.height = '';
     clearCanvas(detectionCanvas, detectionContext);
     clearCanvas(sourceCanvas, sourceContext);
     clearCanvas(resultCanvas, resultContext);
     detectionStage.style.aspectRatio = '';
+    detectionStage.style.width = '';
+    detectionStage.style.height = '';
+    detectionCanvas.style.width = '';
+    detectionCanvas.style.height = '';
     detectionOverlay.setAttribute('viewBox', '0 0 1 1');
     detectionPolygon.setAttribute('points', '');
     detectionMarkers.forEach((marker) => marker.setAttribute('display', 'none'));
@@ -433,6 +477,10 @@
     }
   }
 
+  /**
+   * Redraws the four-point polygon and positions every handle on the fitted source stage.
+   * The canvas, SVG overlay and pointer coordinate system share the same aspect ratio.
+   */
   function updateOverlay() {
     if (!image || points.length !== 4) return;
     const width = sourceCanvas.width;
@@ -489,6 +537,7 @@
     detectionContext.drawImage(sourceCanvas, 0, 0);
     detectionStage.style.aspectRatio = sourceCanvas.width + ' / ' + sourceCanvas.height;
     detectionOverlay.setAttribute('viewBox', '0 0 ' + sourceCanvas.width + ' ' + sourceCanvas.height);
+    if (detectionDetails.open) fitEditorStage(detectionStage, detectionCanvas, 260);
     updateDetectionOverlay(null);
   }
 
@@ -498,6 +547,17 @@
    * rejected ES module fetch by its full URL for the lifetime of the document.
    * @returns {Promise<Function>} The browser-local Scanic detection function.
    */
+  detectionDetails.addEventListener('toggle', () => {
+    if (!detectionDetails.open || !image) return;
+    window.requestAnimationFrame(() => fitEditorStage(detectionStage, detectionCanvas, 260));
+  });
+
+  window.addEventListener('resize', () => {
+    if (!image) return;
+    fitEditorStage(sourceStage, sourceCanvas, 360);
+    if (detectionDetails.open) fitEditorStage(detectionStage, detectionCanvas, 260);
+  });
+
   function loadScanicDetector() {
     if (!scanicPromise) {
       scanicImportAttempt += 1;
@@ -606,6 +666,11 @@
     }
   }
 
+  /**
+   * Paints the selected source corner at its true position in the magnified crop,
+   * including when the crop window is clamped against an image edge.
+   * @param {number} index - Selected corner index in clockwise order.
+   */
   function drawMagnifier(index) {
     if (index < 0 || !points[index]) {
       magnifier.hidden = true;
@@ -616,15 +681,21 @@
     const point = points[index];
     const cropSize = 64;
     const half = cropSize / 2;
+    const cropWidth = Math.min(cropSize, sourceCanvas.width);
+    const cropHeight = Math.min(cropSize, sourceCanvas.height);
+    const cropLeft = clamp(point.x - half, 0, Math.max(0, sourceCanvas.width - cropWidth));
+    const cropTop = clamp(point.y - half, 0, Math.max(0, sourceCanvas.height - cropHeight));
+    const crosshairX = clamp((point.x - cropLeft) / cropWidth * magnifierCanvas.width, 0, magnifierCanvas.width);
+    const crosshairY = clamp((point.y - cropTop) / cropHeight * magnifierCanvas.height, 0, magnifierCanvas.height);
     clearCanvas(magnifierCanvas, magnifierContext);
     magnifierContext.fillStyle = '#f3efe7';
     magnifierContext.fillRect(0, 0, magnifierCanvas.width, magnifierCanvas.height);
     magnifierContext.drawImage(
       sourceCanvas,
-      clamp(point.x - half, 0, Math.max(0, sourceCanvas.width - cropSize)),
-      clamp(point.y - half, 0, Math.max(0, sourceCanvas.height - cropSize)),
-      Math.min(cropSize, sourceCanvas.width),
-      Math.min(cropSize, sourceCanvas.height),
+      cropLeft,
+      cropTop,
+      cropWidth,
+      cropHeight,
       0,
       0,
       magnifierCanvas.width,
@@ -633,10 +704,10 @@
     magnifierContext.strokeStyle = '#f60f4b';
     magnifierContext.lineWidth = 1;
     magnifierContext.beginPath();
-    magnifierContext.moveTo(magnifierCanvas.width / 2, 0);
-    magnifierContext.lineTo(magnifierCanvas.width / 2, magnifierCanvas.height);
-    magnifierContext.moveTo(0, magnifierCanvas.height / 2);
-    magnifierContext.lineTo(magnifierCanvas.width, magnifierCanvas.height / 2);
+    magnifierContext.moveTo(crosshairX, 0);
+    magnifierContext.lineTo(crosshairX, magnifierCanvas.height);
+    magnifierContext.moveTo(0, crosshairY);
+    magnifierContext.lineTo(magnifierCanvas.width, crosshairY);
     magnifierContext.stroke();
     activeCornerLabel.textContent = 'Following ' + HANDLE_LABELS[index] + ' corner';
     magnifier.hidden = false;
@@ -922,6 +993,7 @@
         const previewDimensions = getOutputDimensions(512);
         resultCanvas.width = previewDimensions.width;
         resultCanvas.height = previewDimensions.height;
+        fitEditorStage(sourceStage, sourceCanvas, 360);
         drawDetectionSource();
         updateOverlay();
         renderPreview();
