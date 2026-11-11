@@ -1740,7 +1740,7 @@
   .square-cover-source-panel,
   .square-cover-detect-panel,
   .square-cover-tone-panel {
-    scroll-margin-top: 340px;
+    scroll-margin-top: 360px;
   }
 
   /* The dock must remain sticky while scrolling through all editor sections. */
