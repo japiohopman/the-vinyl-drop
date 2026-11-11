@@ -134,7 +134,8 @@ function Test-PinnedProductionMigrationPlans {
         if ($futureRelease.Count -ne 4 -or @($futureRelease | Where-Object { $_.idx -gt 23 }).Count -ne 0) {
             throw 'ReleaseCandidate phase selected a later unapproved journal entry.'
         }
-        if ($futureProfileAndStyles.Count -ne 2 -or ($futureProfileAndStyles.idx -join ',') -cne '24,25') {
+        $futureProfileAndStylesIndexes = @($futureProfileAndStyles | ForEach-Object { [int]$_.idx })
+        if ($futureProfileAndStyles.Count -ne 2 -or ($futureProfileAndStylesIndexes -join ',') -cne '24,25') {
             throw 'ProfileAndStyles phase selected a later unapproved journal entry.'
         }
     }
@@ -159,7 +160,7 @@ function Test-PinnedProductionMigrationPlans {
                 $threw = $true
             }
             if (-not $threw) {
-                throw "ReleaseCandidate phase accepted a replaced migration entry at index $driftIndex."
+                throw "$phaseToCheck accepted a replaced migration entry at index $driftIndex."
             }
         }
         finally {
