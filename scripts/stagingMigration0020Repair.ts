@@ -533,6 +533,9 @@ async function executeRepair(
   journalEntries: JournalEntry[],
   migrationSql: string,
 ): Promise<void> {
+  if (plan.status !== 'ready-to-repair') {
+    throw new Error('Apply mode requires a fresh ready-to-repair plan.');
+  }
   const hash = createMigrationHash(migrationSql);
   const entriesPrefix = journalEntries
     .filter((entry) => entry.idx <= 25)
