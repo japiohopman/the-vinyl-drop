@@ -40,5 +40,5 @@ export function readReconstructedMainStylesheet(): string {
 }
 
 export function readFullStylesheetSource(): string {
-  return readReconstructedMainStylesheet() + readCssFile('dig-mobile-crate.css');
+  return readReconstructedMainStylesheet() + readCssFile('dig-mobile-crate.css') + readCssFile('themes.css');
 }
