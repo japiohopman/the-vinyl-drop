@@ -665,6 +665,11 @@ describe('Square cover photo cropper', () => {
         for (const panel of evidencePanels) {
           const panelLocator = page.locator(panel.selector);
           await panelLocator.scrollIntoViewIfNeeded();
+          if (viewport.width <= 640 && panel.name !== 'preview-dock') {
+            const sectionTop = await panelLocator.evaluate((element) => element.getBoundingClientRect().top);
+            const dockBottom = await page.locator('.square-cover-preview-dock').evaluate((element) => element.getBoundingClientRect().bottom);
+            expect(sectionTop).toBeGreaterThanOrEqual(dockBottom - 1);
+          }
           await panelLocator.screenshot({
             path: path.join(issue333EvidenceDirectory, 'editor-' + viewport.name + '-' + panel.name + '.png'),
           });
@@ -810,6 +815,16 @@ describe('Square cover photo cropper', () => {
     expect(Math.abs(layout.sourceStageRect.width - layout.sourceCanvasRect.width)).toBeLessThan(1);
     expect(Math.abs(layout.sourceStageRect.height - layout.sourceCanvasRect.height)).toBeLessThan(1);
     expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
+
+    for (const width of [320, 360, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.locator('.square-cover-source-panel').scrollIntoViewIfNeeded();
+      const bounds = await page.evaluate(() => ({
+        headingTop: document.querySelector('.square-cover-source-panel')?.getBoundingClientRect().top ?? -1,
+        dockBottom: document.querySelector('.square-cover-preview-dock')?.getBoundingClientRect().bottom ?? -1,
+      }));
+      expect(bounds.headingTop).toBeGreaterThanOrEqual(bounds.dockBottom - 1);
+    }
     expect(browserErrors).toEqual([]);
   });
 
