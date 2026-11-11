@@ -28,9 +28,11 @@ Use the repository root on a trusted workstation with the lockfile-installed dep
 
 - `STAGING_DB_PROJECT_REF=xuhzhdjmgvqzjxijmksu`
 - `STAGING_DB_HOST=aws-0-eu-west-1.pooler.supabase.com` when using the shared session pooler, or the exact direct host `db.xuhzhdjmgvqzjxijmksu.supabase.co`.
-- `DATABASE_DIRECT_URL` (preferred) or `DATABASE_URL`, using the approved staging host, database `postgres`, port 5432 and a password. The script forces TLS with `ssl: require`; if the URL includes `sslmode`, it must be exactly `require`.
+- `DATABASE_DIRECT_URL` (preferred) or `DATABASE_URL`, using the approved staging host, database `postgres`, port 5432 and a password.
+- `STAGING_DB_SSL_ROOT_CERT_PATH`, pointing to the staging project's Supabase root CA certificate in PEM format. Download the certificate from the staging Supabase Dashboard under **Database Settings → SSL Configuration** and store it outside the repository. Do not commit the certificate.
+- If the database URL includes `sslmode`, it may be `require` or `verify-full`. The repair tool always supplies the CA file with certificate verification enabled. Postgres.js passes the approved connection hostname to Node TLS, which verifies the hostname as well as the CA chain.
 
-The script rejects the production project reference, production host, wrong pooler username, wrong port, alternate TLS modes and unexpected URL parameters. It never prints the connection URL or password.
+The script rejects the production project reference, production host, wrong pooler username, wrong port, weaker TLS modes, unexpected URL parameters and a missing/unreadable PEM CA file. All these checks happen before a database connection is opened. It never prints the connection URL, password or certificate contents.
 
 ## Commands
 
@@ -58,7 +60,7 @@ That confirmation is not implied by merging this PR. The owner must separately a
 
 ## What apply does
 
-The script validates each trigram index as a single-column, non-unique, non-partial GIN index with the expected opclass, then repeats all preconditions after taking a transaction-scoped advisory lock and an exclusive lock on the Drizzle ledger. It uses short lock and statement timeouts, then within one PostgreSQL transaction:
+The script validates each trigram index as a single-column, non-unique, non-partial GIN index with the expected opclass, matching column collation, validity and readiness. It also checks that the migration journal is in its original array order; entries are never sorted into apparent correctness. The tool then repeats all preconditions after taking a transaction-scoped advisory lock and an exclusive lock on the Drizzle ledger. It uses short lock and statement timeouts, then within one PostgreSQL transaction:
 
 1. Creates the `extensions` schema only if absent.
 2. Installs `pg_trgm` 1.6 into `extensions` only if absent.
@@ -70,7 +72,7 @@ If the indexes are already correct but only the migration record is missing, it 
 
 ## Verification and boundaries
 
-- The Jest suite tests target validation and repair planning with in-memory fixtures only. Tests never connect to Supabase.
+- The Jest suite tests target validation, CA/TLS verification options, journal order, the real checked-in migration SQL preflight, collation matching and repair planning with in-memory fixtures only. Tests never connect to Supabase.
 - Existing `npm run db:verify` continues to validate all source migrations against isolated PGlite; it is not evidence of a live staging repair.
 - A successful CI run, PR merge, or audit report does not apply the repair.
 - Do not change production, Storage buckets/policies, Auth, Render, environment settings, flags, tester access or deployment as part of this procedure.
