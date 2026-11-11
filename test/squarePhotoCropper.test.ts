@@ -314,6 +314,8 @@ describe('Square cover photo cropper', () => {
         role === 'front_cover' ? 'Square front cover correction' : 'Square back cover correction'
       );
 
+      expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
+      expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
       const topLeftHandle = page.locator('[data-corner-handle="0"]');
       const polygonBeforeNudge = await page.locator('#square-cover-polygon').getAttribute('points');
       await topLeftHandle.focus();
@@ -322,6 +324,8 @@ describe('Square cover photo cropper', () => {
       await topLeftHandle.press('ArrowRight');
       const polygonAfterNudge = await page.locator('#square-cover-polygon').getAttribute('points');
       expect(polygonAfterNudge).not.toBe(polygonBeforeNudge);
+      expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
+      expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
       expect(await page.locator('#square-cover-histogram').count()).toBe(1);
       expect(await page.locator('[data-photo-adjustment="shadows"]').inputValue()).toBe('0');
 
@@ -642,10 +646,14 @@ describe('Square cover photo cropper', () => {
       { timeout: 5000 }
     );
     if (issue333EvidenceDirectory) {
+      await page.locator('.square-cover-detection-details').evaluate((details) => {
+        (details as HTMLDetailsElement).open = true;
+      });
       const evidencePanels = [
-        { name: 'edge-detect', selector: '.square-cover-detect-panel' },
-        { name: 'preview-window', selector: '.square-cover-result-panel' },
+        { name: 'preview-dock', selector: '.square-cover-preview-dock' },
         { name: 'point-editor', selector: '.square-cover-source-panel' },
+        { name: 'edge-detect', selector: '.square-cover-detect-panel' },
+        { name: 'tone-controls', selector: '.square-cover-tone-panel' },
       ];
       const evidenceViewports = [
         { name: 'mobile', width: 390, height: 844 },
@@ -736,22 +744,56 @@ describe('Square cover photo cropper', () => {
           viewport: window.innerWidth,
           scrollWidth: document.documentElement.scrollWidth,
           direction: getComputedStyle(workflow).flexDirection,
-          order: panels.map((panel) => panel.classList.contains('square-cover-detect-panel')
-            ? 'detect'
-            : panel.classList.contains('square-cover-result-panel') ? 'preview' : 'points'),
+          order: panels.map((panel) => panel.classList.contains('square-cover-preview-dock')
+            ? 'preview-dock'
+            : panel.classList.contains('square-cover-source-panel') ? 'points' : 'detect'),
+          dockPosition: getComputedStyle(document.querySelector('.square-cover-preview-dock') as HTMLElement).position,
           panelWidths: rects.map((rect) => rect.width),
           dialogWidth: dialog.getBoundingClientRect().width,
         };
       });
       expect(dimensions.scrollWidth).toBeLessThanOrEqual(width + 1);
       expect(dimensions.direction).toBe('column');
-      expect(dimensions.order).toEqual(['detect', 'preview', 'points']);
+      expect(dimensions.order).toEqual(['preview-dock', 'points', 'detect']);
+      expect(dimensions.dockPosition).toBe(width <= 640 ? 'sticky' : 'static');
       expect(dimensions.panelWidths.every((panelWidth) => panelWidth > 0)).toBe(true);
       expect(dimensions.dialogWidth).toBeLessThanOrEqual(width + 1);
     }
     expect(browserErrors).toEqual([]);
   });
 
+
+  it('keeps the active-corner and corrected previews docked while scrolling to tonal controls on mobile', async () => {
+    await renderEditPage();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await selectPortrait('front_cover');
+
+    expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
+    expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
+    await page.locator('.square-cover-tone-panel').scrollIntoViewIfNeeded();
+
+    const layout = await page.evaluate(() => {
+      const dialog = document.querySelector('#photoUploadDialog') as HTMLDialogElement;
+      const dock = document.querySelector('.square-cover-preview-dock') as HTMLElement;
+      const dialogRect = dialog.getBoundingClientRect();
+      const dockRect = dock.getBoundingClientRect();
+      return {
+        dialogTop: dialogRect.top,
+        dockTop: dockRect.top,
+        dockBottom: dockRect.bottom,
+        dockPosition: getComputedStyle(dock).position,
+        toneVisible: document.querySelector('.square-cover-tone-panel')?.getBoundingClientRect().top ?? -1,
+      };
+    });
+
+    expect(layout.dockPosition).toBe('sticky');
+    expect(layout.dockTop).toBeGreaterThanOrEqual(layout.dialogTop - 1);
+    expect(layout.dockTop).toBeLessThan(layout.dialogTop + 80);
+    expect(layout.dockBottom).toBeLessThan(300);
+    expect(layout.toneVisible).toBeGreaterThan(0);
+    expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
+    expect(browserErrors).toEqual([]);
+  });
 
   it('retries local edge detection after a transient Scanic import failure', async () => {
     await renderEditPage();
@@ -922,6 +964,8 @@ describe('Square cover photo cropper', () => {
       }));
     }, start);
     expect(await page.locator('#square-cover-polygon').getAttribute('points')).not.toBe(original);
+    expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
+    expect(await page.locator('#square-cover-active-corner').textContent()).toContain('Following Top-left corner');
     expect(browserErrors).toEqual([]);
   });
 
