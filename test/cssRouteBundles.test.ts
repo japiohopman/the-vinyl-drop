@@ -72,7 +72,6 @@ describe('Route-specific CSS bundles (#252)', () => {
     const dig = routeCssLinks(await renderLayout('/dig'));
     const browse = routeCssLinks(await renderLayout('/browse'));
     const search = routeCssLinks(await renderLayout('/search'));
-    const people = routeCssLinks(await renderLayout('/people'));
     const browseDig = routeCssLinks(await renderLayout('/browse/dig'));
     const myListings = routeCssLinks(await renderLayout('/listings'));
     const listingDetail = routeCssLinks(await renderLayout('/listings/example-listing'));
@@ -94,18 +93,15 @@ describe('Route-specific CSS bundles (#252)', () => {
       '/css/style.css', '/css/dig-experience.css',
       '/css/style-after-features.css', '/css/browse-dig-controls.css', '/css/style-after-activity.css',
       '/css/style-after-release-selection.css', '/css/dig-mobile-session.css', '/css/style-after-listing-forms.css',
-      '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css', '/css/people-search.css',
+      '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css',
       '/css/dig-mobile-crate.css',
     ]);
     expect(browse).toEqual([
       '/css/style.css', '/css/style-after-features.css', '/css/browse-dig-controls.css',
       '/css/style-after-activity.css', '/css/style-after-release-selection.css',
       '/css/style-after-listing-forms.css', '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css',
-      '/css/people-search.css',
       '/css/browse-catalogue-explorer.css',
     ]);
-    expect(search).toContain('/css/people-search.css');
-    expect(people).toContain('/css/people-search.css');
     // The historical /browse/dig URL now renders the canonical responsive Dig workspace.
     expect(browseDig).toEqual(dig);
     expect(myListings).toEqual([
@@ -162,15 +158,15 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(home).not.toContain('/css/activity-release-selection.css');
     expect(home).not.toContain('/css/release-selection-overrides.css');
     expect(home).not.toContain('/css/dig-experience.css');
-    for (const nonHomeRoute of [dig, browse, search, people, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
+    for (const nonHomeRoute of [dig, browse, search, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
       expect(nonHomeRoute).not.toContain('/css/home.css');
     }
     expect(home).not.toContain('/css/browse-dig-controls.css');
     expect(home).not.toContain('/css/browse-catalogue-explorer.css');
-    for (const nonBrowseRoute of [dig, search, people, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
+    for (const nonBrowseRoute of [dig, search, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
       expect(nonBrowseRoute).not.toContain('/css/browse-catalogue-explorer.css');
     }
-    for (const unrelated of [home, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
+    for (const unrelated of [home, dig, browse, search, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
       expect(unrelated).not.toContain('/css/people-search.css');
     }
     expect(home).not.toContain('/css/dig-mobile-session.css');
@@ -235,9 +231,8 @@ describe('Route-specific CSS bundles (#252)', () => {
     const after = {
       general: routeMetrics(sharedBundles),
       home: routeMetrics([...sharedBundles, 'home.css']),
-      dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'dig-mobile-session.css', 'people-search.css', 'dig-mobile-crate.css']),
-      browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'people-search.css', 'browse-catalogue-explorer.css']),
-      peopleSearch: routeMetrics([...sharedBundles, 'people-search.css']),
+      dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'dig-mobile-session.css', 'dig-mobile-crate.css']),
+      browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'browse-catalogue-explorer.css']),
       myListings: routeMetrics(['style.css', 'my-listings.css', ...sharedBundles.slice(1)]),
       listingDetail: routeMetrics(['style.css', 'listing-detail.css', ...sharedBundles.slice(1), 'listing-interactions.css', 'listing-detail-polish.css']),
       listingComments: routeMetrics([...sharedBundles, 'listing-interactions.css']),
@@ -249,7 +244,7 @@ describe('Route-specific CSS bundles (#252)', () => {
     };
 
     const before = {
-      shared: baselineShared, home: baselineShared, dig: baselineDig, browse: baselineShared, peopleSearch: baselineShared, myListings: baselineShared,
+      shared: baselineShared, home: baselineShared, dig: baselineDig, browse: baselineShared, myListings: baselineShared,
       listingDetail: baselineShared, listingComments: baselineShared,
       activity: baselineShared, selectRelease: baselineShared,
       listingForms: baselineShared, profile: baselineShared, profileEdit: baselineShared,
