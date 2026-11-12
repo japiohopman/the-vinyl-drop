@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Base', 'Complete', 'ReleaseCandidate')]
+    [ValidateSet('Base', 'Complete', 'ReleaseCandidate', 'ProfileAndStyles')]
     [string]$Phase = 'Base'
 )
 
@@ -22,6 +22,10 @@ $phaseSettings = @{
         Confirmation = "APPLY-PRODUCTION-RELEASE-MIGRATIONS-0020-0023 $projectRef"
         Description = '0020-0023'
     }
+    ProfileAndStyles = @{
+        Confirmation = "APPLY-PRODUCTION-PROFILE-AND-STYLES-MIGRATIONS-0024-0025 $projectRef"
+        Description = '0024-0025'
+    }
 }
 $expectedConfirmation = $phaseSettings[$Phase].Confirmation
 
@@ -37,6 +41,9 @@ if ($Phase -eq 'ReleaseCandidate') {
         'scripts/productionStoragePolicies.ts',
         'scripts/verifyProductionStoragePolicies.ts'
     )
+}
+if ($Phase -eq 'ProfileAndStyles') {
+    $requiredFiles += 'scripts/verifyProductionMigrationBaseline.ts'
 }
 foreach ($file in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path (Get-Location) $file) -PathType Leaf)) {
@@ -71,7 +78,7 @@ if ([string]::IsNullOrWhiteSpace($drizzleKitPath)) {
 }
 
 $tsxPath = $null
-if ($Phase -eq 'ReleaseCandidate') {
+if ($Phase -in @('ReleaseCandidate', 'ProfileAndStyles')) {
     $tsxNames = if ($env:OS -eq 'Windows_NT') {
         @('tsx.cmd', 'tsx.ps1', 'tsx')
     } else {
@@ -190,6 +197,15 @@ try {
         Write-Host 'PASS: the exact approved Storage policy set is present; no extra or widened policy was found.'
     }
 
+    if ($Phase -eq 'ProfileAndStyles') {
+        Write-Host 'Running read-only production migration-ledger baseline verification (0000-0023)...'
+        & $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigrationBaseline.ts')
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Production migration-ledger baseline verification failed. No Drizzle migration command was started.'
+        }
+        Write-Host 'PASS: the exact 24-entry production baseline through migration 0023 is present.'
+    }
+
     $confirmation = Read-Host "Type exactly: $expectedConfirmation"
     if ($confirmation -cne $expectedConfirmation) {
         throw 'Confirmation did not match. No Drizzle migration command was started.'
@@ -243,6 +259,14 @@ export default defineConfig({
         }
     }
 
+    if ($Phase -eq 'ProfileAndStyles') {
+        Write-Host 'Repeating read-only production migration-ledger baseline verification immediately before Drizzle starts...'
+        & $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigrationBaseline.ts')
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Final production migration-ledger baseline verification failed. Drizzle was not started.'
+        }
+    }
+
     Write-Host "Applying only pinned production migrations $($phaseSettings[$Phase].Description)..."
     & $drizzleKitPath migrate "--config=$tempConfigFileName"
     if ($LASTEXITCODE -ne 0) {
@@ -263,6 +287,13 @@ export default defineConfig({
             Write-Host 'The read-only preflight verified full predicates, roles, commands and permissive mode for the seven base Storage policies and, if provisioned, the exact two profile-avatar owner policies before Drizzle started.'
             Write-Host 'Migration 0022 retains its historical private-source bucket/policy prerequisite; migration 0023 updates the existing private password-check hook function to reject new Google Auth identities.'
             Write-Host 'Next: verify all 24 Drizzle migration entries, pg_trgm indexes, release metadata columns, private-source policies, hook function/grants, RLS and Storage before deployment.'
+        }
+        'ProfileAndStyles' {
+            Write-Host 'Only pinned production migrations 0024-0025 were selected. Later journal entries beginning at index 26 remain outside this phase.'
+            Write-Host 'The read-only baseline preflight verified exactly the 24 production ledger timestamps through migration 0023 before confirmation and immediately before Drizzle started.'
+            Write-Host 'This phase changes database schema only; it does not create or modify Storage buckets, policies, Auth settings or application runtime configuration.'
+            Write-Host 'Before deploying the Issue #351 profile-avatar feature, separately provision and verify the public profile-avatars bucket and the exact two owner-scoped INSERT/DELETE policies.'
+            Write-Host 'Independently verify all 26 migration ledger entries and the 0024 profile columns plus 0025 style columns after any separately authorized execution.'
         }
     }
 }

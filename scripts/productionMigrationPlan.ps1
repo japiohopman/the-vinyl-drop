@@ -24,7 +24,9 @@ $script:ProductionMigrationExpectedTags = @(
     '0020_catalogue_search_trigram',
     '0021_release_metadata_vocabulary',
     '0022_listing_photo_source_versions',
-    '0023_block_new_google_oauth_identities'
+    '0023_block_new_google_oauth_identities',
+    '0024_profile_avatars_and_music_links',
+    '0025_add_release_styles'
 )
 
 $script:ProductionMigrationPhaseRanges = @{
@@ -40,13 +42,26 @@ $script:ProductionMigrationPhaseRanges = @{
         StartIndex = 20
         EndIndex = 23
     }
+    ProfileAndStyles = @{
+        StartIndex = 24
+        EndIndex = 25
+    }
 }
 
+<#
+.SYNOPSIS
+Returns the exact pinned migration entries for one approved production phase.
+
+.DESCRIPTION
+Validates the complete journal prefix through the selected phase end index,
+including unique indexes, expected migration tags, and increasing timestamps.
+Later journal entries are never included in the returned phase selection.
+#>
 function Get-ProductionMigrationEntries {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('Base', 'Complete', 'ReleaseCandidate')]
+        [ValidateSet('Base', 'Complete', 'ReleaseCandidate', 'ProfileAndStyles')]
         [string]$Phase,
 
         [Parameter(Mandatory = $true)]

@@ -1,8 +1,8 @@
 # Production Deployment — The Vinyl Drop
 
 **Governing Issue:** [#278](https://github.com/japiohopman/the-vinyl-drop/issues/278)  
-**Status:** Production remains live on the separate Render/Supabase environment at the canonical apex domain and on approved PR #286 application runtime `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d`; Auto-Deploy remains off. On 5 November Jaap ran the reviewed `ReleaseCandidate` production migration phase successfully. Migrations `0020`–`0023` are now applied and independently verified: 24 exact sequential Drizzle ledger rows, matching migration hashes, all expected columns/constraints/indexes, `pg_trgm`, the seven-policy private Storage contract and the updated Before User Created hook. This did **not** deploy the application or change its live commit. Staging remains on `4102103623c1da85e7aec804fa95c4c7da54748e`; current `main` is `aff073396c23aebe3668dfeeb7f93cad0af1d3d9`, five migration-preparation/test/documentation commits ahead with no application-runtime file changes. Section 10 records the current post-migration verification and the corrected Session Pooler quota-incident status. Public release still requires release-candidate audit, authenticated DB/Storage smoke coverage, provider-level signup state, dependency-audit triage, backup/recovery readiness, privacy/legal decisions and Jaap's final application-deployment approval.  
-**Last checked:** 5 November 2026.
+**Status:** The last documented production application revision is PR #286 commit `6c5feb809ffd6c71ad26d44fbd1f041c77e4069d` (Auto-Deploy was off at the last service check; the production runtime was not rechecked during this migration-only audit). Production database migrations are verified through `0023` (24 Drizzle ledger entries). The 11 November read-only comparison confirms staging has all 26 migration entries through `0025`, including the repaired `0020`, profile columns from `0024` and style columns from `0025`; production does not yet have `0024` or `0025`. Both environments still lack the separate `profile-avatars` Storage bucket and its two owner-scoped policies. Issue [#401](https://github.com/japiohopman/the-vinyl-drop/issues/401) is preparing a separately pinned production runner phase for `0024`–`0025`; no production migration, Storage provisioning or application deployment is authorized or performed by that source work. Section 11 records the current migration-parity evidence and rollout boundary. Public release still requires the separate release-candidate audit, authenticated DB/Storage smoke coverage, provider-level signup state, dependency-audit triage, backup/recovery readiness, privacy/legal decisions and Jaap's final application-deployment approval.  
+**Last checked:** 11 November 2026.
 
 ## 1. Owner-approved target and safety boundaries
 
@@ -210,12 +210,41 @@ Production Render remains Live on PR #286 commit `6c5feb809ffd6c71ad26d44fbd1f04
 
 The 99.8% Session Pooler usage reading from 28 October was caused by an application bug: profile requests unnecessarily issued repeated profile-row updates even when no profile data had changed. Jaap confirms that this redundant write path was fixed on 4 November. Treat the 28 October figure as historical consumption from the now-fixed bug, not an ongoing application behavior or an unresolved release blocker. The Supabase banner may continue to refer to the previous billing cycle until its usage/billing window updates. Do not recommend a paid upgrade on the basis of that historical reading alone; check a fresh usage window after the fix before drawing conclusions about ongoing consumption.
 
-## Profile media follow-up — Issue #351 (prepared, not applied)
+## Profile media follow-up — Issue #351
 
-The application work for device-uploaded profile avatars (static JPEG/PNG/WebP converted to WebP, animated GIF retained) and optional SoundCloud/Mixcloud profile links is being prepared on its own feature branch.
+The application implementation for device-uploaded profile avatars (static JPEG/PNG/WebP converted to WebP, animated GIF retained) and optional SoundCloud/Mixcloud profile links was merged in PR #375. Migration `0024_profile_avatars_and_music_links` is present in staging and is **not applied to production**.
 
-The additive Drizzle migration `0024_profile_avatars_and_music_links` is **not applied to production** in this checkpoint. Production's existing seven Storage policies (the four listing-photo policies and three private listing-photo-originals policies) remain the verified baseline and must not be changed for this feature.
+The 11 November read-only audit confirms that neither staging nor production currently has the dedicated `profile-avatars` Storage bucket. Both environments retain the seven pre-existing listing-photo/private-source policies; the two avatar owner-scoped INSERT/DELETE policies are absent. Do not change those seven existing policies.
 
-Before deploying the #351 application revision to an environment, the owner must separately create the dedicated public-read `profile-avatars` bucket (5 MiB; processed output types `image/webp` and `image/gif`) and provision exactly the two authenticated owner-scoped INSERT/DELETE policies documented in [the provisioning checklist](./verification/profile-avatar-storage-provisioning.md) and [the SQL policy file](./verification/profile-avatar-storage-policies.sql). The bucket's public setting provides avatar reads; writes/deletes remain restricted to `profiles/<auth-user-uuid>/...`.
+Before deploying the #351 application revision to either environment, separately create the dedicated public-read `profile-avatars` bucket (5 MiB; processed output types `image/webp` and `image/gif`) and provision exactly the two authenticated owner-scoped INSERT/DELETE policies documented in [the provisioning checklist](./verification/profile-avatar-storage-provisioning.md) and [the SQL policy file](./verification/profile-avatar-storage-policies.sql). The bucket's public setting provides avatar reads; writes/deletes remain restricted to `profiles/<auth-user-uuid>/...`.
 
-The migration and policies require separate environment-targeted review and approval. This issue's implementation/CI does not create a remote bucket, apply a production migration, modify production Storage policies, deploy the application, or change any live setting.
+Schema migration, Storage provisioning and application deployment remain separate approval steps. The production migration runner must never create the bucket, add Storage policies, deploy the application or change any live setting.
+
+
+## 11. Migration parity checkpoint — 11 November 2026
+
+A fresh read-only SQL audit was run against both explicitly identified Supabase projects. The audit queried the Drizzle ledger timestamps, the `pg_trgm` extension and indexes, the schema columns introduced by 0024/0025, the `profile-avatars` bucket and Storage policy names. It performed no writes.
+
+### Staging — project `xuhzhdjmgvqzjxijmksu`
+
+- The Drizzle ledger contains 26 rows through migration index 25.
+- Migration 0020 was repaired on 11 November by the explicit staging-only tool added in PR #399. The tool reported that schema objects and the Drizzle ledger record were repaired and verified in one transaction. Its subsequent audit returned no pending extension, indexes or ledger entry and no validation reasons.
+- `pg_trgm` is present in the `extensions` schema; all three artist/title/label trigram indexes are valid.
+- Migration 0024 profile columns (`avatar_storage_path`, `soundcloud_url`, `mixcloud_url`) are present.
+- Migration 0025 style columns (`styles`, `canonical_styles`) are present.
+- The `profile-avatars` bucket and its two owner policies are absent.
+
+### Production — project `anxhmlalxjvatrufcjei`
+
+- The Drizzle ledger contains 24 rows through migration index 23.
+- `pg_trgm` is present in the `extensions` schema; all three artist/title/label trigram indexes are valid.
+- Migration 0024 profile columns and migration 0025 style columns are absent.
+- The `profile-avatars` bucket and its two owner policies are absent.
+
+### Rollout boundary
+
+- The existing production migration phases remain pinned to 0000–0005, 0006–0019 and 0020–0023. A new phase must select exactly 0024–0025 and must not select a later migration.
+- Issue [#401](https://github.com/japiohopman/the-vinyl-drop/issues/401) adds source tooling and regression coverage for that bounded phase. It first checks the production target and then validates that the live production Drizzle ledger contains exactly the 24 expected journal timestamps **and SHA-256 hashes of the corresponding checked-in SQL files** through 0023. The verifier accepts the exact LF or CRLF byte representation used by Drizzle on supported checkout platforms; it does not normalize SQL statements or ignore content changes. The read-only check is repeated immediately before Drizzle starts.
+- The new phase is schema-only. It does not provision `profile-avatars`, modify Storage policies, Auth settings, feature flags or Render, and it does not deploy the app.
+- Any production execution still requires a separate, explicit owner authorization and independent post-migration verification. The #351 avatar feature must not be deployed to an environment until its dedicated bucket settings and exact two owner-scoped policies are separately provisioned and verified.
+- Future Special Pressing / Non-Music schema work under #296 is a later migration, not part of 0024–0025. Issue #299 is a UI tutorial and has no current database migration requirement.

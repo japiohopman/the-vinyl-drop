@@ -78,12 +78,21 @@ function Invoke-PreflightCase {
     }
 }
 
+<#
+.SYNOPSIS
+Verifies the exact index range selected by each pinned production migration phase.
+
+.DESCRIPTION
+Checks the existing phase boundaries, the 0024-0025 phase, exclusion of
+future migrations, and fail-closed behavior for altered, missing, or duplicate journal entries.
+#>
 function Test-PinnedProductionMigrationPlans {
     . $migrationPlanPath
 
     $base = @(Get-ProductionMigrationEntries -Phase Base -JournalPath $journalPath)
     $complete = @(Get-ProductionMigrationEntries -Phase Complete -JournalPath $journalPath)
     $release = @(Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $journalPath)
+    $profileAndStyles = @(Get-ProductionMigrationEntries -Phase ProfileAndStyles -JournalPath $journalPath)
 
     $baseIndexes = @($base | ForEach-Object { [int]$_.idx })
     if ($base.Count -ne 6 -or ($baseIndexes -join ',') -cne '0,1,2,3,4,5' -or
@@ -108,13 +117,20 @@ function Test-PinnedProductionMigrationPlans {
         throw 'ReleaseCandidate phase did not select exactly indexes 20-23 (migrations 0020-0023) in order.'
     }
 
+    $profileAndStylesIndexes = @($profileAndStyles | ForEach-Object { [int]$_.idx })
+    if ($profileAndStyles.Count -ne 2 -or ($profileAndStylesIndexes -join ',') -cne '24,25' -or
+        $profileAndStyles[0].tag -cne '0024_profile_avatars_and_music_links' -or
+        $profileAndStyles[1].tag -cne '0025_add_release_styles') {
+        throw 'ProfileAndStyles phase did not select exactly indexes 24-25 (migrations 0024-0025) in order.'
+    }
+
     $journal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
-    # Index 24 is the first journal position outside the pinned 0020-0023 release phase.
+    # Index 26 is deliberately future/unapproved and must remain outside both release phases.
     $journal.entries += [pscustomobject]@{
-        idx = 24
+        idx = 26
         version = '7'
-        when = 1793850000000
-        tag = '0024_unapproved_future_migration'
+        when = 1794300000000
+        tag = '0026_unapproved_future_migration'
         breakpoints = $true
     }
 
@@ -122,8 +138,13 @@ function Test-PinnedProductionMigrationPlans {
     try {
         $journal | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $futureJournalPath
         $futureRelease = @(Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $futureJournalPath)
+        $futureProfileAndStyles = @(Get-ProductionMigrationEntries -Phase ProfileAndStyles -JournalPath $futureJournalPath)
         if ($futureRelease.Count -ne 4 -or @($futureRelease | Where-Object { $_.idx -gt 23 }).Count -ne 0) {
             throw 'ReleaseCandidate phase selected a later unapproved journal entry.'
+        }
+        $futureProfileAndStylesIndexes = @($futureProfileAndStyles | ForEach-Object { [int]$_.idx })
+        if ($futureProfileAndStyles.Count -ne 2 -or ($futureProfileAndStylesIndexes -join ',') -cne '24,25') {
+            throw 'ProfileAndStyles phase selected a later unapproved journal entry.'
         }
     }
     finally {
@@ -132,7 +153,7 @@ function Test-PinnedProductionMigrationPlans {
         }
     }
 
-    foreach ($driftIndex in 21, 22, 23) {
+    foreach ($driftIndex in 21, 22, 23, 24, 25) {
         $invalidJournalPath = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-invalid-journal-" + [guid]::NewGuid().ToString('N') + '.json')
         try {
             $invalidJournal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
@@ -140,18 +161,51 @@ function Test-PinnedProductionMigrationPlans {
             $invalidJournal | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $invalidJournalPath
             $threw = $false
             try {
-                Get-ProductionMigrationEntries -Phase ReleaseCandidate -JournalPath $invalidJournalPath | Out-Null
+                $phaseToCheck = if ($driftIndex -le 23) { 'ReleaseCandidate' } else { 'ProfileAndStyles' }
+                Get-ProductionMigrationEntries -Phase $phaseToCheck -JournalPath $invalidJournalPath | Out-Null
             }
             catch {
                 $threw = $true
             }
             if (-not $threw) {
-                throw "ReleaseCandidate phase accepted a replaced migration entry at index $driftIndex."
+                throw "$phaseToCheck accepted a replaced migration entry at index $driftIndex."
             }
         }
         finally {
             if (Test-Path -LiteralPath $invalidJournalPath) {
                 Remove-Item -LiteralPath $invalidJournalPath -Force
+            }
+        }
+    }
+
+    foreach ($affectedIndex in 24, 25) {
+        foreach ($case in 'missing', 'duplicate') {
+            $invalidJournalPath = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-$case-journal-" + [guid]::NewGuid().ToString('N') + '.json')
+            try {
+                $invalidJournal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
+                if ($case -eq 'missing') {
+                    $invalidJournal.entries = @($invalidJournal.entries | Where-Object { [int]$_.idx -ne $affectedIndex })
+                }
+                else {
+                    $entryToDuplicate = @($invalidJournal.entries | Where-Object { [int]$_.idx -eq $affectedIndex })[0]
+                    $invalidJournal.entries += $entryToDuplicate
+                }
+                $invalidJournal | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $invalidJournalPath
+                $threw = $false
+                try {
+                    Get-ProductionMigrationEntries -Phase ProfileAndStyles -JournalPath $invalidJournalPath | Out-Null
+                }
+                catch {
+                    $threw = $true
+                }
+                if (-not $threw) {
+                    throw "ProfileAndStyles accepted a $case journal entry at index $affectedIndex."
+                }
+            }
+            finally {
+                if (Test-Path -LiteralPath $invalidJournalPath) {
+                    Remove-Item -LiteralPath $invalidJournalPath -Force
+                }
             }
         }
     }
@@ -178,6 +232,96 @@ function Test-ReleaseCandidateStoragePreflightRunsBeforeDrizzle {
     }
 
     Write-Host 'PASS: ReleaseCandidate checks exact Storage policies before confirmation and again before Drizzle starts'
+}
+
+
+<#
+.SYNOPSIS
+Verifies that the production ledger baseline is checked before confirmation and before Drizzle.
+
+.DESCRIPTION
+Inspects the runner ordering and requires both read-only baseline checks to
+complete before the migration command can be invoked.
+#>
+function Test-ProfileAndStylesLedgerPreflightRunsBeforeDrizzle {
+    $runnerSource = Get-Content -LiteralPath $migrationRunnerPath -Raw
+    $preflightInvocation = '& $tsxPath (Join-Path (Get-Location) ''scripts/verifyProductionMigrationBaseline.ts'')'
+    $firstPreflight = $runnerSource.IndexOf($preflightInvocation)
+    $confirmation = $runnerSource.IndexOf('$confirmation = Read-Host')
+    $finalPreflight = $runnerSource.LastIndexOf($preflightInvocation)
+    $drizzleMigration = $runnerSource.IndexOf('& $drizzleKitPath migrate')
+
+    if ($firstPreflight -lt 0 -or $finalPreflight -le $firstPreflight) {
+        throw 'ProfileAndStyles must perform two read-only production ledger baseline checks.'
+    }
+    if ($firstPreflight -ge $confirmation -or $finalPreflight -le $confirmation) {
+        throw 'ProfileAndStyles must check the production ledger before confirmation and repeat it after confirmation.'
+    }
+    if ($finalPreflight -ge $drizzleMigration) {
+        throw 'The final production ledger baseline check must run immediately before Drizzle starts.'
+    }
+
+    Write-Host 'PASS: ProfileAndStyles validates the exact production ledger baseline twice before Drizzle'
+}
+
+<#
+.SYNOPSIS
+Verifies that the new phase stops safely when the local tsx binary is unavailable.
+
+.DESCRIPTION
+Runs the production runner in an isolated temporary directory and confirms it
+stops before asking for the production password or phase confirmation.
+#>
+function Test-ProfileAndStylesRunnerStopsWithoutLocalTsx {
+    $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-runner-no-tsx-" + [guid]::NewGuid().ToString('N'))
+    $locationPushed = $false
+
+    try {
+        New-Item -ItemType Directory -Path (Join-Path $tempRoot 'drizzle/meta') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $tempRoot 'scripts') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $tempRoot 'drizzle') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $tempRoot 'node_modules/.bin') -Force | Out-Null
+        Copy-Item -LiteralPath $migrationPlanPath -Destination (Join-Path $tempRoot 'scripts/productionMigrationPlan.ps1')
+        Copy-Item -LiteralPath $journalPath -Destination (Join-Path $tempRoot 'drizzle/meta/_journal.json')
+        Set-Content -LiteralPath (Join-Path $tempRoot 'package.json') -Value '{}' -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle.config.ts') -Value 'export default {}' -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot 'check-production-db-target.ps1') -Value '# test stub' -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot 'scripts/verifyProductionMigrationBaseline.ts') -Value '// test stub' -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle/0024_profile_avatars_and_music_links.sql') -Value '-- test stub' -NoNewline
+        Set-Content -LiteralPath (Join-Path $tempRoot 'drizzle/0025_add_release_styles.sql') -Value '-- test stub' -NoNewline
+
+        $drizzleBinary = if ($env:OS -eq 'Windows_NT') { 'drizzle-kit.cmd' } else { 'drizzle-kit' }
+        Set-Content -LiteralPath (Join-Path $tempRoot "node_modules/.bin/$drizzleBinary") -Value '# test stub' -NoNewline
+        # Intentionally do not create any local tsx binary.
+
+        Push-Location $tempRoot
+        $locationPushed = $true
+        $output = & $pwsh.Source -NoProfile -File $migrationRunnerPath -Phase ProfileAndStyles *>&1 | Out-String
+        $actualExitCode = $LASTEXITCODE
+
+        if ($actualExitCode -eq 0) {
+            throw "ProfileAndStyles runner unexpectedly continued without the lockfile-installed local tsx binary. Output: $output"
+        }
+        if ($output -notmatch 'lockfile-installed local tsx binary is missing') {
+            throw "ProfileAndStyles runner did not stop with the expected local-tsx error. Output: $output"
+        }
+        if ($output -match 'Enter the production database password|APPLY-PRODUCTION-PROFILE-AND-STYLES') {
+            throw 'ProfileAndStyles runner prompted for production credentials or confirmation before locating local tsx.'
+        }
+        if ($output.Contains($testPassword)) {
+            throw 'ProfileAndStyles runner unexpectedly printed the test connection password.'
+        }
+
+        Write-Host 'PASS: ProfileAndStyles stops before password entry when local tsx is missing'
+    }
+    finally {
+        if ($locationPushed) {
+            Pop-Location
+        }
+        if (Test-Path -LiteralPath $tempRoot) {
+            Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 function Test-MigrationRunnerStopsWithoutLocalDrizzleKit {
@@ -228,6 +372,7 @@ Push-Location $repositoryRoot
 try {
     Test-PinnedProductionMigrationPlans
     Test-ReleaseCandidateStoragePreflightRunsBeforeDrizzle
+    Test-ProfileAndStylesLedgerPreflightRunsBeforeDrizzle
     Invoke-PreflightCase -Name 'approved production project with TLS' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 0
     Invoke-PreflightCase -Name 'known staging project is rejected' -ProjectRef 'xuhzhdjmgvqzjxijmksu' -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1
     Invoke-PreflightCase -Name 'valid-looking but unapproved project is rejected' -ProjectRef 'aaaaaaaaaaaaaaaaaaaa' -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1
@@ -239,6 +384,7 @@ try {
     Invoke-PreflightCase -Name 'SUPABASE_URL port override is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1 -SupabaseUrl 'https://anxhmlalxjvatrufcjei.supabase.co:8443'
     Invoke-PreflightCase -Name 'SUPABASE_URL path prefix is rejected' -ProjectRef $expectedProductionRef -PoolerHost $expectedProductionHost -SslMode 'require' -ExpectedExitCode 1 -SupabaseUrl 'https://anxhmlalxjvatrufcjei.supabase.co/prefix/'
     Test-MigrationRunnerStopsWithoutLocalDrizzleKit
+    Test-ProfileAndStylesRunnerStopsWithoutLocalTsx
 }
 finally {
     Pop-Location
