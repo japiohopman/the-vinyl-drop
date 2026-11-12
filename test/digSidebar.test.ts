@@ -69,35 +69,27 @@ describe('Dig unified sidebar and first-load layout integration (Issue #393)', (
     });
   });
 
-  it('renders dedicated Dig sidebar with Records and People tabs and no unstyled Browse explorer', async () => {
+  it('renders the Records-only Dig filter sidebar without exposing deferred People search', async () => {
     const res = await request(app).get('/dig');
 
     expect(res.status).toBe(200);
-    // Asserts presence of dedicated Dig sidebar
     expect(res.text).toContain('class="dig-sidebar"');
-    expect(res.text).toContain('role="tablist" aria-label="Dig sidebar view"');
-    expect(res.text).toContain('id="tab-records" aria-selected="true"');
-    expect(res.text).toContain('id="tab-people" aria-selected="false"');
-    expect(res.text).toContain('id="panel-records" role="tabpanel"');
-    expect(res.text).toContain('id="panel-people" role="tabpanel"');
-
-    // Asserts no unstyled Browse catalogue explorer markup is emitted in Dig
+    expect(res.text).toContain('id="dig-sidebar-drawer" aria-label="Dig sidebar"');
+    expect(res.text).not.toContain('tab-people');
+    expect(res.text).not.toContain('panel-people');
+    expect(res.text).not.toContain('href="/people"');
+    expect(res.text).not.toContain('/api/people-search');
+    expect(res.text).not.toContain('/api/people-suggestions');
     expect(res.text).not.toContain('browse-catalogue-explorer');
     expect(res.text).not.toContain('browse-explorer-layout');
-
-    // Asserts script bundle for dig-sidebar is included
     expect(res.text).toContain('/js/dig-sidebar.js');
-
-    // Asserts stylesheet browse-dig-controls.css is loaded
     expect(res.text).toContain('/css/browse-dig-controls.css');
-    expect(res.text).toMatch(/class="[^"]*\bdig-filter-form\b[^"]*"/);
+    expect(res.text).toMatch(/class="[^"]*\\bdig-filter-form\\b[^"]*"/);
     expect(res.text).not.toContain('dig-crate-filter-form');
     expect(res.text).not.toContain('data-dig-filter-dialog');
     expect(res.text).not.toContain('data-dig-filter-open');
-    expect((res.text.match(/class="[^"]*\bdig-filter-form\b[^"]*"/g) || []).length).toBe(1);
+    expect((res.text.match(/class="[^"]*\\bdig-filter-form\\b[^"]*"/g) || []).length).toBe(1);
     expect(res.text).toContain('id="dig-filter-query" name="q"');
-    expect(res.text).toContain('href="/people" role="tab" id="tab-people"');
-    expect(res.text).toContain('id="tab-people" aria-selected="false" aria-controls="panel-people" class="dig-tab-btn" tabindex="0"');
   });
 
   it('keeps the historical /browse/dig URL on the canonical responsive sidebar', async () => {

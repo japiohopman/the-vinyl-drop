@@ -139,18 +139,7 @@
         <button type="button" class="dig-sidebar-close" data-dig-drawer-close aria-label="Close sidebar">×</button>
       </div>
 
-      <!-- Records / People Tab Switcher -->
-      <div class="dig-sidebar-tabs" role="tablist" aria-label="Dig sidebar view">
-        <button type="button" role="tab" id="tab-records" aria-selected="true" aria-controls="panel-records" class="dig-tab-btn is-active" tabindex="0">
-          Records
-        </button>
-        <a href="/people" role="tab" id="tab-people" aria-selected="false" aria-controls="panel-people" class="dig-tab-btn" tabindex="0">
-          People
-        </a>
-      </div>
-
-      <!-- Tab Panel: Records -->
-      <div id="panel-records" role="tabpanel" aria-labelledby="tab-records" class="dig-tab-panel is-active">
+      <!-- Records-only catalogue filters -->
         <div class="dig-sidebar-filter-panel">
         <!-- Consolidated Filter Form -->
         <form action="/dig" method="GET" class="filter-form browse-filter-form dig-filter-form" data-dig-filter-form>
@@ -290,32 +279,6 @@
           </div>
         </form>
         </div>
-      </div>
-
-      <!-- Tab Panel: People -->
-      <div id="panel-people" role="tabpanel" aria-labelledby="tab-people" class="dig-tab-panel" hidden>
-        <div class="dig-people-search" data-dig-people-search>
-          <form class="dig-people-form" action="/people" method="GET" role="search" data-dig-people-form>
-            <label for="dig-people-input" class="dig-people-label">Find collectors &amp; sellers</label>
-            <div class="form-search-control">
-              <%- include('../partials/icon', { name: 'search', size: '1rem', ariaHidden: true }) %>
-              <input type="search" id="dig-people-input" name="q" class="form-control" placeholder="Username or display name" maxlength="50" autocomplete="off" aria-describedby="dig-people-status" aria-controls="dig-people-suggestions" data-dig-people-input>
-            </div>
-            <ul id="dig-people-suggestions" class="dig-people-suggestions" aria-label="People suggestions" hidden></ul>
-            <p id="dig-people-status" class="dig-people-status" role="status" aria-live="polite" aria-atomic="true">Enter at least 2 characters to search.</p>
-            <button type="submit" class="btn btn-primary btn-sm dig-people-submit">Search People</button>
-          </form>
-
-          <div class="dig-people-results" data-dig-people-results aria-live="polite">
-            <!-- People results injected here via progressive enhancement -->
-            <p class="dig-people-prompt">Find community members without leaving Dig.</p>
-          </div>
-
-          <div class="dig-people-fallback">
-            <a href="/people" class="dig-people-fallback-link">Open full People directory &rarr;</a>
-          </div>
-        </div>
-      </div>
     </div>
   </aside>
 

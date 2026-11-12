@@ -59,9 +59,6 @@
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/profile-editor.css') : '/css/profile-editor.css' %>">
   <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-profile-editor.css') : '/css/style-after-profile-editor.css' %>">
-  <% if (typeof currentPath !== 'undefined' && ['/people', '/browse', '/search', '/dig', '/browse/dig'].includes(currentPath)) { %>
-    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/people-search.css') : '/css/people-search.css' %>">
-  <% } %>
   <% if (typeof currentPath !== 'undefined' && currentPath === '/browse') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/browse-catalogue-explorer.css') : '/css/browse-catalogue-explorer.css' %>">
   <% } %>
@@ -94,9 +91,6 @@
   <script src="/js/listing-comments-disclosure.js" defer></script>
   <script src="/js/messaging-widget.js" defer></script>
   <script src="/js/pwa-registration.js" defer></script>
-  <% if (typeof currentPath !== 'undefined' && currentPath === '/people') { %>
-    <script src="/js/people-search.js" defer></script>
-  <% } %>
   <% if (typeof currentPath !== 'undefined' && (currentPath === '/dig' || currentPath === '/browse/dig')) { %>
     <script src="/js/dig-sidebar.js" defer></script>
   <% } %>
