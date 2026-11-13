@@ -68,9 +68,24 @@ export const updateListingDetailsSchema = updateListingSchema.extend({
   specialPressingCharacteristics: specialPressingCharacteristicsInput.optional(),
   specialPressingDetails: z.string().trim().max(1000, 'Special Pressing details cannot exceed 1000 characters').nullable().optional(),
   releaseContentType: z.enum(['music', 'non_music']).optional(),
+  originalReleaseContentType: z.enum(['music', 'non_music']).optional(),
 }).superRefine((data, context) => {
+  if (data.releaseContentType !== undefined && data.originalReleaseContentType === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['originalReleaseContentType'],
+      message: 'The originally loaded Release content type is required.',
+    });
+  }
   const includesSpecialPressing = data.specialPressing !== undefined || data.specialPressingCharacteristics !== undefined || data.specialPressingDetails !== undefined;
   if (!includesSpecialPressing) return;
+  if (data.specialPressing === undefined) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['specialPressing'],
+      message: 'Special Pressing changes require the Special Pressing checkbox to be set.',
+    });
+  }
   const selected = data.specialPressingCharacteristics || [];
   if (data.specialPressing === true && selected.length === 0) context.addIssue({ code: z.ZodIssueCode.custom, path: ['specialPressingCharacteristics'], message: 'Choose at least one Special Pressing characteristic.' });
   if (data.specialPressing === false && (selected.length > 0 || Boolean(data.specialPressingDetails?.trim()))) context.addIssue({ code: z.ZodIssueCode.custom, path: ['specialPressing'], message: 'Special Pressing details require Special Pressing to be selected.' });

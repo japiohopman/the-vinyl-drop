@@ -828,10 +828,7 @@ export async function updateListing(
   dbOverride?: DbInstance
 ): Promise<Listing> {
   const existingListing = await findListingById(listingId, dbOverride);
-  if (!existingListing) {
-    throw new NotFoundError('Listing not found');
-  }
-
+  if (!existingListing) throw new NotFoundError('Listing not found');
   if (existingListing.sellerId !== requestingUserId) {
     throw new AuthorizationError('You are not authorized to update this listing');
   }
@@ -841,14 +838,12 @@ export async function updateListing(
     const issueMsg = parseResult.error.issues.map((i) => i.message).join('; ');
     throw new ValidationError(`Invalid listing update input: ${issueMsg}`);
   }
-
   const data = parseResult.data;
 
   const targetStatus = data.status || existingListing.status;
   const targetPrice = data.price !== undefined ? data.price : existingListing.price;
   const targetTradeAvailable =
     data.tradeAvailable !== undefined ? data.tradeAvailable : existingListing.tradeAvailable;
-
   validateListingTransition({
     currentStatus: existingListing.status,
     targetStatus,
@@ -856,58 +851,91 @@ export async function updateListing(
     tradeAvailable: targetTradeAvailable,
   });
 
-  // Seller-confirmed copy attributes remain on the owned PhysicalCopy, never the shared Release.
-  if (data.mediaCondition || data.sleeveCondition || data.notes !== undefined ||
-      data.specialPressing !== undefined || data.specialPressingCharacteristics !== undefined || data.specialPressingDetails !== undefined) {
-    const physicalCopy = await findPhysicalCopyById(existingListing.physicalCopyId, dbOverride);
-    if (!physicalCopy) throw new NotFoundError('Associated physical copy not found');
-    if (physicalCopy.ownerId !== requestingUserId) {
-      throw new AuthorizationError('You are not authorized to update this physical copy');
+  const hasPhysicalCopyChanges =
+    Boolean(data.mediaCondition) ||
+    Boolean(data.sleeveCondition) ||
+    data.notes !== undefined ||
+    data.specialPressing !== undefined ||
+    data.specialPressingCharacteristics !== undefined ||
+    data.specialPressingDetails !== undefined;
+
+  // Do not let an unchanged value from a stale form overwrite a newer shared Release classification.
+  const shouldUpdateReleaseContentType =
+    data.releaseContentType !== undefined &&
+    data.originalReleaseContentType !== undefined &&
+    data.releaseContentType !== data.originalReleaseContentType;
+
+  const db = dbOverride || getDb();
+  return db.transaction(async (tx) => {
+    const txDb = tx as unknown as DbInstance;
+
+    if (hasPhysicalCopyChanges || shouldUpdateReleaseContentType) {
+      const physicalCopy = await findPhysicalCopyById(existingListing.physicalCopyId, txDb);
+      if (!physicalCopy) throw new NotFoundError('Associated physical copy not found');
+
+      if (hasPhysicalCopyChanges && physicalCopy.ownerId !== requestingUserId) {
+        throw new AuthorizationError('You are not authorized to update this physical copy');
+      }
+      if (shouldUpdateReleaseContentType && physicalCopy.ownerId !== requestingUserId) {
+        throw new AuthorizationError('You are not authorized to update this release');
+      }
+
+      if (hasPhysicalCopyChanges) {
+        const updatedCopy = await updatePhysicalCopy(
+          physicalCopy.id,
+          {
+            ...(data.mediaCondition && { mediaCondition: data.mediaCondition }),
+            ...(data.sleeveCondition && { sleeveCondition: data.sleeveCondition }),
+            ...(data.notes !== undefined && { notes: data.notes }),
+            ...(data.specialPressing !== undefined && { specialPressing: data.specialPressing }),
+            ...(data.specialPressingCharacteristics !== undefined && { specialPressingCharacteristics: data.specialPressingCharacteristics }),
+            ...(data.specialPressingDetails !== undefined && {
+              specialPressingDetails: (data.specialPressing ?? physicalCopy.specialPressing)
+                ? (data.specialPressingDetails || null)
+                : null,
+            }),
+            ...(data.specialPressing === false && { specialPressingCharacteristics: [], specialPressingDetails: null }),
+          },
+          txDb
+        );
+        if (!updatedCopy) throw new NotFoundError('Associated physical copy not found');
+      }
+
+      if (shouldUpdateReleaseContentType) {
+        const targetContentType = data.releaseContentType!;
+        const originalContentType = data.originalReleaseContentType!;
+        const updatedRelease = await updateReleaseContentType(
+          physicalCopy.releaseId,
+          targetContentType,
+          txDb,
+          originalContentType
+        );
+        if (!updatedRelease) {
+          const currentRelease = await findReleaseById(physicalCopy.releaseId, txDb);
+          if (!currentRelease) throw new NotFoundError('Associated release not found');
+          if (currentRelease.contentType !== targetContentType) {
+            throw new ValidationError(
+              'The shared release content type changed while you were editing. Reload the listing and review the current value before saving.'
+            );
+          }
+        }
+      }
     }
 
-    await updatePhysicalCopy(
-      physicalCopy.id,
+    const updated = await updateListingInRepo(
+      listingId,
       {
-        ...(data.mediaCondition && { mediaCondition: data.mediaCondition }),
-        ...(data.sleeveCondition && { sleeveCondition: data.sleeveCondition }),
-        ...(data.notes !== undefined && { notes: data.notes }),
-        ...(data.specialPressing !== undefined && { specialPressing: data.specialPressing }),
-        ...(data.specialPressingCharacteristics !== undefined && { specialPressingCharacteristics: data.specialPressingCharacteristics }),
-        ...(data.specialPressingDetails !== undefined && { specialPressingDetails: data.specialPressing ? (data.specialPressingDetails || null) : null }),
-        ...(data.specialPressing === false && { specialPressingCharacteristics: [], specialPressingDetails: null }),
+        ...(data.price !== undefined && { price: data.price ?? null }),
+        ...(data.currency !== undefined && { currency: data.currency }),
+        ...(data.tradeAvailable !== undefined && { tradeAvailable: data.tradeAvailable }),
+        ...(data.description !== undefined && { description: data.description || null }),
+        ...(data.status !== undefined && { status: data.status }),
       },
-      dbOverride
+      txDb
     );
-  }
-
-  // Content classification is shared at Release level but can only be corrected by its copy owner.
-  if (data.releaseContentType !== undefined) {
-    const physicalCopy = await findPhysicalCopyById(existingListing.physicalCopyId, dbOverride);
-    if (!physicalCopy) throw new NotFoundError('Associated physical copy not found');
-    if (physicalCopy.ownerId !== requestingUserId) {
-      throw new AuthorizationError('You are not authorized to update this release');
-    }
-    const updatedRelease = await updateReleaseContentType(physicalCopy.releaseId, data.releaseContentType, dbOverride);
-    if (!updatedRelease) throw new NotFoundError('Associated release not found');
-  }
-
-  const updated = await updateListingInRepo(
-    listingId,
-    {
-      ...(data.price !== undefined && { price: data.price ?? null }),
-      ...(data.currency !== undefined && { currency: data.currency }),
-      ...(data.tradeAvailable !== undefined && { tradeAvailable: data.tradeAvailable }),
-      ...(data.description !== undefined && { description: data.description || null }),
-      ...(data.status !== undefined && { status: data.status }),
-    },
-    dbOverride
-  );
-
-  if (!updated) {
-    throw new Error('Failed to update listing');
-  }
-
-  return updated;
+    if (!updated) throw new Error('Failed to update listing');
+    return updated;
+  });
 }
 
 export async function addPhotoToListing(

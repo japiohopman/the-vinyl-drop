@@ -474,6 +474,7 @@
     <!-- Details Update Form -->
     <form action="/listings/<%= listing.id %>/edit" method="POST" class="edit-listing-form" novalidate>
       <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-4);">Listing Details</h2>
+      <input type="hidden" name="originalReleaseContentType" value="<%= form.values.originalReleaseContentType || release.contentType || 'music' %>" />
 
       <section class="release-content-type-editor" aria-labelledby="releaseContentTypeTitle">
         <h3 id="releaseContentTypeTitle">Release content</h3>

@@ -29,7 +29,7 @@ ALTER TABLE "physical_copies"
       "special_pressing" = true
       AND cardinality("special_pressing_characteristics") > 0
     )
-  );--> statement-breakpoint
+  ) NOT VALID;--> statement-breakpoint
 COMMENT ON COLUMN "releases"."content_type" IS
   'Seller-confirmed content classification for the shared release; defaults to music and may be non-music.';--> statement-breakpoint
 COMMENT ON COLUMN "physical_copies"."special_pressing" IS

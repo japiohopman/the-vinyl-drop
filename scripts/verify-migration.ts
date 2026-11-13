@@ -102,6 +102,21 @@ export async function verifyMigrations(): Promise<void> {
   const db = drizzle(pg);
   await migrate(db, { migrationsFolder: drizzleDir });
 
+  const specialPressingConstraint = await pg.query<{ convalidated: boolean }>(
+    "SELECT convalidated FROM pg_constraint WHERE conname = 'physical_copies_special_pressing_check' AND conrelid = 'public.physical_copies'::regclass;"
+  );
+  if (specialPressingConstraint.rows.length !== 1 || specialPressingConstraint.rows[0].convalidated !== false) {
+    throw new Error('Special Pressing CHECK must be installed as NOT VALID during the migration');
+  }
+  // Validate after the Drizzle migration transaction has committed, not under its migration lock.
+  await pg.exec('ALTER TABLE "physical_copies" VALIDATE CONSTRAINT "physical_copies_special_pressing_check";');
+  const validatedSpecialPressingConstraint = await pg.query<{ convalidated: boolean }>(
+    "SELECT convalidated FROM pg_constraint WHERE conname = 'physical_copies_special_pressing_check' AND conrelid = 'public.physical_copies'::regclass;"
+  );
+  if (validatedSpecialPressingConstraint.rows.length !== 1 || validatedSpecialPressingConstraint.rows[0].convalidated !== true) {
+    throw new Error('Special Pressing CHECK could not be validated after the migration committed');
+  }
+
   const catalogueExtensions = await pg.query<{ extname: string; schema_name: string }>(
     "SELECT e.extname, n.nspname AS schema_name FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'pg_trgm' ORDER BY e.extname;"
   );

@@ -87,6 +87,7 @@ describe('Special Pressing and Release content classification', () => {
     });
     const parsedUpdate = updateListingDetailsSchema.parse({
       releaseContentType: 'non_music',
+      originalReleaseContentType: 'music',
       specialPressing: true,
       specialPressingCharacteristics: ['picture_disc'],
       specialPressingDetails: 'Printed image on the vinyl surface.',
@@ -95,6 +96,22 @@ describe('Special Pressing and Release content classification', () => {
     expect(parsedRelease.contentType).toBe('non_music');
     expect(parsedUpdate.releaseContentType).toBe('non_music');
     expect(parsedUpdate.specialPressingCharacteristics).toEqual(['picture_disc']);
+  });
+
+  it('requires the originally loaded Release type when a listing edit submits a shared classification', () => {
+    expect(updateListingDetailsSchema.safeParse({ releaseContentType: 'non_music' }).success).toBe(false);
+    expect(updateListingDetailsSchema.safeParse({
+      releaseContentType: 'non_music',
+      originalReleaseContentType: 'music',
+    }).success).toBe(true);
+  });
+
+  it('requires the Special Pressing checkbox when a partial update supplies pressing details', () => {
+    expect(updateListingDetailsSchema.safeParse({ specialPressingDetails: 'A shaped record' }).success).toBe(false);
+    expect(updateListingDetailsSchema.safeParse({
+      specialPressing: true,
+      specialPressingCharacteristics: ['shaped'],
+    }).success).toBe(true);
   });
 
   it('renders the Special Pressing marker and selected characteristics on listing cards', async () => {

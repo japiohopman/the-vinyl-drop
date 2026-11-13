@@ -192,6 +192,7 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
         specialPressingCharacteristics: (details.physicalCopy.specialPressingCharacteristics || []).join(','),
         specialPressingDetails: details.physicalCopy.specialPressingDetails || '',
         releaseContentType: details.release.contentType || 'music',
+        originalReleaseContentType: details.release.contentType || 'music',
       },
       fieldErrors: {},
       generalErrors: [],
@@ -250,6 +251,7 @@ export async function postEditListing(req: Request, res: Response, next: NextFun
       specialPressingCharacteristics: req.body.specialPressingCharacteristics,
       specialPressingDetails: req.body.specialPressingDetails,
       releaseContentType: req.body.releaseContentType,
+      originalReleaseContentType: req.body.originalReleaseContentType,
     });
 
     res.redirect(`/listings/${listingId}/preview`);
