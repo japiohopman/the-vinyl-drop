@@ -558,3 +558,27 @@
   align-self: end;
   padding: var(--space-2) 0;
 }
+
+/* Classification markers in the compact mobile Dig crate cards. */
+.dig-listing-classifications {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.dig-classification-badge,
+.dig-classification-characteristic {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.35rem;
+  padding: 0.15rem 0.45rem;
+  border: var(--border-thin);
+  border-radius: 999px;
+  background: var(--color-surface-card);
+  color: var(--color-ink);
+  font-size: var(--font-size-2xs);
+  font-weight: 700;
+  line-height: 1.2;
+}

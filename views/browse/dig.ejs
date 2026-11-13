@@ -87,6 +87,18 @@
               <div class="dig-listing-meta">
                 <h2><%= item.title %></h2>
                 <p class="dig-artist"><%= item.artist %><% if (item.releaseYear) { %> · <%= item.releaseYear %><% } %></p>
+                <% if (item.contentType === 'non_music' || item.specialPressing) { %>
+                  <div class="dig-listing-classifications" aria-label="Release and pressing characteristics">
+                    <% if (item.contentType === 'non_music') { %><span class="dig-classification-badge">Non-Music</span><% } %>
+                    <% if (item.specialPressing) { %>
+                      <span class="dig-classification-badge">Special Pressing</span>
+                      <% const digSpecialPressingLabels = { picture_disc: 'Picture Disc', solid_colour: 'Solid colour', translucent: 'Translucent', multi_colour: 'Multi-colour', splatter: 'Splatter', marble: 'Marble', glitter: 'Glitter', glow_in_the_dark: 'Glow-in-the-dark', metallic: 'Metallic', shaped: 'Shaped' }; %>
+                      <% (item.specialPressingCharacteristics || []).forEach(function(value) { %>
+                        <span class="dig-classification-characteristic"><%= digSpecialPressingLabels[value] || value %></span>
+                      <% }); %>
+                    <% } %>
+                  </div>
+                <% } %>
               </div>
 
               <div class="dig-sleeve-interaction">
