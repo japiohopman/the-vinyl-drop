@@ -55,6 +55,9 @@ export async function createPhysicalCopy(
       mediaCondition: data.mediaCondition,
       sleeveCondition: data.sleeveCondition,
       notes: data.notes || null,
+      specialPressing: data.specialPressing,
+      specialPressingCharacteristics: data.specialPressing ? data.specialPressingCharacteristics : [],
+      specialPressingDetails: data.specialPressing ? (data.specialPressingDetails || null) : null,
     },
     dbOverride
   );
@@ -89,6 +92,14 @@ export async function updatePhysicalCopy(
       ...(data.mediaCondition && { mediaCondition: data.mediaCondition }),
       ...(data.sleeveCondition && { sleeveCondition: data.sleeveCondition }),
       ...(data.notes !== undefined && { notes: data.notes || null }),
+      ...(data.specialPressing !== undefined && { specialPressing: data.specialPressing }),
+      ...(data.specialPressingCharacteristics !== undefined && { specialPressingCharacteristics: data.specialPressingCharacteristics }),
+      ...(data.specialPressingDetails !== undefined && {
+        specialPressingDetails: (data.specialPressing ?? existingCopy.specialPressing)
+          ? (data.specialPressingDetails || null)
+          : null,
+      }),
+      ...(data.specialPressing === false && { specialPressingCharacteristics: [], specialPressingDetails: null }),
     },
     dbOverride
   );

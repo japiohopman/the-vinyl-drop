@@ -1,10 +1,12 @@
 import { check, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { releaseContentTypeEnum } from './enums';
 export const releases = pgTable(
   'releases',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     artist: text('artist').notNull(),
+    contentType: releaseContentTypeEnum('content_type').notNull().default('music'),
     title: text('title').notNull(),
     label: text('label'),
     catalogueNumber: text('catalogue_number'),

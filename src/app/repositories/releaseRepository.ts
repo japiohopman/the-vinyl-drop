@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { getDb } from '../../db';
 import { NewRelease, Release, releases } from '../../db/schema/releases';
 
@@ -14,6 +14,20 @@ export async function createRelease(data: NewRelease, dbOverride?: DbInstance): 
   const db = dbOverride || getDb();
   const results = await db.insert(releases).values(data).returning();
   return results[0];
+}
+
+export async function updateReleaseContentType(
+  id: string,
+  contentType: 'music' | 'non_music',
+  dbOverride?: DbInstance,
+  expectedContentType?: 'music' | 'non_music'
+): Promise<Release | null> {
+  const db = dbOverride || getDb();
+  const whereClause = expectedContentType === undefined
+    ? eq(releases.id, id)
+    : and(eq(releases.id, id), eq(releases.contentType, expectedContentType));
+  const results = await db.update(releases).set({ contentType, updatedAt: new Date() }).where(whereClause).returning();
+  return results[0] || null;
 }
 
 export async function updateReleaseYouTubeVideoId(

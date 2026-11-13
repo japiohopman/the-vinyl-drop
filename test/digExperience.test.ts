@@ -695,6 +695,7 @@ describe('searchDigListings PGlite database integration', () => {
       '0022_listing_photo_source_versions.sql',
       '0024_profile_avatars_and_music_links.sql',
       '0025_add_release_styles.sql',
+      '0026_release_content_type_and_special_pressing.sql',
     ];
 
     for (const filename of migrationsToApply) {
@@ -817,6 +818,9 @@ describe('GET /browse/dig HTTP route integration', () => {
         isTrade: false,
         mediaCondition: 'VG+',
         sleeveCondition: 'VG+',
+        specialPressing: true,
+        specialPressingCharacteristics: ['shaped'],
+        contentType: 'non_music',
         sellerUsername: 'funk_master',
         sellerLocation: 'Detroit',
         url: '/listings/listing-101',
@@ -845,6 +849,9 @@ describe('GET /browse/dig HTTP route integration', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('https://storage.example/front-cover.webp');
     expect(response.text).toContain('https://storage.example/back-cover.webp');
+    expect(response.text).toContain('Special Pressing');
+    expect(response.text).toContain('Shaped');
+    expect(response.text).toContain('Non-Music');
     expect(response.text).not.toContain('Front cover not photographed');
     expect(response.text).not.toContain('Back cover not photographed');
 

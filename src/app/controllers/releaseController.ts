@@ -173,6 +173,7 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
       catalogueNumber?: string;
       releaseYear?: string;
       format?: string;
+      contentType?: string;
       barcode?: string;
       genre?: string;
       styles?: string[];
@@ -185,6 +186,7 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
     }> = {
       values: {
         format: 'LP',
+        contentType: 'music',
       },
       fieldErrors: {},
       generalErrors: [],
@@ -206,7 +208,7 @@ export async function getCreateCustomReleasePage(req: Request, res: Response, ne
 export async function postCreateCustomRelease(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const {
-      artist, title, label, catalogueNumber, releaseYear, format, barcode, genre, style, styles, country, countryCode, formatCharacteristics,
+      artist, title, label, catalogueNumber, releaseYear, format, contentType, barcode, genre, style, styles, country, countryCode, formatCharacteristics,
       coverArtUrl: submittedCoverArtUrl,
       discogsExternalId: submittedDiscogsExternalId,
     } = req.body;
@@ -244,6 +246,7 @@ export async function postCreateCustomRelease(req: Request, res: Response, next:
         catalogueNumber: catalogueNumber || undefined,
         releaseYear: parsedYear && !isNaN(parsedYear) ? parsedYear : undefined,
         format: format || 'LP',
+        contentType: contentType === 'non_music' ? 'non_music' : 'music',
         barcode: barcode || undefined,
         genre: genre || undefined,
         country: country || undefined,

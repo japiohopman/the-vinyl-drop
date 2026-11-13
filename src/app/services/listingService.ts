@@ -77,7 +77,7 @@ import {
   deletePhysicalCopy,
 } from '../repositories/physicalCopyRepository';
 import { findProfileById } from '../repositories/profileRepository';
-import { findReleaseById } from '../repositories/releaseRepository';
+import { findReleaseById, updateReleaseContentType } from '../repositories/releaseRepository';
 import { ProcessedImage, preserveListingPhotoSource, processAndValidateImage, readImageDimensions } from '../utils/imageProcessor';
 import {
   deleteListingPhotoFromStorage,
@@ -273,6 +273,9 @@ function recordToListingCardViewModel(record: JoinedListingRecord | ListingSearc
     isTrade: record.listing.tradeAvailable,
     mediaCondition: record.physicalCopy.mediaCondition,
     sleeveCondition: record.physicalCopy.sleeveCondition,
+    specialPressing: record.physicalCopy.specialPressing,
+    specialPressingCharacteristics: record.physicalCopy.specialPressingCharacteristics,
+    contentType: record.release.contentType,
     imageUrl,
     fallbackImageUrl,
     imageAlt: record.primaryPhotoPath
@@ -794,6 +797,9 @@ export async function createListingFromRelease(
         mediaCondition: data.mediaCondition,
         sleeveCondition: data.sleeveCondition,
         notes: data.notes || null,
+        specialPressing: data.specialPressing,
+        specialPressingCharacteristics: data.specialPressing ? data.specialPressingCharacteristics : [],
+        specialPressingDetails: data.specialPressing ? (data.specialPressingDetails || null) : null,
       },
       tx as unknown as DbInstance
     );
@@ -822,10 +828,7 @@ export async function updateListing(
   dbOverride?: DbInstance
 ): Promise<Listing> {
   const existingListing = await findListingById(listingId, dbOverride);
-  if (!existingListing) {
-    throw new NotFoundError('Listing not found');
-  }
-
+  if (!existingListing) throw new NotFoundError('Listing not found');
   if (existingListing.sellerId !== requestingUserId) {
     throw new AuthorizationError('You are not authorized to update this listing');
   }
@@ -835,14 +838,12 @@ export async function updateListing(
     const issueMsg = parseResult.error.issues.map((i) => i.message).join('; ');
     throw new ValidationError(`Invalid listing update input: ${issueMsg}`);
   }
-
   const data = parseResult.data;
 
   const targetStatus = data.status || existingListing.status;
   const targetPrice = data.price !== undefined ? data.price : existingListing.price;
   const targetTradeAvailable =
     data.tradeAvailable !== undefined ? data.tradeAvailable : existingListing.tradeAvailable;
-
   validateListingTransition({
     currentStatus: existingListing.status,
     targetStatus,
@@ -850,39 +851,91 @@ export async function updateListing(
     tradeAvailable: targetTradeAvailable,
   });
 
-  // If physical copy attributes are updated, update physical copy record via Zod validated values
-  if (data.mediaCondition || data.sleeveCondition || data.notes !== undefined) {
-    const physicalCopy = await findPhysicalCopyById(existingListing.physicalCopyId, dbOverride);
-    if (physicalCopy) {
-      await updatePhysicalCopy(
-        physicalCopy.id,
-        {
-          ...(data.mediaCondition && { mediaCondition: data.mediaCondition }),
-          ...(data.sleeveCondition && { sleeveCondition: data.sleeveCondition }),
-          ...(data.notes !== undefined && { notes: data.notes }),
-        },
-        dbOverride
-      );
+  const hasPhysicalCopyChanges =
+    Boolean(data.mediaCondition) ||
+    Boolean(data.sleeveCondition) ||
+    data.notes !== undefined ||
+    data.specialPressing !== undefined ||
+    data.specialPressingCharacteristics !== undefined ||
+    data.specialPressingDetails !== undefined;
+
+  // Do not let an unchanged value from a stale form overwrite a newer shared Release classification.
+  const shouldUpdateReleaseContentType =
+    data.releaseContentType !== undefined &&
+    data.originalReleaseContentType !== undefined &&
+    data.releaseContentType !== data.originalReleaseContentType;
+
+  const db = dbOverride || getDb();
+  return db.transaction(async (tx) => {
+    const txDb = tx as unknown as DbInstance;
+
+    if (hasPhysicalCopyChanges || shouldUpdateReleaseContentType) {
+      const physicalCopy = await findPhysicalCopyById(existingListing.physicalCopyId, txDb);
+      if (!physicalCopy) throw new NotFoundError('Associated physical copy not found');
+
+      if (hasPhysicalCopyChanges && physicalCopy.ownerId !== requestingUserId) {
+        throw new AuthorizationError('You are not authorized to update this physical copy');
+      }
+      if (shouldUpdateReleaseContentType && physicalCopy.ownerId !== requestingUserId) {
+        throw new AuthorizationError('You are not authorized to update this release');
+      }
+
+      if (hasPhysicalCopyChanges) {
+        const updatedCopy = await updatePhysicalCopy(
+          physicalCopy.id,
+          {
+            ...(data.mediaCondition && { mediaCondition: data.mediaCondition }),
+            ...(data.sleeveCondition && { sleeveCondition: data.sleeveCondition }),
+            ...(data.notes !== undefined && { notes: data.notes }),
+            ...(data.specialPressing !== undefined && { specialPressing: data.specialPressing }),
+            ...(data.specialPressingCharacteristics !== undefined && { specialPressingCharacteristics: data.specialPressingCharacteristics }),
+            ...(data.specialPressingDetails !== undefined && {
+              specialPressingDetails: (data.specialPressing ?? physicalCopy.specialPressing)
+                ? (data.specialPressingDetails || null)
+                : null,
+            }),
+            ...(data.specialPressing === false && { specialPressingCharacteristics: [], specialPressingDetails: null }),
+          },
+          txDb
+        );
+        if (!updatedCopy) throw new NotFoundError('Associated physical copy not found');
+      }
+
+      if (shouldUpdateReleaseContentType) {
+        const targetContentType = data.releaseContentType!;
+        const originalContentType = data.originalReleaseContentType!;
+        const updatedRelease = await updateReleaseContentType(
+          physicalCopy.releaseId,
+          targetContentType,
+          txDb,
+          originalContentType
+        );
+        if (!updatedRelease) {
+          const currentRelease = await findReleaseById(physicalCopy.releaseId, txDb);
+          if (!currentRelease) throw new NotFoundError('Associated release not found');
+          if (currentRelease.contentType !== targetContentType) {
+            throw new ValidationError(
+              'The shared release content type changed while you were editing. Reload the listing and review the current value before saving.'
+            );
+          }
+        }
+      }
     }
-  }
 
-  const updated = await updateListingInRepo(
-    listingId,
-    {
-      ...(data.price !== undefined && { price: data.price ?? null }),
-      ...(data.currency !== undefined && { currency: data.currency }),
-      ...(data.tradeAvailable !== undefined && { tradeAvailable: data.tradeAvailable }),
-      ...(data.description !== undefined && { description: data.description || null }),
-      ...(data.status !== undefined && { status: data.status }),
-    },
-    dbOverride
-  );
-
-  if (!updated) {
-    throw new Error('Failed to update listing');
-  }
-
-  return updated;
+    const updated = await updateListingInRepo(
+      listingId,
+      {
+        ...(data.price !== undefined && { price: data.price ?? null }),
+        ...(data.currency !== undefined && { currency: data.currency }),
+        ...(data.tradeAvailable !== undefined && { tradeAvailable: data.tradeAvailable }),
+        ...(data.description !== undefined && { description: data.description || null }),
+        ...(data.status !== undefined && { status: data.status }),
+      },
+      txDb
+    );
+    if (!updated) throw new Error('Failed to update listing');
+    return updated;
+  });
 }
 
 export async function addPhotoToListing(

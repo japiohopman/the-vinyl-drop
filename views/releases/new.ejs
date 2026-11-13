@@ -59,6 +59,14 @@
           <input id="releaseFormat" type="text" name="format" value="<%= form.values.format || 'LP' %>" maxlength="120" class="form-input" placeholder="e.g. Vinyl, LP, Album" data-discogs-field="format" />
           <small>Original catalogue format text is retained.</small>
         </div>
+        <div class="custom-release-field">
+          <label for="releaseContentType">Release content</label>
+          <select id="releaseContentType" name="contentType" class="form-input">
+            <option value="music" <%= (form.values.contentType || 'music') === 'music' ? 'selected' : '' %>>Music</option>
+            <option value="non_music" <%= form.values.contentType === 'non_music' ? 'selected' : '' %>>Non-Music</option>
+          </select>
+          <small>This describes the shared release itself, not just one copy.</small>
+        </div>
         <div class="custom-release-field custom-release-field-full">
           <span class="custom-release-field-label">Recognized vinyl characteristics</span>
           <% const selectedFormatCharacteristics = Array.isArray(form.values.formatCharacteristics) ? form.values.formatCharacteristics : []; %>

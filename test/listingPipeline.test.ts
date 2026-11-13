@@ -22,6 +22,8 @@ import {
   transitionListingStatus,
 } from '../src/app/services/listingService';
 import { ConditionGrade } from '../src/db/schema/enums';
+import { getDb } from '../src/db';
+import { updatePhysicalCopy as updateOwnedPhysicalCopy } from '../src/app/services/physicalCopyService';
 import { config } from '../src/config/env';
 import { AuthorizationError, ValidationError } from '../src/app/services/errors';
 import { clearInMemoryStorage } from '../src/app/services/storageService';
@@ -211,6 +213,207 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(details).not.toBeNull();
       expect(details?.release.title).toBe('Blue Spirits');
       expect(details?.physicalCopy.mediaCondition).toBe('NM');
+    });
+
+    it('updates shared Release content only through the owned copy and keeps Special Pressing copy-specific', async () => {
+      const existing = {
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        price: 2999,
+        currency: 'EUR',
+        tradeAvailable: true,
+        status: 'draft',
+      };
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(existing);
+      (copyRepo.findPhysicalCopyById as jest.Mock).mockResolvedValue({
+        id: copyId,
+        releaseId,
+        ownerId: sellerId,
+        mediaCondition: 'NM',
+        sleeveCondition: 'VG+',
+      });
+      (copyRepo.updatePhysicalCopy as jest.Mock).mockResolvedValue({ id: copyId });
+      (releaseRepo.updateReleaseContentType as jest.Mock).mockResolvedValue({ id: releaseId, contentType: 'non_music' });
+      (listingRepo.updateListing as jest.Mock).mockResolvedValue(existing);
+
+      await updateListing(listingId, sellerId, {
+        specialPressing: true,
+        specialPressingCharacteristics: ['shaped'],
+        specialPressingDetails: 'A one-off diamond-shaped cut.',
+        releaseContentType: 'non_music',
+        originalReleaseContentType: 'music',
+      });
+
+      expect(copyRepo.updatePhysicalCopy).toHaveBeenCalledWith(
+        copyId,
+        expect.objectContaining({
+          specialPressing: true,
+          specialPressingCharacteristics: ['shaped'],
+          specialPressingDetails: 'A one-off diamond-shaped cut.',
+        }),
+        getDb()
+      );
+      expect(releaseRepo.updateReleaseContentType).toHaveBeenCalledWith(releaseId, 'non_music', getDb(), 'music');
+      expect(listingRepo.updateListing).toHaveBeenCalledWith(listingId, expect.any(Object), getDb());
+      expect((getDb() as any).transaction).toHaveBeenCalledTimes(1);
+    });
+
+
+    it('does not let a listing owner change the shared Release classification through another seller’s copy', async () => {
+      const existing = {
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        status: 'draft',
+        price: 2999,
+        tradeAvailable: true,
+      };
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(existing);
+      (copyRepo.findPhysicalCopyById as jest.Mock).mockResolvedValueOnce({
+        id: copyId,
+        releaseId,
+        ownerId: otherUserId,
+        mediaCondition: 'NM',
+        sleeveCondition: 'VG+',
+      });
+
+      await expect(updateListing(listingId, sellerId, {
+        releaseContentType: 'non_music',
+        originalReleaseContentType: 'music',
+      })).rejects.toThrow('not authorized to update this release');
+
+      expect(copyRepo.updatePhysicalCopy).not.toHaveBeenCalled();
+      expect(releaseRepo.updateReleaseContentType).not.toHaveBeenCalled();
+      expect(listingRepo.updateListing).not.toHaveBeenCalled();
+    });
+
+    it('does not rewrite a shared Release type when a stale edit form submits its unchanged original value', async () => {
+      const existing = {
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        status: 'draft',
+        price: 2999,
+        tradeAvailable: true,
+      };
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(existing);
+      (listingRepo.updateListing as jest.Mock).mockResolvedValueOnce({ ...existing, price: 3200 });
+
+      await updateListing(listingId, sellerId, {
+        price: 3200,
+        releaseContentType: 'music',
+        originalReleaseContentType: 'music',
+      });
+
+      expect(releaseRepo.updateReleaseContentType).not.toHaveBeenCalled();
+      expect(listingRepo.updateListing).toHaveBeenCalledWith(
+        listingId,
+        expect.objectContaining({ price: 3200 }),
+        getDb()
+      );
+    });
+
+    it('persists Special Pressing fields through the standalone PhysicalCopy update service', async () => {
+      (copyRepo.findPhysicalCopyById as jest.Mock).mockResolvedValueOnce({
+        id: copyId,
+        releaseId,
+        ownerId: sellerId,
+        mediaCondition: 'NM',
+        sleeveCondition: 'VG+',
+        specialPressing: false,
+        specialPressingCharacteristics: [],
+        specialPressingDetails: null,
+      });
+      (copyRepo.updatePhysicalCopy as jest.Mock).mockResolvedValueOnce({
+        id: copyId,
+        specialPressing: true,
+        specialPressingCharacteristics: ['shaped'],
+        specialPressingDetails: 'A one-off clover-shaped cut.',
+      });
+
+      await updateOwnedPhysicalCopy(copyId, sellerId, {
+        specialPressing: true,
+        specialPressingCharacteristics: ['shaped'],
+        specialPressingDetails: 'A one-off clover-shaped cut.',
+      });
+
+      expect(copyRepo.updatePhysicalCopy).toHaveBeenCalledWith(
+        copyId,
+        expect.objectContaining({
+          specialPressing: true,
+          specialPressingCharacteristics: ['shaped'],
+          specialPressingDetails: 'A one-off clover-shaped cut.',
+        }),
+        undefined
+      );
+    });
+
+    it('keeps copy, Release and listing edits in one transaction so a failed listing write rolls the earlier writes back', async () => {
+      const existing = {
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        status: 'draft',
+        price: 2999,
+        tradeAvailable: true,
+      };
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(existing);
+      (copyRepo.findPhysicalCopyById as jest.Mock).mockResolvedValueOnce({
+        id: copyId,
+        releaseId,
+        ownerId: sellerId,
+        mediaCondition: 'NM',
+        sleeveCondition: 'VG+',
+        specialPressing: false,
+        specialPressingCharacteristics: [],
+        specialPressingDetails: null,
+      });
+      (copyRepo.updatePhysicalCopy as jest.Mock).mockResolvedValueOnce({ id: copyId });
+      (releaseRepo.updateReleaseContentType as jest.Mock).mockResolvedValueOnce({ id: releaseId, contentType: 'non_music' });
+      (listingRepo.updateListing as jest.Mock).mockResolvedValueOnce(null);
+
+      await expect(updateListing(listingId, sellerId, {
+        specialPressing: true,
+        specialPressingCharacteristics: ['shaped'],
+        releaseContentType: 'non_music',
+        originalReleaseContentType: 'music',
+      })).rejects.toThrow('Failed to update listing');
+
+      const transactionDb = getDb() as any;
+      const copyTransaction = (copyRepo.updatePhysicalCopy as jest.Mock).mock.calls[0][2];
+      const releaseTransaction = (releaseRepo.updateReleaseContentType as jest.Mock).mock.calls[0][2];
+      const listingTransaction = (listingRepo.updateListing as jest.Mock).mock.calls[0][2];
+      expect(transactionDb.transaction).toHaveBeenCalledTimes(1);
+      expect(copyTransaction).toBe(transactionDb);
+      expect(releaseTransaction).toBe(transactionDb);
+      expect(listingTransaction).toBe(transactionDb);
+    });
+
+    it('does not let a listing owner alter a PhysicalCopy owned by another seller', async () => {
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce({
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        status: 'draft',
+        price: 2999,
+        tradeAvailable: true,
+      });
+      (copyRepo.findPhysicalCopyById as jest.Mock).mockResolvedValueOnce({
+        id: copyId,
+        releaseId,
+        ownerId: otherUserId,
+        mediaCondition: 'NM',
+        sleeveCondition: 'VG+',
+      });
+
+      await expect(updateListing(listingId, sellerId, {
+        specialPressing: true,
+        specialPressingCharacteristics: ['shaped'],
+      })).rejects.toThrow('not authorized to update this physical copy');
+
+      expect(copyRepo.updatePhysicalCopy).not.toHaveBeenCalled();
+      expect(releaseRepo.updateReleaseContentType).not.toHaveBeenCalled();
     });
 
     it('unpublishes an owned published listing to draft without deleting its record', async () => {

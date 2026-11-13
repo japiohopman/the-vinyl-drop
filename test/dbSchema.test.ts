@@ -4,6 +4,8 @@ import { getDb } from '../src/db';
 import {
   CONDITION_GRADES,
   LISTING_STATUSES,
+  RELEASE_CONTENT_TYPES,
+  SPECIAL_PRESSING_CHARACTERISTICS,
   comments,
   listingPhotos,
   listings,
@@ -38,6 +40,7 @@ describe('Drizzle Database Schema Boundaries', () => {
     const columns = getTableColumns(releases);
     expect(columns).toHaveProperty('id');
     expect(columns).toHaveProperty('artist');
+    expect(columns).toHaveProperty('contentType');
     expect(columns).toHaveProperty('title');
     expect(columns).toHaveProperty('label');
     expect(columns).toHaveProperty('catalogueNumber');
@@ -62,6 +65,9 @@ describe('Drizzle Database Schema Boundaries', () => {
     expect(columns).toHaveProperty('mediaCondition');
     expect(columns).toHaveProperty('sleeveCondition');
     expect(columns).toHaveProperty('notes');
+    expect(columns).toHaveProperty('specialPressing');
+    expect(columns).toHaveProperty('specialPressingCharacteristics');
+    expect(columns).toHaveProperty('specialPressingDetails');
     expect(columns).toHaveProperty('createdAt');
     expect(columns).toHaveProperty('updatedAt');
   });
@@ -105,6 +111,8 @@ describe('Drizzle Database Schema Boundaries', () => {
   it('should specify exact controlled condition grade and listing status vocabularies', () => {
     expect(CONDITION_GRADES).toEqual(['M', 'NM', 'VG+', 'VG', 'VG-', 'G+', 'G', 'F', 'P']);
     expect(LISTING_STATUSES).toEqual(['draft', 'published', 'reserved', 'sold', 'traded', 'archived']);
+    expect(RELEASE_CONTENT_TYPES).toEqual(['music', 'non_music']);
+    expect(SPECIAL_PRESSING_CHARACTERISTICS).toEqual(['picture_disc', 'solid_colour', 'translucent', 'multi_colour', 'splatter', 'marble', 'glitter', 'glow_in_the_dark', 'metallic', 'shaped']);
   });
 
   it('should throw clear error from getDb() when DATABASE_URL is unconfigured', () => {

@@ -474,6 +474,42 @@
     <!-- Details Update Form -->
     <form action="/listings/<%= listing.id %>/edit" method="POST" class="edit-listing-form" novalidate>
       <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-4);">Listing Details</h2>
+      <input type="hidden" name="originalReleaseContentType" value="<%= form.values.originalReleaseContentType || release.contentType || 'music' %>" />
+
+      <section class="release-content-type-editor" aria-labelledby="releaseContentTypeTitle">
+        <h3 id="releaseContentTypeTitle">Release content</h3>
+        <p>This setting belongs to the shared catalogue release, not just your physical copy.</p>
+        <label for="releaseContentType">Content type</label>
+        <select id="releaseContentType" name="releaseContentType" class="form-control">
+          <option value="music" <%= (form.values.releaseContentType || release.contentType || 'music') === 'music' ? 'selected' : '' %>>Music</option>
+          <option value="non_music" <%= (form.values.releaseContentType || release.contentType) === 'non_music' ? 'selected' : '' %>>Non-Music</option>
+        </select>
+      </section>
+
+      <% const selectedSpecialPressingCharacteristics = Array.isArray(form.values.specialPressingCharacteristics)
+        ? form.values.specialPressingCharacteristics
+        : (typeof form.values.specialPressingCharacteristics === 'string' && form.values.specialPressingCharacteristics
+          ? form.values.specialPressingCharacteristics.split(',')
+          : []); %>
+      <section class="special-pressing-editor" aria-labelledby="specialPressingEditTitle">
+        <h3 id="specialPressingEditTitle">Special Pressing</h3>
+        <p>This classification applies to your physical copy only. Other sellers can classify their own copies separately.</p>
+        <label class="special-pressing-toggle">
+          <input type="checkbox" name="specialPressing" value="true" <%= form.values.specialPressing === true || form.values.specialPressing === 'true' || form.values.specialPressing === 'on' ? 'checked' : '' %> />
+          <span>This copy is a Special Pressing</span>
+        </label>
+        <fieldset class="special-pressing-options">
+          <legend>What makes it special?</legend>
+          <% (typeof specialPressingOptions !== 'undefined' ? specialPressingOptions : []).forEach(function(option) { %>
+            <label>
+              <input type="checkbox" name="specialPressingCharacteristics" value="<%= option.value %>" <%= selectedSpecialPressingCharacteristics.includes(option.value) ? 'checked' : '' %> />
+              <span><strong><%= option.label %></strong> — <%= option.description %></span>
+            </label>
+          <% }); %>
+        </fieldset>
+        <label for="specialPressingDetailsEdit">More about this pressing (optional)</label>
+        <textarea id="specialPressingDetailsEdit" name="specialPressingDetails" maxlength="1000" rows="3" placeholder="Describe its exact shape, colour mix, finish, edition or other details"><%= form.values.specialPressingDetails !== undefined ? form.values.specialPressingDetails : (physicalCopy.specialPressingDetails || '') %></textarea>
+      </section>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
         <%- include('../partials/form-select', {

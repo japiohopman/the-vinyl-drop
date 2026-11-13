@@ -249,6 +249,55 @@ describe('Browse format filters — rendered state and responsive controls', () 
     }
   });
 
+  it('renders Release content and Special Pressing filters and preserves them in Browse and Dig URLs', async () => {
+    const filterState = {
+      q: 'spoken word',
+      genre: '',
+      style: '',
+      condition: '',
+      minPrice: '',
+      maxPrice: '',
+      sort: 'newest',
+      view: 'grid',
+      formats: [],
+      whiteLabel: false,
+      contentType: 'non_music',
+      specialPressing: true,
+    };
+    const common = {
+      title: 'Classification filters',
+      listings: [],
+      filters: filterState,
+      pagination: { totalCount: 0, page: 1, limit: 12, totalPages: 1 },
+      formatOptions: VINYL_FORMAT_FILTERS,
+      genreOptions: [],
+      styleOptions: [],
+      styleParentGenres: {},
+      whiteLabelAvailable: false,
+      errorMessage: null,
+    };
+
+    const browseHtml = await ejs.renderFile(path.join(process.cwd(), 'views/browse/index.ejs'), common);
+    expect(browseHtml).toContain('<option value="non_music" selected>Non-Music</option>');
+    expect(browseHtml).toContain('name="specialPressing" value="1" checked');
+    expect(browseHtml).toContain('contentType=non_music');
+    expect(browseHtml).toContain('specialPressing=1');
+
+    const digHtml = await ejs.renderFile(path.join(process.cwd(), 'views/browse/responsive-dig.ejs'), {
+      ...common,
+      responsiveDig: true,
+      items: [],
+      totalCount: 0,
+      hasMore: false,
+    });
+    expect(digHtml).toContain('name="contentType" value="non_music"');
+    expect(digHtml).toContain('name="specialPressing" value="1"');
+    expect(digHtml).toContain('id="filter-special-pressing" name="specialPressing" value="1" checked');
+    expect(digHtml).toContain('contentType=non_music');
+    expect(digHtml).toContain('specialPressing=1');
+    expect(digHtml).toContain("{ name: 'specialPressing', selector: '#filter-special-pressing' }");
+  });
+
   it('keeps responsive inputs shrinkable and quick-filter touch targets at least 44px', () => {
     const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     expect(css).toContain('.browse-keyword-control input');
@@ -282,6 +331,8 @@ describe('Browse format filters — repository query integration', () => {
       whiteLabel: true,
       genre: 'Hip Hop',
       style: 'Disco',
+      contentType: 'non_music',
+      specialPressing: true,
     }, db);
 
     expect(result.totalCount).toBe(0);
@@ -292,6 +343,10 @@ describe('Browse format filters — repository query integration', () => {
     expect(where.sql.toLowerCase()).toContain(' and ');
     expect(where.sql.match(/"releases"\."format" ~\*/g)).toHaveLength(2);
     expect(where.sql).toContain('"releases"."label" ~*');
+    expect(where.sql).toContain('"releases"."content_type"');
+    expect(where.sql).toContain('"physical_copies"."special_pressing"');
+    expect(where.params).toContain('non_music');
+    expect(where.params).toContain(true);
     expect(where.params).toContain(getVinylFormatPostgresPattern('lp'));
     expect(where.params).toContain(getVinylFormatPostgresPattern('12-inch'));
     expect(where.params).toContain(WHITE_LABEL_POSTGRES_PATTERN);

@@ -23,6 +23,8 @@ export interface SearchListingsParams {
   sellerUsername?: string;
   formats?: VinylFormatFilter[];
   whiteLabel?: boolean;
+  contentType?: 'music' | 'non_music';
+  specialPressing?: boolean;
   sort?: 'newest' | 'price_asc' | 'price_desc' | 'title_asc' | 'artist_asc';
   page?: number;
   limit?: number;
@@ -39,15 +41,15 @@ export interface JoinedListingRecord {
 /** Minimal one-listing projection used by the public detail and comments GET routes. */
 export interface PublicListingDetailRecord {
   listing: Pick<Listing, 'id' | 'sellerId' | 'price' | 'tradeAvailable' | 'description' | 'status'>;
-  physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition' | 'notes'>;
-  release: Pick<Release, 'title' | 'artist' | 'label' | 'catalogueNumber' | 'releaseYear' | 'format' | 'genre' | 'styles' | 'canonicalStyles' | 'coverArtUrl' | 'youtubeVideoId'>;
+  physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition' | 'notes' | 'specialPressing' | 'specialPressingCharacteristics' | 'specialPressingDetails'>;
+  release: Pick<Release, 'title' | 'artist' | 'label' | 'catalogueNumber' | 'releaseYear' | 'format' | 'genre' | 'styles' | 'canonicalStyles' | 'coverArtUrl' | 'youtubeVideoId' | 'contentType'>;
   seller: Pick<Profile, 'id' | 'username' | 'displayName'>;
 }
 
 export interface ListingSearchRecord {
   listing: Pick<Listing, 'id' | 'price' | 'tradeAvailable'>;
-  physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition'>;
-  release: Pick<Release, 'title' | 'artist' | 'releaseYear' | 'format' | 'coverArtUrl'>;
+  physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition'> & Partial<Pick<PhysicalCopy, 'specialPressing' | 'specialPressingCharacteristics'>>;
+  release: Pick<Release, 'title' | 'artist' | 'releaseYear' | 'format' | 'coverArtUrl'> & Partial<Pick<Release, 'contentType'>>;
   seller: Pick<Profile, 'username' | 'location'>;
   primaryPhotoPath: string | null;
 }
@@ -62,15 +64,15 @@ export interface MyListingsRecord {
 /** Minimal joined read model for the seller's listing-edit page. */
 export interface ListingEditDetailsRecord {
   listing: Pick<Listing, 'id' | 'sellerId' | 'price' | 'tradeAvailable' | 'description'>;
-  physicalCopy: Pick<PhysicalCopy, 'id' | 'mediaCondition' | 'sleeveCondition' | 'notes'> | null;
-  release: Pick<Release, 'id' | 'title' | 'artist' | 'releaseYear' | 'coverArtUrl' | 'externalSource' | 'externalId' | 'youtubeVideoId'> | null;
+  physicalCopy: Pick<PhysicalCopy, 'id' | 'mediaCondition' | 'sleeveCondition' | 'notes' | 'specialPressing' | 'specialPressingCharacteristics' | 'specialPressingDetails'> | null;
+  release: Pick<Release, 'id' | 'title' | 'artist' | 'releaseYear' | 'coverArtUrl' | 'externalSource' | 'externalId' | 'youtubeVideoId' | 'contentType'> | null;
 }
 
 /** Minimal joined read model for the authenticated seller's pre-publish Preview page. */
 export interface ListingPreviewDetailsRecord {
   listing: Pick<Listing, 'id' | 'status' | 'price' | 'tradeAvailable' | 'description'>;
-  physicalCopy: Pick<PhysicalCopy, 'id' | 'mediaCondition' | 'sleeveCondition'> | null;
-  release: Pick<Release, 'id' | 'title' | 'artist' | 'label' | 'catalogueNumber' | 'releaseYear' | 'format' | 'coverArtUrl'> | null;
+  physicalCopy: Pick<PhysicalCopy, 'id' | 'mediaCondition' | 'sleeveCondition' | 'specialPressing' | 'specialPressingCharacteristics' | 'specialPressingDetails'> | null;
+  release: Pick<Release, 'id' | 'title' | 'artist' | 'label' | 'catalogueNumber' | 'releaseYear' | 'format' | 'coverArtUrl' | 'contentType'> | null;
   seller: Pick<Profile, 'id' | 'username' | 'location'> | null;
 }
 
@@ -149,6 +151,9 @@ export async function findPublicListingDetailById(
         mediaCondition: physicalCopies.mediaCondition,
         sleeveCondition: physicalCopies.sleeveCondition,
         notes: physicalCopies.notes,
+        specialPressing: physicalCopies.specialPressing,
+        specialPressingCharacteristics: physicalCopies.specialPressingCharacteristics,
+        specialPressingDetails: physicalCopies.specialPressingDetails,
       },
       release: {
         title: releases.title,
@@ -162,6 +167,7 @@ export async function findPublicListingDetailById(
         canonicalStyles: releases.canonicalStyles,
         coverArtUrl: releases.coverArtUrl,
         youtubeVideoId: releases.youtubeVideoId,
+        contentType: releases.contentType,
       },
       seller: {
         id: profiles.id,
@@ -198,6 +204,9 @@ export async function findListingEditDetailsById(
         mediaCondition: physicalCopies.mediaCondition,
         sleeveCondition: physicalCopies.sleeveCondition,
         notes: physicalCopies.notes,
+        specialPressing: physicalCopies.specialPressing,
+        specialPressingCharacteristics: physicalCopies.specialPressingCharacteristics,
+        specialPressingDetails: physicalCopies.specialPressingDetails,
       },
       release: {
         id: releases.id,
@@ -208,6 +217,7 @@ export async function findListingEditDetailsById(
         externalSource: releases.externalSource,
         externalId: releases.externalId,
         youtubeVideoId: releases.youtubeVideoId,
+        contentType: releases.contentType,
       },
     })
     .from(listings)
@@ -238,6 +248,9 @@ export async function findListingPreviewDetailsById(
         id: physicalCopies.id,
         mediaCondition: physicalCopies.mediaCondition,
         sleeveCondition: physicalCopies.sleeveCondition,
+        specialPressing: physicalCopies.specialPressing,
+        specialPressingCharacteristics: physicalCopies.specialPressingCharacteristics,
+        specialPressingDetails: physicalCopies.specialPressingDetails,
       },
       release: {
         id: releases.id,
@@ -248,6 +261,7 @@ export async function findListingPreviewDetailsById(
         releaseYear: releases.releaseYear,
         format: releases.format,
         coverArtUrl: releases.coverArtUrl,
+        contentType: releases.contentType,
       },
       seller: {
         id: profiles.id,
@@ -409,6 +423,8 @@ export async function findHomeDiscoveryListingsByCursor(
       physicalCopy: {
         mediaCondition: physicalCopies.mediaCondition,
         sleeveCondition: physicalCopies.sleeveCondition,
+        specialPressing: physicalCopies.specialPressing,
+        specialPressingCharacteristics: physicalCopies.specialPressingCharacteristics,
       },
       release: {
         title: releases.title,
@@ -416,6 +432,7 @@ export async function findHomeDiscoveryListingsByCursor(
         releaseYear: releases.releaseYear,
         format: releases.format,
         coverArtUrl: releases.coverArtUrl,
+        contentType: releases.contentType,
       },
       seller: {
         username: profiles.username,
@@ -558,6 +575,10 @@ export async function searchListings(
     conditions.push(sql`${releases.label} ~* ${WHITE_LABEL_POSTGRES_PATTERN}`);
   }
 
+  // Shared release content type and seller-confirmed physical-copy characteristics.
+  if (params.contentType) conditions.push(eq(releases.contentType, params.contentType));
+  if (params.specialPressing) conditions.push(eq(physicalCopies.specialPressing, true));
+
   // Condition filter
   if (params.condition) {
     conditions.push(
@@ -643,6 +664,8 @@ export async function searchListings(
       physicalCopy: {
         mediaCondition: physicalCopies.mediaCondition,
         sleeveCondition: physicalCopies.sleeveCondition,
+        specialPressing: physicalCopies.specialPressing,
+        specialPressingCharacteristics: physicalCopies.specialPressingCharacteristics,
       },
       release: {
         title: releases.title,
@@ -650,6 +673,7 @@ export async function searchListings(
         releaseYear: releases.releaseYear,
         format: releases.format,
         coverArtUrl: releases.coverArtUrl,
+        contentType: releases.contentType,
       },
       seller: {
         username: profiles.username,

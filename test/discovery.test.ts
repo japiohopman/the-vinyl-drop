@@ -66,6 +66,7 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     id: 'rel-1111-1111-1111',
     title: 'Blue Train',
     artist: 'John Coltrane',
+    contentType: 'music',
     label: 'Blue Note',
     catalogueNumber: 'BLP 1577',
     releaseYear: 1957,
@@ -94,6 +95,9 @@ describe('Phase 5 — Discovery, Search, Listing Detail, Seller Profile & Commen
     mediaCondition: 'VG+',
     sleeveCondition: 'VG',
     notes: 'Minor corner crease',
+    specialPressing: false,
+    specialPressingCharacteristics: [],
+    specialPressingDetails: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
