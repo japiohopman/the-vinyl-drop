@@ -8,6 +8,9 @@ export interface ListingCardViewModel {
   isTrade: boolean;
   mediaCondition: string;
   sleeveCondition: string;
+  specialPressing: boolean;
+  specialPressingCharacteristics: string[];
+  contentType: 'music' | 'non_music';
   imageUrl?: string;
   fallbackImageUrl?: string;
   imageAlt: string;
@@ -48,6 +51,9 @@ export function buildListingCardViewModel(params: {
   isTrade?: boolean;
   mediaCondition: string;
   sleeveCondition: string;
+  specialPressing?: boolean;
+  specialPressingCharacteristics?: string[];
+  contentType?: 'music' | 'non_music';
   imageUrl?: string;
   fallbackImageUrl?: string;
   imageAlt?: string;
@@ -69,6 +75,9 @@ export function buildListingCardViewModel(params: {
     isTrade: Boolean(params.isTrade),
     mediaCondition: params.mediaCondition,
     sleeveCondition: params.sleeveCondition,
+    specialPressing: Boolean(params.specialPressing),
+    specialPressingCharacteristics: params.specialPressingCharacteristics || [],
+    contentType: params.contentType || 'music',
     imageUrl: params.imageUrl,
     fallbackImageUrl: params.fallbackImageUrl,
     imageAlt,
@@ -83,8 +92,8 @@ export function buildListingCardViewModel(params: {
  */
 export function buildListingCardFromDetails(details: {
   listing: { id: string; price: number | null; tradeAvailable: boolean };
-  release: { title: string; artist: string; releaseYear?: number | null; format?: string | null; coverArtUrl?: string | null };
-  physicalCopy: { mediaCondition: string; sleeveCondition: string };
+  release: { title: string; artist: string; releaseYear?: number | null; format?: string | null; coverArtUrl?: string | null; contentType?: 'music' | 'non_music' };
+  physicalCopy: { mediaCondition: string; sleeveCondition: string; specialPressing?: boolean; specialPressingCharacteristics?: string[] };
   seller: { username: string; location?: string | null };
   photos?: Array<{ publicUrl: string; role?: string; displayOrder?: number; altText?: string | null }>;
 }): ListingCardViewModel {
@@ -107,6 +116,9 @@ export function buildListingCardFromDetails(details: {
     isTrade: details.listing.tradeAvailable,
     mediaCondition: details.physicalCopy.mediaCondition,
     sleeveCondition: details.physicalCopy.sleeveCondition,
+    specialPressing: Boolean(details.physicalCopy.specialPressing),
+    specialPressingCharacteristics: details.physicalCopy.specialPressingCharacteristics || [],
+    contentType: details.release.contentType || 'music',
     imageUrl: primaryImage,
     fallbackImageUrl: fallbackImage,
     imageAlt,

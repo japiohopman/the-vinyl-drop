@@ -10,6 +10,8 @@
     'sort=' + encodeURIComponent(filters.sort || 'newest'),
     ...selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }),
     filters.whiteLabel ? 'whiteLabel=1' : '',
+    filters.contentType ? 'contentType=' + encodeURIComponent(filters.contentType) : '',
+    filters.specialPressing ? 'specialPressing=1' : '',
   ].filter(Boolean).join('&');
   const browseReturnUrl = '/browse?' + baseQueryParams + '&view=grid';
   const visibleItems = Array.isArray(items) ? items : [];
@@ -49,7 +51,7 @@
       <% } %>
     </div>
 
-    <% if (filters.q || filters.genre || filters.style || filters.condition || filters.minPrice || filters.maxPrice || selectedFormats.length || filters.whiteLabel) { %>
+    <% if (filters.q || filters.genre || filters.style || filters.condition || filters.minPrice || filters.maxPrice || selectedFormats.length || filters.whiteLabel || filters.contentType || filters.specialPressing) { %>
       <p class="dig-filter-summary">
         Active filters:
         <% if (filters.q) { %><span>Search: <strong><%= filters.q %></strong></span><% } %>
@@ -60,6 +62,8 @@
         <% if (filters.maxPrice) { %><span>Max: <strong>€<%= filters.maxPrice %></strong></span><% } %>
         <% selectedFormats.forEach(function(format) { %><span>Format: <strong><%= format %></strong></span><% }); %>
         <% if (filters.whiteLabel) { %><span><strong>White label</strong></span><% } %>
+        <% if (filters.contentType) { %><span>Content: <strong><%= filters.contentType === 'non_music' ? 'Non-Music' : 'Music' %></strong></span><% } %>
+        <% if (filters.specialPressing) { %><span><strong>Special Pressing</strong></span><% } %>
       </p>
     <% } %>
 

@@ -26,6 +26,8 @@
       sort: filters.sort || 'newest',
       formats: selectedFormats,
       whiteLabel: filters.whiteLabel,
+      contentType: filters.contentType || '',
+      specialPressing: filters.specialPressing,
       page: currentPage,
       view: currentView
     }, overrides || {});
@@ -40,6 +42,8 @@
     if (next.sort && next.sort !== 'newest') params.push('sort=' + encodeURIComponent(next.sort));
     (next.formats || []).forEach(function(f) { params.push('format=' + encodeURIComponent(f)); });
     if (next.whiteLabel) params.push('whiteLabel=1');
+    if (next.contentType) params.push('contentType=' + encodeURIComponent(next.contentType));
+    if (next.specialPressing) params.push('specialPressing=1');
     if (next.page !== undefined && next.page !== null) params.push('page=' + encodeURIComponent(next.page));
     if (next.view) params.push('view=' + encodeURIComponent(next.view));
 
@@ -70,7 +74,9 @@
     filters.maxPrice,
     filters.sort && filters.sort !== 'newest',
     selectedFormats.length > 0,
-    filters.whiteLabel
+    filters.whiteLabel,
+    filters.contentType,
+    filters.specialPressing
   ].filter(Boolean).length;
 %>
 <div class="dig-responsive-page" data-dig-page>
@@ -94,6 +100,8 @@
         <input type="hidden" name="format" value="<%= format %>">
       <% }); %>
       <input type="hidden" name="whiteLabel" value="<%= filters.whiteLabel ? '1' : '' %>">
+      <input type="hidden" name="contentType" value="<%= filters.contentType || '' %>">
+      <input type="hidden" name="specialPressing" value="<%= filters.specialPressing ? '1' : '' %>">
       <input type="hidden" name="view" value="<%= currentView %>">
       <label class="dig-search-visually-hidden" for="dig-primary-search">Search records</label>
       <div class="catalogue-search-autocomplete">
@@ -195,7 +203,7 @@
 
             <!-- Fast Links for Parent Genres and Associated Styles -->
             <nav class="dig-taxonomy-nav" aria-label="Catalogue navigation">
-              <a class="dig-taxonomy-link <%= !filters.genre && !filters.style && selectedFormats.length === 0 ? 'is-selected' : '' %>" href="<%= digExplorerHref('', '', []) %>" <%- !filters.genre && !filters.style && selectedFormats.length === 0 ? 'aria-current="page"' : '' %>>All records</a>
+              <a class="dig-taxonomy-link <%= !filters.genre && !filters.style && selectedFormats.length === 0 && !filters.contentType && !filters.specialPressing ? 'is-selected' : '' %>" href="<%= digExplorerHref('', '', []) %>" <%- !filters.genre && !filters.style && selectedFormats.length === 0 && !filters.contentType && !filters.specialPressing ? 'aria-current="page"' : '' %>>All records</a>
               <ul class="dig-taxonomy-list">
                 <% availableExplorerGenres.forEach(function(genreOption) { %>
                   <% const associatedStyles = availableExplorerStyles.filter(function(st) {
@@ -230,6 +238,18 @@
               <span class="browse-secondary-filter-status"><%= activeFilterCount ? activeFilterCount + ' active' : 'Condition, price & sort' %></span>
             </summary>
             <div class="browse-secondary-grid">
+              <div>
+                <label for="filter-content-type">Content type</label>
+                <select id="filter-content-type" name="contentType" class="form-control">
+                  <option value="">All content</option>
+                  <option value="music" <%= filters.contentType === 'music' ? 'selected' : '' %>>Music</option>
+                  <option value="non_music" <%= filters.contentType === 'non_music' ? 'selected' : '' %>>Non-Music</option>
+                </select>
+              </div>
+              <label class="browse-special-pressing-filter">
+                <input type="checkbox" id="filter-special-pressing" name="specialPressing" value="1" <%= filters.specialPressing ? 'checked' : '' %> />
+                <span>Special Pressings only</span>
+              </label>
               <div>
                 <label for="filter-condition">Condition</label>
                 <select id="filter-condition" name="condition" class="form-control">
@@ -393,17 +413,21 @@
       { name: 'minPrice', selector: '#filter-min-price' },
       { name: 'maxPrice', selector: '#filter-max-price' },
       { name: 'sort', selector: '#filter-sort' },
+      { name: 'contentType', selector: '#filter-content-type' },
+      { name: 'specialPressing', selector: '#filter-special-pressing' },
     ];
 
     const syncQueryToFilters = () => {
       if (filterQuery) filterQuery.value = searchInput.value;
     };
 
+    const getControlValue = (control) => control.type === 'checkbox' ? (control.checked ? '1' : '') : control.value;
+
     const syncFiltersToSearch = () => {
       filterMappings.forEach(({ name, selector }) => {
         const control = filterForm.querySelector(selector);
         const searchHidden = searchForm.querySelector('input[type="hidden"][name="' + name + '"]');
-        if (control && searchHidden) searchHidden.value = control.value;
+        if (control && searchHidden) searchHidden.value = getControlValue(control);
       });
     };
 
@@ -419,7 +443,7 @@
       const searchHidden = searchForm.querySelector('input[type="hidden"][name="' + name + '"]');
       if (!control || !searchHidden) return;
 
-      const syncField = () => { searchHidden.value = control.value; };
+      const syncField = () => { searchHidden.value = getControlValue(control); };
       control.addEventListener('input', syncField);
       control.addEventListener('change', syncField);
     });

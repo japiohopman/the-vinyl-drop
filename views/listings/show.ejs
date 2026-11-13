@@ -199,6 +199,7 @@
         </p>
 
         <div class="release-metadata">
+          <% if (release.contentType === 'non_music') { %><span class="release-content-type-badge">Non-Music</span><% } %>
           <% if (release.format) { %><span>Format: <strong><%= release.format %></strong></span><% } %>
           <% if (release.releaseYear) { %><span>Year: <strong><%= release.releaseYear %></strong></span><% } %>
           <% if (release.label) { %><span>Label: <strong><%= release.label %></strong></span><% } %>
@@ -208,6 +209,18 @@
           <% if (displayStyles) { %><span>Style: <strong><%= displayStyles %></strong></span><% } %>
         </div>
       </div>
+      <% if (physicalCopy.specialPressing) { %>
+        <% const specialPressingLabels = { picture_disc: 'Picture Disc', solid_colour: 'Solid colour', translucent: 'Translucent', multi_colour: 'Multi-colour', splatter: 'Splatter', marble: 'Marble', glitter: 'Glitter', glow_in_the_dark: 'Glow-in-the-dark', metallic: 'Metallic', shaped: 'Shaped' }; %>
+        <section class="listing-special-pressing" aria-label="Special Pressing details">
+          <h2>Special Pressing</h2>
+          <ul>
+            <% (physicalCopy.specialPressingCharacteristics || []).forEach(function(value) { %>
+              <li><%= specialPressingLabels[value] || value %></li>
+            <% }); %>
+          </ul>
+          <% if (physicalCopy.specialPressingDetails) { %><p><%= physicalCopy.specialPressingDetails %></p><% } %>
+        </section>
+      <% } %>
       <% if (physicalCopy.notes) { %>
         <p class="listing-condition-notes"><%= physicalCopy.notes %></p>
       <% } %>

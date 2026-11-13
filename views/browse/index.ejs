@@ -10,7 +10,7 @@
   <% const selectedFormats = Array.isArray(filters.formats) ? filters.formats : []; %>
   <% const browseFormatIconPaths = { lp: '/assets/UI/LP.svg', '12-inch': '/assets/UI/12-ince.svg', '7-inch': '/assets/UI/7-ince.svg' }; %>
   <% const formatParams = selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }).join('&'); %>
-  <% const baseQueryParams = 'q=' + encodeURIComponent(filters.q || '') + '&genre=' + encodeURIComponent(filters.genre || '') + '&style=' + encodeURIComponent(filters.style || '') + '&condition=' + encodeURIComponent(filters.condition || '') + '&minPrice=' + encodeURIComponent(filters.minPrice || '') + '&maxPrice=' + encodeURIComponent(filters.maxPrice || '') + '&sort=' + encodeURIComponent(filters.sort || 'newest'); %>
+  <% const baseQueryParams = 'q=' + encodeURIComponent(filters.q || '') + '&genre=' + encodeURIComponent(filters.genre || '') + '&style=' + encodeURIComponent(filters.style || '') + '&condition=' + encodeURIComponent(filters.condition || '') + '&minPrice=' + encodeURIComponent(filters.minPrice || '') + '&maxPrice=' + encodeURIComponent(filters.maxPrice || '') + '&sort=' + encodeURIComponent(filters.sort || 'newest') + '&contentType=' + encodeURIComponent(filters.contentType || '') + (filters.specialPressing ? '&specialPressing=1' : ''); %>
   <% const queryBaseParams = [baseQueryParams, formatParams, filters.whiteLabel ? 'whiteLabel=1' : ''].filter(Boolean).join('&'); %>
 
   <div class="browse-header">
@@ -48,13 +48,17 @@
       filters.maxPrice,
       filters.sort && filters.sort !== 'newest',
       selectedFormats.length > 0,
-      filters.whiteLabel
+      filters.whiteLabel,
+      filters.contentType,
+      filters.specialPressing
     ].filter(Boolean).length; %>
     <% const activeAdvancedFilterCount = [
       filters.condition,
       filters.minPrice,
       filters.maxPrice,
-      filters.sort && filters.sort !== 'newest'
+      filters.sort && filters.sort !== 'newest',
+      filters.contentType,
+      filters.specialPressing
     ].filter(Boolean).length; %>
 
     <details class="browse-mobile-filter-panel">
@@ -159,6 +163,18 @@
                 <option value="title_asc" <%= filters.sort === 'title_asc' ? 'selected' : '' %>>Title: A–Z</option>
               </select>
             </div>
+            <div>
+              <label for="filter-content-type">Content type</label>
+              <select id="filter-content-type" name="contentType" class="form-control">
+                <option value="">All content</option>
+                <option value="music" <%= filters.contentType === 'music' ? 'selected' : '' %>>Music</option>
+                <option value="non_music" <%= filters.contentType === 'non_music' ? 'selected' : '' %>>Non-Music</option>
+              </select>
+            </div>
+            <label class="browse-special-pressing-filter">
+              <input type="checkbox" name="specialPressing" value="1" <%= filters.specialPressing ? 'checked' : '' %> />
+              <span>Special Pressings only</span>
+            </label>
           </div>
         </details>
 
@@ -195,6 +211,8 @@
         filters.maxPrice ? 'maxPrice=' + encodeURIComponent(filters.maxPrice) : '',
         filters.sort ? 'sort=' + encodeURIComponent(filters.sort) : '',
         filters.whiteLabel ? 'whiteLabel=1' : '',
+        filters.contentType ? 'contentType=' + encodeURIComponent(filters.contentType) : '',
+        filters.specialPressing ? 'specialPressing=1' : '',
         'view=' + encodeURIComponent(currentView)
       ].filter(Boolean); %>
       <% const styleParentMap = (typeof styleParentGenres !== 'undefined' && styleParentGenres)

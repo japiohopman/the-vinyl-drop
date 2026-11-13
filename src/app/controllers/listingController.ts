@@ -36,6 +36,7 @@ import { FormViewModel } from '../view-models/formViewModel';
 import { parsePriceEurToCents } from '../../validators/listing';
 import { ValidationError, NotFoundError, AuthorizationError } from '../services/errors';
 import { LISTING_PHOTO_ROLE_GUIDANCE, LISTING_PHOTO_ROLE_LABELS, LISTING_PHOTO_ROLES, NEW_LISTING_PHOTO_ROLES } from '../../domain/listingPhotoRole';
+import { SPECIAL_PRESSING_OPTIONS } from '../../domain/specialPressing';
 
 /** Renders the authenticated seller's visible or hidden listings from the batched My Listings read model. */
 export async function getSellerListings(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -102,6 +103,9 @@ export async function getCreateListingPage(req: Request, res: Response, next: Ne
         mediaCondition: 'NM',
         sleeveCondition: 'NM',
         tradeAvailable: 'false',
+        specialPressing: false,
+        specialPressingCharacteristics: [],
+        specialPressingDetails: '',
       },
       fieldErrors: {},
       generalErrors: [],
@@ -111,6 +115,7 @@ export async function getCreateListingPage(req: Request, res: Response, next: Ne
       title: `Sell ${release.title} - The Vinyl Drop`,
       release,
       form,
+      specialPressingOptions: SPECIAL_PRESSING_OPTIONS,
     });
   } catch (error) {
     next(error);
@@ -140,6 +145,7 @@ export async function postCreateListing(req: Request, res: Response, next: NextF
           title: `Sell ${release.title} - The Vinyl Drop`,
           release,
           form,
+          specialPressingOptions: SPECIAL_PRESSING_OPTIONS,
         });
       }
     }
@@ -182,6 +188,10 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
         mediaCondition: details.physicalCopy.mediaCondition,
         sleeveCondition: details.physicalCopy.sleeveCondition,
         notes: details.physicalCopy.notes || '',
+        specialPressing: details.physicalCopy.specialPressing,
+        specialPressingCharacteristics: details.physicalCopy.specialPressingCharacteristics || [],
+        specialPressingDetails: details.physicalCopy.specialPressingDetails || '',
+        releaseContentType: details.release.contentType || 'music',
       },
       fieldErrors: {},
       generalErrors: [],
@@ -198,6 +208,7 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
       newPhotoRoles: NEW_LISTING_PHOTO_ROLES,
       photoRoleLabels: LISTING_PHOTO_ROLE_LABELS,
       photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
+      specialPressingOptions: SPECIAL_PRESSING_OPTIONS,
       photoError: typeof req.query.photoError === 'string' ? req.query.photoError : '',
       youtubePreviewError: req.query.youtubePreviewError === 'invalid',
       releaseArtworkError: req.query.releaseArtworkError === 'invalid',
@@ -235,6 +246,10 @@ export async function postEditListing(req: Request, res: Response, next: NextFun
       mediaCondition: req.body.mediaCondition,
       sleeveCondition: req.body.sleeveCondition,
       notes: req.body.notes,
+      specialPressing: req.body.specialPressing === 'true' || req.body.specialPressing === 'on' || req.body.specialPressing === true,
+      specialPressingCharacteristics: req.body.specialPressingCharacteristics,
+      specialPressingDetails: req.body.specialPressingDetails,
+      releaseContentType: req.body.releaseContentType,
     });
 
     res.redirect(`/listings/${listingId}/preview`);
@@ -267,6 +282,7 @@ export async function postEditListing(req: Request, res: Response, next: NextFun
           newPhotoRoles: NEW_LISTING_PHOTO_ROLES,
           photoRoleLabels: LISTING_PHOTO_ROLE_LABELS,
           photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
+          specialPressingOptions: SPECIAL_PRESSING_OPTIONS,
         });
       }
     }

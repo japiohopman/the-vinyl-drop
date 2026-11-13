@@ -2,6 +2,13 @@ import { z } from 'zod';
 import { conditionGradeSchema, listingStatusSchema } from './condition';
 import { LISTING_PHOTO_ROLES, NEW_LISTING_PHOTO_ROLES } from '../domain/listingPhotoRole';
 import { MAX_PHOTOS_PER_LISTING } from '../domain/listingPhotoLimits';
+import { SPECIAL_PRESSING_CHARACTERISTICS } from '../db/schema/enums';
+
+const specialPressingCharacteristicsInput = z.preprocess(
+  (value) => Array.isArray(value) ? value : typeof value === 'string' && value.trim() ? [value] : [],
+  z.array(z.enum(SPECIAL_PRESSING_CHARACTERISTICS)).max(SPECIAL_PRESSING_CHARACTERISTICS.length)
+    .refine((values) => new Set(values).size === values.length, 'Choose each Special Pressing characteristic only once.')
+);
 
 export function parsePriceEurToCents(val?: string | number | null): number | null {
   if (val === undefined || val === null || val === '') {
@@ -57,6 +64,16 @@ export const updateListingDetailsSchema = updateListingSchema.extend({
   mediaCondition: conditionGradeSchema.optional(),
   sleeveCondition: conditionGradeSchema.optional(),
   notes: z.string().trim().max(1000, 'Notes cannot exceed 1000 characters').optional().nullable(),
+  specialPressing: z.boolean().optional(),
+  specialPressingCharacteristics: specialPressingCharacteristicsInput.optional(),
+  specialPressingDetails: z.string().trim().max(1000, 'Special Pressing details cannot exceed 1000 characters').nullable().optional(),
+  releaseContentType: z.enum(['music', 'non_music']).optional(),
+}).superRefine((data, context) => {
+  const includesSpecialPressing = data.specialPressing !== undefined || data.specialPressingCharacteristics !== undefined || data.specialPressingDetails !== undefined;
+  if (!includesSpecialPressing) return;
+  const selected = data.specialPressingCharacteristics || [];
+  if (data.specialPressing === true && selected.length === 0) context.addIssue({ code: z.ZodIssueCode.custom, path: ['specialPressingCharacteristics'], message: 'Choose at least one Special Pressing characteristic.' });
+  if (data.specialPressing === false && (selected.length > 0 || Boolean(data.specialPressingDetails?.trim()))) context.addIssue({ code: z.ZodIssueCode.custom, path: ['specialPressing'], message: 'Special Pressing details require Special Pressing to be selected.' });
 });
 
 export const createListingFromReleaseSchema = z.object({
@@ -71,6 +88,12 @@ export const createListingFromReleaseSchema = z.object({
     .transform((val) => val === true || val === 'true' || val === 'on'),
   description: z.string().trim().max(2000, 'Description cannot exceed 2000 characters').optional().nullable(),
   notes: z.string().trim().max(1000, 'Physical copy notes cannot exceed 1000 characters').optional().nullable(),
+  specialPressing: z.preprocess((value) => value === true || value === 'true' || value === 'on', z.boolean()).default(false),
+  specialPressingCharacteristics: specialPressingCharacteristicsInput,
+  specialPressingDetails: z.string().trim().max(1000, 'Special Pressing details cannot exceed 1000 characters').optional().nullable(),
+}).superRefine((data, context) => {
+  if (data.specialPressing && data.specialPressingCharacteristics.length === 0) context.addIssue({ code: z.ZodIssueCode.custom, path: ['specialPressingCharacteristics'], message: 'Choose at least one Special Pressing characteristic.' });
+  if (!data.specialPressing && (data.specialPressingCharacteristics.length > 0 || Boolean(data.specialPressingDetails?.trim()))) context.addIssue({ code: z.ZodIssueCode.custom, path: ['specialPressing'], message: 'Special Pressing details require Special Pressing to be selected.' });
 });
 
 export const reorderPhotosSchema = z.object({

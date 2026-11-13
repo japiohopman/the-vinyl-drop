@@ -243,7 +243,7 @@ export async function verifyMigrations(): Promise<void> {
     `SELECT typname FROM pg_type WHERE typcategory = 'E' ORDER BY typname;`
   );
   const enumNames = enumsRes.rows.map((r) => r.typname);
-  const expectedEnums = ['condition_grade', 'listing_status'];
+  const expectedEnums = ['condition_grade', 'listing_status', 'release_content_type', 'special_pressing_characteristic'];
   for (const expectedEnum of expectedEnums) {
     if (!enumNames.includes(expectedEnum)) {
       throw new Error(`Missing expected enum '${expectedEnum}' after migration execution`);
@@ -295,6 +295,9 @@ export async function verifyMigrations(): Promise<void> {
   }
   if (!checkNames.includes('messages_body_length_check')) {
     throw new Error("Missing expected check constraint 'messages_body_length_check' after migration execution");
+  }
+  if (!checkNames.includes('physical_copies_special_pressing_check')) {
+    throw new Error("Missing expected check constraint 'physical_copies_special_pressing_check' after migration execution");
   }
   for (const expectedCheck of [
     'conversations_type_shape_check',
@@ -441,6 +444,72 @@ export async function verifyMigrations(): Promise<void> {
             ($4::uuid, $2::uuid, $3::uuid, 'VG+', 'VG+');`,
     [messagingFixture.publishedCopyId, messagingFixture.releaseId, messagingFixture.sellerId,
      messagingFixture.draftCopyId]
+  );
+
+  const defaults = await pg.query<{
+    content_type: string;
+    special_pressing: boolean;
+    characteristic_count: number;
+    special_pressing_details: string | null;
+  }>(
+    `SELECT r.content_type::text,
+            pc.special_pressing,
+            cardinality(pc.special_pressing_characteristics)::int AS characteristic_count,
+            pc.special_pressing_details
+     FROM public.releases r
+     JOIN public.physical_copies pc ON pc.release_id = r.id
+     WHERE pc.id = $1::uuid;`,
+    [messagingFixture.publishedCopyId]
+  );
+  const defaultCopy = defaults.rows[0];
+  if (!defaultCopy || defaultCopy.content_type !== 'music' || defaultCopy.special_pressing !== false ||
+      defaultCopy.characteristic_count !== 0 || defaultCopy.special_pressing_details !== null) {
+    throw new Error('Migration 0026 did not preserve safe Music / ordinary-copy defaults for existing rows');
+  }
+
+  await pg.query(
+    `UPDATE public.physical_copies
+     SET special_pressing = true,
+         special_pressing_characteristics = ARRAY['shaped']::public.special_pressing_characteristic[],
+         special_pressing_details = 'Heart-shaped example; any non-standard silhouette is supported.'
+     WHERE id = $1::uuid;`,
+    [messagingFixture.publishedCopyId]
+  );
+  await pg.query(
+    `UPDATE public.releases SET content_type = 'non_music' WHERE id = $1::uuid;`,
+    [messagingFixture.releaseId]
+  );
+  const classified = await pg.query<{ content_type: string; special_pressing: boolean; characteristic: string }>(
+    `SELECT r.content_type::text, pc.special_pressing, pc.special_pressing_characteristics[1]::text AS characteristic
+     FROM public.releases r
+     JOIN public.physical_copies pc ON pc.release_id = r.id
+     WHERE pc.id = $1::uuid;`,
+    [messagingFixture.publishedCopyId]
+  );
+  if (classified.rows[0]?.content_type !== 'non_music' || classified.rows[0]?.special_pressing !== true ||
+      classified.rows[0]?.characteristic !== 'shaped') {
+    throw new Error('Release content type or copy-specific Special Pressing values failed to persist');
+  }
+  let inconsistentCopyRejected = false;
+  try {
+    await pg.query(
+      `UPDATE public.physical_copies SET special_pressing = false WHERE id = $1::uuid;`,
+      [messagingFixture.publishedCopyId]
+    );
+  } catch (error) {
+    if (!String(error).includes('physical_copies_special_pressing_check')) throw error;
+    inconsistentCopyRejected = true;
+  }
+  if (!inconsistentCopyRejected) {
+    throw new Error('Special Pressing check constraint allowed characteristics on an ordinary copy');
+  }
+  await pg.query(
+    `UPDATE public.physical_copies
+     SET special_pressing = false,
+         special_pressing_characteristics = '{}'::public.special_pressing_characteristic[],
+         special_pressing_details = NULL
+     WHERE id = $1::uuid;`,
+    [messagingFixture.publishedCopyId]
   );
   await pg.query(
     `INSERT INTO public.listings (id, physical_copy_id, seller_id, price, currency, status)

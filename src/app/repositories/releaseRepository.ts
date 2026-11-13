@@ -16,6 +16,12 @@ export async function createRelease(data: NewRelease, dbOverride?: DbInstance): 
   return results[0];
 }
 
+export async function updateReleaseContentType(id: string, contentType: 'music' | 'non_music', dbOverride?: DbInstance): Promise<Release | null> {
+  const db = dbOverride || getDb();
+  const results = await db.update(releases).set({ contentType, updatedAt: new Date() }).where(eq(releases.id, id)).returning();
+  return results[0] || null;
+}
+
 export async function updateReleaseYouTubeVideoId(
   id: string,
   youtubeVideoId: string | null,

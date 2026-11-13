@@ -13,6 +13,7 @@
       <p style="font-family: var(--font-heading); font-size: var(--font-size-lg); color: var(--color-ink-muted); margin: 0;">
         by <%= release.artist %>
       </p>
+      <% if (release.contentType === 'non_music') { %><span class="release-content-type-badge">Non-Music</span><% } %>
       <p style="font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-ink-muted); margin-top: var(--space-2);">
         <%= release.label || 'Unknown Label' %> &bull; Cat #: <%= release.catalogueNumber || 'N/A' %> &bull; Year: <%= release.releaseYear || 'N/A' %> &bull; Format: <%= release.format || 'Vinyl' %>
       </p>
@@ -85,6 +86,15 @@
         </div>
       </div>
     </div>
+
+    <% if (physicalCopy.specialPressing) { %>
+      <% const specialPressingLabels = { picture_disc: 'Picture Disc', solid_colour: 'Solid colour', translucent: 'Translucent', multi_colour: 'Multi-colour', splatter: 'Splatter', marble: 'Marble', glitter: 'Glitter', glow_in_the_dark: 'Glow-in-the-dark', metallic: 'Metallic', shaped: 'Shaped' }; %>
+      <section class="listing-special-pressing" aria-label="Special Pressing details">
+        <h2>Special Pressing</h2>
+        <ul><% (physicalCopy.specialPressingCharacteristics || []).forEach(function(value) { %><li><%= specialPressingLabels[value] || value %></li><% }); %></ul>
+        <% if (physicalCopy.specialPressingDetails) { %><p><%= physicalCopy.specialPressingDetails %></p><% } %>
+      </section>
+    <% } %>
 
     <!-- Description -->
     <% if (listing.description) { %>

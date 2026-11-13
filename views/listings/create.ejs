@@ -58,6 +58,29 @@
         }) %>
       </div>
 
+      <% const selectedSpecialPressingCharacteristics = Array.isArray(form.values.specialPressingCharacteristics)
+        ? form.values.specialPressingCharacteristics
+        : (form.values.specialPressingCharacteristics ? [form.values.specialPressingCharacteristics] : []); %>
+      <section class="special-pressing-editor" aria-labelledby="specialPressingCreateTitle">
+        <h2 id="specialPressingCreateTitle">Special Pressing</h2>
+        <p>Mark this physical copy only when the record itself has a special pressing or finish. Other copies of the same release can be different.</p>
+        <label class="special-pressing-toggle">
+          <input type="checkbox" name="specialPressing" value="true" <%= form.values.specialPressing === true || form.values.specialPressing === 'true' || form.values.specialPressing === 'on' ? 'checked' : '' %> />
+          <span>This copy is a Special Pressing</span>
+        </label>
+        <fieldset class="special-pressing-options">
+          <legend>What makes it special?</legend>
+          <% (typeof specialPressingOptions !== 'undefined' ? specialPressingOptions : []).forEach(function(option) { %>
+            <label>
+              <input type="checkbox" name="specialPressingCharacteristics" value="<%= option.value %>" <%= selectedSpecialPressingCharacteristics.includes(option.value) ? 'checked' : '' %> />
+              <span><strong><%= option.label %></strong> — <%= option.description %></span>
+            </label>
+          <% }); %>
+        </fieldset>
+        <label for="specialPressingDetailsCreate">More about this pressing (optional)</label>
+        <textarea id="specialPressingDetailsCreate" name="specialPressingDetails" maxlength="1000" rows="3" placeholder="Describe its exact shape, colour mix, finish, edition or other details"><%= form.values.specialPressingDetails || '' %></textarea>
+      </section>
+
       <div class="create-listing-price-field">
         <%- include('../partials/form-input', {
           type: 'text',

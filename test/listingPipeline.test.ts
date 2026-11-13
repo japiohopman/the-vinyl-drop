@@ -213,6 +213,73 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       expect(details?.physicalCopy.mediaCondition).toBe('NM');
     });
 
+    it('updates shared Release content only through the owned copy and keeps Special Pressing copy-specific', async () => {
+      const existing = {
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        price: 2999,
+        currency: 'EUR',
+        tradeAvailable: true,
+        status: 'draft',
+      };
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce(existing);
+      (copyRepo.findPhysicalCopyById as jest.Mock).mockResolvedValue({
+        id: copyId,
+        releaseId,
+        ownerId: sellerId,
+        mediaCondition: 'NM',
+        sleeveCondition: 'VG+',
+      });
+      (copyRepo.updatePhysicalCopy as jest.Mock).mockResolvedValue({ id: copyId });
+      (releaseRepo.updateReleaseContentType as jest.Mock).mockResolvedValue({ id: releaseId, contentType: 'non_music' });
+      (listingRepo.updateListing as jest.Mock).mockResolvedValue(existing);
+
+      await updateListing(listingId, sellerId, {
+        specialPressing: true,
+        specialPressingCharacteristics: ['shaped'],
+        specialPressingDetails: 'A one-off diamond-shaped cut.',
+        releaseContentType: 'non_music',
+      });
+
+      expect(copyRepo.updatePhysicalCopy).toHaveBeenCalledWith(
+        copyId,
+        expect.objectContaining({
+          specialPressing: true,
+          specialPressingCharacteristics: ['shaped'],
+          specialPressingDetails: 'A one-off diamond-shaped cut.',
+        }),
+        undefined
+      );
+      expect(releaseRepo.updateReleaseContentType).toHaveBeenCalledWith(releaseId, 'non_music', undefined);
+    });
+
+    it('does not let a listing owner alter a PhysicalCopy owned by another seller', async () => {
+      (listingRepo.findListingById as jest.Mock).mockResolvedValueOnce({
+        id: listingId,
+        physicalCopyId: copyId,
+        sellerId,
+        status: 'draft',
+        price: 2999,
+        tradeAvailable: true,
+      });
+      (copyRepo.findPhysicalCopyById as jest.Mock).mockResolvedValueOnce({
+        id: copyId,
+        releaseId,
+        ownerId: otherUserId,
+        mediaCondition: 'NM',
+        sleeveCondition: 'VG+',
+      });
+
+      await expect(updateListing(listingId, sellerId, {
+        specialPressing: true,
+        specialPressingCharacteristics: ['shaped'],
+      })).rejects.toThrow('not authorized to update this physical copy');
+
+      expect(copyRepo.updatePhysicalCopy).not.toHaveBeenCalled();
+      expect(releaseRepo.updateReleaseContentType).not.toHaveBeenCalled();
+    });
+
     it('unpublishes an owned published listing to draft without deleting its record', async () => {
       const active = {
         id: listingId,

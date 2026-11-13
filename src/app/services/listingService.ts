@@ -77,7 +77,7 @@ import {
   deletePhysicalCopy,
 } from '../repositories/physicalCopyRepository';
 import { findProfileById } from '../repositories/profileRepository';
-import { findReleaseById } from '../repositories/releaseRepository';
+import { findReleaseById, updateReleaseContentType } from '../repositories/releaseRepository';
 import { ProcessedImage, preserveListingPhotoSource, processAndValidateImage, readImageDimensions } from '../utils/imageProcessor';
 import {
   deleteListingPhotoFromStorage,
@@ -273,6 +273,9 @@ function recordToListingCardViewModel(record: JoinedListingRecord | ListingSearc
     isTrade: record.listing.tradeAvailable,
     mediaCondition: record.physicalCopy.mediaCondition,
     sleeveCondition: record.physicalCopy.sleeveCondition,
+    specialPressing: record.physicalCopy.specialPressing,
+    specialPressingCharacteristics: record.physicalCopy.specialPressingCharacteristics,
+    contentType: record.release.contentType,
     imageUrl,
     fallbackImageUrl,
     imageAlt: record.primaryPhotoPath
@@ -794,6 +797,9 @@ export async function createListingFromRelease(
         mediaCondition: data.mediaCondition,
         sleeveCondition: data.sleeveCondition,
         notes: data.notes || null,
+        specialPressing: data.specialPressing,
+        specialPressingCharacteristics: data.specialPressing ? data.specialPressingCharacteristics : [],
+        specialPressingDetails: data.specialPressing ? (data.specialPressingDetails || null) : null,
       },
       tx as unknown as DbInstance
     );
@@ -850,20 +856,39 @@ export async function updateListing(
     tradeAvailable: targetTradeAvailable,
   });
 
-  // If physical copy attributes are updated, update physical copy record via Zod validated values
-  if (data.mediaCondition || data.sleeveCondition || data.notes !== undefined) {
+  // Seller-confirmed copy attributes remain on the owned PhysicalCopy, never the shared Release.
+  if (data.mediaCondition || data.sleeveCondition || data.notes !== undefined ||
+      data.specialPressing !== undefined || data.specialPressingCharacteristics !== undefined || data.specialPressingDetails !== undefined) {
     const physicalCopy = await findPhysicalCopyById(existingListing.physicalCopyId, dbOverride);
-    if (physicalCopy) {
-      await updatePhysicalCopy(
-        physicalCopy.id,
-        {
-          ...(data.mediaCondition && { mediaCondition: data.mediaCondition }),
-          ...(data.sleeveCondition && { sleeveCondition: data.sleeveCondition }),
-          ...(data.notes !== undefined && { notes: data.notes }),
-        },
-        dbOverride
-      );
+    if (!physicalCopy) throw new NotFoundError('Associated physical copy not found');
+    if (physicalCopy.ownerId !== requestingUserId) {
+      throw new AuthorizationError('You are not authorized to update this physical copy');
     }
+
+    await updatePhysicalCopy(
+      physicalCopy.id,
+      {
+        ...(data.mediaCondition && { mediaCondition: data.mediaCondition }),
+        ...(data.sleeveCondition && { sleeveCondition: data.sleeveCondition }),
+        ...(data.notes !== undefined && { notes: data.notes }),
+        ...(data.specialPressing !== undefined && { specialPressing: data.specialPressing }),
+        ...(data.specialPressingCharacteristics !== undefined && { specialPressingCharacteristics: data.specialPressingCharacteristics }),
+        ...(data.specialPressingDetails !== undefined && { specialPressingDetails: data.specialPressing ? (data.specialPressingDetails || null) : null }),
+        ...(data.specialPressing === false && { specialPressingCharacteristics: [], specialPressingDetails: null }),
+      },
+      dbOverride
+    );
+  }
+
+  // Content classification is shared at Release level but can only be corrected by its copy owner.
+  if (data.releaseContentType !== undefined) {
+    const physicalCopy = await findPhysicalCopyById(existingListing.physicalCopyId, dbOverride);
+    if (!physicalCopy) throw new NotFoundError('Associated physical copy not found');
+    if (physicalCopy.ownerId !== requestingUserId) {
+      throw new AuthorizationError('You are not authorized to update this release');
+    }
+    const updatedRelease = await updateReleaseContentType(physicalCopy.releaseId, data.releaseContentType, dbOverride);
+    if (!updatedRelease) throw new NotFoundError('Associated release not found');
   }
 
   const updated = await updateListingInRepo(

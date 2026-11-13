@@ -4,6 +4,7 @@ import { VINYL_FORMAT_FILTERS } from '../domain/releaseFormat';
 
 export const releaseSchema = z.object({
   artist: z.string().trim().min(1, 'Artist is required'),
+  contentType: z.enum(['music', 'non_music']).default('music'),
   title: z.string().trim().min(1, 'Title is required'),
   label: z.string().trim().optional(),
   catalogueNumber: z.string().trim().optional(),

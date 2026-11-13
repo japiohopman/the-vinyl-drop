@@ -270,6 +270,7 @@ export async function createRelease(input: ReleaseInput, dbOverride?: DbInstance
     {
       artist: data.artist,
       title: data.title,
+      contentType: data.contentType,
       label: data.label || null,
       catalogueNumber: data.catalogueNumber || null,
       releaseYear: data.releaseYear || null,

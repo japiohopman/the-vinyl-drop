@@ -540,3 +540,21 @@
     display: none !important;
   }
 }
+
+/* Release content type and Special Pressing discovery filters. */
+.browse-special-pressing-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.5rem;
+  font-size: var(--font-size-sm);
+}
+
+.browse-special-pressing-filter input {
+  flex: 0 0 auto;
+}
+
+.browse-secondary-grid .browse-special-pressing-filter {
+  align-self: end;
+  padding: var(--space-2) 0;
+}
