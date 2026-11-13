@@ -55,6 +55,7 @@ describe('Community Activity Surface Contract (Issue #41)', () => {
       '0022_listing_photo_source_versions.sql',
       '0024_profile_avatars_and_music_links.sql',
       '0025_add_release_styles.sql',
+      '0026_release_content_type_and_special_pressing.sql',
     ];
 
     for (const file of migrationFiles) {

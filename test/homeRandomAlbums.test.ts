@@ -98,8 +98,8 @@ describe('Home Random Albums selection (#258)', () => {
     const firstProjection = queries[0].selection;
     expect(Object.keys(firstProjection)).toEqual(['listing', 'physicalCopy', 'release', 'seller']);
     expect(Object.keys(firstProjection.listing as object)).toEqual(['id', 'price', 'tradeAvailable']);
-    expect(Object.keys(firstProjection.physicalCopy as object)).toEqual(['mediaCondition', 'sleeveCondition']);
-    expect(Object.keys(firstProjection.release as object)).toEqual(['title', 'artist', 'releaseYear', 'format', 'coverArtUrl']);
+    expect(Object.keys(firstProjection.physicalCopy as object)).toEqual(['mediaCondition', 'sleeveCondition', 'specialPressing', 'specialPressingCharacteristics']);
+    expect(Object.keys(firstProjection.release as object)).toEqual(['title', 'artist', 'releaseYear', 'format', 'coverArtUrl', 'contentType']);
     expect(Object.keys(firstProjection.seller as object)).toEqual(['username', 'location']);
     expect(queries[0].limits).toEqual([2]);
     expect(queries[1].limits).toEqual([1]);

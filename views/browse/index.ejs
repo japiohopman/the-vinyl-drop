@@ -10,8 +10,8 @@
   <% const selectedFormats = Array.isArray(filters.formats) ? filters.formats : []; %>
   <% const browseFormatIconPaths = { lp: '/assets/UI/LP.svg', '12-inch': '/assets/UI/12-ince.svg', '7-inch': '/assets/UI/7-ince.svg' }; %>
   <% const formatParams = selectedFormats.map(function(format) { return 'format=' + encodeURIComponent(format); }).join('&'); %>
-  <% const baseQueryParams = 'q=' + encodeURIComponent(filters.q || '') + '&genre=' + encodeURIComponent(filters.genre || '') + '&style=' + encodeURIComponent(filters.style || '') + '&condition=' + encodeURIComponent(filters.condition || '') + '&minPrice=' + encodeURIComponent(filters.minPrice || '') + '&maxPrice=' + encodeURIComponent(filters.maxPrice || '') + '&sort=' + encodeURIComponent(filters.sort || 'newest') + '&contentType=' + encodeURIComponent(filters.contentType || '') + (filters.specialPressing ? '&specialPressing=1' : ''); %>
-  <% const queryBaseParams = [baseQueryParams, formatParams, filters.whiteLabel ? 'whiteLabel=1' : ''].filter(Boolean).join('&'); %>
+  <% const baseQueryParams = 'q=' + encodeURIComponent(filters.q || '') + '&genre=' + encodeURIComponent(filters.genre || '') + '&style=' + encodeURIComponent(filters.style || '') + '&condition=' + encodeURIComponent(filters.condition || '') + '&minPrice=' + encodeURIComponent(filters.minPrice || '') + '&maxPrice=' + encodeURIComponent(filters.maxPrice || '') + '&sort=' + encodeURIComponent(filters.sort || 'newest'); %>
+  <% const queryBaseParams = [baseQueryParams, formatParams, filters.whiteLabel ? 'whiteLabel=1' : '', filters.contentType ? 'contentType=' + encodeURIComponent(filters.contentType) : '', filters.specialPressing ? 'specialPressing=1' : ''].filter(Boolean).join('&'); %>
 
   <div class="browse-header">
     <div class="browse-header-copy">
