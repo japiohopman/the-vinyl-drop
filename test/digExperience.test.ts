@@ -817,6 +817,9 @@ describe('GET /browse/dig HTTP route integration', () => {
         isTrade: false,
         mediaCondition: 'VG+',
         sleeveCondition: 'VG+',
+        specialPressing: true,
+        specialPressingCharacteristics: ['shaped'],
+        contentType: 'non_music',
         sellerUsername: 'funk_master',
         sellerLocation: 'Detroit',
         url: '/listings/listing-101',
@@ -845,6 +848,9 @@ describe('GET /browse/dig HTTP route integration', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('https://storage.example/front-cover.webp');
     expect(response.text).toContain('https://storage.example/back-cover.webp');
+    expect(response.text).toContain('Special Pressing');
+    expect(response.text).toContain('Shaped');
+    expect(response.text).toContain('Non-Music');
     expect(response.text).not.toContain('Front cover not photographed');
     expect(response.text).not.toContain('Back cover not photographed');
 
