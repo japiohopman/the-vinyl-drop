@@ -487,7 +487,9 @@
 
       <% const selectedSpecialPressingCharacteristics = Array.isArray(form.values.specialPressingCharacteristics)
         ? form.values.specialPressingCharacteristics
-        : (form.values.specialPressingCharacteristics ? [form.values.specialPressingCharacteristics] : []); %>
+        : (typeof form.values.specialPressingCharacteristics === 'string' && form.values.specialPressingCharacteristics
+          ? form.values.specialPressingCharacteristics.split(',')
+          : []); %>
       <section class="special-pressing-editor" aria-labelledby="specialPressingEditTitle">
         <h3 id="specialPressingEditTitle">Special Pressing</h3>
         <p>This classification applies to your physical copy only. Other sellers can classify their own copies separately.</p>

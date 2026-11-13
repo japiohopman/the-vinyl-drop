@@ -16,7 +16,7 @@ export const physicalCopySchema = z.object({
   sleeveCondition: conditionGradeSchema,
   notes: z.string().trim().max(1000, 'Notes cannot exceed 1000 characters').nullable().optional(),
   specialPressing: z.boolean().default(false),
-  specialPressingCharacteristics: specialPressingCharacteristicsSchema,
+  specialPressingCharacteristics: specialPressingCharacteristicsSchema.default([]),
   specialPressingDetails: z.string().trim().max(1000, 'Special Pressing details cannot exceed 1000 characters').nullable().optional(),
 }).superRefine((data, context) => {
   if (data.specialPressing && data.specialPressingCharacteristics.length === 0) {

@@ -48,8 +48,8 @@ export interface PublicListingDetailRecord {
 
 export interface ListingSearchRecord {
   listing: Pick<Listing, 'id' | 'price' | 'tradeAvailable'>;
-  physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition' | 'specialPressing' | 'specialPressingCharacteristics'>;
-  release: Pick<Release, 'title' | 'artist' | 'releaseYear' | 'format' | 'coverArtUrl' | 'contentType'>;
+  physicalCopy: Pick<PhysicalCopy, 'mediaCondition' | 'sleeveCondition'> & Partial<Pick<PhysicalCopy, 'specialPressing' | 'specialPressingCharacteristics'>>;
+  release: Pick<Release, 'title' | 'artist' | 'releaseYear' | 'format' | 'coverArtUrl'> & Partial<Pick<Release, 'contentType'>>;
   seller: Pick<Profile, 'username' | 'location'>;
   primaryPhotoPath: string | null;
 }

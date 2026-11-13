@@ -8,9 +8,9 @@ export interface ListingCardViewModel {
   isTrade: boolean;
   mediaCondition: string;
   sleeveCondition: string;
-  specialPressing: boolean;
-  specialPressingCharacteristics: string[];
-  contentType: 'music' | 'non_music';
+  specialPressing?: boolean;
+  specialPressingCharacteristics?: string[];
+  contentType?: 'music' | 'non_music';
   imageUrl?: string;
   fallbackImageUrl?: string;
   imageAlt: string;

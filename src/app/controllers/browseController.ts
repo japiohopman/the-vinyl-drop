@@ -56,7 +56,7 @@ export async function getBrowsePage(req: Request, res: Response, next: NextFunct
     const whiteLabelToggle = req.query.whiteLabelToggle === '1';
     const whiteLabel = resolveWhiteLabelFilter(req.query.whiteLabel, whiteLabelToggle);
     const contentTypeInput = typeof req.query.contentType === 'string' ? req.query.contentType.trim() : '';
-    const contentType = contentTypeInput === 'music' || contentTypeInput === 'non_music' ? contentTypeInput : undefined;
+    const contentType: 'music' | 'non_music' | undefined = contentTypeInput === 'music' ? 'music' : contentTypeInput === 'non_music' ? 'non_music' : undefined;
     const specialPressing = req.query.specialPressing === '1';
     const conditionInput = typeof req.query.condition === 'string' ? req.query.condition.trim() : '';
     const condition = (CONDITION_GRADES as readonly string[]).includes(conditionInput)
@@ -214,7 +214,7 @@ export async function getResponsiveDigPage(
     const whiteLabelToggle = req.query.whiteLabelToggle === '1';
     const whiteLabel = resolveWhiteLabelFilter(req.query.whiteLabel, whiteLabelToggle);
     const contentTypeInput = typeof req.query.contentType === 'string' ? req.query.contentType.trim() : '';
-    const contentType = contentTypeInput === 'music' || contentTypeInput === 'non_music' ? contentTypeInput : undefined;
+    const contentType: 'music' | 'non_music' | undefined = contentTypeInput === 'music' ? 'music' : contentTypeInput === 'non_music' ? 'non_music' : undefined;
     const specialPressing = req.query.specialPressing === '1';
     const conditionInput = typeof req.query.condition === 'string' ? req.query.condition.trim() : '';
     const condition = (CONDITION_GRADES as readonly string[]).includes(conditionInput)

@@ -60,7 +60,9 @@
 
       <% const selectedSpecialPressingCharacteristics = Array.isArray(form.values.specialPressingCharacteristics)
         ? form.values.specialPressingCharacteristics
-        : (form.values.specialPressingCharacteristics ? [form.values.specialPressingCharacteristics] : []); %>
+        : (typeof form.values.specialPressingCharacteristics === 'string' && form.values.specialPressingCharacteristics
+          ? form.values.specialPressingCharacteristics.split(',')
+          : []); %>
       <section class="special-pressing-editor" aria-labelledby="specialPressingCreateTitle">
         <h2 id="specialPressingCreateTitle">Special Pressing</h2>
         <p>Mark this physical copy only when the record itself has a special pressing or finish. Other copies of the same release can be different.</p>

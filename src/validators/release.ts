@@ -68,4 +68,4 @@ export const releaseSchema = z.object({
   }
 });
 
-export type ReleaseInput = z.infer<typeof releaseSchema>;
+export type ReleaseInput = z.input<typeof releaseSchema>;

@@ -89,7 +89,7 @@ export const createListingFromReleaseSchema = z.object({
   description: z.string().trim().max(2000, 'Description cannot exceed 2000 characters').optional().nullable(),
   notes: z.string().trim().max(1000, 'Physical copy notes cannot exceed 1000 characters').optional().nullable(),
   specialPressing: z.preprocess((value) => value === true || value === 'true' || value === 'on', z.boolean()).default(false),
-  specialPressingCharacteristics: specialPressingCharacteristicsInput,
+  specialPressingCharacteristics: specialPressingCharacteristicsInput.default([]),
   specialPressingDetails: z.string().trim().max(1000, 'Special Pressing details cannot exceed 1000 characters').optional().nullable(),
 }).superRefine((data, context) => {
   if (data.specialPressing && data.specialPressingCharacteristics.length === 0) context.addIssue({ code: z.ZodIssueCode.custom, path: ['specialPressingCharacteristics'], message: 'Choose at least one Special Pressing characteristic.' });
