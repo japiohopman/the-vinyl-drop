@@ -582,3 +582,29 @@
   font-weight: 700;
   line-height: 1.2;
 }
+
+
+/* Keep the expanded desktop Browse filter panel within its compact height. */
+@media (min-width: 1200px) {
+  .browse-page-container .browse-secondary-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .browse-page-container .browse-secondary-grid .browse-special-pressing-filter {
+    display: flex;
+    align-items: center;
+    align-self: end;
+    gap: var(--space-2);
+    margin-bottom: 0;
+    padding: 0;
+    text-transform: none;
+    line-height: 1.25;
+  }
+
+  .browse-page-container .browse-secondary-grid .browse-special-pressing-filter input {
+    display: inline-block;
+    width: auto;
+    margin: 0;
+  }
+}
