@@ -56,7 +56,7 @@ const appliedSchema: Migration0026SchemaSnapshot = {
   indexes: baselineSchema.indexes,
   constraint: {
     convalidated: true,
-    definition: 'CHECK (((special_pressing = false) AND (cardinality(special_pressing_characteristics) = 0) AND (special_pressing_details IS NULL)) OR ((special_pressing = true) AND (cardinality(special_pressing_characteristics) > 0)))',
+    definition: 'CHECK ((((special_pressing = false) AND (cardinality(special_pressing_characteristics) = 0) AND (special_pressing_details IS NULL)) OR ((special_pressing = true) AND (cardinality(special_pressing_characteristics) > 0))))',
   },
 };
 
