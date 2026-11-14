@@ -331,6 +331,7 @@ export function getProductionMigration0026SchemaProblems(
     const defaultMatches = expectedColumn.defaultExpression === null
       ? actualDefault === null
       : actualDefault !== null &&
+        actualDefault !== undefined &&
         normalizePostgresExpression(actualDefault) === normalizePostgresExpression(expectedColumn.defaultExpression);
     if (
       !actual ||
