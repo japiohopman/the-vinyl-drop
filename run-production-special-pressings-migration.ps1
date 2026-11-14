@@ -200,9 +200,9 @@ export default defineConfig({
     }
 
     Write-Host 'Repeating read-only exact ledger/hash and schema preflight immediately before Drizzle...'
-    & $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigration0026.ts') preflight
+    & $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigration0026.ts') preflight (Join-Path $tempMigrationDirectory '0026_release_content_type_and_special_pressing.sql')
     if ($LASTEXITCODE -ne 0) {
-        throw 'Final production 0000-0025 baseline or 0026-absence verification failed. Drizzle was not started.'
+        throw 'Final production 0000-0025 baseline, 0026-absence or copied-SQL hash verification failed. Drizzle was not started.'
     }
 
     Write-Host 'Applying only migration 0026_release_content_type_and_special_pressing...'
