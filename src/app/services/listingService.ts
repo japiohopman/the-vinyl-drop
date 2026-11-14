@@ -100,6 +100,23 @@ import { recordListingPublishedEvent } from './activityService';
 
 type DbInstance = ReturnType<typeof getDb>;
 
+/** Drizzle/Postgres errors can wrap SQLSTATE in one or more cause objects. */
+function hasPostgresErrorCode(error: unknown, expectedCode: string): boolean {
+  let current: unknown = error;
+  const visited = new Set<object>();
+
+  for (let depth = 0; depth < 8; depth++) {
+    if (!current || typeof current !== 'object' || visited.has(current)) return false;
+    visited.add(current);
+
+    const candidate = current as { code?: unknown; cause?: unknown; originalError?: unknown };
+    if (candidate.code === expectedCode) return true;
+    current = candidate.cause ?? candidate.originalError;
+  }
+
+  return false;
+}
+
 export type ListingPhotoWithUrl = Omit<ListingPhoto, 'sourceStoragePath'> & {
   publicUrl: string;
 };
@@ -967,6 +984,14 @@ export async function addPhotoToListing(
   if (!roleResult.success) throw new ValidationError('Choose a photo role before uploading.');
   const role = roleResult.data;
 
+  if (role === 'front_cover' || role === 'back_cover') {
+    const existingPhotos = await findPhotosByListingId(listingId, dbOverride);
+    if (existingPhotos.some((photo) => photo.role === role)) {
+      const side = role === 'front_cover' ? 'front cover' : 'back cover';
+      throw new ValidationError(`This listing already has a ${side}. Edit or remove that photo before uploading another one.`);
+    }
+  }
+
   const submittedAltText = typeof altText === 'string' ? altText.trim() : '';
   const defaultAltText = role === 'front_cover'
     ? 'Front cover of the record sleeve'
@@ -1108,8 +1133,9 @@ export async function addPhotoToListing(
         dbOverride
       );
     }
-    if ((dbErr as { code?: string }).code === '23505') {
-      throw new ValidationError('This listing already has a photo assigned to that sleeve side. Reclassify the existing photo before adding another one.');
+    if (hasPostgresErrorCode(dbErr, '23505') && (role === 'front_cover' || role === 'back_cover')) {
+      const side = role === 'front_cover' ? 'front cover' : 'back cover';
+      throw new ValidationError(`This listing already has a ${side}. Edit or remove that photo before uploading another one.`);
     }
     throw dbErr;
   }
