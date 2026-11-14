@@ -100,8 +100,12 @@ import { recordListingPublishedEvent } from './activityService';
 
 type DbInstance = ReturnType<typeof getDb>;
 
-/** Drizzle/Postgres errors can wrap SQLSTATE in one or more cause objects. */
-function hasPostgresErrorCode(error: unknown, expectedCode: string): boolean {
+/** Drizzle/Postgres errors can wrap SQLSTATE and constraint metadata in cause objects. */
+function hasPostgresUniqueConstraint(
+  error: unknown,
+  expectedCode: string,
+  expectedConstraint: string
+): boolean {
   let current: unknown = error;
   const visited = new Set<object>();
 
@@ -109,8 +113,13 @@ function hasPostgresErrorCode(error: unknown, expectedCode: string): boolean {
     if (!current || typeof current !== 'object' || visited.has(current)) return false;
     visited.add(current);
 
-    const candidate = current as { code?: unknown; cause?: unknown; originalError?: unknown };
-    if (candidate.code === expectedCode) return true;
+    const candidate = current as {
+      code?: unknown;
+      constraint?: unknown;
+      cause?: unknown;
+      originalError?: unknown;
+    };
+    if (candidate.code === expectedCode && candidate.constraint === expectedConstraint) return true;
     current = candidate.cause ?? candidate.originalError;
   }
 
@@ -1133,7 +1142,12 @@ export async function addPhotoToListing(
         dbOverride
       );
     }
-    if (hasPostgresErrorCode(dbErr, '23505') && (role === 'front_cover' || role === 'back_cover')) {
+    const coverConstraint = role === 'front_cover'
+      ? 'listing_photos_front_cover_unique_idx'
+      : role === 'back_cover'
+        ? 'listing_photos_back_cover_unique_idx'
+        : null;
+    if (coverConstraint && hasPostgresUniqueConstraint(dbErr, '23505', coverConstraint)) {
       const side = role === 'front_cover' ? 'front cover' : 'back cover';
       throw new ValidationError(`This listing already has a ${side}. Edit or remove that photo before uploading another one.`);
     }
