@@ -113,11 +113,10 @@ export function normalizePostgresExpression(expression: string): string {
 function normalizeSpecialPressingConstraintDefinition(
   constraint: NonNullable<Migration0026SchemaSnapshot['constraint']>,
 ): string {
-  const normalized = normalizePostgresExpression(constraint.definition);
-  const notValidSuffix = 'notvalid';
-  return !constraint.convalidated && normalized.endsWith(notValidSuffix)
-    ? normalized.slice(0, -notValidSuffix.length)
-    : normalized;
+  const definition = !constraint.convalidated
+    ? constraint.definition.replace(/\\s+NOT\\s+VALID\\s*$/i, '')
+    : constraint.definition;
+  return normalizePostgresExpression(definition);
 }
 
 /**
