@@ -6,6 +6,10 @@ import { getPostgresConnectionOptions } from '../src/db/connectionOptions';
 
 const EXPECTED_PROJECT_REF = 'anxhmlalxjvatrufcjei';
 const EXPECTED_POOLER_HOST = 'aws-0-eu-west-1.pooler.supabase.com';
+// SHA-256 of the independently approved LF-normalized migration 0026 SQL.
+const EXPECTED_MIGRATION_0026_SQL_SHA256 = '225a33bb06f21519a3a73c32a6765b4ed0da1dda5632df3c49e8894a44f6633b';
+const EXPECTED_SPECIAL_PRESSING_CHECK =
+  'CHECK ((((special_pressing = false) AND (cardinality(special_pressing_characteristics) = 0) AND (special_pressing_details IS NULL)) OR ((special_pressing = true) AND (cardinality(special_pressing_characteristics) > 0))))';
 const EXPECTED_TAGS = [
   '0000_grey_living_tribunal',
   '0001_add_physical_copies',
@@ -119,6 +123,7 @@ export function getExpectedProductionMigration0026Entries(
 
     const sqlPath = resolve(migrationDirectory, `${tag}.sql`);
     const sql = readFileSync(sqlPath, 'utf8');
+    if (index === 26) assertApprovedMigration0026Sql(sql);
     expected.push({
       idx: index,
       tag,
@@ -248,46 +253,51 @@ export function getProductionMigration0026SchemaProblems(
     dataType: string;
     udtName: string;
     nullable: string;
-    defaultIncludes?: string;
+    defaultExpression: string | null;
   }> = [
     {
       name: 'releases.content_type',
       dataType: 'USER-DEFINED',
       udtName: 'release_content_type',
       nullable: 'NO',
-      defaultIncludes: "'music'::release_content_type",
+      defaultExpression: "'music'::release_content_type",
     },
     {
       name: 'physical_copies.special_pressing',
       dataType: 'boolean',
       udtName: 'bool',
       nullable: 'NO',
-      defaultIncludes: 'false',
+      defaultExpression: 'false',
     },
     {
       name: 'physical_copies.special_pressing_characteristics',
       dataType: 'ARRAY',
       udtName: '_special_pressing_characteristic',
       nullable: 'NO',
-      defaultIncludes: 'special_pressing_characteristic[]',
+      defaultExpression: "'{}'::special_pressing_characteristic[]",
     },
     {
       name: 'physical_copies.special_pressing_details',
       dataType: 'text',
       udtName: 'text',
       nullable: 'YES',
+      defaultExpression: null,
     },
   ];
 
   for (const expectedColumn of expectedColumns) {
     const actual = columnMap.get(expectedColumn.name);
+    const actualDefault = actual?.column_default;
+    const defaultMatches = expectedColumn.defaultExpression === null
+      ? actualDefault === null
+      : actualDefault !== null &&
+        normalizePostgresExpression(actualDefault) === normalizePostgresExpression(expectedColumn.defaultExpression);
     if (
       !actual ||
       actual.data_type !== expectedColumn.dataType ||
       actual.udt_name !== expectedColumn.udtName ||
       actual.is_nullable !== expectedColumn.nullable ||
-      (expectedColumn.defaultIncludes && !String(actual.column_default ?? '').includes(expectedColumn.defaultIncludes)) ||
-      (!expectedColumn.defaultIncludes && actual.column_default !== null)
+      !defaultMatches
     ) {
       problems.push(`The 0026 column ${expectedColumn.name} does not match its approved type/default/nullability.`);
     }
@@ -296,16 +306,11 @@ export function getProductionMigration0026SchemaProblems(
   if (!snapshot.constraint) {
     problems.push('The Special Pressing consistency CHECK is missing.');
   } else {
-    const definition = snapshot.constraint.definition.toLowerCase();
-    const requiredFragments = [
-      'special_pressing = false',
-      'cardinality(special_pressing_characteristics) = 0',
-      'special_pressing_details is null',
-      'special_pressing = true',
-      'cardinality(special_pressing_characteristics) > 0',
-    ];
-    if (requiredFragments.some((fragment) => !definition.includes(fragment))) {
-      problems.push('The Special Pressing consistency CHECK does not match the approved constraint definition.');
+    if (
+      normalizePostgresExpression(snapshot.constraint.definition) !==
+      normalizePostgresExpression(EXPECTED_SPECIAL_PRESSING_CHECK)
+    ) {
+      problems.push('The Special Pressing consistency CHECK does not match the exact approved constraint definition.');
     }
     if (requireValidatedConstraint && !snapshot.constraint.convalidated) {
       problems.push('The Special Pressing consistency CHECK is not validated.');
