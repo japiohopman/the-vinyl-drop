@@ -206,6 +206,16 @@ describe('Seller cover photo HTTP round trip', () => {
     expect(focusedPhotoStep.text).not.toContain('name="priceEur"');
     expect(focusedPhotoStep.text).not.toContain('name="mediaCondition"');
     expect(focusedPhotoStep.text).not.toContain('class="release-artwork-editor"');
+    expect(focusedPhotoStep.text).toContain(`href="/listings/${listingId}/edit"`);
+    expect(focusedPhotoStep.text).toContain(`href="/listings/${listingId}/preview"`);
+
+    const backToDetails = await supertest(app).get(`/listings/${listingId}/edit`);
+    expect(backToDetails.status).toBe(200);
+    expect(backToDetails.text).toContain('name="priceEur"');
+    expect(backToDetails.text).toContain('value="25"');
+    expect(backToDetails.text).toContain('name="mediaCondition"');
+    expect(backToDetails.text).toContain('name="sleeveCondition"');
+
     expect(initialEditor.text).toContain('https://catalog.example/miles.jpg');
     expect(initialEditor.text).toContain('shared by listings of this same release');
     expect(initialEditor.text).toContain('Use original Discogs artwork');
