@@ -162,9 +162,34 @@ describe('pinned production migration 0026 preflight', () => {
 
     const unvalidated = {
       ...appliedSchema,
-      constraint: { ...appliedSchema.constraint!, convalidated: false },
+      constraint: {
+        ...appliedSchema.constraint!,
+        convalidated: false,
+        definition: `${appliedSchema.constraint!.definition} NOT VALID`,
+      },
     };
+    expect(getProductionMigration0026SchemaProblems(unvalidated, 'complete', false)).toEqual([]);
     expect(getProductionMigration0026SchemaProblems(unvalidated, 'complete', true).join(' ')).toContain('not validated');
+
+    const wrongUnvalidatedConstraint = {
+      ...unvalidated,
+      constraint: {
+        ...unvalidated.constraint!,
+        definition: `${appliedSchema.constraint!.definition.replace(/\\)$/, ') OR true)')} NOT VALID`,
+      },
+    };
+    expect(getProductionMigration0026SchemaProblems(wrongUnvalidatedConstraint, 'complete', false).join(' '))
+      .toContain('does not match the exact approved constraint definition');
+
+    const validatedButMarkedNotValid = {
+      ...appliedSchema,
+      constraint: {
+        ...appliedSchema.constraint!,
+        definition: `${appliedSchema.constraint!.definition} NOT VALID`,
+      },
+    };
+    expect(getProductionMigration0026SchemaProblems(validatedButMarkedNotValid, 'complete', true).join(' '))
+      .toContain('does not match the exact approved constraint definition');
 
     const wrongShape = {
       ...appliedSchema,
