@@ -139,6 +139,7 @@ describe('Seller cover photo HTTP round trip', () => {
       multipartUploadHandler,
       postUploadPhoto
     );
+    app.get('/listings/:id/photos', authenticateTestSeller, getEditListingPage);
     app.get('/listings/:id/photos/:photoId/editor-source', authenticateTestSeller, getListingPhotoEditorSource);
     app.post('/listings/:id/photos/:photoId/edit', authenticateTestSeller, validateSameOrigin, multipartUploadHandler, postEditListingPhoto);
     app.post('/listings/:id/photos/:photoId/delete', authenticateTestSeller, validateSameOrigin, postDeletePhoto);
@@ -193,6 +194,18 @@ describe('Seller cover photo HTTP round trip', () => {
     const initialEditor = await supertest(app).get(`/listings/${listingId}/edit`);
     expect(initialEditor.status).toBe(200);
     expect(initialEditor.text).toContain('class="release-artwork-editor"');
+
+    const focusedPhotoStep = await supertest(app).get(`/listings/${listingId}/photos`);
+    expect(focusedPhotoStep.status).toBe(200);
+    expect(focusedPhotoStep.text).toContain('Step 2 of 3 · Photos');
+    expect(focusedPhotoStep.text).toContain('Photos of your copy');
+    expect(focusedPhotoStep.text).toContain('Back to details');
+    expect(focusedPhotoStep.text).toContain('Continue to preview');
+    expect(focusedPhotoStep.text).toContain('id="photoUploadForm"');
+    expect(focusedPhotoStep.text).not.toContain('Listing Details');
+    expect(focusedPhotoStep.text).not.toContain('name="priceEur"');
+    expect(focusedPhotoStep.text).not.toContain('name="mediaCondition"');
+    expect(focusedPhotoStep.text).not.toContain('class="release-artwork-editor"');
     expect(initialEditor.text).toContain('https://catalog.example/miles.jpg');
     expect(initialEditor.text).toContain('shared by listings of this same release');
     expect(initialEditor.text).toContain('Use original Discogs artwork');
@@ -364,11 +377,12 @@ describe('Seller cover photo HTTP round trip', () => {
       .attach('photo', frontImage, { filename: 'physical-front.jpg', contentType: 'image/jpeg' })
       .attach('originalPhoto', frontImage, { filename: 'physical-front-original.jpg', contentType: 'image/jpeg' })
       .field('editorState', editorState(128, 128))
+      .field('returnTo', 'photos')
       .field('role', 'front_cover')
       .field('altText', '');
 
     expect(frontResponse.status).toBe(302);
-    expect(frontResponse.headers.location).toBe(`/listings/${listingId}/edit`);
+    expect(frontResponse.headers.location).toBe(`/listings/${listingId}/photos`);
 
     const backResponse = await supertest(app)
       .post(`/listings/${listingId}/photos`)
@@ -376,11 +390,12 @@ describe('Seller cover photo HTTP round trip', () => {
       .attach('photo', backImage, { filename: 'physical-back.jpg', contentType: 'image/jpeg' })
       .attach('originalPhoto', backImage, { filename: 'physical-back-original.jpg', contentType: 'image/jpeg' })
       .field('editorState', editorState(128, 128))
+      .field('returnTo', 'photos')
       .field('role', 'back_cover')
       .field('altText', '');
 
     expect(backResponse.status).toBe(302);
-    expect(backResponse.headers.location).toBe(`/listings/${listingId}/edit`);
+    expect(backResponse.headers.location).toBe(`/listings/${listingId}/photos`);
 
     const storedPhotos = await findPhotosByListingId(listingId);
     const front = storedPhotos.find((photo) => photo.role === 'front_cover');
@@ -417,9 +432,10 @@ describe('Seller cover photo HTTP round trip', () => {
       .set('Origin', new URL(config.APP_BASE_URL).origin)
       .attach('photo', replacementImage, { filename: 'edited-front.jpg', contentType: 'image/jpeg' })
       .field('editorState', editorState(128, 128))
+      .field('returnTo', 'photos')
       .field('altText', 'Front sleeve with corrected crease description');
     expect(editResponse.status).toBe(302);
-    expect(editResponse.headers.location).toBe(`/listings/${listingId}/edit`);
+    expect(editResponse.headers.location).toBe(`/listings/${listingId}/photos`);
 
     const afterEdit = await findPhotosByListingId(listingId);
     const updatedFront = afterEdit.find((photo) => photo.id === front!.id);
