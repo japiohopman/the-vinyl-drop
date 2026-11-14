@@ -106,6 +106,21 @@ export function normalizePostgresExpression(expression: string): string {
 }
 
 /**
+ * PostgreSQL appends NOT VALID to pg_get_constraintdef while a constraint is
+ * unvalidated. Ignore only that state marker for predicate comparison; the
+ * convalidated flag is checked separately and still gates completion.
+ */
+function normalizeSpecialPressingConstraintDefinition(
+  constraint: NonNullable<Migration0026SchemaSnapshot['constraint']>,
+): string {
+  const normalized = normalizePostgresExpression(constraint.definition);
+  const notValidSuffix = 'notvalid';
+  return !constraint.convalidated && normalized.endsWith(notValidSuffix)
+    ? normalized.slice(0, -notValidSuffix.length)
+    : normalized;
+}
+
+/**
  * Pins the actual 0026 SQL bytes to an independently reviewed SHA-256.
  * CRLF and LF checkouts are equivalent after newline-only normalization.
  */
@@ -348,7 +363,7 @@ export function getProductionMigration0026SchemaProblems(
     problems.push('The Special Pressing consistency CHECK is missing.');
   } else {
     if (
-      normalizePostgresExpression(snapshot.constraint.definition) !==
+      normalizeSpecialPressingConstraintDefinition(snapshot.constraint) !==
       normalizePostgresExpression(EXPECTED_SPECIAL_PRESSING_CHECK)
     ) {
       problems.push('The Special Pressing consistency CHECK does not match the exact approved constraint definition.');
