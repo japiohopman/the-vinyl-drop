@@ -64,7 +64,7 @@ describe('pinned production migration 0026 preflight', () => {
   test('pins the actual migration 0026 SQL to the independent approved SHA-256', () => {
     const sql = readFileSync(resolve(process.cwd(), 'drizzle/0026_release_content_type_and_special_pressing.sql'), 'utf8');
     expect(() => assertApprovedMigration0026Sql(sql)).not.toThrow();
-    expect(() => assertApprovedMigration0026Sql(sql + '\\n-- unapproved change')).toThrow('independently pinned approved SHA-256');
+    expect(() => assertApprovedMigration0026Sql(sql + '\n-- unapproved change')).toThrow('independently pinned approved SHA-256');
     expect(normalizePostgresExpression("'{}'::special_pressing_characteristic[]"))
       .toBe(normalizePostgresExpression("  '{}' :: SPECIAL_PRESSING_CHARACTERISTIC [ ] "));
   });
