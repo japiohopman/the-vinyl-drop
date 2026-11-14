@@ -1,14 +1,29 @@
 <div class="edit-listing-page" style="max-width: 750px; margin: var(--space-8) auto;">
   <div class="card edit-listing-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card);">
     <header class="edit-listing-header">
-      <h1>Edit listing</h1>
-      <a href="/listings/<%= listing.id %>/preview" class="btn btn-outline btn-sm edit-listing-preview-link">Preview <span aria-hidden="true">→</span></a>
+      <h1><%= photoStepOnly ? 'Add photos' : 'Edit listing' %></h1>
+      <% if (photoStepOnly) { %>
+        <div class="listing-step-indicator">Step 2 of 3 · Photos</div>
+        <nav class="listing-step-actions" aria-label="Listing creation steps">
+          <a href="/listings/<%= listing.id %>/edit" class="btn btn-outline btn-sm">← Back to details</a>
+          <a href="/listings/<%= listing.id %>/preview" class="btn btn-primary btn-sm">Continue to preview →</a>
+        </nav>
+      <% } else { %>
+        <a href="/listings/<%= listing.id %>/preview" class="btn btn-outline btn-sm edit-listing-preview-link">Preview <span aria-hidden="true">→</span></a>
+      <% } %>
     </header>
 
     <div class="edit-listing-record">
       <h2><%= release.title %></h2>
       <p>by <%= release.artist %><% if (release.releaseYear) { %> · <%= release.releaseYear %><% } %></p>
     </div>
+    <% if (photoStepOnly && release.coverArtUrl) { %>
+      <aside class="photo-step-catalogue-reference" aria-label="Release catalogue artwork reference">
+        <img src="<%= release.coverArtUrl %>" alt="Catalogue artwork reference for <%= release.title %> — not a photo of your physical copy" />
+        <span><strong>Release artwork</strong><small>Catalogue reference · your copy photos are below</small></span>
+      </aside>
+    <% } %>
+    <% if (!photoStepOnly) { %>
     <section class="release-artwork-editor" aria-labelledby="releaseArtworkHeading">
       <div class="release-artwork-preview-column">
         <div class="release-artwork-preview-frame">
@@ -92,13 +107,16 @@
         <button type="submit" class="btn btn-outline btn-md">Save YouTube preview</button>
       </form>
     </section>
+    <% } %>
 
     <!-- Physical-copy photo management -->
     <section class="photos-section">
       <div class="photo-section-header">
         <div>
-          <h2>Photos</h2>
-          <p>Optional photos of your actual copy. Add them only when you want to show its sleeve, record or condition. Release artwork above supplies the default front image when you do not add a front photo of your copy.</p>
+          <h2><%= photoStepOnly ? 'Photos of your copy' : 'Photos' %></h2>
+          <p><%= photoStepOnly
+            ? 'Add the front and back of this physical copy. Extra photos of the record, inserts or condition are optional.'
+            : 'Optional photos of your actual copy. Add them only when you want to show its sleeve, record or condition. Release artwork above supplies the default front image when you do not add a front photo of your copy.' %></p>
         </div>
         <button type="button" class="btn btn-outline btn-sm photo-help-trigger" data-open-photo-help>
           <span class="photo-help-mark" aria-hidden="true">?</span>
@@ -135,6 +153,7 @@
                 </button>
               </div>
               <form action="/listings/<%= listing.id %>/photos/<%= slot.photo.id %>/delete" method="POST" class="cover-photo-remove-form">
+                <input type="hidden" name="returnTo" value="<%= photoStepOnly ? 'photos' : 'edit' %>" />
                 <button type="submit" class="photo-remove-link">Remove photo</button>
               </form>
             <% } else { %>
@@ -178,6 +197,7 @@
                     Edit photo
                   </button>
                   <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/role" method="POST" class="additional-photo-role-form">
+                    <input type="hidden" name="returnTo" value="<%= photoStepOnly ? 'photos' : 'edit' %>" />
                     <label for="photo-role-<%= idx %>">Photo type</label>
                     <select id="photo-role-<%= idx %>" name="role" required class="form-control">
                       <% photoRoles.forEach(function(role) { %>
@@ -187,6 +207,7 @@
                     <button type="submit" class="btn btn-outline btn-sm">Save type</button>
                   </form>
                   <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/delete" method="POST">
+                    <input type="hidden" name="returnTo" value="<%= photoStepOnly ? 'photos' : 'edit' %>" />
                     <button type="submit" class="photo-remove-link">Remove photo</button>
                   </form>
                 </div>
@@ -214,12 +235,13 @@
           <p role="alert" class="photo-dialog-error"><%= photoError %></p>
         <% } %>
         <form id="photoUploadForm" action="/listings/<%= listing.id %>/photos" data-new-action="/listings/<%= listing.id %>/photos" method="POST" enctype="multipart/form-data" class="photo-upload-form">
+            <input type="hidden" name="returnTo" value="<%= photoStepOnly ? 'photos' : 'edit' %>" />
             <div class="photo-upload-field photo-role-field">
               <label for="newPhotoRole">Photo type</label>
               <select id="newPhotoRole" name="role" required class="form-control">
                 <option value="">Choose a photo type</option>
                 <% newPhotoRoles.forEach(function(role) { %>
-                  <option value="<%= role %>" data-guidance="<%= photoRoleGuidance[role] %>"><%= photoRoleLabels[role] %></option>
+                  <option value="<%= role %>" data-cover-role="<%= role === 'front_cover' || role === 'back_cover' ? 'true' : 'false' %>" data-guidance="<%= photoRoleGuidance[role] %>"><%= photoRoleLabels[role] %></option>
                 <% }); %>
               </select>
             </div>
@@ -471,6 +493,7 @@
       </dialog>
     </section>
 
+    <% if (!photoStepOnly) { %>
     <!-- Details Update Form -->
     <form action="/listings/<%= listing.id %>/edit" method="POST" class="edit-listing-form" novalidate>
       <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-4);">Listing Details</h2>
@@ -491,24 +514,35 @@
         : (typeof form.values.specialPressingCharacteristics === 'string' && form.values.specialPressingCharacteristics
           ? form.values.specialPressingCharacteristics.split(',')
           : []); %>
+      <% const editSpecialPressingChecked = form.values.specialPressing === true || form.values.specialPressing === 'true' || form.values.specialPressing === 'on'; %>
       <section class="special-pressing-editor" aria-labelledby="specialPressingEditTitle">
         <h3 id="specialPressingEditTitle">Special Pressing</h3>
         <p>This classification applies to your physical copy only. Other sellers can classify their own copies separately.</p>
         <label class="special-pressing-toggle">
-          <input type="checkbox" name="specialPressing" value="true" <%= form.values.specialPressing === true || form.values.specialPressing === 'true' || form.values.specialPressing === 'on' ? 'checked' : '' %> />
+          <input
+            type="checkbox"
+            name="specialPressing"
+            value="true"
+            data-special-pressing-toggle
+            aria-controls="specialPressingEditPanel"
+            aria-expanded="<%= editSpecialPressingChecked ? 'true' : 'false' %>"
+            <%= editSpecialPressingChecked ? 'checked' : '' %>
+          />
           <span>This copy is a Special Pressing</span>
         </label>
-        <fieldset class="special-pressing-options">
-          <legend>What makes it special?</legend>
-          <% (typeof specialPressingOptions !== 'undefined' ? specialPressingOptions : []).forEach(function(option) { %>
-            <label>
-              <input type="checkbox" name="specialPressingCharacteristics" value="<%= option.value %>" <%= selectedSpecialPressingCharacteristics.includes(option.value) ? 'checked' : '' %> />
-              <span><strong><%= option.label %></strong> — <%= option.description %></span>
-            </label>
-          <% }); %>
-        </fieldset>
-        <label for="specialPressingDetailsEdit">More about this pressing (optional)</label>
-        <textarea id="specialPressingDetailsEdit" name="specialPressingDetails" maxlength="1000" rows="3" placeholder="Describe its exact shape, colour mix, finish, edition or other details"><%= form.values.specialPressingDetails !== undefined ? form.values.specialPressingDetails : (physicalCopy.specialPressingDetails || '') %></textarea>
+        <div id="specialPressingEditPanel" class="special-pressing-options-panel" data-special-pressing-panel <%= editSpecialPressingChecked ? '' : 'hidden' %>>
+          <fieldset class="special-pressing-options">
+            <legend>What makes it special?</legend>
+            <% (typeof specialPressingOptions !== 'undefined' ? specialPressingOptions : []).forEach(function(option) { %>
+              <label>
+                <input type="checkbox" name="specialPressingCharacteristics" value="<%= option.value %>" <%= editSpecialPressingChecked && selectedSpecialPressingCharacteristics.includes(option.value) ? 'checked' : '' %> />
+                <span><strong><%= option.label %></strong> — <%= option.description %></span>
+              </label>
+            <% }); %>
+          </fieldset>
+          <label for="specialPressingDetailsEdit">More about this pressing (optional)</label>
+          <textarea id="specialPressingDetailsEdit" name="specialPressingDetails" maxlength="1000" rows="2" placeholder="Describe its exact shape, colour mix or finish"><%= editSpecialPressingChecked ? (form.values.specialPressingDetails !== undefined ? form.values.specialPressingDetails : (physicalCopy.specialPressingDetails || '')) : '' %></textarea>
+        </div>
       </section>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-4);">
@@ -593,8 +627,16 @@
         <a href="/listings/<%= listing.id %>/preview" class="btn btn-outline btn-md">Preview Listing</a>
       </div>
     </form>
+    <% } %>
+    <% if (photoStepOnly) { %>
+      <nav class="listing-step-actions listing-step-actions-bottom" aria-label="Continue listing creation">
+        <a href="/listings/<%= listing.id %>/edit" class="btn btn-outline">← Back to details</a>
+        <a href="/listings/<%= listing.id %>/preview" class="btn btn-primary">Continue to preview →</a>
+      </nav>
+    <% } %>
   </div>
   <script src="/js/release-file-picker.js" defer></script>
   <script src="/js/listing-photo-editor-core.js" defer></script>
   <script src="/js/square-photo-cropper.js" defer></script>
+  <script src="/js/special-pressing-toggle.js" defer></script>
 </div>
