@@ -77,6 +77,46 @@ function getAcceptedHashes(sql: string): string[] {
 }
 
 /**
+ * Normalizes formatting and unquoted SQL keywords/identifiers while preserving
+ * the contents and case of single-quoted string literals.
+ */
+export function normalizePostgresExpression(expression: string): string {
+  let normalized = '';
+  let inSingleQuotedString = false;
+
+  for (let index = 0; index < expression.length; index += 1) {
+    const character = expression[index];
+
+    if (character === "'") {
+      normalized += character;
+      if (inSingleQuotedString && expression[index + 1] === "'") {
+        normalized += expression[index + 1];
+        index += 1;
+      } else {
+        inSingleQuotedString = !inSingleQuotedString;
+      }
+      continue;
+    }
+
+    if (!inSingleQuotedString && /\s/.test(character)) continue;
+    normalized += inSingleQuotedString ? character : character.toLowerCase();
+  }
+
+  return normalized;
+}
+
+/**
+ * Pins the actual 0026 SQL bytes to an independently reviewed SHA-256.
+ * CRLF and LF checkouts are equivalent after newline-only normalization.
+ */
+export function assertApprovedMigration0026Sql(sql: string): void {
+  const actualHash = sha256(sql.replace(/\r\n?/g, '\n'));
+  if (actualHash !== EXPECTED_MIGRATION_0026_SQL_SHA256) {
+    throw new Error('Migration 0026 SQL does not match the independently pinned approved SHA-256.');
+  }
+}
+
+/**
  * Validates the complete repository journal through index 26 and hashes every
  * approved SQL file. Missing, duplicate, replaced or later journal entries fail closed.
  */
