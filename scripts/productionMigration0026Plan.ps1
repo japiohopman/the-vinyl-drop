@@ -58,6 +58,9 @@ function Get-PinnedProductionMigration0026Entry {
     $previousTimestamp = [int64]0
     $selectedEntry = $null
     for ($index = 0; $index -lt $script:ProductionMigration0026ExpectedTags.Count; $index++) {
+        if ([int]$journal.entries[$index].idx -ne $index) {
+            throw 'Migration journal entries must remain in exact ascending index order.'
+        }
         $matches = @($journal.entries | Where-Object { [int]$_.idx -eq $index })
         if ($matches.Count -ne 1) {
             throw "Expected exactly one journal entry for migration index $index; found $($matches.Count)."
