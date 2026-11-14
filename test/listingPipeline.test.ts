@@ -669,7 +669,10 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       }).jpeg().toBuffer();
       const sourcePath = `listings/${listingId}/duplicate.source.webp`;
       const publicPath = `listings/${listingId}/duplicate.webp`;
-      const postgresError = Object.assign(new Error('duplicate cover role'), { code: '23505' });
+      const postgresError = Object.assign(new Error('duplicate cover role'), {
+        code: '23505',
+        constraint: 'listing_photos_front_cover_unique_idx',
+      });
       const wrappedError = Object.assign(new Error('Drizzle query failed'), { cause: postgresError });
       (photoRepo.findPhotosByListingId as jest.Mock).mockResolvedValueOnce([]);
       (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(wrappedError);
