@@ -6,6 +6,11 @@ import { getPostgresConnectionOptions } from '../src/db/connectionOptions';
 
 const EXPECTED_PROJECT_REF = 'anxhmlalxjvatrufcjei';
 const EXPECTED_POOLER_HOST = 'aws-0-eu-west-1.pooler.supabase.com';
+// Independently approved canonical-LF SHA-256 of migration 0026.
+// The same hash is checked against the exact SQL file copied into Drizzle's
+// one-migration temp directory immediately before execution.
+const EXPECTED_MIGRATION_0026_SQL_SHA256 = '225a33bb06f21519a3a73c32a6765b4ed0da1dda5632df3c49e8894a44f6633b';
+const MIGRATION_0026_SQL_PATH_ENV = 'TVD_PRODUCTION_MIGRATION_0026_SQL_PATH';
 // SHA-256 of the independently approved LF-normalized migration 0026 SQL.
 const EXPECTED_MIGRATION_0026_SQL_SHA256 = '225a33bb06f21519a3a73c32a6765b4ed0da1dda5632df3c49e8894a44f6633b';
 const EXPECTED_SPECIAL_PRESSING_CHECK =
@@ -74,6 +79,20 @@ function sha256(value: string): string {
 function getAcceptedHashes(sql: string): string[] {
   const lf = sql.replace(/\r\n?/g, '\n');
   return [...new Set([sha256(sql), sha256(lf), sha256(lf.replace(/\n/g, '\r\n'))])];
+}
+
+function normalizeSqlExpression(expression: string | null): string | null {
+  return expression === null
+    ? null
+    : expression.toLowerCase().replace(/"/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/** Compares the exact SQL that will be applied with a separately approved hash. */
+export function assertApprovedProductionMigration0026Sql(sql: string): void {
+  const canonicalLfHash = sha256(sql.replace(/\r\n?/g, '\n'));
+  if (canonicalLfHash !== EXPECTED_MIGRATION_0026_SQL_SHA256) {
+    throw new Error('The migration 0026 SQL does not match the independently approved SHA-256.');
+  }
 }
 
 /**
