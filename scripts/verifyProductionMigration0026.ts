@@ -114,7 +114,7 @@ function normalizeSpecialPressingConstraintDefinition(
   constraint: NonNullable<Migration0026SchemaSnapshot['constraint']>,
 ): string {
   const definition = !constraint.convalidated
-    ? constraint.definition.replace(/\\s+NOT\\s+VALID\\s*$/i, '')
+    ? constraint.definition.replace(/\s+NOT\s+VALID\s*$/i, '')
     : constraint.definition;
   return normalizePostgresExpression(definition);
 }
