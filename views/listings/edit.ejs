@@ -1,8 +1,9 @@
-<div class="edit-listing-page<%= photoStepOnly ? ' listing-photo-step-page' : '' %>" style="max-width: 750px; margin: var(--space-8) auto;">
+<% const photoStepOnlyView = typeof photoStepOnlyView !== 'undefined' && photoStepOnlyView === true; %>
+<div class="edit-listing-page<%= photoStepOnlyView ? ' listing-photo-step-page' : '' %>" style="max-width: 750px; margin: var(--space-8) auto;">
   <div class="card edit-listing-card" style="padding: var(--space-4); border: var(--border-thick); border-radius: var(--radius-md); background: var(--color-surface-card);">
     <header class="edit-listing-header">
-      <h1><%= photoStepOnly ? 'Add photos' : 'Edit listing' %></h1>
-      <% if (photoStepOnly) { %>
+      <h1><%= photoStepOnlyView ? 'Add photos' : 'Edit listing' %></h1>
+      <% if (photoStepOnlyView) { %>
         <div class="listing-step-indicator">Step 2 of 3 · Photos</div>
         <nav class="listing-step-actions" aria-label="Listing creation steps">
           <a href="/listings/<%= listing.id %>/edit" class="btn btn-outline btn-sm">← Back to details</a>
@@ -17,13 +18,13 @@
       <h2><%= release.title %></h2>
       <p>by <%= release.artist %><% if (release.releaseYear) { %> · <%= release.releaseYear %><% } %></p>
     </div>
-    <% if (photoStepOnly && release.coverArtUrl) { %>
+    <% if (photoStepOnlyView && release.coverArtUrl) { %>
       <aside class="photo-step-catalogue-reference" aria-label="Release catalogue artwork reference">
         <img src="<%= release.coverArtUrl %>" alt="Catalogue artwork reference for <%= release.title %> — not a photo of your physical copy" />
         <span><strong>Release artwork</strong><small>Catalogue reference · your copy photos are below</small></span>
       </aside>
     <% } %>
-    <% if (!photoStepOnly) { %>
+    <% if (!photoStepOnlyView) { %>
     <section class="release-artwork-editor" aria-labelledby="releaseArtworkHeading">
       <div class="release-artwork-preview-column">
         <div class="release-artwork-preview-frame">
@@ -113,8 +114,8 @@
     <section class="photos-section">
       <div class="photo-section-header">
         <div>
-          <h2><%= photoStepOnly ? 'Photos of your copy' : 'Photos' %></h2>
-          <p><%= photoStepOnly
+          <h2><%= photoStepOnlyView ? 'Photos of your copy' : 'Photos' %></h2>
+          <p><%= photoStepOnlyView
             ? 'Add the front and back of this physical copy. Extra photos of the record, inserts or condition are optional.'
             : 'Optional photos of your actual copy. Add them only when you want to show its sleeve, record or condition. Release artwork above supplies the default front image when you do not add a front photo of your copy.' %></p>
         </div>
@@ -153,7 +154,7 @@
                 </button>
               </div>
               <form action="/listings/<%= listing.id %>/photos/<%= slot.photo.id %>/delete" method="POST" class="cover-photo-remove-form">
-                <input type="hidden" name="returnTo" value="<%= photoStepOnly ? 'photos' : 'edit' %>" />
+                <input type="hidden" name="returnTo" value="<%= photoStepOnlyView ? 'photos' : 'edit' %>" />
                 <button type="submit" class="photo-remove-link">Remove photo</button>
               </form>
             <% } else { %>
@@ -197,7 +198,7 @@
                     Edit photo
                   </button>
                   <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/role" method="POST" class="additional-photo-role-form">
-                    <input type="hidden" name="returnTo" value="<%= photoStepOnly ? 'photos' : 'edit' %>" />
+                    <input type="hidden" name="returnTo" value="<%= photoStepOnlyView ? 'photos' : 'edit' %>" />
                     <label for="photo-role-<%= idx %>">Photo type</label>
                     <select id="photo-role-<%= idx %>" name="role" required class="form-control">
                       <% photoRoles.forEach(function(role) { %>
@@ -207,7 +208,7 @@
                     <button type="submit" class="btn btn-outline btn-sm">Save type</button>
                   </form>
                   <form action="/listings/<%= listing.id %>/photos/<%= photo.id %>/delete" method="POST">
-                    <input type="hidden" name="returnTo" value="<%= photoStepOnly ? 'photos' : 'edit' %>" />
+                    <input type="hidden" name="returnTo" value="<%= photoStepOnlyView ? 'photos' : 'edit' %>" />
                     <button type="submit" class="photo-remove-link">Remove photo</button>
                   </form>
                 </div>
@@ -235,7 +236,7 @@
           <p role="alert" class="photo-dialog-error"><%= photoError %></p>
         <% } %>
         <form id="photoUploadForm" action="/listings/<%= listing.id %>/photos" data-new-action="/listings/<%= listing.id %>/photos" method="POST" enctype="multipart/form-data" class="photo-upload-form">
-            <input type="hidden" name="returnTo" value="<%= photoStepOnly ? 'photos' : 'edit' %>" />
+            <input type="hidden" name="returnTo" value="<%= photoStepOnlyView ? 'photos' : 'edit' %>" />
             <div class="photo-upload-field photo-role-field">
               <label for="newPhotoRole">Photo type</label>
               <select id="newPhotoRole" name="role" required class="form-control">
@@ -493,7 +494,7 @@
       </dialog>
     </section>
 
-    <% if (!photoStepOnly) { %>
+    <% if (!photoStepOnlyView) { %>
     <!-- Details Update Form -->
     <form action="/listings/<%= listing.id %>/edit" method="POST" class="edit-listing-form" novalidate>
       <h2 style="font-family: var(--font-display); font-size: var(--font-size-lg); margin-bottom: var(--space-4);">Listing Details</h2>
@@ -628,7 +629,7 @@
       </div>
     </form>
     <% } %>
-    <% if (photoStepOnly) { %>
+    <% if (photoStepOnlyView) { %>
       <nav class="listing-step-actions listing-step-actions-bottom" aria-label="Continue listing creation">
         <a href="/listings/<%= listing.id %>/edit" class="btn btn-outline">← Back to details</a>
         <a href="/listings/<%= listing.id %>/preview" class="btn btn-primary">Continue to preview →</a>
