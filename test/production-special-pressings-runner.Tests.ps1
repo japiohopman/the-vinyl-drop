@@ -116,8 +116,10 @@ function Test-Production0026RunnerOrdering {
         -not $source.Contains('Copy-Item -LiteralPath $migrationPath -Destination $tempMigrationDirectory')) {
         throw 'The temporary Drizzle folder must contain exactly the pinned migration 0026 and its single-entry journal.'
     }
-    if (-not $source.Contains("preflight (Join-Path `$tempMigrationDirectory '0026_release_content_type_and_special_pressing.sql')")) {
-        throw 'The exact copied 0026 SQL file must be hash-verified immediately before Drizzle starts.'
+    $copiedSqlArgument = "(Join-Path `$tempMigrationDirectory '0026_release_content_type_and_special_pressing.sql')"
+    if (-not $source.Contains("preflight $copiedSqlArgument") -or
+        -not $source.Contains("complete $copiedSqlArgument")) {
+        throw 'The exact copied 0026 SQL file must be hash-verified immediately before Drizzle and again after the migration.'
     }
     if ($source -match 'run-production-migrations.ps1|npm run db:migrate|supabase db push') {
         throw 'The dedicated 0026 runner must not reuse another phase or a generic migration command.'
