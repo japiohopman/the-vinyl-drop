@@ -176,7 +176,7 @@ describe('pinned production migration 0026 preflight', () => {
       ...appliedSchema,
       constraint: {
         convalidated: true,
-        definition: appliedSchema.constraint!.definition.replace(/\\)$/, ') OR true)'),
+        definition: appliedSchema.constraint!.definition.replace(/\)$/, ') OR true)'),
       },
     };
     expect(getProductionMigration0026SchemaProblems(wrongConstraint, 'complete', true).join(' '))
