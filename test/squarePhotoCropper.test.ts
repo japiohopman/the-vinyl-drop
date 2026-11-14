@@ -18,6 +18,7 @@ describe('Square cover photo cropper', () => {
   const stylesheet = readFullStylesheetSource();
   const corePath = path.join(__dirname, '../public/js/listing-photo-editor-core.js');
   const cropperPath = path.join(__dirname, '../public/js/square-photo-cropper.js');
+  const specialPressingTogglePath = path.join(__dirname, '../public/js/special-pressing-toggle.js');
   const issue333EvidenceDirectory = process.env.ISSUE_333_EVIDENCE_DIR;
   let browser: Browser;
   let page: Page;
@@ -81,6 +82,7 @@ describe('Square cover photo cropper', () => {
       photoRoleLabels: LISTING_PHOTO_ROLE_LABELS,
       photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
       photoError: '',
+      photoStepOnly: false,
     }, { filename: viewPath });
 
     const body = html
@@ -110,6 +112,7 @@ describe('Square cover photo cropper', () => {
     }
     await page.addScriptTag({ path: corePath });
     await page.addScriptTag({ path: cropperPath });
+    await page.addScriptTag({ path: specialPressingTogglePath });
   }
 
   async function selectPortrait(role: string): Promise<void> {
@@ -138,6 +141,39 @@ describe('Square cover photo cropper', () => {
       buffer: portraitImage,
     }, { timeout: 5000 });
   }
+
+  it('reveals Special Pressing characteristics only when the seller opts in', async () => {
+    await renderEditPage();
+
+    const toggle = page.locator('[data-special-pressing-toggle]');
+    const panel = page.locator('#specialPressingEditPanel');
+    const shaped = panel.locator('input[name="specialPressingCharacteristics"][value="shaped"]');
+
+    await expect(panel).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    await toggle.check();
+    await expect(panel).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await shaped.check();
+
+    await toggle.uncheck();
+    await expect(panel).toBeHidden();
+    await expect(shaped).not.toBeChecked();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('disables front/back roles in the Additional photos picker', async () => {
+    await renderEditPage();
+
+    const additional = page.locator('details.additional-photos');
+    await additional.locator('summary').click();
+    await page.locator('[data-open-photo-upload][data-photo-role="optional"]').click();
+
+    await expect(page.locator('#newPhotoRole option[value="front_cover"]')).toBeDisabled();
+    await expect(page.locator('#newPhotoRole option[value="back_cover"]')).toBeDisabled();
+    await expect(page.locator('#newPhotoRole option[value="record"]')).toBeEnabled();
+  });
 
   it('shows existing cover photos in their own slots and opens help on demand', async () => {
     await renderEditPage({
