@@ -120,16 +120,16 @@ describe('pinned production migration 0026 preflight', () => {
     expect(() => getExpectedProductionMigration0026Entries(replaced)).toThrow('pinned migration tag');
 
     const missing = { ...source, entries: source.entries.filter((entry) => entry.idx !== 26) };
-    expect(() => getExpectedProductionMigration0026Entries(missing)).toThrow('exactly once');
+    expect(() => getExpectedProductionMigration0026Entries(missing)).toThrow('pinned 0000-0026 prefix');
 
     const duplicate = { ...source, entries: [...source.entries, { ...source.entries[26] }] };
-    expect(() => getExpectedProductionMigration0026Entries(duplicate)).toThrow('exactly 0000-0026');
+    expect(() => getExpectedProductionMigration0026Entries(duplicate)).toThrow('pinned 0000-0026 prefix');
 
     const later = {
       ...source,
       entries: [...source.entries, { idx: 27, version: '7', when: 1795000000000, tag: '0027_future', breakpoints: true }],
     };
-    expect(() => getExpectedProductionMigration0026Entries(later)).toThrow('exactly 0000-0026');
+    expect(() => getExpectedProductionMigration0026Entries(later)).toThrow('pinned 0000-0026 prefix');
   });
 
   test('requires a clean 0026 absence before migration', () => {
