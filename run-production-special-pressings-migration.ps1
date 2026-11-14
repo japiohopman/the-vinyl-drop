@@ -214,7 +214,7 @@ export default defineConfig({
     # The migration deliberately installs its CHECK as NOT VALID, so validation
     # is a separate post-commit step with a bounded lock/statement timeout.
     Write-Host 'Verifying migration 0026, validating its CHECK constraint post-commit, and checking final schema...'
-    & $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigration0026.ts') complete
+    & $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigration0026.ts') complete (Join-Path $tempMigrationDirectory '0026_release_content_type_and_special_pressing.sql')
     if ($LASTEXITCODE -ne 0) {
         throw 'Migration 0026 was applied but its post-migration schema/constraint verification did not complete. STOP: do not rerun Drizzle; inspect the ledger and constraint state.'
     }
