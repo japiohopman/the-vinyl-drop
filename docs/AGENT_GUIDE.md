@@ -82,9 +82,9 @@ Do not assume a file exists because an older document mentions it. Check the cur
 
 ### Seller's actual listing photos
 
-- Seller dashboard and edit screen: `GET /listings` and `GET /listings/:id/edit`.
-- The editor is `views/listings/edit.ejs`; there is **no separate GET photo-management page**.
-- Upload, role selection, delete and reorder are POST actions in `src/app/routes/listingRoutes.ts`; follow `listingController.ts`, `src/app/services/` and `src/app/repositories/listingPhotoRepository.ts`.
+- Seller dashboard and later edit screen: `GET /listings` and `GET /listings/:id/edit`.
+- The creation flow redirects a new draft to the focused `GET /listings/:id/photos` step. It reuses `views/listings/edit.ejs` in `photoStepOnly` mode; it is not a separate EJS template and must not repeat the Details form.
+- Upload, role selection, delete and reorder are POST actions in `src/app/routes/listingRoutes.ts`; preserve the workflow return destination (`photos` vs `edit`) when adding or changing photo forms. Follow `listingController.ts`, `src/app/services/` and `src/app/repositories/listingPhotoRepository.ts`.
 - Uploads pass through `multipartUploadHandler` and the image processing/Storage pipeline. Keep seller photographs separate from catalogue art.
 - Relevant tests include `test/listingPhotoRoundTrip.test.ts`, `test/storage.test.ts` and `test/squarePhotoCropper.test.ts`.
 
