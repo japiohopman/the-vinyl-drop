@@ -83,9 +83,12 @@ function Test-Production0026RunnerOrdering {
     $source = Get-Content -LiteralPath $runnerPath -Raw
     $preflightInvocation = "& `$tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigration0026.ts') preflight"
     $completeInvocation = "& `$tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigration0026.ts') complete"
+    $targetInvocation = "& `$enginePath -NoProfile -ExecutionPolicy Bypass -File (Join-Path (Get-Location) 'check-production-db-target.ps1')"
     $firstPreflight = $source.IndexOf($preflightInvocation)
     $confirmation = $source.IndexOf('$confirmation = Read-Host')
     $lastPreflight = $source.LastIndexOf($preflightInvocation)
+    $firstTarget = $source.IndexOf($targetInvocation)
+    $lastTarget = $source.LastIndexOf($targetInvocation)
     $drizzle = $source.IndexOf('& $drizzleKitPath migrate')
     $complete = $source.IndexOf($completeInvocation)
 
@@ -97,6 +100,9 @@ function Test-Production0026RunnerOrdering {
     }
     if ($lastPreflight -ge $drizzle) {
         throw 'The final read-only preflight must occur before the single Drizzle migration command.'
+    }
+    if ($firstTarget -lt 0 -or $lastTarget -le $firstTarget -or $firstTarget -ge $confirmation -or $lastTarget -ge $drizzle) {
+        throw 'The exact production project/host/TLS target check must run before confirmation and repeat before Drizzle.'
     }
     if ($complete -le $drizzle) {
         throw 'Post-migration schema and constraint verification must run after Drizzle completes.'
