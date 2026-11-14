@@ -635,6 +635,73 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       uploadSpy.mockRestore();
     });
 
+    it('rejects an occupied cover role before any Storage upload', async () => {
+      const squareImage = await sharp({
+        create: { width: 100, height: 100, channels: 3, background: { r: 80, g: 110, b: 140 } },
+      }).jpeg().toBuffer();
+      (photoRepo.findPhotosByListingId as jest.Mock).mockResolvedValueOnce([
+        { id: 'existing-front-photo', role: 'front_cover' },
+      ]);
+      const storage = await import('../src/app/services/storageService');
+      const publicUploadSpy = jest.spyOn(storage, 'uploadListingPhotoToStorage');
+      const sourceUploadSpy = jest.spyOn(storage, 'uploadListingPhotoSourceToStorage');
+
+      try {
+        await expect(addPhotoToListing(listingId, sellerId, {
+          buffer: squareImage,
+          mimetype: 'image/jpeg',
+          originalname: 'duplicate-front.jpg',
+        }, '', undefined, undefined, 'front_cover'))
+          .rejects.toThrow('already has a front cover');
+
+        expect(publicUploadSpy).not.toHaveBeenCalled();
+        expect(sourceUploadSpy).not.toHaveBeenCalled();
+        expect(photoRepo.createListingPhoto).not.toHaveBeenCalled();
+      } finally {
+        publicUploadSpy.mockRestore();
+        sourceUploadSpy.mockRestore();
+      }
+    });
+
+    it('translates a nested PostgreSQL unique violation and cleans up both uploaded objects', async () => {
+      const squareImage = await sharp({
+        create: { width: 100, height: 100, channels: 3, background: { r: 90, g: 120, b: 150 } },
+      }).jpeg().toBuffer();
+      const sourcePath = `listings/${listingId}/duplicate.source.webp`;
+      const publicPath = `listings/${listingId}/duplicate.webp`;
+      const postgresError = Object.assign(new Error('duplicate cover role'), {
+        code: '23505',
+        constraint_name: 'listing_photos_front_cover_unique_idx',
+      });
+      const wrappedError = Object.assign(new Error('Drizzle query failed'), { cause: postgresError });
+      (photoRepo.findPhotosByListingId as jest.Mock).mockResolvedValueOnce([]);
+      (photoRepo.createListingPhoto as jest.Mock).mockRejectedValueOnce(wrappedError);
+
+      const storage = await import('../src/app/services/storageService');
+      const publicUploadSpy = jest.spyOn(storage, 'uploadListingPhotoToStorage').mockResolvedValue(publicPath);
+      const sourceUploadSpy = jest.spyOn(storage, 'uploadListingPhotoSourceToStorage').mockResolvedValue(sourcePath);
+      const publicDeleteSpy = jest.spyOn(storage, 'deleteListingPhotoFromStorage').mockResolvedValue(true);
+      const sourceDeleteSpy = jest.spyOn(storage, 'deleteListingPhotoSourceFromStorage').mockResolvedValue(true);
+
+      try {
+        await expect(addPhotoToListing(listingId, sellerId, {
+          buffer: squareImage,
+          mimetype: 'image/jpeg',
+          originalname: 'racing-front.jpg',
+        }, '', undefined, undefined, 'front_cover'))
+          .rejects.toThrow('already has a front cover');
+
+        expect(publicDeleteSpy).toHaveBeenCalledWith(publicPath, undefined);
+        expect(sourceDeleteSpy).toHaveBeenCalledWith(sourcePath, undefined);
+        expect(orphanRepo.recordOrphanedStorageObject).not.toHaveBeenCalled();
+      } finally {
+        publicUploadSpy.mockRestore();
+        sourceUploadSpy.mockRestore();
+        publicDeleteSpy.mockRestore();
+        sourceDeleteSpy.mockRestore();
+      }
+    });
+
     it('persists the seller-selected back_cover role with the uploaded photo metadata', async () => {
       const backImage = await sharp({
         create: { width: 100, height: 100, channels: 3, background: { r: 60, g: 60, b: 60 } },
@@ -1329,6 +1396,19 @@ describe('Phase 4B — Listing Creation, Editing, and Photo Pipeline', () => {
       } finally {
         uploadSpy.mockRestore();
       }
+    });
+
+    it('POST /listings creates a draft and redirects to the dedicated Photos step', async () => {
+      prepareAuthenticatedListingCreate();
+
+      const response = await supertest(app)
+        .post('/listings')
+        .set('Cookie', ['sb-access-token=mock-valid-token'])
+        .set('Origin', new URL(config.APP_BASE_URL).origin)
+        .send(validListingForm);
+
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(`/listings/${csrfListingId}/photos`);
     });
 
     it('POST /listings should reject a foreign Origin before creating a listing', async () => {

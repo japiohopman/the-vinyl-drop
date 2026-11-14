@@ -63,24 +63,35 @@
         : (typeof form.values.specialPressingCharacteristics === 'string' && form.values.specialPressingCharacteristics
           ? form.values.specialPressingCharacteristics.split(',')
           : []); %>
+      <% const createSpecialPressingChecked = form.values.specialPressing === true || form.values.specialPressing === 'true' || form.values.specialPressing === 'on'; %>
       <section class="special-pressing-editor" aria-labelledby="specialPressingCreateTitle">
         <h2 id="specialPressingCreateTitle">Special Pressing</h2>
-        <p>Mark this physical copy only when the record itself has a special pressing or finish. Other copies of the same release can be different.</p>
+        <p>Only mark this when the record itself has a special pressing or finish.</p>
         <label class="special-pressing-toggle">
-          <input type="checkbox" name="specialPressing" value="true" <%= form.values.specialPressing === true || form.values.specialPressing === 'true' || form.values.specialPressing === 'on' ? 'checked' : '' %> />
+          <input
+            type="checkbox"
+            name="specialPressing"
+            value="true"
+            data-special-pressing-toggle
+            aria-controls="specialPressingCreatePanel"
+            aria-expanded="<%= createSpecialPressingChecked ? 'true' : 'false' %>"
+            <%= createSpecialPressingChecked ? 'checked' : '' %>
+          />
           <span>This copy is a Special Pressing</span>
         </label>
-        <fieldset class="special-pressing-options">
-          <legend>What makes it special?</legend>
-          <% (typeof specialPressingOptions !== 'undefined' ? specialPressingOptions : []).forEach(function(option) { %>
-            <label>
-              <input type="checkbox" name="specialPressingCharacteristics" value="<%= option.value %>" <%= selectedSpecialPressingCharacteristics.includes(option.value) ? 'checked' : '' %> />
-              <span><strong><%= option.label %></strong> — <%= option.description %></span>
-            </label>
-          <% }); %>
-        </fieldset>
-        <label for="specialPressingDetailsCreate">More about this pressing (optional)</label>
-        <textarea id="specialPressingDetailsCreate" name="specialPressingDetails" maxlength="1000" rows="3" placeholder="Describe its exact shape, colour mix, finish, edition or other details"><%= form.values.specialPressingDetails || '' %></textarea>
+        <div id="specialPressingCreatePanel" class="special-pressing-options-panel" data-special-pressing-panel <%= createSpecialPressingChecked ? '' : 'hidden' %>>
+          <fieldset class="special-pressing-options">
+            <legend>What makes it special?</legend>
+            <% (typeof specialPressingOptions !== 'undefined' ? specialPressingOptions : []).forEach(function(option) { %>
+              <label>
+                <input type="checkbox" name="specialPressingCharacteristics" value="<%= option.value %>" <%= createSpecialPressingChecked && selectedSpecialPressingCharacteristics.includes(option.value) ? 'checked' : '' %> />
+                <span><strong><%= option.label %></strong> — <%= option.description %></span>
+              </label>
+            <% }); %>
+          </fieldset>
+          <label for="specialPressingDetailsCreate">More about this pressing (optional)</label>
+          <textarea id="specialPressingDetailsCreate" name="specialPressingDetails" maxlength="1000" rows="2" placeholder="Describe its exact shape, colour mix or finish"><%= createSpecialPressingChecked ? (form.values.specialPressingDetails || '') : '' %></textarea>
+        </div>
       </section>
 
       <div class="create-listing-price-field">
@@ -141,3 +152,5 @@
     </form>
   </div>
 </div>
+
+<script src="/js/special-pressing-toggle.js" defer></script>

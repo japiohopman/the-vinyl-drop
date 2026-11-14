@@ -131,6 +131,14 @@
     return roleSelect.value === 'front_cover' ? 'front cover' : 'back cover';
   }
 
+  function setCoverRoleOptionsEnabled(enabled) {
+    Array.from(roleSelect.options).forEach((option) => {
+      if (option.dataset.coverRole !== 'true') return;
+      option.disabled = !enabled;
+      option.hidden = !enabled;
+    });
+  }
+
   function setStatus(message, isError = false) {
     status.textContent = message;
     status.dataset.state = isError ? 'error' : 'ready';
@@ -1344,6 +1352,7 @@
     delete form.dataset.editingPhotoId;
     form.action = newUploadAction;
     roleSelect.required = true;
+    setCoverRoleOptionsEnabled(true);
     const fileTrigger = form.querySelector('.photo-file-trigger');
     if (fileTrigger instanceof HTMLElement) fileTrigger.hidden = false;
     if (photoFileField instanceof HTMLElement) photoFileField.hidden = false;
@@ -1377,6 +1386,7 @@
       const requestedRole = trigger.dataset.photoRole || '';
       const label = trigger.dataset.photoLabel || 'Additional photo';
       const isDirectCoverSlot = requestedRole === 'front_cover' || requestedRole === 'back_cover';
+      setCoverRoleOptionsEnabled(isDirectCoverSlot);
       if (roleField instanceof HTMLElement) roleField.hidden = isDirectCoverSlot;
       roleGuidance.hidden = isDirectCoverSlot;
       roleSelect.required = true;

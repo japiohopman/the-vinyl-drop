@@ -100,6 +100,32 @@ import { recordListingPublishedEvent } from './activityService';
 
 type DbInstance = ReturnType<typeof getDb>;
 
+/** Drizzle/Postgres errors can wrap SQLSTATE and constraint metadata in cause objects. */
+function hasPostgresUniqueConstraint(
+  error: unknown,
+  expectedCode: string,
+  expectedConstraint: string
+): boolean {
+  let current: unknown = error;
+  const visited = new Set<object>();
+
+  for (let depth = 0; depth < 8; depth++) {
+    if (!current || typeof current !== 'object' || visited.has(current)) return false;
+    visited.add(current);
+
+    const candidate = current as {
+      code?: unknown;
+      constraint_name?: unknown;
+      cause?: unknown;
+      originalError?: unknown;
+    };
+    if (candidate.code === expectedCode && candidate.constraint_name === expectedConstraint) return true;
+    current = candidate.cause ?? candidate.originalError;
+  }
+
+  return false;
+}
+
 export type ListingPhotoWithUrl = Omit<ListingPhoto, 'sourceStoragePath'> & {
   publicUrl: string;
 };
@@ -967,6 +993,14 @@ export async function addPhotoToListing(
   if (!roleResult.success) throw new ValidationError('Choose a photo role before uploading.');
   const role = roleResult.data;
 
+  if (role === 'front_cover' || role === 'back_cover') {
+    const existingPhotos = await findPhotosByListingId(listingId, dbOverride);
+    if (existingPhotos.some((photo) => photo.role === role)) {
+      const side = role === 'front_cover' ? 'front cover' : 'back cover';
+      throw new ValidationError(`This listing already has a ${side}. Edit or remove that photo before uploading another one.`);
+    }
+  }
+
   const submittedAltText = typeof altText === 'string' ? altText.trim() : '';
   const defaultAltText = role === 'front_cover'
     ? 'Front cover of the record sleeve'
@@ -1108,8 +1142,14 @@ export async function addPhotoToListing(
         dbOverride
       );
     }
-    if ((dbErr as { code?: string }).code === '23505') {
-      throw new ValidationError('This listing already has a photo assigned to that sleeve side. Reclassify the existing photo before adding another one.');
+    const coverConstraint = role === 'front_cover'
+      ? 'listing_photos_front_cover_unique_idx'
+      : role === 'back_cover'
+        ? 'listing_photos_back_cover_unique_idx'
+        : null;
+    if (coverConstraint && hasPostgresUniqueConstraint(dbErr, '23505', coverConstraint)) {
+      const side = role === 'front_cover' ? 'front cover' : 'back cover';
+      throw new ValidationError(`This listing already has a ${side}. Edit or remove that photo before uploading another one.`);
     }
     throw dbErr;
   }
