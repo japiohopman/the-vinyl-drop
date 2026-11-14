@@ -55,6 +55,7 @@ router.post('/:id/unfavorite', requireAuth, validateSameOrigin, postUnfavoriteLi
 router.get('/:id/preview', requireAuth, getPreviewListingPage);
 
 // Editing & Details Updates
+router.get('/:id/photos', requireAuth, getEditListingPage);
 router.get('/:id/edit', requireAuth, getEditListingPage);
 router.post('/:id/edit', requireAuth, validateSameOrigin, postEditListing);
 router.post('/:id/release-preview', requireAuth, validateSameOrigin, postUpdateReleaseYouTubePreview);
