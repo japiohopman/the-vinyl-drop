@@ -511,9 +511,18 @@ async function validateSpecialPressingConstraint(
 }
 
 async function main(): Promise<void> {
-  const [mode] = process.argv.slice(2);
-  if (process.argv.length !== 3 || (mode !== 'preflight' && mode !== 'complete')) {
-    throw new Error('Usage: verifyProductionMigration0026.ts <preflight|complete>');
+  const [mode, migrationSqlPath] = process.argv.slice(2);
+  if (
+    process.argv.length < 3 ||
+    process.argv.length > 4 ||
+    (mode !== 'preflight' && mode !== 'complete')
+  ) {
+    throw new Error('Usage: verifyProductionMigration0026.ts <preflight|complete> [copied-migration-sql-path]');
+  }
+
+  if (migrationSqlPath) {
+    const copiedMigrationSql = readFileSync(resolve(process.cwd(), migrationSqlPath), 'utf8');
+    assertApprovedMigration0026Sql(copiedMigrationSql);
   }
 
   const connectionString = getApprovedProductionConnectionString();
