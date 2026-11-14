@@ -129,7 +129,7 @@ export async function postCreateListing(req: Request, res: Response, next: NextF
     }
 
     const listing = await createListingFromRelease(req.user.id, req.body);
-    return res.redirect(`/listings/${listing.id}/edit`);
+    return res.redirect(`/listings/${listing.id}/photos`);
   } catch (error) {
     if (error instanceof ValidationError) {
       const releaseId = req.body.releaseId;
@@ -138,7 +138,7 @@ export async function postCreateListing(req: Request, res: Response, next: NextF
         const form: FormViewModel = {
           values: req.body,
           fieldErrors: {},
-          generalErrors: [error.message],
+          generalErrors: returnToPhotos ? [] : [error.message],
         };
         res.status(400);
         return renderWithLayout(res, 'listings/create', {
@@ -161,6 +161,7 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
     }
 
     const listingId = req.params.id;
+    const photoStepOnly = req.path.endsWith('/photos');
     const details = await getListingEditDetails(listingId);
 
     if (!details) {
@@ -199,7 +200,9 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
     };
 
     renderWithLayout(res, 'listings/edit', {
-      title: `Edit ${details.release.title} - The Vinyl Drop`,
+      title: photoStepOnly
+        ? `Add photos for ${details.release.title} - The Vinyl Drop`
+        : `Edit ${details.release.title} - The Vinyl Drop`,
       listing: details.listing,
       physicalCopy: details.physicalCopy,
       release: details.release,
@@ -211,6 +214,7 @@ export async function getEditListingPage(req: Request, res: Response, next: Next
       photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
       specialPressingOptions: SPECIAL_PRESSING_OPTIONS,
       photoError: typeof req.query.photoError === 'string' ? req.query.photoError : '',
+      photoStepOnly,
       youtubePreviewError: req.query.youtubePreviewError === 'invalid',
       releaseArtworkError: req.query.releaseArtworkError === 'invalid',
       releaseArtworkRestoreError: req.query.releaseArtworkRestoreError === 'unavailable',
@@ -299,7 +303,7 @@ export async function postUpdateReleaseYouTubePreview(req: Request, res: Respons
   try {
     await updateReleaseYouTubePreviewForListing(listingId, req.user.id, req.body.youtubePreviewUrl);
     setFlashCookie(res, 'success', 'YouTube preview updated for this release.');
-    return res.redirect(`/listings/${listingId}/edit`);
+    return res.redirect(returnToPhotos ? `/listings/${listingId}/photos` : `/listings/${listingId}/edit`);
   } catch (error) {
     if (error instanceof ValidationError) {
       return res.redirect(`/listings/${listingId}/edit?youtubePreviewError=invalid`);
@@ -400,6 +404,7 @@ export async function postRestoreDiscogsArtwork(req: Request, res: Response, nex
 
 /** Uploads a seller photo and issues success feedback only after the upload succeeds. */
 export async function postUploadPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const returnToPhotos = req.body.returnTo === 'photos';
   try {
     if (!req.user) return res.redirect('/auth/login');
 
@@ -438,7 +443,7 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
     );
 
     setFlashCookie(res, 'success', 'Photo uploaded successfully.');
-    res.redirect(`/listings/${listingId}/edit`);
+    res.redirect(returnToPhotos ? `/listings/${listingId}/photos` : `/listings/${listingId}/edit`);
   } catch (error) {
     if (error instanceof ValidationError) {
       const listingId = req.params.id;
@@ -461,7 +466,8 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
           newPhotoRoles: NEW_LISTING_PHOTO_ROLES,
           photoRoleLabels: LISTING_PHOTO_ROLE_LABELS,
           photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
-          photoError: '',
+          photoError: returnToPhotos ? error.message : '',
+          photoStepOnly: returnToPhotos,
         });
       }
     }
@@ -498,6 +504,7 @@ export async function getListingPhotoEditorSource(req: Request, res: Response, n
 
 /** Applies a new public derivative while the private source remains immutable. */
 export async function postEditListingPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const returnToPhotos = req.body.returnTo === 'photos';
   try {
     if (!req.user) return res.redirect('/auth/login');
     const files = req.files || [];
@@ -519,10 +526,12 @@ export async function postEditListingPhoto(req: Request, res: Response, next: Ne
       { req }
     );
     setFlashCookie(res, 'success', 'Photo edits saved.');
-    res.redirect(`/listings/${req.params.id}/edit`);
+    res.redirect(returnToPhotos ? `/listings/${req.params.id}/photos` : `/listings/${req.params.id}/edit`);
   } catch (error) {
     if (error instanceof ValidationError) {
-      return res.redirect(`/listings/${req.params.id}/edit?photoError=${encodeURIComponent(error.message)}`);
+      return res.redirect(returnToPhotos
+        ? `/listings/${req.params.id}/photos?photoError=${encodeURIComponent(error.message)}`
+        : `/listings/${req.params.id}/edit?photoError=${encodeURIComponent(error.message)}`);
     }
     next(error);
   }
@@ -530,6 +539,7 @@ export async function postEditListingPhoto(req: Request, res: Response, next: Ne
 
 /** Updates a listing photo role and issues confirmation after the update succeeds. */
 export async function postUpdatePhotoRole(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const returnToPhotos = req.body.returnTo === 'photos';
   if (!req.user) {
     return res.redirect('/auth/login');
   }
@@ -542,7 +552,9 @@ export async function postUpdatePhotoRole(req: Request, res: Response, next: Nex
     return res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {
     if (error instanceof ValidationError) {
-      return res.redirect(`/listings/${listingId}/edit?photoError=${encodeURIComponent(error.message)}`);
+      return res.redirect(returnToPhotos
+        ? `/listings/${listingId}/photos?photoError=${encodeURIComponent(error.message)}`
+        : `/listings/${listingId}/edit?photoError=${encodeURIComponent(error.message)}`);
     }
     next(error);
   }
@@ -550,6 +562,7 @@ export async function postUpdatePhotoRole(req: Request, res: Response, next: Nex
 
 /** Deletes an owned listing photo and confirms the deletion only after success. */
 export async function postDeletePhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const returnToPhotos = req.body.returnTo === 'photos';
   try {
     if (!req.user) {
       return res.redirect('/auth/login');
@@ -559,7 +572,7 @@ export async function postDeletePhoto(req: Request, res: Response, next: NextFun
     await deletePhotoFromListing(listingId, photoId, req.user.id, undefined, { req });
 
     setFlashCookie(res, 'success', 'Photo removed successfully.');
-    res.redirect(`/listings/${listingId}/edit`);
+    res.redirect(returnToPhotos ? `/listings/${listingId}/photos` : `/listings/${listingId}/edit`);
   } catch (error) {
     next(error);
   }
