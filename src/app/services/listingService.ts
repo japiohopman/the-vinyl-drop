@@ -115,11 +115,11 @@ function hasPostgresUniqueConstraint(
 
     const candidate = current as {
       code?: unknown;
-      constraint?: unknown;
+      constraint_name?: unknown;
       cause?: unknown;
       originalError?: unknown;
     };
-    if (candidate.code === expectedCode && candidate.constraint === expectedConstraint) return true;
+    if (candidate.code === expectedCode && candidate.constraint_name === expectedConstraint) return true;
     current = candidate.cause ?? candidate.originalError;
   }
 
