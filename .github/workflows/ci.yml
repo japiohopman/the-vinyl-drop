@@ -156,6 +156,10 @@ jobs:
         shell: pwsh
         run: ./test/production-preflight.Tests.ps1
 
+      - name: Test pinned production migration 0026 runner on Linux
+        shell: pwsh
+        run: ./test/production-special-pressings-runner.Tests.ps1
+
   production-preflight-windows:
     runs-on: windows-latest
     steps:
@@ -170,3 +174,7 @@ jobs:
       - name: Test production migration preflight on Windows
         shell: pwsh
         run: ./test/production-preflight.Tests.ps1
+
+      - name: Test pinned production migration 0026 runner on Windows
+        shell: pwsh
+        run: ./test/production-special-pressings-runner.Tests.ps1
