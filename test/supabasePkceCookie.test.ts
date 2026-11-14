@@ -118,9 +118,13 @@ describe('Express Supabase PKCE verifier cookie round-trip', () => {
       header.includes('-auth-token-code-verifier=')
     );
     expect(verifierCookie).toBeDefined();
+    // Session state remains request-local; only short-lived PKCE keys may be written to cookies.
+    expect(setCookieHeaders.some((header) => header.startsWith('sb-pkce-roundtrip-auth-token='))).toBe(false);
 
     const cookiePair = verifierCookie!.split(';', 1)[0];
-    verifierFromCookie = decodeURIComponent(cookiePair.slice(cookiePair.indexOf('=') + 1));
+    verifierFromCookie = JSON.parse(
+      decodeURIComponent(cookiePair.slice(cookiePair.indexOf('=') + 1))
+    );
     expect(verifierFromCookie.length).toBeGreaterThanOrEqual(43);
 
     const callbackResponse = await browser.get('/auth/callback');
@@ -129,6 +133,8 @@ describe('Express Supabase PKCE verifier cookie round-trip', () => {
     expect(callbackResponse.body).toEqual({ authenticated: true });
     expect(callbackReceivedVerifierCookie).toBe(true);
     expect(verifierFromExchange).toBe(verifierFromCookie.split('/')[0]);
+    const callbackSetCookies = (callbackResponse.headers['set-cookie'] || []) as string[];
+    expect(callbackSetCookies.some((header) => header.startsWith('sb-pkce-roundtrip-auth-token='))).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
