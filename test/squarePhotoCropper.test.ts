@@ -10,6 +10,7 @@ import {
   LISTING_PHOTO_ROLE_LABELS,
   NEW_LISTING_PHOTO_ROLES,
 } from '../src/domain/listingPhotoRole';
+import { SPECIAL_PRESSING_OPTIONS } from '../src/domain/specialPressing';
 
 describe('Square cover photo cropper', () => {
   jest.setTimeout(30000);
@@ -81,6 +82,7 @@ describe('Square cover photo cropper', () => {
       newPhotoRoles: NEW_LISTING_PHOTO_ROLES,
       photoRoleLabels: LISTING_PHOTO_ROLE_LABELS,
       photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
+      specialPressingOptions: SPECIAL_PRESSING_OPTIONS,
       photoError: '',
       photoStepOnly: false,
     }, { filename: viewPath });
