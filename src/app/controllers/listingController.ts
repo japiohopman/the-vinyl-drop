@@ -138,7 +138,7 @@ export async function postCreateListing(req: Request, res: Response, next: NextF
         const form: FormViewModel = {
           values: req.body,
           fieldErrors: {},
-          generalErrors: returnToPhotos ? [] : [error.message],
+          generalErrors: [error.message],
         };
         res.status(400);
         return renderWithLayout(res, 'listings/create', {
@@ -303,7 +303,7 @@ export async function postUpdateReleaseYouTubePreview(req: Request, res: Respons
   try {
     await updateReleaseYouTubePreviewForListing(listingId, req.user.id, req.body.youtubePreviewUrl);
     setFlashCookie(res, 'success', 'YouTube preview updated for this release.');
-    return res.redirect(returnToPhotos ? `/listings/${listingId}/photos` : `/listings/${listingId}/edit`);
+    return res.redirect(`/listings/${listingId}/edit`);
   } catch (error) {
     if (error instanceof ValidationError) {
       return res.redirect(`/listings/${listingId}/edit?youtubePreviewError=invalid`);
@@ -452,7 +452,7 @@ export async function postUploadPhoto(req: Request, res: Response, next: NextFun
         const form: FormViewModel = {
           values: {},
           fieldErrors: {},
-          generalErrors: [error.message],
+          generalErrors: returnToPhotos ? [] : [error.message],
         };
         res.status(400);
         return renderWithLayout(res, 'listings/edit', {
@@ -549,7 +549,7 @@ export async function postUpdatePhotoRole(req: Request, res: Response, next: Nex
   try {
     await updateListingPhotoRole(listingId, photoId, req.user.id, req.body.role, undefined, { req });
     setFlashCookie(res, 'success', 'Photo role updated.');
-    return res.redirect(`/listings/${listingId}/edit`);
+    return res.redirect(returnToPhotos ? `/listings/${listingId}/photos` : `/listings/${listingId}/edit`);
   } catch (error) {
     if (error instanceof ValidationError) {
       return res.redirect(returnToPhotos
