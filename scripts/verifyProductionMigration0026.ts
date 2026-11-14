@@ -500,6 +500,9 @@ async function main(): Promise<void> {
   ) {
     throw new Error('Usage: verifyProductionMigration0026.ts <preflight|complete> [copied-migration-sql-path]');
   }
+  if (mode === 'complete' && !migrationSqlPath) {
+    throw new Error('Complete mode requires the exact copied migration 0026 SQL path.');
+  }
 
   if (migrationSqlPath) {
     const copiedMigrationSql = readFileSync(resolve(process.cwd(), migrationSqlPath), 'utf8');
