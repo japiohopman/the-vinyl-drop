@@ -49,7 +49,7 @@ function Test-PinnedMigration0026Plan {
         if (Test-Path -LiteralPath $tempJournal) { Remove-Item -LiteralPath $tempJournal -Force }
     }
 
-    foreach ($case in 'missing', 'duplicate', 'future') {
+    foreach ($case in 'missing', 'duplicate', 'future', 'reordered') {
         $tempJournal = Join-Path ([System.IO.Path]::GetTempPath()) ("tvd-0026-$case-" + [guid]::NewGuid().ToString('N') + '.json')
         try {
             $journal = Get-Content -LiteralPath $journalPath -Raw | ConvertFrom-Json
@@ -58,6 +58,11 @@ function Test-PinnedMigration0026Plan {
             }
             elseif ($case -eq 'duplicate') {
                 $journal.entries += $journal.entries[26]
+            }
+            elseif ($case -eq 'reordered') {
+                $entry = $journal.entries[4]
+                $journal.entries[4] = $journal.entries[5]
+                $journal.entries[5] = $entry
             }
             else {
                 $journal.entries += [pscustomobject]@{
