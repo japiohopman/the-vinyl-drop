@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  assertApprovedMigration0026Sql,
   getExpectedProductionMigration0026Entries,
   getProductionMigration0026SchemaProblems,
+  normalizePostgresExpression,
   validateProductionMigration0026Ledger,
   type Migration0026SchemaSnapshot,
 } from '../scripts/verifyProductionMigration0026';
@@ -59,6 +61,14 @@ const appliedSchema: Migration0026SchemaSnapshot = {
 };
 
 describe('pinned production migration 0026 preflight', () => {
+  test('pins the actual migration 0026 SQL to the independent approved SHA-256', () => {
+    const sql = readFileSync(resolve(process.cwd(), 'drizzle/0026_release_content_type_and_special_pressing.sql'), 'utf8');
+    expect(() => assertApprovedMigration0026Sql(sql)).not.toThrow();
+    expect(() => assertApprovedMigration0026Sql(sql + '\\n-- unapproved change')).toThrow('independently pinned approved SHA-256');
+    expect(normalizePostgresExpression("'{}'::special_pressing_characteristic[]"))
+      .toBe(normalizePostgresExpression("  '{}' :: SPECIAL_PRESSING_CHARACTERISTIC [ ] "));
+  });
+
   test('pins exactly the repository migration prefix through 0026 and reads its SQL hash', () => {
     expect(expected).toHaveLength(27);
     expect(expected[25].tag).toBe('0025_add_release_styles');
@@ -164,9 +174,24 @@ describe('pinned production migration 0026 preflight', () => {
 
     const wrongConstraint = {
       ...appliedSchema,
-      constraint: { convalidated: true, definition: 'CHECK (special_pressing = true)' },
+      constraint: {
+        convalidated: true,
+        definition: appliedSchema.constraint!.definition.replace(/\\)$/, ') OR true)'),
+      },
     };
     expect(getProductionMigration0026SchemaProblems(wrongConstraint, 'complete', true).join(' '))
-      .toContain('does not match the approved constraint definition');
+      .toContain('does not match the exact approved constraint definition');
+
+    const wrongDefault = {
+      ...appliedSchema,
+      columns: appliedSchema.columns.map((column) =>
+        column.table_name === 'physical_copies' &&
+        column.column_name === 'special_pressing_characteristics'
+          ? { ...column, column_default: "'{picture_disc}'::special_pressing_characteristic[]" }
+          : column,
+      ),
+    };
+    expect(getProductionMigration0026SchemaProblems(wrongDefault, 'complete', true).join(' '))
+      .toContain('special_pressing_characteristics does not match its approved type/default/nullability');
   });
 });
