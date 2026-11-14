@@ -149,18 +149,18 @@ describe('Square cover photo cropper', () => {
     const panel = page.locator('#specialPressingEditPanel');
     const shaped = panel.locator('input[name="specialPressingCharacteristics"][value="shaped"]');
 
-    await expect(panel).toBeHidden();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(await panel.isVisible()).toBe(false);
+    expect(await toggle.getAttribute('aria-expanded')).toBe('false');
 
     await toggle.check();
-    await expect(panel).toBeVisible();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(await panel.isVisible()).toBe(true);
+    expect(await toggle.getAttribute('aria-expanded')).toBe('true');
     await shaped.check();
 
     await toggle.uncheck();
-    await expect(panel).toBeHidden();
-    await expect(shaped).not.toBeChecked();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(await panel.isVisible()).toBe(false);
+    expect(await shaped.isChecked()).toBe(false);
+    expect(await toggle.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('disables front/back roles in the Additional photos picker', async () => {
@@ -170,9 +170,9 @@ describe('Square cover photo cropper', () => {
     await additional.locator('summary').click();
     await page.locator('[data-open-photo-upload][data-photo-role="optional"]').click();
 
-    await expect(page.locator('#newPhotoRole option[value="front_cover"]')).toBeDisabled();
-    await expect(page.locator('#newPhotoRole option[value="back_cover"]')).toBeDisabled();
-    await expect(page.locator('#newPhotoRole option[value="record"]')).toBeEnabled();
+    expect(await page.locator('#newPhotoRole option[value="front_cover"]').isDisabled()).toBe(true);
+    expect(await page.locator('#newPhotoRole option[value="back_cover"]').isDisabled()).toBe(true);
+    expect(await page.locator('#newPhotoRole option[value="record"]').isDisabled()).toBe(false);
   });
 
   it('shows existing cover photos in their own slots and opens help on demand', async () => {
