@@ -130,6 +130,11 @@ describe('pinned production migration 0026 preflight', () => {
       entries: [...source.entries, { idx: 27, version: '7', when: 1795000000000, tag: '0027_future', breakpoints: true }],
     };
     expect(() => getExpectedProductionMigration0026Entries(later)).toThrow('pinned 0000-0026 prefix');
+
+    const reorderedEntries = [...source.entries];
+    [reorderedEntries[4], reorderedEntries[5]] = [reorderedEntries[5], reorderedEntries[4]];
+    expect(() => getExpectedProductionMigration0026Entries({ ...source, entries: reorderedEntries }))
+      .toThrow('exact ascending index order');
   });
 
   test('requires a clean 0026 absence before migration', () => {
@@ -156,5 +161,12 @@ describe('pinned production migration 0026 preflight', () => {
       enums: [{ name: 'release_content_type', labels: ['music', 'non_music'] }],
     };
     expect(getProductionMigration0026SchemaProblems(wrongShape, 'complete', true).join(' ')).toContain('special_pressing_characteristic');
+
+    const wrongConstraint = {
+      ...appliedSchema,
+      constraint: { convalidated: true, definition: 'CHECK (special_pressing = true)' },
+    };
+    expect(getProductionMigration0026SchemaProblems(wrongConstraint, 'complete', true).join(' '))
+      .toContain('does not match the approved constraint definition');
   });
 });
