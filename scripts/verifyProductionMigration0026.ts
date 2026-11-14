@@ -98,6 +98,9 @@ export function getExpectedProductionMigration0026Entries(
   let previousTimestamp = 0;
 
   for (let index = 0; index < EXPECTED_TAGS.length; index += 1) {
+    if (entries[index]?.idx !== index) {
+      throw new Error('Repository migration journal entries must remain in exact ascending index order.');
+    }
     const matches = entries.filter((entry) => entry?.idx === index);
     if (matches.length !== 1) {
       throw new Error(`Repository migration journal index ${index} must occur exactly once.`);
@@ -294,7 +297,14 @@ export function getProductionMigration0026SchemaProblems(
     problems.push('The Special Pressing consistency CHECK is missing.');
   } else {
     const definition = snapshot.constraint.definition.toLowerCase();
-    if (!definition.includes('special_pressing') || !definition.includes('cardinality')) {
+    const requiredFragments = [
+      'special_pressing = false',
+      'cardinality(special_pressing_characteristics) = 0',
+      'special_pressing_details is null',
+      'special_pressing = true',
+      'cardinality(special_pressing_characteristics) > 0',
+    ];
+    if (requiredFragments.some((fragment) => !definition.includes(fragment))) {
       problems.push('The Special Pressing consistency CHECK does not match the approved constraint definition.');
     }
     if (requireValidatedConstraint && !snapshot.constraint.convalidated) {
@@ -502,7 +512,6 @@ async function main(): Promise<void> {
 
 const invokedFile = basename(process.argv[1] || '').toLowerCase();
 if (
-  invokedFile === 'verifproductionmigration0026.ts' ||
   invokedFile === 'verifyproductionmigration0026.ts' ||
   invokedFile === 'verifyproductionmigration0026.js'
 ) {
