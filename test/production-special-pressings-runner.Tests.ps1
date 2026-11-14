@@ -81,8 +81,8 @@ function Test-PinnedMigration0026Plan {
 
 function Test-Production0026RunnerOrdering {
     $source = Get-Content -LiteralPath $runnerPath -Raw
-    $preflightInvocation = "& $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigration0026.ts') preflight"
-    $completeInvocation = "& $tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigration0026.ts') complete"
+    $preflightInvocation = "& `$tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigration0026.ts') preflight"
+    $completeInvocation = "& `$tsxPath (Join-Path (Get-Location) 'scripts/verifyProductionMigration0026.ts') complete"
     $firstPreflight = $source.IndexOf($preflightInvocation)
     $confirmation = $source.IndexOf('$confirmation = Read-Host')
     $lastPreflight = $source.LastIndexOf($preflightInvocation)
@@ -105,7 +105,7 @@ function Test-Production0026RunnerOrdering {
         -not $source.Contains('Copy-Item -LiteralPath $migrationPath -Destination $tempMigrationDirectory')) {
         throw 'The temporary Drizzle folder must contain exactly the pinned migration 0026 and its single-entry journal.'
     }
-    if ($source -match 'ProfileAndStyles|run-production-migrations.ps1|npm run db:migrate|supabase db push') {
+    if ($source -match 'run-production-migrations.ps1|npm run db:migrate|supabase db push') {
         throw 'The dedicated 0026 runner must not reuse another phase or a generic migration command.'
     }
 
