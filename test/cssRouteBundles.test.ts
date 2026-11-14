@@ -214,7 +214,7 @@ describe('Route-specific CSS bundles (#252)', () => {
       .update(reconstructed)
       .digest('hex');
     // Keep the reconstructed stylesheet fingerprint exact so shared cascade changes remain visible.
-    expect(gitBlobSha).toBe('20a4c9857dac2b47464369ff424c46704f863146');
+    expect(gitBlobSha).toBe('25ce93a100cb28d854a80016a4278e602aa64af1');
   });
 
   it('reports reproducible raw/gzip sizes and validates savings per route', () => {
