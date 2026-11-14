@@ -175,7 +175,7 @@ describe('pinned production migration 0026 preflight', () => {
       ...unvalidated,
       constraint: {
         ...unvalidated.constraint!,
-        definition: `${appliedSchema.constraint!.definition.replace(/\\)$/, ') OR true)')} NOT VALID`,
+        definition: `${appliedSchema.constraint!.definition.replace(/\)$/, ') OR true)')} NOT VALID`,
       },
     };
     expect(getProductionMigration0026SchemaProblems(wrongUnvalidatedConstraint, 'complete', false).join(' '))
