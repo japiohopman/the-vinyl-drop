@@ -233,7 +233,11 @@ describe('Records-only Dig sidebar & first-load browser behavior (Issue #404)', 
       const searchButton = page.locator('.browse-search-submit');
       expect(await searchButton.isVisible()).toBe(true);
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+        page.waitForURL((url) =>
+          url.pathname === '/browse' &&
+          url.searchParams.get('contentType') === 'non_music' &&
+          url.searchParams.get('specialPressing') === '1'
+        ),
         searchButton.click(),
       ]);
 
@@ -279,7 +283,11 @@ describe('Records-only Dig sidebar & first-load browser behavior (Issue #404)', 
         const applyButton = sidebar.locator('.browse-apply-submit');
         expect(await applyButton.isVisible()).toBe(true);
         await Promise.all([
-          page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+          page.waitForURL((url) =>
+            url.pathname === '/dig' &&
+            url.searchParams.get('contentType') === 'non_music' &&
+            url.searchParams.get('specialPressing') === '1'
+          ),
           applyButton.click(),
         ]);
 
