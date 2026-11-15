@@ -79,7 +79,7 @@ describe('The Vinyl Drop task-skill portfolio', () => {
     expect(skill).toContain('1536×1536');
     expect(skill).toContain('additional roles preserve the corrected framing aspect');
     expect(skill).toContain('listing-photo-originals');
-    expect(skill).toContain('never submit the form');
+    expect(skill).toContain('Never submit a form');
   });
 
   test('canonical documentation and source paths referenced by the skill set exist', () => {
