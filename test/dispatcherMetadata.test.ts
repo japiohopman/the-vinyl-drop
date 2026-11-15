@@ -15,8 +15,6 @@ const { parseIssueMetadata } = require('../.github/scripts/dispatcher-metadata.c
     primarySpecialist?: string;
     secondarySpecialist?: string;
     dependencies: number[];
-    agentSkills: string[];
-    agentSkillsProblem: string | null;
   };
 };
 
@@ -104,25 +102,5 @@ Primary Specialist: Verification Specialist
 `);
 
     expect(parsed.dependencies).toEqual([12]);
-  });
-
-  test('parses the existing plural Secondary Specialists metadata field', () => {
-    const parsed = issue('Secondary Specialists: UI; Verification');
-
-    expect(parsed.secondarySpecialist).toBe('UI; Verification');
-  });
-
-  test('parses explicit allow-listed task skills from Issue metadata', () => {
-    const parsed = issue(`Required Agent Skills: performance-investigation, safe-migration-rollout`);
-
-    expect(parsed.agentSkills).toEqual(['performance-investigation', 'safe-migration-rollout']);
-    expect(parsed.agentSkillsProblem).toBeNull();
-  });
-
-  test('rejects an explicitly empty Required Agent Skills field during preflight', () => {
-    const parsed = issue('### Required Agent Skills');
-
-    expect(parsed.agentSkills).toEqual([]);
-    expect(parsed.agentSkillsProblem).toMatch(/has no value/i);
   });
 });

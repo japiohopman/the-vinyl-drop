@@ -24,6 +24,15 @@ assignees: ''
 <!-- List explicit items excluded from this feature -->
 -
 
+## Visual reference (complete for visible UI work; otherwise write N/A)
+
+- **Route and HTTP method:** exact route(s) and action(s).
+- **User and UI state:** authentication/data state and the screen, dialog, editor, empty/error/success state.
+- **Viewport and theme:** exact mobile/tablet/desktop widths and theme to preserve or change.
+- **Relevant reference:** link the matching row in docs/verification/UI_VISUAL_REFERENCE.md and the relevant screenshot(s). If no exact reference exists, say so and name the nearest valid reference.
+- **Intentional visual changes:** list what should change and what must remain unchanged.
+- **Evidence:** required Playwright/manual capture and whether a reviewed baseline update is expected.
+
 ## Acceptance Criteria
 
 <!-- Unambiguous criteria that define feature completeness -->

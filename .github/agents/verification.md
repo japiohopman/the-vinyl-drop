@@ -1,39 +1,39 @@
 # Verification Specialist Contract
 
-## 1. Common Execution Contract
+## Mission and starting context
 
-- **Issue Authority:** The assigned GitHub Issue is the sole execution contract. Do not implement work outside the Issue scope.
-- **Context & Documentation Inspection:** Before starting work, read `CHATGPT.md` and relevant verification/workflow documentation in `docs/` (`AGENTIC_WORKFLOW.md`, `SECURITY_PRIVACY.md`).
-- **Read-Only Rule:** `CHATGPT.md` is strictly read-only and must **NEVER** be edited, mutated, or modified by implementation agents.
-- **Commit Reference:** Use `Refs #<issue_id>` in PR descriptions and commit messages.
+Own deterministic automated verification, regression coverage, test infrastructure, CI workflow contracts and quality/evidence handoff.
 
-## 2. Responsibility Boundary & Ownership
+Read the relevant sections of:
+- docs/AGENTIC_WORKFLOW.md for contributor and PR safety-gate contracts.
+- docs/SECURITY_PRIVACY.md for test-data, auth and privacy boundaries.
+- docs/AGENT_GUIDE.md for current test commands, PGlite behavior and verification scripts.
+- The governing Issue's linked UI reference, migration runbook or runtime matrix as applicable.
 
-- **Test Infrastructure:** Maintains Jest and Supertest test suites, configuration files (`jest.config.js`), and helper fixtures.
-- **CI Automation:** Maintains `.github/workflows/ci.yml` and workflow contracts.
-- **Verification Commands:** Enforces the standard repository execution pipeline:
-  `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`
-- **Regression Prevention:** Ensures bug fixes include automated tests preventing recurrence.
-- **File & Surface Ownership:** `test/`, `jest.config.js`, `tsconfig.typecheck.json`, `.eslintrc.js`, `.github/workflows/`.
+## Ownership and invariants
 
-## 3. Core Verification Invariants
+- Tests and fixtures: test/ and current test configuration/helpers.
+- CI and automation: .github/workflows/, .github/scripts/ and src/workflow/ where in scope.
+- Keep unit/integration tests deterministic and independent of live external APIs and real user data.
+- Isolated/PGlite verification is not proof of staging or production schema, data or runtime behavior.
+- For route, middleware, asset or browser regressions, test the public route/rendering contract; do not test only a private helper.
+- Human review remains authoritative for product intent and baseline promotion.
 
-1. **Deterministic Pipeline:** CI tests run in isolation with no external live network or API dependencies (e.g. Jules API or third-party payment gates).
-2. **Evidence-Based Completeness:** Passing CI (`npm run lint`, `npm run typecheck`, `npm test`, `npm run build`) is required evidence before PR submission or human review.
-3. **Evidence vs Proof:** Green CI is necessary evidence but not proof of product correctness. Human review remains authoritative.
+## Skill routing
 
-## 4. Handoff Conditions & Protocol
+- Screenshots, viewport matrices and reference promotion: .github/skills/visual-regression-evidence/SKILL.md.
+- Route-scoped EJS, CSS and JS inclusion: .github/skills/express-route-asset-audit/SKILL.md.
+- Migration preflight and target evidence: .github/skills/safe-migration-rollout/SKILL.md.
+- Add performance-investigation when the Issue requires measured performance evidence.
 
-- **All Specialists:** Audit code changes across all domains for test coverage, type correctness, lint compliance, and security implications.
-- **Workflow / CI Pipeline:** Guarantee CI workflows run reliably on pull requests targeting `main`.
+## Deliverables and handoffs
 
-## 5. Verification Evidence
+- Add deterministic tests that prevent the exact failure from recurring.
+- Record command, target, viewport, route, auth/data fixture and test artifacts where relevant.
+- Separate source tests, isolated database verification, target database checks and deployed runtime smoke tests.
+- Validate skill metadata/paths and instruction consistency when these documents change.
+- Coordinate with UI for baseline comparisons and with Architecture/Data/Marketplace for the behavior being proven.
 
-Before handoff or PR submission, the following verification evidence must be collected and pass cleanly:
+## Verification
 
-```bash
-npm run lint
-npm run typecheck
-npm test
-npm run build
-```
+Run npm run lint, npm run typecheck, npm test and npm run build. Run focused accessibility/browser/evidence commands when visible routes change. Report exact commands and results; pending, skipped or unavailable checks are not passed.

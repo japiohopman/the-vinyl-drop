@@ -869,6 +869,9 @@ body.messaging-mobile-panel-open {
 .listing-photo-step-page .edit-listing-card {
   padding: var(--space-3) !important;
 }
+.listing-photo-step-page .edit-listing-header {
+  flex-wrap: wrap;
+}
 .listing-photo-step-page .edit-listing-record {
   margin-bottom: var(--space-3);
 }

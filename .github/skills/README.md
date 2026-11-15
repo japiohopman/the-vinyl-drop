@@ -1,39 +1,42 @@
 # The Vinyl Drop — Agent Skills
 
-This registry contains a deliberately small set of reusable, repository-specific task procedures. Skills complement (but do not replace) root instructions, specialist role contracts and canonical product/technical documentation.
+This is a small library of reusable, project-specific workflows. It complements root AGENTS.md, the five specialist contracts and canonical documentation; it does not replace any of them.
 
-## How loading works
+## How to use these skills
 
-- Root AGENTS.md is the repository-wide instruction entry point.
-- The five role contracts in .github/agents/ define specialist ownership and handoffs.
-- The dispatcher maps the primary and secondary specialists to the role contracts and default skills below.
-- Jules is not assumed to discover or automatically load repository SKILL.md files. The dispatcher puts the exact file paths in the generated session prompt and tells the agent to open and read them before implementation.
-- An Issue may request additional cross-specialist skills with a metadata line such as: Required Agent Skills: performance-investigation. Only registered skill IDs are accepted; unknown names fail preflight.
-- Do not load the whole skill catalogue. Read the assigned specialist contracts and only the skill files named in the prompt.
+- Start with the active GitHub Issue and the relevant specialist contract in .github/agents/.
+- Select only the SKILL.md files relevant to the work. Open and read them before planning or editing.
+- Do not assume that every coding tool automatically discovers repository skills. When ChatGPT works directly on this repository, it opens the selected skill itself.
+- Skills provide methods and guardrails, not independent task authorization.
+- For any visible UI change, the UI Visual Reference Library and the exact relevant screenshot are mandatory inputs; see mobile-first-ui and visual-regression-evidence.
 
 ## Specialist map
 
-| Specialist | Default task skills |
-| --- | --- |
-| Architecture | express-route-asset-audit |
-| Existing composite label Architecture / Database | express-route-asset-audit + safe-migration-rollout, mapped to Architecture and Data / Catalog contracts |
-| Data / Catalog | safe-migration-rollout |
-| UI | mobile-first-ui, visual-regression-evidence, express-route-asset-audit |
-| Marketplace | listing-photo-pipeline |
-| Verification | visual-regression-evidence, safe-migration-rollout, express-route-asset-audit |
+| Specialist | Default skill(s) | Add when the task also covers |
+| --- | --- | --- |
+| Architecture | express-route-asset-audit | performance-investigation for measured cross-layer performance; safe-migration-rollout for migration design |
+| Data / Catalog | safe-migration-rollout | performance-investigation for measured SQL, index, query or pooler work |
+| UI | mobile-first-ui, visual-regression-evidence, express-route-asset-audit | performance-investigation for browser/runtime performance |
+| Marketplace | listing-photo-pipeline | express-route-asset-audit for route/EJS/bundle changes; performance-investigation for measured upload/image/storage work |
+| Verification | visual-regression-evidence, express-route-asset-audit, safe-migration-rollout | performance-investigation when measurement evidence is required |
 
-## Cross-specialist skill
+## Skill catalogue
 
 | Skill | Use when |
 | --- | --- |
-| performance-investigation | A measurable latency, throughput, memory, CPU, query, image-processing, bundle-size or network/egress problem is in scope. Add it explicitly with Required Agent Skills in the Issue. It is available to all specialists but is not loaded for unrelated work. |
+| mobile-first-ui | Any visible screen, EJS, responsive layout, navigation, form flow or interaction change. |
+| visual-regression-evidence | Capturing/comparing screenshots, checking provenance or promoting a reviewed baseline. |
+| express-route-asset-audit | Tracing Express routes to controllers/views and checking route-specific CSS/JS assets. |
+| performance-investigation | Measuring browser, Node/Express, PostgreSQL/Drizzle, Render, Sharp, Storage or network performance. It is a cross-specialist capability, not a sixth specialist role. |
+| listing-photo-pipeline | Changing seller photo roles, upload, browser correction, Sharp, public derivatives, private edit sources or cleanup. |
+| safe-migration-rollout | Planning or verifying schema migrations and staging/production database rollout. |
 
-## Intentionally pruned candidates
+## Deliberately pruned overlaps
 
-- postgres-drizzle-performance is folded into performance-investigation, which already covers PostgreSQL, Drizzle, Supabase and connection/pooler measurement. A second database-performance skill would duplicate its procedures.
-- express-feature-trace and ejs-route-asset-audit are combined into express-route-asset-audit. The single sequence traces the real Express request through EJS and the route-specific browser asset bundle.
-- No sixth Performance Specialist role is introduced. Performance is a cross-specialist skill selected by the Issue.
+- PostgreSQL/Drizzle procedures live in performance-investigation rather than a second database-performance skill.
+- Express request tracing and route-asset auditing share one workflow in express-route-asset-audit.
+- No separate Performance Specialist role is added. The same performance skill is available to all five specialists when the Issue requires measured evidence.
 
-## Skill format
+## Format and maintenance
 
-Each skill uses the open Agent Skills SKILL.md frontmatter fields name and description. Project-specific instructions remain in the skill body. References point back to canonical repository documents instead of copying them. These files are repository references, not proof that a particular agent runtime automatically discovers them.
+Each skill uses the standard SKILL.md frontmatter fields name and description. Skills link to canonical repository documents rather than duplicating large sections. When a skill is added, renamed or removed, update this map and the relevant specialist contract and tests.

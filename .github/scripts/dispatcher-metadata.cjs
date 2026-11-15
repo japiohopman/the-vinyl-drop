@@ -2,7 +2,7 @@
 
 const READY_VALUES = new Set(['ready', 'dispatch-ready', 'ready-for-dispatch']);
 const NOT_READY_VALUES = new Set(['not ready', 'not dispatch-ready', 'not dispatch ready', 'blocked', 'unready', 'false', 'no']);
-const FIELD_LABELS = '(?:required\\s+agent\\s+skills|agent\\s+skills|dispatch\\s+readiness|readiness|primary(?:\\s+specialist)?|secondary(?:\\s+specialists?)?|priority|p)';
+const FIELD_LABELS = '(?:dispatch\\s+readiness|readiness|primary(?:\\s+specialist)?|secondary(?:\\s+specialist)?|priority|p)';
 
 function normalizeLine(line) {
   return line
@@ -88,14 +88,7 @@ function parseIssueMetadata(issue) {
   }
 
   const primary = findField(body, 'primary(?:\\s+specialist)?');
-  const secondary = findField(body, 'secondary(?:\\s+specialists?)?');
-  const requestedSkillsField = findField(body, '(?:required\\s+agent\\s+skills|agent\\s+skills)');
-  const agentSkills = requestedSkillsField.found && requestedSkillsField.value
-    ? requestedSkillsField.value.split(/[;,]/).map((skill) => skill.trim()).filter(Boolean)
-    : [];
-  const agentSkillsProblem = requestedSkillsField.found && !requestedSkillsField.value
-    ? 'Required Agent Skills field has no value.'
-    : null;
+  const secondary = findField(body, 'secondary(?:\\s+specialist)?');
 
   let priority = 3;
   const priorityMatch = body.match(/\*\*(?:Priority|P)\*\*:\s*(?:P)?(\d+)/i) || body.match(/Priority:\s*(?:P)?(\d+)/i);
@@ -123,8 +116,6 @@ function parseIssueMetadata(issue) {
     labels: labelNames,
     primarySpecialist: primary.found && primary.value ? primary.value : undefined,
     secondarySpecialist: secondary.found && secondary.value ? secondary.value : undefined,
-    agentSkills,
-    agentSkillsProblem,
     priority,
     dependencies,
     isDispatchReady,

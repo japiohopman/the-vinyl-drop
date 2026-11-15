@@ -1,40 +1,41 @@
 # Data / Catalog Specialist Contract
 
-## 1. Common Execution Contract
+## Mission and starting context
 
-- **Issue Authority:** The assigned GitHub Issue is the sole execution contract. Do not implement work outside the Issue scope.
-- **Context & Documentation Inspection:** Before starting work, read `CHATGPT.md` and relevant catalog/data documentation in `docs/` (`DATA_ARCHITECTURE.md`, `DOMAIN_MODEL.md`, `DECISIONS.md`).
-- **Read-Only Rule:** `CHATGPT.md` is strictly read-only and must **NEVER** be edited, mutated, or modified by implementation agents.
-- **Commit Reference:** Use `Refs #<issue_id>` in PR descriptions and commit messages.
+Own canonical release/catalogue data, database schema, data integrity, condition vocabulary, catalogue search and data-access contracts.
 
-## 2. Responsibility Boundary & Ownership
+Read the relevant sections of:
+- docs/DATA_ARCHITECTURE.md, docs/DOMAIN_MODEL.md and docs/DECISIONS.md.
+- docs/CATALOGUE_SEARCH.md for search behavior, result ranking and keyboard/touch/stale-response expectations.
+- docs/AGENT_GUIDE.md for current repository, service and migration-test paths.
+- The target-specific staging or production runbook only when the Issue explicitly concerns that environment.
 
-- **Release Metadata Model:** Owns canonical release definitions (artist, title, label, catalogue number, year, country, format, barcode, genre).
-- **Condition Semantics:** Owns the controlled vocabulary and grading descriptions for media and sleeve condition:
-  `M, NM, VG+, VG, VG-, G+, G, F, P`
-- **Monetary Conventions:** Ensures prices and values are stored strictly as integer minor units (e.g. €34.95 -> `3495`). Never store money as floating-point numbers.
-- **Search & Indexing:** Implements PostgreSQL structured indexes and normalized search fields without introducing unnecessary third-party search engines.
-- **External Catalog Enrichment:** External services (Discogs, MusicBrainz, etc.) are enrichment sources only. PostgreSQL remains the sole source of truth.
-- **File & Surface Ownership:** `src/db/`, `src/db/schema/`, `src/validators/release.ts`, `src/validators/condition.ts`, catalog search queries.
+## Ownership and invariants
 
-## 3. Core Domain Invariants
+- Schema and DB setup: src/db/ and src/db/schema/.
+- Migrations and journal: drizzle/ and drizzle/meta/_journal.json.
+- Data access: src/app/repositories/; service orchestration: src/app/services/.
+- Validation: src/validators/ and domain semantics under src/domain/.
+- Release metadata is canonical and shared; it is not duplicated per seller or listing.
+- Release, Physical Copy and Listing are distinct records with separate ownership and lifecycle.
+- Prices use integer minor units, never floating point.
+- Media and sleeve condition use M, NM, VG+, VG, VG-, G+, G, F, P, enforced by validation and database constraints.
+- External catalogue providers enrich data; PostgreSQL remains the application's source of truth.
 
-1. **Release Normalization:** Release metadata is genre-agnostic and never duplicated per listing. A listing references a release.
-2. **Integer Money:** All financial attributes use integer minor units.
-3. **Controlled Vocabularies:** Media and sleeve conditions are strictly validated with Zod schemas and database constraints.
+## Skill routing
 
-## 4. Handoff Conditions & Protocol
+- Schema changes, migration journal/ledger work and target rollout: .github/skills/safe-migration-rollout/SKILL.md.
+- Measured query, index, pooler or database performance: .github/skills/performance-investigation/SKILL.md.
+- The performance skill contains PostgreSQL/Drizzle procedures; do not create a duplicate database-performance skill.
 
-- **Architecture Specialist:** Hand off updated Drizzle schemas, Zod validation schemas, and database migration scripts for service integration.
-- **Marketplace Specialist:** Provide release lookup and condition validation interfaces for listing creation and editing.
+## Deliverables and handoffs
 
-## 5. Verification Evidence
+- Explain the effect of schema/query changes on existing Release, Physical Copy and Listing data.
+- For migrations, cover ordering, data preservation/backfill, lock implications and rollback/forward-repair.
+- State whether evidence came from PGlite/isolated tests, staging or production. Never present isolated verification as remote migration proof.
+- Hand schema and repository contracts to Architecture; required release/condition interfaces to Marketplace; typed presentation fields to UI.
+- Add deterministic tests for validation, constraints, search semantics and migration upgrade paths as appropriate.
 
-Before handoff or PR submission, the following verification evidence must be collected and pass cleanly:
+## Verification
 
-```bash
-npm run lint
-npm run typecheck
-npm test
-npm run build
-```
+Run npm run lint, npm run typecheck, npm test and npm run build. Run npm run db:verify or focused migration tests when schema work is in scope. A target-specific preflight or apply is a separate owner-authorized operation.

@@ -5,8 +5,8 @@
 The Vinyl Drop is developed using an Issue-driven agentic workflow where human engineers retain explicit architectural and merge authority:
 
 1. **Human owner:** defines product goals, approves strategy and scope, writes or approves Issue contracts, reviews the final diff, and retains merge/release authority.
-2. **Implementation contributor:** a human engineer or an explicitly selected implementation agent works only inside the Issue contract on a dedicated branch. Jules is an available dispatcher path, not an automatic default; do not dispatch an external agent unless the owner and Issue call for it.
-3. **ChatGPT:** may help with architecture, direct implementation where authorized, source review, verification planning and structured continuation feedback. The owner decides which contributor or agent is used for each task.
+2. **Implementation:** ChatGPT works directly against the repository within the Issue contract on a dedicated branch.
+3. **Independent review:** CodeRabbit reviews the PR and reports actionable findings; ChatGPT verifies and fixes them on the same branch. The owner retains product direction and merge decision.
 
 ## Source of execution truth
 
@@ -53,22 +53,15 @@ Enforces PR quality and contract completeness before human review.
 - Validates status semantics: `NOT READY` is a contract-valid state where Definition of Done items may remain unchecked; `READY FOR HUMAN REVIEW` requires all Definition of Done items to be checked (`- [x]`).
 - Evaluates the PR body strictly without falling back to or auto-copying commit messages.
 
-### 3. Jules Issue Dispatcher (`jules-issue-dispatcher.yml`)
+### 3. Legacy Jules Issue Dispatcher (`jules-issue-dispatcher.yml`) — not used for current implementation
 
-Automates dispatch-ready issue selection and session preflight verification.
-- Executes `src/workflow/julesDispatcher.ts`.
-- Preflight checks verify: issue is open, labeled appropriately, dependencies satisfied, no active implementation branch/PR exists, no blocking Jules session exists.
-- Supports dry-run testing without calling live external APIs.
+The workflow remains in the repository for legacy reference. It is not part of the current ChatGPT direct-implementation path and must not be run for Issues unless the owner explicitly reactivates it in a separate decision.
 
-### Agent task-skill loading contract
+### Agent task-skill usage
 
 The repository separates four kinds of guidance: root AGENTS.md instructions, specialist contracts in .github/agents/, reusable task skills in .github/skills/, and canonical product/technical documentation in docs/.
 
-The Jules dispatcher uses a tested, allow-listed mapping in .github/scripts/agent-context.cjs. It includes the primary and secondary specialist contract paths and only the default skills for those roles. An Issue can request an additional cross-specialist skill with a line such as `Required Agent Skills: performance-investigation`. Unknown role names and unknown skill IDs fail preflight closed.
-
-Jules is not assumed to auto-load repository SKILL.md files. The generated prompt explicitly lists each required path and tells Jules to open and read it before planning or implementation. This is an explicit repository-reading workflow, not an assertion of automatic skill discovery. The prompt builder is shared with Jest tests so a UI dry-run prompt can be verified without calling the live Jules API.
-
-Current default mapping is maintained in .github/skills/README.md. Do not duplicate all skill content into AGENTS.md or load the whole catalogue for every task. The performance skill is opt-in for measurable performance issues and remains cross-specialist.
+ChatGPT reads the applicable specialist contract and relevant complete SKILL.md files directly while implementing the active Issue. The skill index maps the five roles to their default workflows and describes when cross-specialist performance work is appropriate. Do not duplicate these procedures in always-on instructions or add metadata solely for an unused dispatcher.
 
 ### 4. Jules Session Cleanup (`jules-session-cleanup.yml`)
 

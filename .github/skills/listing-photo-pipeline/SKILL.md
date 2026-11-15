@@ -26,7 +26,7 @@ description: Use when changing listing-photo selection, upload, correction, edit
 - The browser sends the original selected image and a corrected display image as separate multipart parts when the editor produces them. Preserve the distinction and verify current field names rather than assuming one upload payload.
 - Server-side validation must verify actual image format and MIME type. Do not trust browser filename or claimed content type.
 - Sharp currently produces a public WebP display derivative (quality 82, max dimension 2048) and a distinct private, lossless WebP editing source (effort 4, max dimension 2048, source output cap 20 MiB). Re-check imageProcessor.ts and the lockfile on every relevant change.
-- The browser editor currently outputs a corrected square JPEG at 1536×1536. Verify the actual browser code and source dimensions before changing this contract.
+- The browser editor outputs a corrected JPEG with a maximum/longer side of 1536 px. Front/back cover roles are square (1536×1536); additional roles preserve the corrected framing aspect, so a portrait detail photo remains portrait. The shorter side is calculated from the four-point framing. Verify getOutputDimensions() in public/js/square-photo-cropper.js before changing this contract.
 - The public listing-photos bucket and private listing-photo-originals bucket have different visibility and owner-access requirements. Never expose private source paths in public view models or HTML.
 
 ## Required invariants

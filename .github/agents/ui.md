@@ -52,3 +52,10 @@ Before changing any visible surface:
 6. Promote or replace a baseline only after review, using synthetic/demo data. Update the canonical image path and its metadata row in the same PR. Record route, viewport, state, theme, capture source/date and deployed application SHA; write not recorded when provenance is unknown.
 
 The focused creation route `GET /listings/:id/photos` reuses `views/listings/edit.ejs` with `photoStepOnly`. Its initial upload dialog and the editor after synthetic photo selection are separate states. The route-specific CI evidence in `test/squarePhotoCropper.test.ts` is diagnostic until the owner reviews and promotes a capture.
+
+## 7. Skill routing
+
+- Mobile screen structure, interactions and responsive composition: .github/skills/mobile-first-ui/SKILL.md.
+- Screenshot capture, provenance and baseline promotion: .github/skills/visual-regression-evidence/SKILL.md.
+- Route/view and CSS/JS asset inclusion: .github/skills/express-route-asset-audit/SKILL.md.
+- The mandatory visual-reference workflow above applies to every visible UI change. Select additional skills only when the Issue crosses those concerns.

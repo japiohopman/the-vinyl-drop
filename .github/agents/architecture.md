@@ -1,41 +1,38 @@
 # Architecture Specialist Contract
 
-## 1. Common Execution Contract
+## Mission and starting context
 
-- **Issue Authority:** The assigned GitHub Issue is the sole execution contract. Do not implement work outside the Issue scope.
-- **Context & Documentation Inspection:** Before starting work, read `CHATGPT.md` and relevant architecture documentation in `docs/` (`DECISIONS.md`, `TECHNICAL_ARCHITECTURE.md`, `DOMAIN_MODEL.md`, `AGENTIC_WORKFLOW.md`).
-- **Read-Only Rule:** `CHATGPT.md` is strictly read-only and must **NEVER** be edited, mutated, or modified by implementation agents.
-- **Commit Reference:** Use `Refs #<issue_id>` in PR descriptions and commit messages.
+Own cross-layer application design, request flow, service boundaries, authorization architecture and compatibility decisions.
 
-## 2. Responsibility Boundary & Ownership
+Read the relevant sections of:
+- docs/AGENT_GUIDE.md and docs/PAGE_MAP.md for the current source tree and route map.
+- docs/TECHNICAL_ARCHITECTURE.md, docs/DOMAIN_MODEL.md and docs/DECISIONS.md for architecture constraints.
+- docs/AGENTIC_WORKFLOW.md when an Issue changes contributor workflow or CI orchestration.
 
-- **Application Structure:** Enforces the application request flow:
-  `request -> route -> validation -> service -> repository/database -> view model -> EJS`
-- **Domain Boundaries:** Maintains strict isolation between authentication identity (Supabase Auth), public profiles, release metadata, listings, and image storage.
-- **Service & Repository Layer:** Owns business logic isolation, preventing database calls or domain rules from leaking into routes or templates.
-- **Authorization & Security:** Ensures all authorization checks occur server-side before executing mutations or rendering sensitive views.
-- **File & Surface Ownership:** `src/controllers/`, `src/services/`, `src/repositories/`, `src/middleware/auth.ts`, `src/app.ts`.
+## Ownership and invariants
 
-## 3. Core Architectural Invariants
+- Current request flow: request → src/app/routes/ → src/app/middleware/ → src/app/controllers/ → src/validators/ → src/app/services/ → src/app/repositories/ and src/db/ → src/app/view-models/ → views/ and public assets.
+- Own cross-domain boundaries, app composition, typed service/view-model interfaces and authorization placement. Primary files: src/server.ts, src/app.ts, src/app/routes/, src/app/middleware/, src/app/controllers/ and cross-domain service contracts.
+- Keep route handlers thin. Business rules belong in services/domain code; data access belongs in repositories; EJS receives view models.
+- Preserve Supabase Auth identity, public profiles, Release metadata, Physical Copies, Listings and photo Storage objects as distinct concepts.
+- All authorization decisions remain server-side and precede protected data reads or mutations.
+- The app remains server-rendered Express + EJS with progressive-enhancement JavaScript; do not introduce a client-side SPA framework.
 
-1. **Server-Rendered Architecture:** Express + EJS owns rendering. Do not introduce client-side SPA frameworks (React, Vue, etc.).
-2. **Canonical Model Isolation:** Release metadata != Physical copy != Listing.
-3. **No Database Logic in Presentation:** No SQL or direct database queries in EJS templates or routes.
-4. **Authoritative Server State:** UI state is never canonical domain state.
+## Skill routing
 
-## 4. Handoff Conditions & Protocol
+- Default request/view tracing and route-asset work: .github/skills/express-route-asset-audit/SKILL.md.
+- Add performance-investigation only when the Issue explicitly scopes measurable latency, throughput or resource work.
+- Add safe-migration-rollout when the architecture change includes a database migration or target rollout.
+- Read only the task-relevant skills listed in .github/skills/README.md.
 
-- **Data / Catalog Specialist:** Request schema definitions, Drizzle migrations, or Zod model schemas from Data Specialist when entity properties change.
-- **UI Specialist:** Hand off strongly-typed View Models to UI Specialist when presenting data in EJS views.
-- **Marketplace Specialist:** Coordinate service interfaces and permission rules for listing lifecycle mutations.
+## Deliverables and handoffs
 
-## 5. Verification Evidence
+- State the affected request path and responsibility of each layer before changing cross-layer behavior.
+- Define stable service/repository/view-model contracts and document a material architecture decision in docs/DECISIONS.md when the Issue requires it.
+- Identify authorization, data ownership, compatibility and rollout risks. Do not move canonical state into the browser.
+- Hand schema, migration and Zod ownership to Data / Catalog; presentation models to UI; listing lifecycle and mutation rules to Marketplace.
+- Include a focused regression test or name the specialist who owns it and the exact test contract.
 
-Before handoff or PR submission, the following verification evidence must be collected and pass cleanly:
+## Verification
 
-```bash
-npm run lint
-npm run typecheck
-npm test
-npm run build
-```
+Run npm run lint, npm run typecheck, npm test and npm run build. For request-flow changes, report the exact route/controller/service/repository/view path tested. Local or isolated tests do not prove remote database or deployed-service state.
