@@ -81,6 +81,7 @@ describe('Route-specific CSS bundles (#252)', () => {
     const dropNew = routeCssLinks(await renderLayout('/drop/new'));
     const listingCreate = routeCssLinks(await renderLayout('/listings/create'));
     const listingEdit = routeCssLinks(await renderLayout('/listings/example-listing/edit'));
+    const listingPhotos = routeCssLinks(await renderLayout('/listings/example-listing/photos'));
     const profile = routeCssLinks(await renderLayout('/profile'));
     const publicProfile = routeCssLinks(await renderLayout('/profiles/crate_digger'));
     const profileEdit = routeCssLinks(await renderLayout('/profile/edit'));
@@ -138,12 +139,23 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(listingCreate).not.toContain('/css/listing-interactions.css');
     expect(selectRelease).not.toContain('/css/browse-dig-controls.css');
     expect(selectRelease).not.toContain('/css/dig-mobile-session.css');
-    for (const formRoute of [dropNew, listingCreate, listingEdit]) {
+    for (const formRoute of [dropNew, listingCreate, listingEdit, listingPhotos]) {
       expect(formRoute).toContain('/css/listing-forms.css');
       expect(formRoute.indexOf('/css/listing-forms.css'))
         .toBeLessThan(formRoute.indexOf('/css/style-after-listing-forms.css'));
     }
     expect(listingEdit).toContain('/css/listing-interactions.css');
+    expect(listingPhotos).toEqual([
+      '/css/style.css',
+      '/css/style-after-features.css',
+      '/css/style-after-activity.css',
+      '/css/style-after-release-selection.css',
+      '/css/listing-forms.css',
+      '/css/style-after-listing-forms.css',
+      '/css/style-after-profile-pages.css',
+      '/css/style-after-profile-editor.css',
+    ]);
+    expect(listingPhotos).not.toContain('/css/listing-interactions.css');
     expect(listingEdit.indexOf('/css/style-after-profile-editor.css'))
       .toBeLessThan(listingEdit.indexOf('/css/listing-interactions.css'));
     expect(listingEdit).toContain('/css/listing-interactions.css');
@@ -158,15 +170,15 @@ describe('Route-specific CSS bundles (#252)', () => {
     expect(home).not.toContain('/css/activity-release-selection.css');
     expect(home).not.toContain('/css/release-selection-overrides.css');
     expect(home).not.toContain('/css/dig-experience.css');
-    for (const nonHomeRoute of [dig, browse, search, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
+    for (const nonHomeRoute of [dig, browse, search, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, listingPhotos, profile, publicProfile, profileEdit]) {
       expect(nonHomeRoute).not.toContain('/css/home.css');
     }
     expect(home).not.toContain('/css/browse-dig-controls.css');
     expect(home).not.toContain('/css/browse-catalogue-explorer.css');
-    for (const nonBrowseRoute of [dig, search, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
+    for (const nonBrowseRoute of [dig, search, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, listingPhotos, profile, publicProfile, profileEdit]) {
       expect(nonBrowseRoute).not.toContain('/css/browse-catalogue-explorer.css');
     }
-    for (const unrelated of [home, dig, browse, search, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, profile, publicProfile, profileEdit]) {
+    for (const unrelated of [home, dig, browse, search, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, listingPhotos, profile, publicProfile, profileEdit]) {
       expect(unrelated).not.toContain('/css/people-search.css');
     }
     expect(home).not.toContain('/css/dig-mobile-session.css');
