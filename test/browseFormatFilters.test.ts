@@ -314,6 +314,21 @@ describe('Browse format filters — rendered state and responsive controls', () 
     expect(digMoreFiltersHtml).not.toContain('id="filter-special-pressing"');
   });
 
+  it('keeps first-level release classification visible in a compact wide desktop filter layout', () => {
+    const css = fs.readFileSync(
+      path.join(process.cwd(), 'public/css/release-classification-filters.css'),
+      'utf8'
+    );
+    const wideDesktopRules = css.slice(css.indexOf('@media (min-width: 1200px)'));
+    expect(wideDesktopRules).toContain('.browse-page-container .browse-mobile-filter-content');
+    expect(wideDesktopRules).toContain('grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr)');
+    expect(wideDesktopRules).toContain('.browse-page-container .browse-quick-filter-row');
+    expect(wideDesktopRules).toContain('grid-template-columns: minmax(300px, 1.2fr) minmax(240px, 0.9fr)');
+    expect(wideDesktopRules).toContain('.browse-page-container .browse-secondary-filters');
+    expect(wideDesktopRules).toContain('.browse-page-container .browse-filter-actions');
+    expect(wideDesktopRules).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+  });
+
   it('keeps responsive inputs shrinkable and quick-filter touch targets at least 44px', () => {
     const css = fs.readFileSync(path.join(process.cwd(), 'public/css/style.css'), 'utf8');
     expect(css).toContain('.browse-keyword-control input');
