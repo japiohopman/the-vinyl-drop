@@ -4,12 +4,14 @@
   flex-direction: column;
   gap: var(--space-2);
   min-width: 0;
-  padding-top: var(--space-3);
-  border-top: var(--border-thin);
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .browse-release-classification-title {
   margin: 0;
+  padding: 0;
   color: var(--color-ink-muted);
   font-family: var(--font-mono);
   font-size: var(--font-size-3xs);
@@ -19,9 +21,9 @@
 
 .browse-release-classification-controls {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   align-items: end;
-  gap: var(--space-3);
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -74,6 +76,29 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* On wide Browse, share the existing quick-filter row instead of adding
+   another vertical section to the desktop filter panel. */
+@media (min-width: 1200px) {
+  .browse-page-container .browse-quick-filter-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.9fr) minmax(320px, 1fr);
+    gap: var(--space-4);
+  }
+
+  .browse-page-container .browse-release-classification-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(125px, auto);
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .browse-page-container .browse-quick-filter-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  }
+
+  .browse-page-container .browse-primary-filters {
+    grid-column: 1 / -1;
+  }
+}
+
 /* The Dig drawer needs an explicit apply action on phones; the shared Browse
    form keeps its existing search-submit behavior. */
 .dig-sidebar .browse-apply-submit {
@@ -82,9 +107,4 @@
   justify-content: center;
 }
 
-@media (max-width: 359px) {
-  .browse-release-classification-controls {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 
