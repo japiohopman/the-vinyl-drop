@@ -56,9 +56,7 @@
       filters.condition,
       filters.minPrice,
       filters.maxPrice,
-      filters.sort && filters.sort !== 'newest',
-      filters.contentType,
-      filters.specialPressing
+      filters.sort && filters.sort !== 'newest'
     ].filter(Boolean).length; %>
 
     <details class="browse-mobile-filter-panel">
@@ -101,6 +99,24 @@
             </div>
             <p class="browse-format-help">LP = long-play / album release. 12-inch and 7-inch describe the physical diameter when it is explicitly recorded.</p>
           </fieldset>
+
+        <fieldset class="browse-release-classification-filters">
+          <legend class="browse-release-classification-title">Release type &amp; edition</legend>
+          <div class="browse-release-classification-controls">
+            <div class="browse-genre-control">
+              <label for="filter-content-type">Release type</label>
+              <select id="filter-content-type" name="contentType" class="form-control">
+                <option value="">All releases</option>
+                <option value="music" <%= filters.contentType === 'music' ? 'selected' : '' %>>Music</option>
+                <option value="non_music" <%= filters.contentType === 'non_music' ? 'selected' : '' %>>Non-Music</option>
+              </select>
+            </div>
+            <label class="browse-special-pressing-filter">
+              <input type="checkbox" id="filter-special-pressing" name="specialPressing" value="1" <%= filters.specialPressing ? 'checked' : '' %> />
+              <span>Special Pressings only</span>
+            </label>
+          </div>
+        </fieldset>
 
           <div class="browse-primary-filters">
             <div class="browse-genre-control">
@@ -163,18 +179,6 @@
                 <option value="title_asc" <%= filters.sort === 'title_asc' ? 'selected' : '' %>>Title: A–Z</option>
               </select>
             </div>
-            <div>
-              <label for="filter-content-type">Content type</label>
-              <select id="filter-content-type" name="contentType" class="form-control">
-                <option value="">All content</option>
-                <option value="music" <%= filters.contentType === 'music' ? 'selected' : '' %>>Music</option>
-                <option value="non_music" <%= filters.contentType === 'non_music' ? 'selected' : '' %>>Non-Music</option>
-              </select>
-            </div>
-            <label class="browse-special-pressing-filter">
-              <input type="checkbox" name="specialPressing" value="1" <%= filters.specialPressing ? 'checked' : '' %> />
-              <span>Special Pressings only</span>
-            </label>
           </div>
         </details>
 

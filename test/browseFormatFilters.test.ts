@@ -282,6 +282,14 @@ describe('Browse format filters — rendered state and responsive controls', () 
     expect(browseHtml).toContain('name="specialPressing" value="1" checked');
     expect(browseHtml).toContain('contentType=non_music');
     expect(browseHtml).toContain('specialPressing=1');
+    const browseClassificationStart = browseHtml.indexOf('class="browse-release-classification-filters"');
+    const browseMoreFiltersStart = browseHtml.indexOf('<details class="browse-secondary-filters"');
+    const browseMoreFiltersEnd = browseHtml.indexOf('</details>', browseMoreFiltersStart);
+    expect(browseClassificationStart).toBeGreaterThan(-1);
+    expect(browseClassificationStart).toBeLessThan(browseMoreFiltersStart);
+    const browseMoreFiltersHtml = browseHtml.slice(browseMoreFiltersStart, browseMoreFiltersEnd);
+    expect(browseMoreFiltersHtml).not.toContain('filter-content-type');
+    expect(browseMoreFiltersHtml).not.toContain('name="specialPressing"');
 
     const digHtml = await ejs.renderFile(path.join(process.cwd(), 'views/browse/responsive-dig.ejs'), {
       ...common,
@@ -296,6 +304,29 @@ describe('Browse format filters — rendered state and responsive controls', () 
     expect(digHtml).toContain('contentType=non_music');
     expect(digHtml).toContain('specialPressing=1');
     expect(digHtml).toContain("{ name: 'specialPressing', selector: '#filter-special-pressing' }");
+    const digClassificationStart = digHtml.indexOf('class="browse-release-classification-filters"');
+    const digMoreFiltersStart = digHtml.indexOf('<details class="browse-secondary-filters"');
+    const digMoreFiltersEnd = digHtml.indexOf('</details>', digMoreFiltersStart);
+    expect(digClassificationStart).toBeGreaterThan(-1);
+    expect(digClassificationStart).toBeLessThan(digMoreFiltersStart);
+    const digMoreFiltersHtml = digHtml.slice(digMoreFiltersStart, digMoreFiltersEnd);
+    expect(digMoreFiltersHtml).not.toContain('filter-content-type');
+    expect(digMoreFiltersHtml).not.toContain('id="filter-special-pressing"');
+  });
+
+  it('keeps first-level release classification visible in a compact wide desktop filter layout', () => {
+    const css = fs.readFileSync(
+      path.join(process.cwd(), 'public/css/release-classification-filters.css'),
+      'utf8'
+    );
+    const wideDesktopRules = css.slice(css.indexOf('@media (min-width: 1200px)'));
+    expect(wideDesktopRules).toContain('.browse-page-container .browse-mobile-filter-content');
+    expect(wideDesktopRules).toContain('grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr)');
+    expect(wideDesktopRules).toContain('.browse-page-container .browse-quick-filter-row');
+    expect(wideDesktopRules).toContain('grid-template-columns: minmax(300px, 1.2fr) minmax(240px, 0.9fr)');
+    expect(wideDesktopRules).toContain('.browse-page-container .browse-secondary-filters');
+    expect(wideDesktopRules).toContain('.browse-page-container .browse-filter-actions');
+    expect(wideDesktopRules).toContain('grid-template-columns: repeat(4, minmax(0, 1fr))');
   });
 
   it('keeps responsive inputs shrinkable and quick-filter touch targets at least 44px', () => {

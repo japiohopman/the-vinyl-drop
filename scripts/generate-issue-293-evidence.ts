@@ -20,6 +20,9 @@ const stylesheet = readFullStylesheetSource();
 const browseCatalogueExplorerStylesheet = fs
   .readFileSync(path.join(publicDirectory, 'css', 'browse-catalogue-explorer.css'), 'utf8')
   .replace(/\r\n|\r/g, '\n');
+const releaseClassificationStylesheet = fs
+  .readFileSync(path.join(publicDirectory, 'css', 'release-classification-filters.css'), 'utf8')
+  .replace(/\r\n|\r/g, '\n');
 
 /** Renders the Browse template with production styles and representative listing fixtures. */
 async function renderBrowse(baseUrl: string, view: 'grid' | 'list' = 'grid'): Promise<string> {
@@ -71,7 +74,7 @@ async function renderBrowse(baseUrl: string, view: 'grid' | 'list' = 'grid'): Pr
   return '<!doctype html><html lang="en"><head>' +
     '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<base href="' + baseUrl + '/"><link rel="stylesheet" href="' + baseUrl + '/fonts/fonts.css">' +
-    '<style>' + stylesheet + browseCatalogueExplorerStylesheet + '</style></head><body>' +
+    '<style>' + stylesheet + browseCatalogueExplorerStylesheet + releaseClassificationStylesheet + '</style></head><body>' +
     '<main class="main-content container">' + body + '</main></body></html>';
 }
 

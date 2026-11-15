@@ -39,6 +39,9 @@
   <% if (typeof currentPath !== 'undefined' && (currentPath === '/dig' || currentPath === '/browse' || currentPath === '/search' || currentPath === '/browse/dig')) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/browse-dig-controls.css') : '/css/browse-dig-controls.css' %>">
   <% } %>
+  <% if (typeof currentPath !== 'undefined' && (currentPath === '/dig' || currentPath === '/browse' || currentPath === '/search' || currentPath === '/browse/dig')) { %>
+    <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/release-classification-filters.css') : '/css/release-classification-filters.css' %>">
+  <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-activity.css') : '/css/style-after-activity.css' %>">
   <% if (typeof currentPath !== 'undefined' && currentPath === '/listings/new') { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/release-selection-overrides.css') : '/css/release-selection-overrides.css' %>">

@@ -201,6 +201,105 @@ describe('Records-only Dig sidebar & first-load browser behavior (Issue #404)', 
     }
   });
 
+
+  it('shows first-level Browse classification filters and applies them from the mobile filter panel', async () => {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+
+    try {
+      await page.goto(`${baseUrl}/browse`, { waitUntil: 'domcontentloaded' });
+      const panel = page.locator('.browse-mobile-filter-panel');
+      await panel.locator('.browse-mobile-filter-summary').click();
+
+      const classification = panel.locator('.browse-release-classification-filters');
+      expect(await classification.isVisible()).toBe(true);
+      expect(await classification.locator('#filter-content-type').isVisible()).toBe(true);
+      expect(await classification.locator('#filter-special-pressing').isVisible()).toBe(true);
+
+      const moreFilters = panel.locator('.browse-secondary-filters');
+      expect(await moreFilters.getAttribute('open')).toBeNull();
+      const order = await page.evaluate(() => {
+        const primary = document.querySelector('.browse-release-classification-filters');
+        const secondary = document.querySelector('.browse-secondary-filters');
+        if (!primary || !secondary) throw new Error('Browse classification or advanced filters are missing');
+        return {
+          primaryTop: primary.getBoundingClientRect().top,
+          secondaryTop: secondary.getBoundingClientRect().top,
+        };
+      });
+      expect(order.primaryTop).toBeLessThan(order.secondaryTop);
+
+      await classification.locator('#filter-content-type').selectOption('non_music');
+      await classification.locator('#filter-special-pressing').check();
+      const searchButton = page.locator('.browse-search-submit');
+      expect(await searchButton.isVisible()).toBe(true);
+      await Promise.all([
+        page.waitForURL((url) =>
+          url.pathname === '/browse' &&
+          url.searchParams.get('contentType') === 'non_music' &&
+          url.searchParams.get('specialPressing') === '1'
+        ),
+        searchButton.click(),
+      ]);
+
+      const url = new URL(page.url());
+      expect(url.searchParams.get('contentType')).toBe('non_music');
+      expect(url.searchParams.get('specialPressing')).toBe('1');
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('shows first-level Dig classification filters and applies them from mobile and desktop sidebars', async () => {
+    for (const width of [390, 1280]) {
+      const page = await browser.newPage({ viewport: { width, height: 900 } });
+
+      try {
+        await page.goto(`${baseUrl}/dig`, { waitUntil: 'domcontentloaded' });
+        const sidebar = page.locator('.dig-sidebar');
+        if (width < 1024) {
+          const trigger = page.locator('.dig-crate-toolbar [data-dig-drawer-open]');
+          await trigger.click();
+        }
+        const classification = sidebar.locator('.browse-release-classification-filters');
+        expect(await classification.isVisible()).toBe(true);
+        expect(await classification.locator('#filter-content-type').isVisible()).toBe(true);
+        expect(await classification.locator('#filter-special-pressing').isVisible()).toBe(true);
+
+        const moreFilters = sidebar.locator('.browse-secondary-filters');
+        expect(await moreFilters.isVisible()).toBe(true);
+        const order = await page.evaluate(() => {
+          const primary = document.querySelector('.dig-sidebar .browse-release-classification-filters');
+          const secondary = document.querySelector('.dig-sidebar .browse-secondary-filters');
+          if (!primary || !secondary) throw new Error('Dig classification or advanced filters are missing');
+          return {
+            primaryTop: primary.getBoundingClientRect().top,
+            secondaryTop: secondary.getBoundingClientRect().top,
+          };
+        });
+        expect(order.primaryTop).toBeLessThan(order.secondaryTop);
+
+        await classification.locator('#filter-content-type').selectOption('non_music');
+        await classification.locator('#filter-special-pressing').check();
+        const applyButton = sidebar.locator('.browse-apply-submit');
+        expect(await applyButton.isVisible()).toBe(true);
+        await Promise.all([
+          page.waitForURL((url) =>
+            url.pathname === '/dig' &&
+            url.searchParams.get('contentType') === 'non_music' &&
+            url.searchParams.get('specialPressing') === '1'
+          ),
+          applyButton.click(),
+        ]);
+
+        const url = new URL(page.url());
+        expect(url.searchParams.get('contentType')).toBe('non_music');
+        expect(url.searchParams.get('specialPressing')).toBe('1');
+      } finally {
+        await page.close();
+      }
+    }
+  });
+
   it('manages drawer open, close, and Escape key on tablet drawer (768px)', async () => {
     const context = await browser.newContext({ serviceWorkers: 'block' });
     const page = await context.newPage();

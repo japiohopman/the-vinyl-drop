@@ -78,6 +78,12 @@
     filters.contentType,
     filters.specialPressing
   ].filter(Boolean).length;
+  const activeAdvancedFilterCount = [
+    filters.condition,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.sort && filters.sort !== 'newest'
+  ].filter(Boolean).length;
 %>
 <div class="dig-responsive-page" data-dig-page>
 
@@ -177,6 +183,24 @@
             </div>
           </fieldset>
 
+          <fieldset class="browse-release-classification-filters">
+            <legend class="dig-sidebar-group-title">Release type &amp; edition</legend>
+            <div class="browse-release-classification-controls">
+              <div class="browse-genre-control">
+                <label for="filter-content-type">Release type</label>
+                <select id="filter-content-type" name="contentType" class="form-control">
+                  <option value="">All releases</option>
+                  <option value="music" <%= filters.contentType === 'music' ? 'selected' : '' %>>Music</option>
+                  <option value="non_music" <%= filters.contentType === 'non_music' ? 'selected' : '' %>>Non-Music</option>
+                </select>
+              </div>
+              <label class="browse-special-pressing-filter">
+                <input type="checkbox" id="filter-special-pressing" name="specialPressing" value="1" <%= filters.specialPressing ? 'checked' : '' %> />
+                <span>Special Pressings only</span>
+              </label>
+            </div>
+          </fieldset>
+
           <!-- Genre & Style Selection -->
           <div class="dig-sidebar-group">
             <h3 class="dig-sidebar-group-title">Genres &amp; Styles</h3>
@@ -235,21 +259,9 @@
           <details class="browse-secondary-filters" open>
             <summary>
               <span>More filters</span>
-              <span class="browse-secondary-filter-status"><%= activeFilterCount ? activeFilterCount + ' active' : 'Condition, price & sort' %></span>
+              <span class="browse-secondary-filter-status"><%= activeAdvancedFilterCount ? activeAdvancedFilterCount + ' active' : 'Condition, price & sort' %></span>
             </summary>
             <div class="browse-secondary-grid">
-              <div>
-                <label for="filter-content-type">Content type</label>
-                <select id="filter-content-type" name="contentType" class="form-control">
-                  <option value="">All content</option>
-                  <option value="music" <%= filters.contentType === 'music' ? 'selected' : '' %>>Music</option>
-                  <option value="non_music" <%= filters.contentType === 'non_music' ? 'selected' : '' %>>Non-Music</option>
-                </select>
-              </div>
-              <label class="browse-special-pressing-filter">
-                <input type="checkbox" id="filter-special-pressing" name="specialPressing" value="1" <%= filters.specialPressing ? 'checked' : '' %> />
-                <span>Special Pressings only</span>
-              </label>
               <div>
                 <label for="filter-condition">Condition</label>
                 <select id="filter-condition" name="condition" class="form-control">

@@ -1,0 +1,189 @@
+/* First-level discovery controls for release type and special editions. */
+.browse-release-classification-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.browse-release-classification-title {
+  margin: 0;
+  padding: 0;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xs);
+  letter-spacing: var(--letter-spacing-uppercase);
+  text-transform: uppercase;
+}
+
+.browse-release-classification-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.browse-release-classification-controls > div {
+  min-width: 0;
+}
+
+.browse-release-classification-controls .browse-genre-control label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.browse-release-classification-controls select {
+  width: 100%;
+}
+
+.browse-release-classification-controls .browse-special-pressing-filter {
+  display: flex;
+  align-items: center;
+  align-self: end;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  color: var(--color-ink);
+  font-size: var(--font-size-sm);
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.browse-release-classification-controls .browse-special-pressing-filter input {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+}
+
+.dig-sidebar .browse-release-classification-filters {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.dig-sidebar .browse-release-classification-controls {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* On wide Browse, share the existing quick-filter row instead of adding
+   another vertical section to the desktop filter panel. */
+@media (min-width: 1200px) {
+  /* Keep the filter form compact without hiding first-level classification controls. */
+  .browse-page-container .browse-mobile-filter-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+    align-items: start;
+    gap: var(--space-4) var(--space-5);
+  }
+
+  .browse-page-container .browse-search-row {
+    grid-column: 1 / -1;
+  }
+
+  .browse-page-container .browse-quick-filter-row {
+    grid-column: 1;
+    grid-template-columns: minmax(300px, 1.2fr) minmax(240px, 0.9fr);
+    align-items: start;
+    gap: var(--space-3);
+    padding-bottom: 0;
+  }
+
+  .browse-page-container .browse-quick-filter-row .browse-primary-filters {
+    grid-column: 1 / -1;
+  }
+
+  .browse-page-container .browse-release-classification-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .browse-page-container .browse-secondary-filters {
+    grid-column: 2;
+    align-self: start;
+    padding-top: 0;
+  }
+
+  .browse-page-container .browse-secondary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-1);
+  }
+
+  .browse-page-container .browse-filter-actions {
+    grid-column: 2;
+    align-self: end;
+    padding-top: var(--space-2);
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .browse-page-container .browse-quick-filter-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  }
+
+  .browse-page-container .browse-primary-filters {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The Dig drawer needs an explicit apply action on phones; the shared Browse
+   form keeps its existing search-submit behavior. */
+.dig-sidebar .browse-apply-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Wide Browse filter groups: keep first-level discovery visible without
+   making the expanded desktop panel feel like a second page section. */
+@media (min-width: 1200px) {
+  .browse-page-container .browse-filter-form {
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .browse-page-container .browse-mobile-filter-content {
+    gap: var(--space-2);
+  }
+
+  .browse-page-container .browse-quick-filter-row {
+    gap: var(--space-2);
+    padding-bottom: var(--space-3);
+    align-items: center;
+  }
+
+  .browse-page-container .browse-release-classification-filters {
+    gap: var(--space-1);
+  }
+
+  .browse-page-container .browse-format-help {
+    margin-top: 0;
+    line-height: var(--line-height-snug);
+  }
+
+  .browse-page-container .browse-primary-filters {
+    gap: var(--space-2);
+  }
+
+  .browse-page-container .browse-secondary-filters {
+    padding-top: var(--space-1);
+  }
+
+  .browse-page-container .browse-secondary-grid {
+    gap: var(--space-1);
+    margin-top: var(--space-1);
+  }
+
+  .browse-page-container .browse-filter-actions {
+    padding-top: var(--space-1);
+  }
+}
