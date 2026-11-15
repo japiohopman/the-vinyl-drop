@@ -182,6 +182,96 @@
   color: var(--color-ink-muted);
 }
 
+/* First-level discovery controls for release type and special editions. */
+.browse-release-classification-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-top: var(--space-3);
+  border-top: var(--border-thin);
+}
+
+.browse-release-classification-title {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xs);
+  letter-spacing: var(--letter-spacing-uppercase);
+  text-transform: uppercase;
+}
+
+.browse-release-classification-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.browse-release-classification-controls > div {
+  min-width: 0;
+}
+
+.browse-release-classification-controls .browse-genre-control label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.browse-release-classification-controls select {
+  width: 100%;
+}
+
+.browse-release-classification-controls .browse-special-pressing-filter {
+  display: flex;
+  align-items: center;
+  align-self: end;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  color: var(--color-ink);
+  font-size: var(--font-size-sm);
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.browse-release-classification-controls .browse-special-pressing-filter input {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+}
+
+.dig-sidebar .browse-release-classification-filters {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.dig-sidebar .browse-release-classification-controls {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The Dig drawer needs an explicit apply action on phones; the shared Browse
+   form keeps its existing search-submit behavior. */
+.dig-sidebar .browse-apply-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 359px) {
+  .browse-release-classification-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .dig-taxonomy-nav {
   display: flex;
   flex-direction: column;
