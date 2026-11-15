@@ -326,7 +326,7 @@ describe('Browse format filters — rendered state and responsive controls', () 
     expect(wideDesktopRules).toContain('grid-template-columns: minmax(300px, 1.2fr) minmax(240px, 0.9fr)');
     expect(wideDesktopRules).toContain('.browse-page-container .browse-secondary-filters');
     expect(wideDesktopRules).toContain('.browse-page-container .browse-filter-actions');
-    expect(wideDesktopRules).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
+    expect(wideDesktopRules).toContain('grid-template-columns: repeat(4, minmax(0, 1fr))');
   });
 
   it('keeps responsive inputs shrinkable and quick-filter touch targets at least 44px', () => {
