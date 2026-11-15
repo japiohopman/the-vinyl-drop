@@ -3,13 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // The dispatcher loads the CommonJS registry from actions/github-script.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const {
-  SKILL_REGISTRY,
-  SPECIALIST_REGISTRY,
-  resolveAgentContext,
-  buildJulesPrompt,
-} = require('../.github/scripts/agent-context.cjs') as {
+type AgentContextModule = {
   SKILL_REGISTRY: Record<string, string>;
   SPECIALIST_REGISTRY: Record<string, { contractPath: string; skills: string[] }>;
   resolveAgentContext: (primary: string, secondary?: string, skills?: string[]) => {
@@ -27,6 +21,15 @@ const {
     agentSkills?: string[];
   }) => string;
 };
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const agentContext = require('../.github/scripts/agent-context.cjs') as AgentContextModule;
+const {
+  SKILL_REGISTRY,
+  SPECIALIST_REGISTRY,
+  resolveAgentContext,
+  buildJulesPrompt,
+} = agentContext;
 
 const root = process.cwd();
 
