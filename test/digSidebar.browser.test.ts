@@ -208,7 +208,7 @@ describe('Records-only Dig sidebar & first-load browser behavior (Issue #404)', 
     try {
       await page.goto(`${baseUrl}/browse`, { waitUntil: 'domcontentloaded' });
       const panel = page.locator('.browse-mobile-filter-panel');
-      await panel.locator('summary').click();
+      await panel.locator('.browse-mobile-filter-summary').click();
 
       const classification = panel.locator('.browse-release-classification-filters');
       expect(await classification.isVisible()).toBe(true);
