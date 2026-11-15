@@ -208,6 +208,32 @@ describe('Dig desktop aside and mobile bottom sheet (Issue #419)', () => {
     }
   });
 
+  it('restores desktop sidebar focusability after resizing from a closed phone sheet', async () => {
+    const page = await openDig(390, 844);
+    try {
+      const sidebar = page.locator('[data-dig-sidebar]');
+      expect(await sidebar.getAttribute('aria-hidden')).toBe('true');
+      expect(await sidebar.getAttribute('inert')).not.toBeNull();
+
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.waitForFunction(() => {
+        const element = document.querySelector('[data-dig-sidebar]');
+        return window.matchMedia('(min-width: 1024px)').matches &&
+          element instanceof HTMLElement &&
+          !element.hasAttribute('aria-hidden') &&
+          !element.hasAttribute('inert');
+      });
+
+      expect(await sidebar.isVisible()).toBe(true);
+      const desktopFilter = sidebar.locator('select').first();
+      expect(await desktopFilter.isVisible()).toBe(true);
+      await desktopFilter.focus();
+      expect(await desktopFilter.evaluate((element) => document.activeElement === element)).toBe(true);
+    } finally {
+      await page.close();
+    }
+  });
+
   it.each([1024, 1280, 1440])('keeps a composed left-hand aside and results workspace at %i px', async (width) => {
     const page = await openDig(width, 900);
     try {
