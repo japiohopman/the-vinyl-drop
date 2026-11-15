@@ -339,7 +339,7 @@ describe('Square cover photo cropper', () => {
       expect(await page.locator('h1').first().textContent()).toBe('Add photos');
       expect(await page.locator('.listing-step-indicator').textContent()).toContain('Step 2 of 3');
       expect(await page.locator('.edit-listing-form').count()).toBe(0);
-      expect(await page.getByRole('link', { name: /Continue to preview/ }).isVisible()).toBe(true);
+      expect(await page.getByRole('navigation', { name: 'Listing creation steps' }).getByRole('link', { name: /Continue to preview/ }).isVisible()).toBe(true);
 
       // Capture the exact focused route state before the seller chooses a file.
       await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });

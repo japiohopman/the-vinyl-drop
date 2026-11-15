@@ -23,7 +23,7 @@ const SPECIALIST_REGISTRY = Object.freeze({
   },
   dataCatalog: {
     label: 'Data / Catalog',
-    aliases: ['data / catalog', 'data/catalog', 'data catalog', 'data-catalog', 'data / catalog specialist', 'data catalog specialist'],
+    aliases: ['data / catalog', 'data/catalog', 'data catalog', 'data-catalog', 'data specialist', 'data / catalog specialist', 'data catalog specialist'],
     contractPath: '.github/agents/data-catalog.md',
     skills: ['safe-migration-rollout'],
   },

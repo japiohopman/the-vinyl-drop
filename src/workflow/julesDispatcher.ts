@@ -74,8 +74,12 @@ export async function runJulesDispatcher(options: DispatcherOptions): Promise<Pr
   const [repoOwner, repoName] = options.repository.split('/');
   const fetchFn = options.customFetch || globalThis.fetch;
   const requireFromRepoRoot = createRequire(path.resolve(process.cwd(), 'package.json'));
+  const allowedWorkflowModules = new Set([
+    './.github/scripts/dispatcher-metadata.cjs',
+    './.github/scripts/agent-context.cjs',
+  ]);
   const requireWorkflowModule = (modulePath: string) => {
-    if (modulePath !== './.github/scripts/dispatcher-metadata.cjs') {
+    if (!allowedWorkflowModules.has(modulePath)) {
       throw new Error(`Unexpected workflow module request: ${modulePath}`);
     }
     return requireFromRepoRoot(modulePath);

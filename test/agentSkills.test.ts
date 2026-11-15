@@ -69,6 +69,12 @@ describe('TVD agent skill registry and dispatcher context', () => {
     expect(context.skillPaths.every((filePath) => fs.existsSync(path.join(root, filePath)))).toBe(true);
   });
 
+  test('accepts the existing Data Specialist role alias', () => {
+    expect(resolveAgentContext('Data Specialist', undefined, []).contractPaths).toEqual([
+      '.github/agents/data-catalog.md',
+    ]);
+  });
+
   test('resolves the existing Architecture / Database composite to both canonical contracts', () => {
     const context = resolveAgentContext('Architecture / Database', undefined, []);
     expect(context.contractPaths).toEqual([
