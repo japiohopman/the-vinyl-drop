@@ -105,6 +105,7 @@ describe('TVD agent skill registry and dispatcher context', () => {
       secondarySpecialist: 'Verification',
     });
 
+    expect(prompt).toContain('- CHATGPT.md');
     expect(prompt).toContain('.github/agents/ui.md');
     expect(prompt).toContain('.github/agents/verification.md');
     expect(prompt).toContain('.github/skills/mobile-first-ui/SKILL.md');

@@ -112,7 +112,7 @@ function buildJulesPrompt(issue) {
   );
   const readPaths = [
     'AGENTS.md',
-    'CHATGPT.md (read-only context; never edit)',
+    'CHATGPT.md',
     '.github/skills/README.md',
     ...context.contractPaths,
     ...context.skillPaths,
@@ -132,7 +132,7 @@ function buildJulesPrompt(issue) {
     'Open and read each of these exact paths from the repository before implementation:',
     ...uniqueReadPaths.map((filePath) => '- ' + filePath),
     '',
-    'The dispatcher supplies explicit paths; do not assume repository SKILL.md files are automatically loaded by Jules. Read the complete listed SKILL.md files and follow their project-specific procedures. Do not load every skill directory.',
+    'CHATGPT.md is read-only context and must never be edited. The dispatcher supplies explicit paths; do not assume repository SKILL.md files are automatically loaded by Jules. Read the complete listed SKILL.md files and follow their project-specific procedures. Do not load every skill directory.',
   ];
 
   if (isUiTask) {
