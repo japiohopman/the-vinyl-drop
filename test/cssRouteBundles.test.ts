@@ -154,8 +154,12 @@ describe('Route-specific CSS bundles (#252)', () => {
       '/css/style-after-listing-forms.css',
       '/css/style-after-profile-pages.css',
       '/css/style-after-profile-editor.css',
+      '/css/listing-photos.css',
     ]);
     expect(listingPhotos).not.toContain('/css/listing-interactions.css');
+    for (const nonPhotosRoute of [dropNew, listingCreate, listingEdit]) {
+      expect(nonPhotosRoute).not.toContain('/css/listing-photos.css');
+    }
     expect(listingEdit.indexOf('/css/style-after-profile-editor.css'))
       .toBeLessThan(listingEdit.indexOf('/css/listing-interactions.css'));
     expect(listingEdit).toContain('/css/listing-interactions.css');

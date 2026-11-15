@@ -39,6 +39,26 @@ export function readReconstructedMainStylesheet(): string {
     .join('');
 }
 
+/**
+ * Reproduce the CSS bundle order used by GET /listings/:id/photos.
+ * Keep the route-only sheet after the shared form/editor layers and before theme tokens.
+ */
+export function readListingPhotosRouteStylesheet(): string {
+  const routeSegments = [
+    'style.css',
+    'style-after-features.css',
+    'style-after-activity.css',
+    'style-after-release-selection.css',
+    'listing-forms.css',
+    'style-after-listing-forms.css',
+    'style-after-profile-pages.css',
+    'style-after-profile-editor.css',
+    'listing-photos.css',
+    'themes.css',
+  ];
+  return routeSegments.map(readCssFile).join('');
+}
+
 export function readFullStylesheetSource(): string {
   return readReconstructedMainStylesheet() + readCssFile('dig-mobile-crate.css') + readCssFile('themes.css');
 }

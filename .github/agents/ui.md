@@ -3,7 +3,7 @@
 ## 1. Common Execution Contract
 
 - **Issue Authority:** The assigned GitHub Issue is the sole execution contract. Do not implement work outside the Issue scope.
-- **Context & Documentation Inspection:** Before starting work, read `CHATGPT.md` and relevant UI/UX documentation in `docs/` (`UX_UI.md`, `PAGE_MAP.md`, `PRODUCT_VISION.md`).
+- **Context & Documentation Inspection:** Before starting work, read `CHATGPT.md` and relevant UI/UX documentation in `docs/` (`UX_UI.md`, `PAGE_MAP.md`, `PRODUCT_VISION.md`, `verification/UI_VISUAL_REFERENCE.md` and `verification/ui-baselines/README.md`).
 - **Read-Only Rule:** `CHATGPT.md` is strictly read-only and must **NEVER** be edited, mutated, or modified by implementation agents.
 - **Commit Reference:** Use `Refs #<issue_id>` in PR descriptions and commit messages.
 
@@ -39,3 +39,23 @@ npm test
 npm run build
 ```
 When modifying visual templates/styles, frontend browser verification evidence (Playwright screenshots across mobile/desktop viewports) is also required.
+
+## 6. Mandatory Visual Reference Workflow
+
+Before changing any visible surface:
+
+1. Open `docs/verification/UI_VISUAL_REFERENCE.md` and locate the exact route/state row. Open the relevant screenshot(s) from `docs/verification/ui-baselines/`; do not rely on a filename or a summary alone.
+2. Match route, state, viewport and theme. Never compare desktop with mobile or the creation Photos step with the later full Edit route.
+3. Record the reference category accurately: approved baseline, owner-supplied directional reference, historical evidence or temporary CI artifact. Owner-supplied screenshots are not automatically pixel-perfect goldens.
+4. If no exact baseline exists, say so explicitly, identify the nearest valid reference and add the missing capture to the Issue/PR. Do not silently proceed as if an exact baseline was checked.
+5. For visual PRs, state one of: baseline checked and unchanged; intentional baseline update; or no exact baseline exists, with a concrete reason and follow-up.
+6. Promote or replace a baseline only after review, using synthetic/demo data. Update the canonical image path and its metadata row in the same PR. Record route, viewport, state, theme, capture source/date and deployed application SHA; write not recorded when provenance is unknown.
+
+The focused creation route `GET /listings/:id/photos` reuses `views/listings/edit.ejs` with `photoStepOnly`. Its initial upload dialog and the editor after synthetic photo selection are separate states. The route-specific CI evidence in `test/squarePhotoCropper.test.ts` is diagnostic until the owner reviews and promotes a capture.
+
+## 7. Skill routing
+
+- Mobile screen structure, interactions and responsive composition: .github/skills/mobile-first-ui/SKILL.md.
+- Screenshot capture, provenance and baseline promotion: .github/skills/visual-regression-evidence/SKILL.md.
+- Route/view and CSS/JS asset inclusion: .github/skills/express-route-asset-audit/SKILL.md.
+- The mandatory visual-reference workflow above applies to every visible UI change. Select additional skills only when the Issue crosses those concerns.

@@ -15,6 +15,12 @@ This is the practical starting point for people and agents working in The Vinyl 
    - Environments: [Staging Runbook](./STAGING_BETA_DEPLOYMENT.md) and [Production Runbook](./PRODUCTION_DEPLOYMENT.md).
    - Workflow and verification: [Agentic Workflow](./AGENTIC_WORKFLOW.md).
 
+## Agent task skills
+
+Use .github/skills/README.md as the task-skill index. Read the selected specialist contract and only the relevant complete SKILL.md files before implementation. The current workflow is direct repository work by ChatGPT with CodeRabbit as the independent PR review; the Jules Issue Dispatcher is legacy and is not used for current implementation. ChatGPT selects and opens the relevant skills itself; do not add Jules-only metadata or dispatch requirements.
+
+For UI work, the canonical UI Visual Reference Library and its relevant images are mandatory inputs, not optional background reading. See the UI specialist contract and visual-regression-evidence skill.
+
 ## What the application is
 
 The Vinyl Drop is a server-rendered marketplace for physical vinyl. Buyers and sellers arrange transactions directly; the application does not provide checkout, escrow or payment processing.
@@ -117,7 +123,7 @@ npm run test:a11y
 5. Wait for final-head CI, Phase Safety Gate and any relevant migration preflight checks. Review the complete final diff and address actionable review comments on the same branch.
 6. The human owner retains final approval and merge authority. Merging to `main` normally triggers staging deployment; production Auto-Deploy is off and a production deploy is a separate, explicitly approved action.
 
-The workflow may use a human contributor or an implementation agent selected for the Issue. Do not dispatch Jules or another external agent unless the owner and Issue call for it.
+The current implementation path is direct repository work by ChatGPT with CodeRabbit as the independent PR review. The legacy Jules dispatcher is not used for current implementation.
 
 ## Safety boundaries — never assume permission
 

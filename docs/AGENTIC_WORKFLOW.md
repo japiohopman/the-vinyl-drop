@@ -5,8 +5,8 @@
 The Vinyl Drop is developed using an Issue-driven agentic workflow where human engineers retain explicit architectural and merge authority:
 
 1. **Human owner:** defines product goals, approves strategy and scope, writes or approves Issue contracts, reviews the final diff, and retains merge/release authority.
-2. **Implementation contributor:** a human engineer or an explicitly selected implementation agent works only inside the Issue contract on a dedicated branch. Jules is an available dispatcher path, not an automatic default; do not dispatch an external agent unless the owner and Issue call for it.
-3. **ChatGPT:** may help with architecture, direct implementation where authorized, source review, verification planning and structured continuation feedback. The owner decides which contributor or agent is used for each task.
+2. **Implementation:** ChatGPT works directly against the repository within the Issue contract on a dedicated branch.
+3. **Independent review:** CodeRabbit reviews the PR and reports actionable findings; ChatGPT verifies and fixes them on the same branch. The owner retains product direction and merge decision.
 
 ## Source of execution truth
 
@@ -30,9 +30,9 @@ Documentation (`docs/ROADMAP.md`, `docs/PRODUCT_VISION.md`) is architectural ref
 4. **Read-Only Memory:** `CHATGPT.md` serves as durable, read-only advisory memory across sessions. Agents must never modify or rewrite `CHATGPT.md`.
 5. **Final Merge:** the human owner retains final approval and merge authority. An agent must not infer merge permission from passing CI or from a prior merge in another Issue.
 
-## Live GitHub Actions workflows
+## GitHub Actions workflow inventory
 
-The repository operates five live GitHub Actions workflows (`.github/workflows/`):
+The repository contains core CI/safety workflows and separate legacy/manual operator workflows under `.github/workflows/`. The current implementation path is direct ChatGPT repository work with independent CodeRabbit PR review. Legacy Jules workflow files are retained for reference only and are not part of the current workflow.
 
 ### 1. CI Workflow (`ci.yml`)
 
@@ -53,18 +53,19 @@ Enforces PR quality and contract completeness before human review.
 - Validates status semantics: `NOT READY` is a contract-valid state where Definition of Done items may remain unchecked; `READY FOR HUMAN REVIEW` requires all Definition of Done items to be checked (`- [x]`).
 - Evaluates the PR body strictly without falling back to or auto-copying commit messages.
 
-### 3. Jules Issue Dispatcher (`jules-issue-dispatcher.yml`)
+### 3. Legacy Jules Issue Dispatcher (`jules-issue-dispatcher.yml`) — not used for current implementation
 
-Automates dispatch-ready issue selection and session preflight verification.
-- Executes `src/workflow/julesDispatcher.ts`.
-- Preflight checks verify: issue is open, labeled appropriately, dependencies satisfied, no active implementation branch/PR exists, no blocking Jules session exists.
-- Supports dry-run testing without calling live external APIs.
+The workflow remains in the repository for legacy reference. It is not part of the current ChatGPT direct-implementation path and must not be run for Issues unless the owner explicitly reactivates it in a separate decision.
 
-### 4. Jules Session Cleanup (`jules-session-cleanup.yml`)
+### Agent task-skill usage
 
-Manually triggered workflow for inspecting and terminating stale Jules sessions.
-- Executes `src/workflow/julesSessionCleanup.ts`.
-- Validates explicit confirmation tokens and repository ownership before session cleanup.
+The repository separates four kinds of guidance: root AGENTS.md instructions, specialist contracts in .github/agents/, reusable task skills in .github/skills/, and canonical product/technical documentation in docs/.
+
+ChatGPT reads the applicable specialist contract and relevant complete SKILL.md files directly while implementing the active Issue. The skill index maps the five roles to their default workflows and describes when cross-specialist performance work is appropriate. Do not duplicate these procedures in always-on instructions or add metadata solely for an unused dispatcher.
+
+### 4. Legacy Jules Session Cleanup (`jules-session-cleanup.yml`) — not used for current implementation
+
+This manually triggered workflow remains in the repository for legacy session inspection/cleanup only. It is not part of the current ChatGPT/CodeRabbit workflow and must not be run unless the owner explicitly reactivates it.
 
 ### 5. ChatGPT Review Relay (`chatgpt-review-relay.yml`)
 
