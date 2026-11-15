@@ -16,6 +16,7 @@ This registry contains a deliberately small set of reusable, repository-specific
 | Specialist | Default task skills |
 | --- | --- |
 | Architecture | express-route-asset-audit |
+| Existing composite label Architecture / Database | express-route-asset-audit + safe-migration-rollout, mapped to Architecture and Data / Catalog contracts |
 | Data / Catalog | safe-migration-rollout |
 | UI | mobile-first-ui, visual-regression-evidence, express-route-asset-audit |
 | Marketplace | listing-photo-pipeline |

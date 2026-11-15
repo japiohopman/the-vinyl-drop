@@ -106,6 +106,12 @@ Primary Specialist: Verification Specialist
     expect(parsed.dependencies).toEqual([12]);
   });
 
+  test('parses the existing plural Secondary Specialists metadata field', () => {
+    const parsed = issue('Secondary Specialists: UI; Verification');
+
+    expect(parsed.secondarySpecialist).toBe('UI; Verification');
+  });
+
   test('parses explicit allow-listed task skills from Issue metadata', () => {
     const parsed = issue(`Required Agent Skills: performance-investigation, safe-migration-rollout`);
 

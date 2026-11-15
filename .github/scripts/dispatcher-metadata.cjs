@@ -2,7 +2,7 @@
 
 const READY_VALUES = new Set(['ready', 'dispatch-ready', 'ready-for-dispatch']);
 const NOT_READY_VALUES = new Set(['not ready', 'not dispatch-ready', 'not dispatch ready', 'blocked', 'unready', 'false', 'no']);
-const FIELD_LABELS = '(?:required\\s+agent\\s+skills|agent\\s+skills|dispatch\\s+readiness|readiness|primary(?:\\s+specialist)?|secondary(?:\\s+specialist)?|priority|p)';
+const FIELD_LABELS = '(?:required\\s+agent\\s+skills|agent\\s+skills|dispatch\\s+readiness|readiness|primary(?:\\s+specialist)?|secondary(?:\\s+specialists?)?|priority|p)';
 
 function normalizeLine(line) {
   return line
@@ -88,7 +88,7 @@ function parseIssueMetadata(issue) {
   }
 
   const primary = findField(body, 'primary(?:\\s+specialist)?');
-  const secondary = findField(body, 'secondary(?:\\s+specialist)?');
+  const secondary = findField(body, 'secondary(?:\\s+specialists?)?');
   const requestedSkillsField = findField(body, '(?:required\\s+agent\\s+skills|agent\\s+skills)');
   const agentSkills = requestedSkillsField.found && requestedSkillsField.value
     ? requestedSkillsField.value.split(/[;,]/).map((skill) => skill.trim()).filter(Boolean)

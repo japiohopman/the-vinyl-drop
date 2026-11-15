@@ -38,7 +38,7 @@ describe('TVD agent skill registry and dispatcher context', () => {
       const frontmatter = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
       expect(frontmatter).not.toBeNull();
       expect(frontmatter?.[1]).toMatch(new RegExp('^name:\\s*' + skillId + '$', 'm'));
-      expect(frontmatter?.[1]).toMatch(/^description:\s*\S+/m);
+      expect(frontmatter?.[1]).toMatch(/^description:\\s*\\S+/m);
       expect(content.length).toBeGreaterThan(250);
     }
   });
@@ -64,6 +64,16 @@ describe('TVD agent skill registry and dispatcher context', () => {
     expect(context.skillIds).toContain('express-route-asset-audit');
     expect(context.skillIds).toContain('safe-migration-rollout');
     expect(context.skillPaths.every((filePath) => fs.existsSync(path.join(root, filePath)))).toBe(true);
+  });
+
+  test('resolves the existing Architecture / Database composite to both canonical contracts', () => {
+    const context = resolveAgentContext('Architecture / Database', undefined, []);
+    expect(context.contractPaths).toEqual([
+      '.github/agents/architecture.md',
+      '.github/agents/data-catalog.md',
+    ]);
+    expect(context.skillIds).toContain('express-route-asset-audit');
+    expect(context.skillIds).toContain('safe-migration-rollout');
   });
 
   test('adds the cross-specialist performance skill only when the Issue requests it', () => {

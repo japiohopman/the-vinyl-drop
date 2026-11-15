@@ -9,6 +9,11 @@ const SKILL_REGISTRY = Object.freeze({
   'safe-migration-rollout': '.github/skills/safe-migration-rollout/SKILL.md',
 });
 
+const SPECIALIST_GROUPS = Object.freeze({
+  // Existing TVD issue metadata uses this combined responsibility label.
+  'architecture / database': ['architecture', 'dataCatalog'],
+});
+
 const SPECIALIST_REGISTRY = Object.freeze({
   architecture: {
     label: 'Architecture',
@@ -50,6 +55,12 @@ function normalizeName(value) {
     .replace(/\s+/g, ' ');
 }
 
+function findSpecialists(value) {
+  const normalized = normalizeName(value);
+  const group = SPECIALIST_GROUPS[normalized];
+  return group ? group.map(findSpecialist) : [findSpecialist(value)];
+}
+
 function splitSpecialists(value) {
   if (Array.isArray(value)) return value.flatMap(splitSpecialists);
   return String(value ?? '')
@@ -71,7 +82,7 @@ function resolveAgentContext(primarySpecialist, secondarySpecialists, requestedS
     throw new Error('Primary Specialist is required.');
   }
 
-  const specialists = [findSpecialist(primarySpecialist)];
+  const specialists = findSpecialists(primarySpecialist);
   for (const name of splitSpecialists(secondarySpecialists)) {
     const specialist = findSpecialist(name);
     if (!specialists.includes(specialist)) specialists.push(specialist);
@@ -156,6 +167,7 @@ function buildJulesPrompt(issue) {
 module.exports = {
   SKILL_REGISTRY,
   SPECIALIST_REGISTRY,
+  SPECIALIST_GROUPS,
   resolveAgentContext,
   buildJulesPrompt,
 };
