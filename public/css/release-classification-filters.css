@@ -79,13 +79,49 @@
 /* On wide Browse, share the existing quick-filter row instead of adding
    another vertical section to the desktop filter panel. */
 @media (min-width: 1200px) {
+  /* Keep the filter form compact without hiding first-level classification controls. */
+  .browse-page-container .browse-mobile-filter-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+    align-items: start;
+    gap: var(--space-4) var(--space-5);
+  }
+
+  .browse-page-container .browse-search-row {
+    grid-column: 1 / -1;
+  }
+
   .browse-page-container .browse-quick-filter-row {
-    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.9fr) minmax(320px, 1fr);
-    gap: var(--space-4);
+    grid-column: 1;
+    grid-template-columns: minmax(300px, 1.2fr) minmax(240px, 0.9fr);
+    align-items: start;
+    gap: var(--space-3);
+    padding-bottom: 0;
+  }
+
+  .browse-page-container .browse-quick-filter-row .browse-primary-filters {
+    grid-column: 1 / -1;
   }
 
   .browse-page-container .browse-release-classification-controls {
-    grid-template-columns: minmax(0, 1fr) minmax(125px, auto);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .browse-page-container .browse-secondary-filters {
+    grid-column: 2;
+    align-self: start;
+    padding-top: 0;
+  }
+
+  .browse-page-container .browse-secondary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .browse-page-container .browse-filter-actions {
+    grid-column: 2;
+    align-self: end;
+    padding-top: var(--space-2);
   }
 }
 
