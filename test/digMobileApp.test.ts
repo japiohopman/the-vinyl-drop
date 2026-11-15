@@ -1578,6 +1578,10 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await filterForm.locator('input[name="q"]').inputValue()).toBe('Prince');
 
     await page.locator('[data-dig-drawer-close]').click();
+    await page.waitForFunction(() => {
+      const element = document.querySelector('[data-dig-sidebar]');
+      return element instanceof HTMLElement && getComputedStyle(element).visibility === 'hidden';
+    });
     expect(await sidebar.isVisible()).toBe(false);
     expect(await trigger.getAttribute('aria-expanded')).toBe('false');
     expect(await page.evaluate(() => document.activeElement?.matches('[data-dig-drawer-open]'))).toBe(true);
@@ -1586,6 +1590,10 @@ describe('Mobile Dig app-like viewport', () => {
     expect(await filterForm.locator('#filter-min-price').inputValue()).toBe('15.00');
     expect(await filterForm.locator('input[name="q"]').inputValue()).toBe('Prince');
     await page.keyboard.press('Escape');
+    await page.waitForFunction(() => {
+      const element = document.querySelector('[data-dig-sidebar]');
+      return element instanceof HTMLElement && getComputedStyle(element).visibility === 'hidden';
+    });
     expect(await sidebar.isVisible()).toBe(false);
     expect(await trigger.getAttribute('aria-expanded')).toBe('false');
   });
@@ -1601,6 +1609,11 @@ describe('Mobile Dig app-like viewport', () => {
       const trigger = page.locator('[data-dig-crate-toolbar] [data-dig-drawer-open]');
       const sidebar = page.locator('[data-dig-sidebar]');
       await trigger.click();
+      await page.waitForFunction(() => {
+        const element = document.querySelector('[data-dig-sidebar]');
+        if (!(element instanceof HTMLElement) || !element.classList.contains('is-drawer-open')) return false;
+        return Math.abs(new DOMMatrixReadOnly(getComputedStyle(element).transform).m42) < 1;
+      });
 
       const geometry = await sidebar.evaluate((element) => {
         const rect = element.getBoundingClientRect();
@@ -1613,12 +1626,24 @@ describe('Mobile Dig app-like viewport', () => {
         };
       });
       expect(geometry.position).toBe('fixed');
-      expect(geometry.top).toBe(0);
+      expect(geometry.top).toBeGreaterThan(0);
       expect(geometry.left).toBe(0);
-      expect(geometry.width).toBeLessThanOrEqual(Math.min(360, viewport.width));
-      expect(geometry.height).toBeGreaterThanOrEqual(viewport.height - 1);
+      expect(geometry.width).toBeCloseTo(viewport.width, 0);
+      expect(geometry.height).toBeLessThanOrEqual(viewport.height * 0.84 + 1);
+      expect(geometry.height).toBeGreaterThanOrEqual(viewport.height * 0.84 - 1);
+      expect(Math.abs(geometry.top + geometry.height - viewport.height)).toBeLessThanOrEqual(1);
 
-      await sidebar.locator('.browse-filter-action-buttons').scrollIntoViewIfNeeded();
+      await sidebar.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+      await page.waitForFunction(() => {
+        const sidebarElement = document.querySelector('[data-dig-sidebar]');
+        const actions = sidebarElement?.querySelector('.browse-filter-action-buttons');
+        if (!(sidebarElement instanceof HTMLElement) || !(actions instanceof HTMLElement)) return false;
+        const sidebarRect = sidebarElement.getBoundingClientRect();
+        const actionsRect = actions.getBoundingClientRect();
+        return actionsRect.bottom <= sidebarRect.bottom + 1;
+      });
       const actionGeometry = await page.evaluate(() => {
         const sidebarElement = document.querySelector('[data-dig-sidebar]') as HTMLElement | null;
         const navigation = document.querySelector('.mobile-bottom-nav') as HTMLElement | null;
@@ -1639,8 +1664,14 @@ describe('Mobile Dig app-like viewport', () => {
       expect(actionGeometry.backdropZIndex).toBe('999');
       expect(actionGeometry.sidebarZIndex).toBe('1000');
 
+      // The phone sheet covers the full width; click the uncovered backdrop
+      // strip above it rather than a point that now lies inside the sheet.
       await page.locator('.dig-drawer-backdrop').click({
-        position: { x: viewport.width - 2, y: Math.floor(viewport.height / 2) },
+        position: { x: Math.floor(viewport.width / 2), y: 8 },
+      });
+      await page.waitForFunction(() => {
+        const element = document.querySelector('[data-dig-sidebar]');
+        return element instanceof HTMLElement && getComputedStyle(element).visibility === 'hidden';
       });
       expect(await sidebar.isVisible()).toBe(false);
       expect(await trigger.getAttribute('aria-expanded')).toBe('false');
@@ -1683,9 +1714,11 @@ describe('Mobile Dig app-like viewport', () => {
         const rect = element.getBoundingClientRect();
         return { top: rect.top, height: rect.height, computedHeight: getComputedStyle(element).height };
       });
-      expect(keyboardGeometry.top).toBe(keyboardOffsetTop);
-      expect(keyboardGeometry.height).toBe(keyboardHeight);
-      expect(keyboardGeometry.computedHeight).toBe(keyboardHeight + 'px');
+      const expectedSheetHeight = Math.min(viewport.height * 0.84, keyboardHeight - 24);
+      const expectedSheetTop = keyboardOffsetTop + keyboardHeight - expectedSheetHeight;
+      expect(keyboardGeometry.top).toBeCloseTo(expectedSheetTop, 0);
+      expect(keyboardGeometry.height).toBeCloseTo(expectedSheetHeight, 0);
+      expect(keyboardGeometry.computedHeight).toBe(expectedSheetHeight + 'px');
 
       await sidebar.locator('.browse-secondary-filters').evaluate((element) => {
         (element as HTMLDetailsElement).open = true;
@@ -1716,8 +1749,12 @@ describe('Mobile Dig app-like viewport', () => {
           element.style.getPropertyValue('--dig-sidebar-viewport-height') === expectedHeight + 'px' &&
           element.style.getPropertyValue('--dig-sidebar-viewport-top') === '0px');
       }, viewport.height);
-      expect(await sidebar.evaluate((element) => element.getBoundingClientRect().height))
-        .toBeGreaterThanOrEqual(viewport.height - 1);
+      const restoredSheet = await sidebar.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return { top: rect.top, height: rect.height, bottom: rect.bottom };
+      });
+      expect(restoredSheet.height).toBeCloseTo(viewport.height * 0.84, 0);
+      expect(Math.abs(restoredSheet.bottom - viewport.height)).toBeLessThanOrEqual(1);
       await page.keyboard.press('Escape');
       expect(await sidebar.isVisible()).toBe(false);
     }

@@ -61,6 +61,7 @@ jobs:
           ERROR_PAGE_EVIDENCE_DIR: artifacts/issue-315
           PROFILE_EVIDENCE_DIR: artifacts/issue-351
           ISSUE_333_EVIDENCE_DIR: artifacts/issue-333
+          ISSUE_419_EVIDENCE_DIR: artifacts/issue-419
         run: npm test
 
       - name: Upload Issue #315 error-page browser evidence
@@ -87,6 +88,15 @@ jobs:
         with:
           name: issue-333-photo-editor-playwright-evidence
           path: artifacts/issue-333/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Issue #419 Dig workspace browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-419-dig-workspace-browser-evidence
+          path: artifacts/issue-419/
           if-no-files-found: warn
           retention-days: 14
 
@@ -138,6 +148,20 @@ jobs:
         with:
           name: issue-300-options-playwright-evidence
           path: artifacts/issue-300/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Capture Issue #419 responsive Dig and Browse evidence
+        env:
+          BROWSE_EVIDENCE_DIR: artifacts/issue-419-responsive
+        run: npm run test:browse-evidence
+
+      - name: Upload Issue #419 responsive Dig evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-419-dig-responsive-playwright-evidence
+          path: artifacts/issue-419-responsive/
           if-no-files-found: warn
           retention-days: 14
 
