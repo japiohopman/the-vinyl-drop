@@ -114,8 +114,8 @@
   }
 
   .browse-page-container .browse-secondary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-1);
   }
 
   .browse-page-container .browse-filter-actions {
@@ -179,7 +179,7 @@
   }
 
   .browse-page-container .browse-secondary-grid {
-    gap: var(--space-2);
+    gap: var(--space-1);
     margin-top: var(--space-1);
   }
 
