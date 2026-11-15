@@ -60,6 +60,16 @@ Automates dispatch-ready issue selection and session preflight verification.
 - Preflight checks verify: issue is open, labeled appropriately, dependencies satisfied, no active implementation branch/PR exists, no blocking Jules session exists.
 - Supports dry-run testing without calling live external APIs.
 
+### Agent task-skill loading contract
+
+The repository separates four kinds of guidance: root AGENTS.md instructions, specialist contracts in .github/agents/, reusable task skills in .github/skills/, and canonical product/technical documentation in docs/.
+
+The Jules dispatcher uses a tested, allow-listed mapping in .github/scripts/agent-context.cjs. It includes the primary and secondary specialist contract paths and only the default skills for those roles. An Issue can request an additional cross-specialist skill with a line such as `Required Agent Skills: performance-investigation`. Unknown role names and unknown skill IDs fail preflight closed.
+
+Jules is not assumed to auto-load repository SKILL.md files. The generated prompt explicitly lists each required path and tells Jules to open and read it before planning or implementation. This is an explicit repository-reading workflow, not an assertion of automatic skill discovery. The prompt builder is shared with Jest tests so a UI dry-run prompt can be verified without calling the live Jules API.
+
+Current default mapping is maintained in .github/skills/README.md. Do not duplicate all skill content into AGENTS.md or load the whole catalogue for every task. The performance skill is opt-in for measurable performance issues and remains cross-specialist.
+
 ### 4. Jules Session Cleanup (`jules-session-cleanup.yml`)
 
 Manually triggered workflow for inspecting and terminating stale Jules sessions.

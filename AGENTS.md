@@ -47,6 +47,14 @@ Welcome to **The Vinyl Drop** repository. This document provides core instructio
    - The Phase Safety Gate evaluates the actual PR body strictly. Commit messages are not substitutes for required PR-body contract sections.
    - An agent completion message is not evidence of completion; evidence must come strictly from source code, passing test suites, environment verification, and PR contract state.
 
+## 1A. Explicit Task-Skill Loading
+
+- The Jules dispatcher resolves the primary/secondary specialist contracts and default task skills from the tested registry in .github/scripts/agent-context.cjs.
+- The dispatcher prompt lists the exact repository paths that must be opened before implementation. Do not assume that a repository SKILL.md is automatically loaded by Jules.
+- Read .github/skills/README.md for the mapping. Load only the skill files named in the prompt; do not copy every skill into always-on instructions.
+- An Issue may add cross-specialist skills with an allow-listed Required Agent Skills metadata field. Unknown specialist names or skill IDs must fail dispatch preflight closed.
+
+
 ---
 
 ## 2. Architecture & Technical Invariants

@@ -62,6 +62,7 @@ describe('Square cover photo cropper', () => {
       sourceIsLegacy?: boolean;
     },
     standaloneMode: 'browser' | 'display-mode' | 'ios' = 'browser',
+    photoStepOnly: boolean = false,
   ): Promise<void> {
     const html = await ejs.renderFile(viewPath, {
       listing: {
@@ -84,7 +85,7 @@ describe('Square cover photo cropper', () => {
       photoRoleGuidance: LISTING_PHOTO_ROLE_GUIDANCE,
       specialPressingOptions: SPECIAL_PRESSING_OPTIONS,
       photoError: '',
-      photoStepOnly: false,
+      photoStepOnly,
     }, { filename: viewPath });
 
     const body = html
@@ -326,6 +327,85 @@ describe('Square cover photo cropper', () => {
     expect(await page.locator('#altText').getAttribute('placeholder')).toBe('Back cover of the record sleeve');
     expect(await page.locator('#altText').getAttribute('required')).toBeNull();
     expect(await page.locator('#photoUploadTitle').textContent()).toBe('Upload back of your copy');
+  });
+
+  it('captures the focused listing Photos step at mobile widths using only a synthetic local photo', async () => {
+    const widths = [360, 375, 390, 430];
+
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: 844 });
+      await renderEditPage(undefined, 'browser', true);
+
+      expect(await page.locator('h1').first().textContent()).toBe('Add photos');
+      expect(await page.locator('.listing-step-indicator').textContent()).toContain('Step 2 of 3');
+      expect(await page.locator('.edit-listing-form').count()).toBe(0);
+      expect(await page.getByRole('link', { name: /Continue to preview/ }).isVisible()).toBe(true);
+
+      // Capture the exact focused route state before the seller chooses a file.
+      await page.locator('[data-open-photo-upload][data-photo-role="front_cover"]').click({ timeout: 5000 });
+      expect(await page.locator('#photoUploadDialog').isVisible()).toBe(true);
+      expect(await page.locator('#newPhotoRole').inputValue()).toBe('front_cover');
+      const uploadLayout = await page.evaluate(() => {
+        const dialog = document.querySelector('#photoUploadDialog') as HTMLDialogElement;
+        const rect = dialog.getBoundingClientRect();
+        return {
+          viewport: window.innerWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          left: rect.left,
+          right: rect.right,
+          width: rect.width,
+        };
+      });
+      expect(uploadLayout.documentWidth).toBeLessThanOrEqual(width + 1);
+      expect(uploadLayout.left).toBeGreaterThanOrEqual(-1);
+      expect(uploadLayout.right).toBeLessThanOrEqual(width + 1);
+      expect(uploadLayout.width).toBeGreaterThan(0);
+      if (issue333EvidenceDirectory) {
+        await page.screenshot({
+          path: path.join(issue333EvidenceDirectory, 'photos-step-upload-' + width + 'px.png'),
+          fullPage: true,
+          animations: 'disabled',
+        });
+      }
+
+      // selectPortrait uses a Sharp-generated local fixture and never submits the form.
+      await selectPortrait('front_cover');
+      await page.waitForFunction(
+        "document.querySelector('#selected-photo-info').textContent.includes('300 × 500 px') && " +
+        "document.querySelector('#square-cover-source').height === 320",
+        undefined,
+        { timeout: 5000 }
+      );
+      expect(await page.locator('#square-cover-cropper').isVisible()).toBe(true);
+      expect(await page.locator('#square-cover-magnifier').isVisible()).toBe(true);
+      expect(await page.locator('[data-corner-handle]').count()).toBe(4);
+      const editorLayout = await page.evaluate(() => {
+        const dialog = document.querySelector('#photoUploadDialog') as HTMLDialogElement;
+        const rect = dialog.getBoundingClientRect();
+        return {
+          viewport: window.innerWidth,
+          documentWidth: document.documentElement.scrollWidth,
+          left: rect.left,
+          right: rect.right,
+          width: rect.width,
+        };
+      });
+      expect(editorLayout.documentWidth).toBeLessThanOrEqual(width + 1);
+      expect(editorLayout.left).toBeGreaterThanOrEqual(-1);
+      expect(editorLayout.right).toBeLessThanOrEqual(width + 1);
+      expect(editorLayout.width).toBeGreaterThan(0);
+      if (issue333EvidenceDirectory) {
+        await page.screenshot({
+          path: path.join(issue333EvidenceDirectory, 'photos-step-editor-' + width + 'px.png'),
+          fullPage: true,
+          animations: 'disabled',
+        });
+      }
+    }
+
+    // This test renders EJS locally and selects a synthetic File object only.
+    // It never submits the form or contacts the application, database or Storage.
+    expect(browserErrors).toEqual([]);
   });
 
   it('rectifies front and back cover uploads to the exact square preview', async () => {

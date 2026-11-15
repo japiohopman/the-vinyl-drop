@@ -37,6 +37,10 @@ Use lowercase kebab-case for new files. Existing owner-supplied legacy files (in
 
 For the current discovery UI, use the **Browse desktop** reference linked in the central index (the existing historical file currently remains at `docs/verification/desktop_browse_list_1280x800.png`) and the **Dig mobile** reference in `dig/` as the paired desktop/mobile references. Do not require both route names at both viewport sizes. When a current Browse desktop capture replaces the historical one, store it in `browse/` and update the central index. This pairing may change only when a future issue explicitly separates the two experiences.
 
+## Focused listing Photos step
+
+The route `GET /listings/:id/photos` is a separate creation step rendered by the shared listing editor in photoStepOnly mode. It is not the later `GET /listings/:id/edit` route. A dedicated owner-reviewed baseline has not yet been promoted. Until one is reviewed, use the closest listing-creation images only as directional context and use the temporary synthetic Playwright evidence described in the central index for route/state verification. Do not add screenshots to this folder or mark the route as approved without owner review and complete provenance.
+
 ## Required metadata
 
 Every promoted baseline must have a row in [`../UI_VISUAL_REFERENCE.md`](../UI_VISUAL_REFERENCE.md) recording:

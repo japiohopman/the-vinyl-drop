@@ -15,6 +15,12 @@ This is the practical starting point for people and agents working in The Vinyl 
    - Environments: [Staging Runbook](./STAGING_BETA_DEPLOYMENT.md) and [Production Runbook](./PRODUCTION_DEPLOYMENT.md).
    - Workflow and verification: [Agentic Workflow](./AGENTIC_WORKFLOW.md).
 
+## Agent task skills
+
+The Jules dispatcher adds the exact specialist contract and task-skill paths to each generated prompt. Read .github/skills/README.md for the current role map. Do not assume SKILL.md files are automatically loaded by Jules, and do not load every skill for every Issue. Cross-specialist workflows such as performance-investigation must be requested explicitly in Issue metadata when relevant.
+
+For UI work, the canonical UI Visual Reference Library and its relevant images are mandatory inputs, not optional background reading. See the UI specialist contract and visual-regression-evidence skill.
+
 ## What the application is
 
 The Vinyl Drop is a server-rendered marketplace for physical vinyl. Buyers and sellers arrange transactions directly; the application does not provide checkout, escrow or payment processing.

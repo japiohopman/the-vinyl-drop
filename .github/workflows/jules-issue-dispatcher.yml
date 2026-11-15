@@ -51,6 +51,7 @@ jobs:
             const dryRun = process.env.DRY_RUN !== 'false';
             const julesApiKey = process.env.JULES_API_KEY || '';
             const { parseIssueMetadata } = require('./.github/scripts/dispatcher-metadata.cjs');
+            const { resolveAgentContext, buildJulesPrompt } = require('./.github/scripts/agent-context.cjs');
 
             core.info(`Running preflight selector for repository: ${repository}`);
             core.info(`Mode: ${dryRun ? 'DRY RUN' : 'LIVE DISPATCH'}`);
@@ -173,6 +174,10 @@ jobs:
                 errors.push(`Issue #${candidate.issueNumber} is not marked as dispatch-ready.`);
                 continue;
               }
+              if (candidate.agentSkillsProblem) {
+                errors.push(`Issue #${candidate.issueNumber} has invalid Agent Skills metadata: ${candidate.agentSkillsProblem}`);
+                continue;
+              }
               const lockLabels = ['in-progress', 'jules-active', 'in-execution', 'active-session'];
               if (candidate.labels.some((l) => lockLabels.includes(l.toLowerCase()))) {
                 errors.push(`Issue #${candidate.issueNumber} already has an active label lock in progress.`);
@@ -200,6 +205,19 @@ jobs:
 
               if (!candidate.primarySpecialist) {
                 errors.push(`Issue #${candidate.issueNumber} missing required "Primary Specialist" metadata.`);
+                continue;
+              }
+
+              // Resolve only allow-listed specialist contracts and task skills. Unknown values fail closed.
+              let candidateAgentContext;
+              try {
+                candidateAgentContext = resolveAgentContext(
+                  candidate.primarySpecialist,
+                  candidate.secondarySpecialist,
+                  candidate.agentSkills || []
+                );
+              } catch (err) {
+                errors.push(`Issue #${candidate.issueNumber} has invalid specialist/skill metadata: ${err.message}`);
                 continue;
               }
 
@@ -234,7 +252,7 @@ jobs:
               }
               if (!depsOk) continue;
 
-              selectedIssue = candidate;
+              selectedIssue = { ...candidate, agentContext: candidateAgentContext };
               break;
             }
 
@@ -246,10 +264,12 @@ jobs:
             core.info(`\n✅ Selected Issue #${selectedIssue.issueNumber}: "${selectedIssue.title}"`);
             core.info(`Primary Specialist: ${selectedIssue.primarySpecialist}`);
             core.info(`Secondary Specialist: ${selectedIssue.secondarySpecialist || 'N/A'}`);
+            core.info('Specialist contract paths: ' + selectedIssue.agentContext.contractPaths.join(', '));
+            core.info('Task skill paths: ' + selectedIssue.agentContext.skillPaths.join(', '));
 
             const payload = {
               title: `[Issue #${selectedIssue.issueNumber}] ${selectedIssue.title}`,
-              prompt: `Start Issue #${selectedIssue.issueNumber} — ${selectedIssue.title}\n\nPrimary Specialist: ${selectedIssue.primarySpecialist}\nSecondary Specialist: ${selectedIssue.secondarySpecialist || 'N/A'}\n\nGoal:\n${selectedIssue.body}`,
+              prompt: buildJulesPrompt(selectedIssue),
               sourceContext: {
                 source: `sources/github/${repository}`,
                 githubRepoContext: {
