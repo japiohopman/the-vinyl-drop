@@ -10,6 +10,10 @@
   if (drawerTriggers.length === 0 || !(drawerCloseTrigger instanceof HTMLButtonElement)) return;
 
   const drawerMedia = window.matchMedia('(max-width: 1023px)');
+  const mobileSheetMedia = window.matchMedia('(max-width: 767px)');
+  const reducedMotionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const originalSidebarParent = sidebar.parentElement;
+  const originalSidebarNextSibling = sidebar.nextSibling;
   const focusableSelector = [
     'a[href]',
     'button:not([disabled])',
@@ -23,6 +27,24 @@
   let activeTrigger = null;
   let previousFocus = null;
   let previousBodyOverflow = '';
+
+  /**
+   * On phones, mount the sheet directly under body. Dig's app-like crate shell
+   * clips its content, so a fixed descendant must not remain inside that shell.
+   * Tablet drawers and the desktop aside stay in their original semantic grid.
+   */
+  function syncSidebarMount() {
+    if (mobileSheetMedia.matches) {
+      if (sidebar.parentElement !== document.body) document.body.appendChild(sidebar);
+      return;
+    }
+    if (sidebar.parentElement === document.body && originalSidebarParent?.isConnected) {
+      const reference = originalSidebarNextSibling?.parentNode === originalSidebarParent
+        ? originalSidebarNextSibling
+        : null;
+      originalSidebarParent.insertBefore(sidebar, reference);
+    }
+  }
 
   /** Return visible sidebar controls in their DOM keyboard-focus order. */
   function getFocusableElements() {
@@ -50,12 +72,34 @@
   function closeDrawer(options = {}) {
     if (!sidebar.classList.contains('is-drawer-open')) return;
     const restoreFocus = options.restoreFocus !== false;
+    const animateMobileSheet = mobileSheetMedia.matches && !reducedMotionMedia.matches;
 
     sidebar.classList.remove('is-drawer-open');
+    if (animateMobileSheet) {
+      sidebar.classList.add('is-drawer-closing');
+      const finishClosing = (event) => {
+        if (event && (event.target !== sidebar || event.propertyName !== 'transform')) return;
+        sidebar.removeEventListener('transitionend', finishClosing);
+        sidebar.removeEventListener('transitioncancel', finishClosing);
+        sidebar.classList.remove('is-drawer-closing');
+      };
+      sidebar.addEventListener('transitionend', finishClosing);
+      sidebar.addEventListener('transitioncancel', finishClosing);
+    } else {
+      sidebar.classList.remove('is-drawer-closing');
+    }
+
     sidebar.removeAttribute('role');
     sidebar.removeAttribute('aria-modal');
     sidebar.setAttribute('aria-label', 'Dig sidebar');
     sidebar.removeAttribute('tabindex');
+    if (drawerMedia.matches) {
+      sidebar.setAttribute('aria-hidden', 'true');
+      sidebar.setAttribute('inert', '');
+    } else {
+      sidebar.removeAttribute('aria-hidden');
+      sidebar.removeAttribute('inert');
+    }
     sidebar.style.removeProperty('--dig-sidebar-viewport-top');
     sidebar.style.removeProperty('--dig-sidebar-viewport-height');
     drawerTriggers.forEach((trigger) => trigger.setAttribute('aria-expanded', 'false'));
@@ -79,6 +123,9 @@
     previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     previousBodyOverflow = document.body.style.overflow;
 
+    sidebar.classList.remove('is-drawer-closing');
+    sidebar.removeAttribute('aria-hidden');
+    sidebar.removeAttribute('inert');
     sidebar.classList.add('is-drawer-open');
     sidebar.setAttribute('role', 'dialog');
     sidebar.setAttribute('aria-modal', 'true');
@@ -143,7 +190,25 @@
   if (typeof drawerMedia.addEventListener === 'function') {
     drawerMedia.addEventListener('change', (event) => {
       if (!event.matches) closeDrawer({ restoreFocus: false });
+      syncSidebarMount();
     });
+  }
+  if (typeof mobileSheetMedia.addEventListener === 'function') {
+    mobileSheetMedia.addEventListener('change', (event) => {
+      if (!event.matches) closeDrawer({ restoreFocus: false });
+      syncSidebarMount();
+    });
+  }
+
+  // Mount mobile sheets outside the clipped app shell before applying enhanced
+  // drawer styles; this also prevents the offscreen panel from affecting layout.
+  syncSidebarMount();
+
+  // In drawer layouts, keep the closed panel out of the accessibility tree before
+  // enabling the CSS enhancement. This also prevents a first-paint flash.
+  if (drawerMedia.matches) {
+    sidebar.setAttribute('aria-hidden', 'true');
+    sidebar.setAttribute('inert', '');
   }
 
   // Mark the document enhanced only after the drawer controls and handlers are ready.

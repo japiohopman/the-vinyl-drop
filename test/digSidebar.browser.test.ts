@@ -164,6 +164,12 @@ describe('Records-only Dig sidebar & first-load browser behavior (Issue #404)', 
           expect(await sidebar.locator('#dig-filter-query').isVisible()).toBe(width < 768);
           expect(await page.locator('[data-dig-filter-dialog]').count()).toBe(0);
           await page.keyboard.press('Escape');
+          if (width < 768) {
+            await page.waitForFunction(() => {
+              const element = document.querySelector('[data-dig-sidebar]');
+              return element instanceof HTMLElement && getComputedStyle(element).visibility === 'hidden';
+            });
+          }
           expect(await sidebar.isVisible()).toBe(false);
         }
 

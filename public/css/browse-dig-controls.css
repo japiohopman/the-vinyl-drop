@@ -608,3 +608,202 @@
     margin: 0;
   }
 }
+
+/* Issue #419 — give desktop Dig a composed catalogue rail and results workspace. */
+@media (min-width: 1024px) {
+  .dig-responsive-page {
+    grid-template-columns: minmax(236px, 272px) minmax(0, 1fr);
+    column-gap: clamp(var(--space-5), 2.2vw, var(--space-8));
+    row-gap: var(--space-5);
+  }
+
+  .dig-search-control-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-4);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .dig-primary-search-form {
+    min-width: 0;
+    max-width: 760px;
+  }
+
+  .dig-sidebar {
+    border-right: 1px solid var(--color-border-subtle);
+    padding-right: var(--space-5);
+    height: min(82vh, calc(100dvh - 240px));
+    max-height: min(82vh, calc(100dvh - 240px));
+  }
+
+  .dig-sidebar-inner {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    gap: var(--space-5);
+  }
+
+  /* Dig's form must not look like a second framed card inside the aside. */
+  .dig-sidebar .dig-filter-form {
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .dig-sidebar .dig-filter-form .browse-format-quick-filters,
+  .dig-sidebar .dig-filter-form .browse-release-classification-filters,
+  .dig-sidebar .dig-filter-form .browse-primary-filters,
+  .dig-sidebar .dig-filter-form .browse-secondary-filters {
+    min-width: 0;
+  }
+
+  .dig-sidebar-header {
+    display: flex;
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .dig-sidebar-title {
+    font-size: var(--font-size-lg);
+    letter-spacing: var(--letter-spacing-tight);
+  }
+
+  .dig-sidebar-close {
+    display: none;
+  }
+
+  .dig-sidebar .browse-format-quick-filters,
+  .dig-sidebar .dig-sidebar-group,
+  .dig-sidebar .browse-secondary-filters {
+    min-width: 0;
+  }
+
+  .dig-sidebar .dig-sidebar-group-title {
+    margin-bottom: var(--space-1);
+  }
+
+  .dig-taxonomy-nav {
+    max-height: min(30vh, 280px);
+  }
+
+  .dig-results-content .browse-header {
+    margin: 0 0 var(--space-4);
+    padding: 0 0 var(--space-4);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .dig-results-content .browse-header h1 {
+    font-size: clamp(var(--font-size-2xl), 2.2vw, var(--font-size-3xl));
+    line-height: var(--line-height-tight);
+  }
+
+  .dig-results-content .browse-header-description {
+    max-width: 58ch;
+  }
+
+  .dig-results-content .browse-controls-bar {
+    align-items: center;
+    margin-bottom: var(--space-4);
+  }
+
+  .dig-results-content .listing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+}
+
+@media (min-width: 1280px) {
+  .dig-responsive-page {
+    grid-template-columns: minmax(252px, 288px) minmax(0, 1fr);
+    column-gap: var(--space-8);
+  }
+
+  .dig-results-content .listing-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Issue #419 — phone filters are a bottom sheet; tablets retain the side drawer. */
+@media (max-width: 767px) {
+  html.dig-sidebar-enhanced .dig-sidebar {
+    display: block;
+    top: calc(
+      var(--dig-sidebar-viewport-top, 0px) +
+      var(--dig-sidebar-viewport-height, 100dvh) -
+      min(84dvh, calc(var(--dig-sidebar-viewport-height, 100dvh) - 24px))
+    );
+    right: 0;
+    bottom: auto;
+    left: 0;
+    width: auto;
+    max-width: none;
+    height: min(84dvh, calc(var(--dig-sidebar-viewport-height, 100dvh) - 24px));
+    max-height: none;
+    border: 0;
+    border-top: 2px solid var(--color-rust);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    box-shadow: 0 -12px 32px rgb(21 21 21 / 22%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate3d(0, 105%, 0);
+    transition:
+      transform 280ms cubic-bezier(.22, .61, .36, 1),
+      opacity 220ms ease;
+  }
+
+  html.dig-sidebar-enhanced .dig-sidebar.is-drawer-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translate3d(0, 0, 0);
+    transition-delay: 0s;
+  }
+
+  /* Keep the panel painted only during its exit motion, but remove it from
+     interaction/accessibility immediately when the modal closes. */
+  html.dig-sidebar-enhanced .dig-sidebar.is-drawer-closing {
+    visibility: visible;
+    pointer-events: none;
+  }
+
+  html.dig-sidebar-enhanced .dig-sidebar-inner {
+    min-height: 100%;
+    padding: var(--space-4) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .dig-filter-query-control {
+    position: relative;
+  }
+
+  .dig-filter-query-control input[type="search"] {
+    padding-left: 2.75rem;
+    background-image: none;
+  }
+
+  .dig-filter-query-control::after {
+    position: absolute;
+    bottom: 0.875rem;
+    left: 0.875rem;
+    width: 1rem;
+    height: 1rem;
+    content: "";
+    background-color: var(--color-ink-muted);
+    -webkit-mask: url("/assets/svg/search.svg") center / contain no-repeat;
+    mask: url("/assets/svg/search.svg") center / contain no-repeat;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.dig-sidebar-enhanced .dig-sidebar {
+    transition: none !important;
+  }
+}
