@@ -47,7 +47,7 @@
   <% if (typeof currentPath !== 'undefined' && (currentPath === '/dig' || currentPath === '/browse/dig')) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/dig-mobile-session.css') : '/css/dig-mobile-session.css' %>">
   <% } %>
-  <% if (typeof currentPath !== 'undefined' && (currentPath === '/drop/new' || currentPath === '/listings/create' || new RegExp('^/listings/[^/]+/edit$').test(currentPath))) { %>
+  <% if (typeof currentPath !== 'undefined' && (currentPath === '/drop/new' || currentPath === '/listings/create' || new RegExp('^/listings/[^/]+/(?:edit|photos)$').test(currentPath))) { %>
     <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/listing-forms.css') : '/css/listing-forms.css' %>">
   <% } %>
   <link rel="stylesheet" href="<%= typeof versionedCssAssetUrl === 'function' ? versionedCssAssetUrl('/css/style-after-listing-forms.css') : '/css/style-after-listing-forms.css' %>">
