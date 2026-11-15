@@ -95,6 +95,7 @@ describe('Dig desktop aside and mobile bottom sheet (Issue #419)', () => {
   }
 
   it.each([
+    { width: 320, height: 640 },
     { width: 360, height: 800 },
     { width: 390, height: 844 },
     { width: 430, height: 932 },
