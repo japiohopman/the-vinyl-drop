@@ -22,6 +22,9 @@ const publicDirectory = path.join(root, 'public');
 const evidenceDirectory = process.env.UI_EVIDENCE_DIR?.trim() || 'artifacts/issue-292';
 
 const stylesheet = readFullStylesheetSource();
+const releaseClassificationStylesheet = fs
+  .readFileSync(path.join(publicDirectory, 'css', 'release-classification-filters.css'), 'utf8')
+  .replace(/\r\n|\r/g, '\n');
 const testUser = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   email: 'digger@example.test',
@@ -58,7 +61,7 @@ function documentHtml(baseUrl: string, header: string, body: string): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <base href="${baseUrl}/">
   <link rel="stylesheet" href="${baseUrl}/fonts/fonts.css">
-  <style>${stylesheet}</style>
+  <style>${stylesheet}${releaseClassificationStylesheet}</style>
 </head>
 <body>
   ${header}
