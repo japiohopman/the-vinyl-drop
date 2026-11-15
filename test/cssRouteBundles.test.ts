@@ -92,13 +92,13 @@ describe('Route-specific CSS bundles (#252)', () => {
     ]);
     expect(dig).toEqual([
       '/css/style.css', '/css/dig-experience.css',
-      '/css/style-after-features.css', '/css/browse-dig-controls.css', '/css/style-after-activity.css',
+      '/css/style-after-features.css', '/css/browse-dig-controls.css', '/css/release-classification-filters.css', '/css/style-after-activity.css',
       '/css/style-after-release-selection.css', '/css/dig-mobile-session.css', '/css/style-after-listing-forms.css',
       '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css',
       '/css/dig-mobile-crate.css',
     ]);
     expect(browse).toEqual([
-      '/css/style.css', '/css/style-after-features.css', '/css/browse-dig-controls.css',
+      '/css/style.css', '/css/style-after-features.css', '/css/browse-dig-controls.css', '/css/release-classification-filters.css',
       '/css/style-after-activity.css', '/css/style-after-release-selection.css',
       '/css/style-after-listing-forms.css', '/css/style-after-profile-pages.css', '/css/style-after-profile-editor.css',
       '/css/browse-catalogue-explorer.css',
@@ -178,7 +178,11 @@ describe('Route-specific CSS bundles (#252)', () => {
       expect(nonHomeRoute).not.toContain('/css/home.css');
     }
     expect(home).not.toContain('/css/browse-dig-controls.css');
+    expect(home).not.toContain('/css/release-classification-filters.css');
     expect(home).not.toContain('/css/browse-catalogue-explorer.css');
+    for (const unrelated of [home, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, listingPhotos, profile, publicProfile, profileEdit]) {
+      expect(unrelated).not.toContain('/css/release-classification-filters.css');
+    }
     for (const nonBrowseRoute of [dig, search, browseDig, myListings, listingDetail, listingComments, activity, selectRelease, dropNew, listingCreate, listingEdit, listingPhotos, profile, publicProfile, profileEdit]) {
       expect(nonBrowseRoute).not.toContain('/css/browse-catalogue-explorer.css');
     }
@@ -247,8 +251,8 @@ describe('Route-specific CSS bundles (#252)', () => {
     const after = {
       general: routeMetrics(sharedBundles),
       home: routeMetrics([...sharedBundles, 'home.css']),
-      dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'dig-mobile-session.css', 'dig-mobile-crate.css']),
-      browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', ...sharedBundles.slice(2), 'browse-catalogue-explorer.css']),
+      dig: routeMetrics(['style.css', 'dig-experience.css', 'style-after-features.css', 'browse-dig-controls.css', 'release-classification-filters.css', ...sharedBundles.slice(2), 'dig-mobile-session.css', 'dig-mobile-crate.css']),
+      browse: routeMetrics(['style.css', 'style-after-features.css', 'browse-dig-controls.css', 'release-classification-filters.css', ...sharedBundles.slice(2), 'browse-catalogue-explorer.css']),
       myListings: routeMetrics(['style.css', 'my-listings.css', ...sharedBundles.slice(1)]),
       listingDetail: routeMetrics(['style.css', 'listing-detail.css', ...sharedBundles.slice(1), 'listing-interactions.css', 'listing-detail-polish.css']),
       listingComments: routeMetrics([...sharedBundles, 'listing-interactions.css']),
