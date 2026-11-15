@@ -41,7 +41,7 @@ describe('TVD agent skill registry and dispatcher context', () => {
       const frontmatter = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
       expect(frontmatter).not.toBeNull();
       expect(frontmatter?.[1]).toMatch(new RegExp('^name:\\s*' + skillId + '$', 'm'));
-      expect(frontmatter?.[1]).toMatch(/^description:\\s*\\S+/m);
+      expect(frontmatter?.[1]).toMatch(/^description:\s*\S+/m);
       expect(content.length).toBeGreaterThan(250);
     }
   });
