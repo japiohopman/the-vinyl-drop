@@ -1,4 +1,4 @@
-import { readFullStylesheetSource, readListingPhotosStylesheet } from './stylesheetTestHelper';
+import { readFullStylesheetSource, readListingPhotosRouteStylesheet } from './stylesheetTestHelper';
 import ejs from 'ejs';
 import path from 'path';
 import { mkdirSync, readFileSync } from 'fs';
@@ -91,7 +91,7 @@ describe('Square cover photo cropper', () => {
     const body = html
       .replace('<script src="/js/listing-photo-editor-core.js" defer></script>', '')
       .replace('<script src="/js/square-photo-cropper.js" defer></script>', '');
-    const pageStylesheet = stylesheet + (photoStepOnly ? readListingPhotosStylesheet() : '');
+    const pageStylesheet = photoStepOnly ? readListingPhotosRouteStylesheet() : stylesheet;
     await page.setContent(
       '<!doctype html><html lang="en" data-theme="record-shop"><head><meta charset="UTF-8">' +
       '<base href="http://localhost/">' +
