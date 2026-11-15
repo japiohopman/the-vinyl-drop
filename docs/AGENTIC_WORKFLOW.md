@@ -30,9 +30,9 @@ Documentation (`docs/ROADMAP.md`, `docs/PRODUCT_VISION.md`) is architectural ref
 4. **Read-Only Memory:** `CHATGPT.md` serves as durable, read-only advisory memory across sessions. Agents must never modify or rewrite `CHATGPT.md`.
 5. **Final Merge:** the human owner retains final approval and merge authority. An agent must not infer merge permission from passing CI or from a prior merge in another Issue.
 
-## Live GitHub Actions workflows
+## GitHub Actions workflow inventory
 
-The repository operates five live GitHub Actions workflows (`.github/workflows/`):
+The repository contains core CI/safety workflows and separate legacy/manual operator workflows under `.github/workflows/`. The current implementation path is direct ChatGPT repository work with independent CodeRabbit PR review. Legacy Jules workflow files are retained for reference only and are not part of the current workflow.
 
 ### 1. CI Workflow (`ci.yml`)
 
@@ -63,11 +63,9 @@ The repository separates four kinds of guidance: root AGENTS.md instructions, sp
 
 ChatGPT reads the applicable specialist contract and relevant complete SKILL.md files directly while implementing the active Issue. The skill index maps the five roles to their default workflows and describes when cross-specialist performance work is appropriate. Do not duplicate these procedures in always-on instructions or add metadata solely for an unused dispatcher.
 
-### 4. Jules Session Cleanup (`jules-session-cleanup.yml`)
+### 4. Legacy Jules Session Cleanup (`jules-session-cleanup.yml`) — not used for current implementation
 
-Manually triggered workflow for inspecting and terminating stale Jules sessions.
-- Executes `src/workflow/julesSessionCleanup.ts`.
-- Validates explicit confirmation tokens and repository ownership before session cleanup.
+This manually triggered workflow remains in the repository for legacy session inspection/cleanup only. It is not part of the current ChatGPT/CodeRabbit workflow and must not be run unless the owner explicitly reactivates it.
 
 ### 5. ChatGPT Review Relay (`chatgpt-review-relay.yml`)
 
