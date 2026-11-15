@@ -78,6 +78,12 @@
     filters.contentType,
     filters.specialPressing
   ].filter(Boolean).length;
+  const activeAdvancedFilterCount = [
+    filters.condition,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.sort && filters.sort !== 'newest'
+  ].filter(Boolean).length;
 %>
 <div class="dig-responsive-page" data-dig-page>
 
@@ -253,7 +259,7 @@
           <details class="browse-secondary-filters" open>
             <summary>
               <span>More filters</span>
-              <span class="browse-secondary-filter-status"><%= activeFilterCount ? activeFilterCount + ' active' : 'Condition, price & sort' %></span>
+              <span class="browse-secondary-filter-status"><%= activeAdvancedFilterCount ? activeAdvancedFilterCount + ' active' : 'Condition, price & sort' %></span>
             </summary>
             <div class="browse-secondary-grid">
               <div>
