@@ -189,7 +189,13 @@
   }
   if (typeof drawerMedia.addEventListener === 'function') {
     drawerMedia.addEventListener('change', (event) => {
-      if (!event.matches) closeDrawer({ restoreFocus: false });
+      if (!event.matches) {
+        closeDrawer({ restoreFocus: false });
+        // A closed phone drawer is already inert/aria-hidden, so closeDrawer()
+        // can return early. Always restore desktop sidebar semantics at this breakpoint.
+        sidebar.removeAttribute('aria-hidden');
+        sidebar.removeAttribute('inert');
+      }
       syncSidebarMount();
     });
   }
