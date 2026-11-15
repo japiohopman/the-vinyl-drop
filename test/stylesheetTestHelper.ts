@@ -39,6 +39,10 @@ export function readReconstructedMainStylesheet(): string {
     .join('');
 }
 
+export function readListingPhotosStylesheet(): string {
+  return readCssFile('listing-photos.css');
+}
+
 export function readFullStylesheetSource(): string {
   return readReconstructedMainStylesheet() + readCssFile('dig-mobile-crate.css') + readCssFile('themes.css');
 }
