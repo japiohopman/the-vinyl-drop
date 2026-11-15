@@ -177,6 +177,24 @@
             </div>
           </fieldset>
 
+          <section class="browse-release-classification-filters" aria-labelledby="dig-release-classification-title">
+            <h3 class="dig-sidebar-group-title" id="dig-release-classification-title">Release type &amp; edition</h3>
+            <div class="browse-release-classification-controls">
+              <div class="browse-genre-control">
+                <label for="filter-content-type">Release type</label>
+                <select id="filter-content-type" name="contentType" class="form-control">
+                  <option value="">All releases</option>
+                  <option value="music" <%= filters.contentType === 'music' ? 'selected' : '' %>>Music</option>
+                  <option value="non_music" <%= filters.contentType === 'non_music' ? 'selected' : '' %>>Non-Music</option>
+                </select>
+              </div>
+              <label class="browse-special-pressing-filter">
+                <input type="checkbox" id="filter-special-pressing" name="specialPressing" value="1" <%= filters.specialPressing ? 'checked' : '' %> />
+                <span>Special Pressings only</span>
+              </label>
+            </div>
+          </section>
+
           <!-- Genre & Style Selection -->
           <div class="dig-sidebar-group">
             <h3 class="dig-sidebar-group-title">Genres &amp; Styles</h3>
@@ -238,18 +256,6 @@
               <span class="browse-secondary-filter-status"><%= activeFilterCount ? activeFilterCount + ' active' : 'Condition, price & sort' %></span>
             </summary>
             <div class="browse-secondary-grid">
-              <div>
-                <label for="filter-content-type">Content type</label>
-                <select id="filter-content-type" name="contentType" class="form-control">
-                  <option value="">All content</option>
-                  <option value="music" <%= filters.contentType === 'music' ? 'selected' : '' %>>Music</option>
-                  <option value="non_music" <%= filters.contentType === 'non_music' ? 'selected' : '' %>>Non-Music</option>
-                </select>
-              </div>
-              <label class="browse-special-pressing-filter">
-                <input type="checkbox" id="filter-special-pressing" name="specialPressing" value="1" <%= filters.specialPressing ? 'checked' : '' %> />
-                <span>Special Pressings only</span>
-              </label>
               <div>
                 <label for="filter-condition">Condition</label>
                 <select id="filter-condition" name="condition" class="form-control">
