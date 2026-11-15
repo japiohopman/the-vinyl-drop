@@ -58,7 +58,9 @@ function normalizeName(value) {
 function findSpecialists(value) {
   const normalized = normalizeName(value);
   const group = SPECIALIST_GROUPS[normalized];
-  return group ? group.map(findSpecialist) : [findSpecialist(value)];
+  return group
+    ? group.map((specialistId) => SPECIALIST_REGISTRY[specialistId])
+    : [findSpecialist(value)];
 }
 
 function splitSpecialists(value) {
